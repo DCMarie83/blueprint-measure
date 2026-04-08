@@ -1,0 +1,75 @@
+.empty {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  padding: 16px;
+  line-height: 1.6;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+}
+
+.zone {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 12px;
+  position: relative;
+}
+
+.zoneTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  gap: 8px;
+}
+
+.zoneName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.zoneType {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.zoneResult {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 8px;
+}
+
+.zoneUnit {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.deleteBtn {
+  font-size: 12px;
+  background: none;
+  border: none;
+  color: var(--color-danger);
+  padding: 0;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+
+.deleteBtn:hover {
+  opacity: 1;
+}

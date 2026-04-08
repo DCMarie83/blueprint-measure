@@ -1,0 +1,185 @@
+.layout {
+  display: flex;
+  height: 100vh;
+  background: var(--color-bg);
+  overflow: hidden;
+}
+
+/* ─── Sidebar ─── */
+.sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.sidebarHeader {
+  padding: 14px 14px 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.backLink {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  display: block;
+  margin-bottom: 10px;
+}
+
+.backLink:hover {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.sessionProject {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 2px;
+}
+
+.sessionClient {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.section {
+  border-bottom: 1px solid var(--color-border);
+  padding: 12px 0;
+}
+
+.sectionTitle {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--color-text-muted);
+  padding: 0 14px 8px;
+}
+
+.zoneListSection {
+  flex: 1;
+}
+
+.blueprintLoaded {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  font-size: 13px;
+  color: var(--color-success);
+}
+
+.blueprintCheck {
+  font-size: 14px;
+}
+
+.replaceBtn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.replaceBtn:hover {
+  color: var(--color-text);
+}
+
+.exportBtn {
+  width: 100%;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0 12px;
+  width: calc(100% - 24px);
+  transition: background 0.15s;
+}
+
+.exportBtn:hover {
+  background: var(--color-border);
+}
+
+/* ─── Canvas area ─── */
+.canvasArea {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.emptyCanvas {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  gap: 12px;
+}
+
+.emptyCanvasIcon {
+  font-size: 64px;
+  opacity: 0.3;
+}
+
+.emptyCanvas p {
+  font-size: 15px;
+}
+
+.hint {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 25, 35, 0.85);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  padding: 7px 18px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* ─── Loading / error ─── */
+.loading {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 16px;
+  color: var(--color-text-muted);
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.backBtn {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 9px 18px;
+  font-size: 14px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
