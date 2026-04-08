@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useSession } from '../hooks/useSession'
 import { calcPixelsPerFoot } from '../utils/scaleOptions'
@@ -33,13 +33,15 @@ export default function SessionPage() {
   const [activeZoneMeta, setActiveZoneMeta] = useState(null) // { name, type }
   const [drawnPoints, setDrawnPoints] = useState([])
 
-  // Load blueprint URL from session when it loads
-  useState(() => {
+  // When the session loads from the database, restore the blueprint image.
+  // useEffect re-runs whenever `session` changes — so when Supabase returns
+  // the session data, this fires and populates blueprintUrl from the saved URL.
+  useEffect(() => {
     if (session?.blueprint_url && !blueprintUrl) {
       setBlueprintUrl(session.blueprint_url)
       setBlueprintType(session.blueprint_type)
     }
-  })
+  }, [session])
 
   // Called after successful upload
   function handleUploaded({ url, type }) {
