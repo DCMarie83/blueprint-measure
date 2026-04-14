@@ -9,6 +9,7 @@ import BlueprintUploader from '../components/canvas/BlueprintUploader'
 import ScalePanel from '../components/canvas/ScalePanel'
 import ZoneDrawPanel from '../components/zones/ZoneDrawPanel'
 import ZoneList from '../components/zones/ZoneList'
+import SessionSummary from '../components/zones/SessionSummary'
 import styles from './SessionPage.module.css'
 
 // SessionPage is the main working environment.
@@ -242,6 +243,14 @@ export default function SessionPage() {
               onStartCalibration={handleStartCalibration}
               calibrating={calibrating}
             />
+          </div>
+        )}
+
+        {/* Summary totals */}
+        {blueprintUrl && zones.length > 0 && (
+          <div className={styles.section}>
+            <div className={styles.sectionTitle}>Summary</div>
+            <SessionSummary zones={zones} />
           </div>
         )}
 
