@@ -64,6 +64,12 @@
   flex: 1;
 }
 
+.pageTag {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 .blueprintLoaded {
   display: flex;
   align-items: center;

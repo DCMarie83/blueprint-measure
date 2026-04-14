@@ -1,0 +1,81 @@
+.strip {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 2px 2px 8px;
+  /* Thin scrollbar so it doesn't eat too much space */
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+.strip::-webkit-scrollbar {
+  height: 4px;
+}
+
+.strip::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.strip::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 2px;
+}
+
+.thumb {
+  flex-shrink: 0;
+  width: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 5px 4px;
+  background: var(--color-bg);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.thumb:hover:not(.active) {
+  border-color: var(--color-text-muted);
+}
+
+.thumb.active {
+  border-color: var(--color-primary);
+}
+
+/* Wrapper keeps aspect ratio consistent whether image or placeholder */
+.preview {
+  width: 100%;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 2px;
+  background: white;
+}
+
+.thumbImg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.thumbPlaceholder {
+  width: 100%;
+  height: 100%;
+  background: var(--color-surface-2);
+  border-radius: 2px;
+}
+
+.pageLabel {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  line-height: 1;
+}
+
+.thumb.active .pageLabel {
+  color: var(--color-primary);
+}

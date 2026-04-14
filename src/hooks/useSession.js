@@ -46,7 +46,7 @@ export function useSession(sessionId) {
   }, [fetchSession])
 
   async function saveZone(zoneData) {
-    // zoneData: { name, description, notes, surface_type, coat_count, measurement_type, points, result }
+    // zoneData: { name, description, notes, surface_type, coat_count, measurement_type, points, result, page_number }
     const payload = {
       session_id: sessionId,
       name: zoneData.name,
@@ -57,6 +57,7 @@ export function useSession(sessionId) {
       measurement_type: zoneData.measurement_type,
       points: zoneData.points,
       result: zoneData.result,
+      page_number: zoneData.page_number ?? 1,
     }
 
     // Create new zone

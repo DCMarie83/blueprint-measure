@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useSession } from '../hooks/useSession'
+import { usePdf } from '../hooks/usePdf'
 import { calcPixelsPerFoot } from '../utils/scaleOptions'
 import { calculate } from '../utils/measurements'
 import { exportCSV } from '../utils/csvExport'
@@ -10,6 +11,7 @@ import ScalePanel from '../components/canvas/ScalePanel'
 import ZoneDrawPanel from '../components/zones/ZoneDrawPanel'
 import ZoneList from '../components/zones/ZoneList'
 import SessionSummary from '../components/zones/SessionSummary'
+import PdfPageSelector from '../components/pdf/PdfPageSelector'
 import styles from './SessionPage.module.css'
 
 // SessionPage is the main working environment.
@@ -20,50 +22,88 @@ export default function SessionPage() {
   const navigate = useNavigate()
   const { session, zones, loading, error, saveZone, updateZone, redrawZone, deleteZone, updateSession } = useSession(sessionId)
 
-  // Blueprint image state
+  // ── Blueprint state ──────────────────────────────────────────────────────────
   const [blueprintUrl, setBlueprintUrl] = useState(null)
   const [blueprintType, setBlueprintType] = useState(null)
 
-  // Scale state
+  // ── PDF state ────────────────────────────────────────────────────────────────
+  const isPdf = blueprintType === 'application/pdf'
+  const { pageCount, pdfLoading, renderPage } = usePdf(isPdf ? blueprintUrl : null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [renderedPageUrl, setRenderedPageUrl] = useState(null)
+  const [thumbnails, setThumbnails] = useState({}) // { [pageNum]: dataUrl }
+
+  // ── Scale state ──────────────────────────────────────────────────────────────
   const [pixelsPerFoot, setPixelsPerFoot] = useState(null)
   const [calibrating, setCalibrating] = useState(false)
   const [pendingCalibFeet, setPendingCalibFeet] = useState(null)
 
-  // Drawing state
+  // ── Drawing state ────────────────────────────────────────────────────────────
   const [isDrawing, setIsDrawing] = useState(false)
-  const [activeZoneMeta, setActiveZoneMeta] = useState(null) // { name, description, type, surface_type, coat_count, notes }
+  const [activeZoneMeta, setActiveZoneMeta] = useState(null)
   const [drawnPoints, setDrawnPoints] = useState([])
-
-  // Redraw state — when set, finishing a zone updates the existing record
-  // instead of creating a new one.
   const [redrawingZoneId, setRedrawingZoneId] = useState(null)
 
-  // When the session loads from the database, restore the blueprint image.
+  // ── Session restore ──────────────────────────────────────────────────────────
+  // Runs when Supabase returns the session — restores blueprint URL and saved page.
   useEffect(() => {
     if (session?.blueprint_url && !blueprintUrl) {
       setBlueprintUrl(session.blueprint_url)
       setBlueprintType(session.blueprint_type)
+      setCurrentPage(session.page_number ?? 1)
     }
   }, [session])
 
-  // Called after successful upload
+  // ── PDF page rendering ───────────────────────────────────────────────────────
+  // Render the active page at full quality whenever the PDF loads or page changes.
+  useEffect(() => {
+    if (!isPdf || !pageCount) return
+    setRenderedPageUrl(null)
+    renderPage(currentPage, 1.5).then(url => {
+      if (url) setRenderedPageUrl(url)
+    })
+  }, [isPdf, pageCount, currentPage, renderPage])
+
+  // Generate thumbnails for every page at low resolution (0.2 scale).
+  // Runs once per PDF load. Updates thumbnails state incrementally as each finishes.
+  useEffect(() => {
+    if (!isPdf || !pageCount) return
+    setThumbnails({})
+    for (let i = 1; i <= pageCount; i++) {
+      const n = i
+      renderPage(n, 0.2).then(url => {
+        if (url) setThumbnails(prev => ({ ...prev, [n]: url }))
+      })
+    }
+  }, [isPdf, pageCount, renderPage])
+
+  // ── Derived: zones for current page ─────────────────────────────────────────
+  // For PDFs filter to the active page. For image blueprints use all zones
+  // (they all have page_number = 1 which is the only page).
+  const pageZones = isPdf
+    ? zones.filter(z => (z.page_number ?? 1) === currentPage)
+    : zones
+
+  // ── Handlers ─────────────────────────────────────────────────────────────────
+
   function handleUploaded({ url, type }) {
     setBlueprintUrl(url)
     setBlueprintType(type)
+    // Reset PDF state for the newly uploaded file
+    setCurrentPage(1)
+    setRenderedPageUrl(null)
+    setThumbnails({})
   }
 
-  // Called when user picks a scale from the dropdown
   function handleScaleChange(ppf) {
     setPixelsPerFoot(ppf)
   }
 
-  // Called when user submits calibration line form
   function handleStartCalibration(knownFeet) {
     setPendingCalibFeet(knownFeet)
     setCalibrating(true)
   }
 
-  // Called after user draws 2 calibration points on the canvas
   function handleCalibrationLine(pt1, pt2) {
     const dx = pt2.x - pt1.x
     const dy = pt2.y - pt1.y
@@ -74,15 +114,35 @@ export default function SessionPage() {
     setPendingCalibFeet(null)
   }
 
-  // Called when user clicks "Start Drawing" in the ZoneDrawPanel form
+  // Switch to a different PDF page. Warns and cancels any active zone drawing.
+  async function handlePageSwitch(pageNum) {
+    if (pageNum === currentPage) return
+    if (isDrawing) {
+      const confirmed = window.confirm(
+        'You have an active zone in progress. Switch pages and discard it?'
+      )
+      if (!confirmed) return
+      // Cancel the in-progress zone before switching
+      setIsDrawing(false)
+      setActiveZoneMeta(null)
+      setDrawnPoints([])
+      setRedrawingZoneId(null)
+    }
+    setCurrentPage(pageNum)
+    // Persist so the session reopens on the right page
+    try {
+      await updateSession({ page_number: pageNum })
+    } catch (err) {
+      console.error('Failed to save page number:', err)
+    }
+  }
+
   function handleStartDrawing({ name, description, surface_type, coat_count, type }) {
     setActiveZoneMeta({ name, description, surface_type, coat_count, type })
     setDrawnPoints([])
     setIsDrawing(true)
   }
 
-  // Called when user clicks Redraw on an existing zone.
-  // Enters drawing mode immediately (skips the form) using the zone's existing fields.
   function handleRedrawZone(zone) {
     setRedrawingZoneId(zone.id)
     setActiveZoneMeta({
@@ -97,12 +157,10 @@ export default function SessionPage() {
     setIsDrawing(true)
   }
 
-  // Called each time user clicks on the canvas while drawing
   const handlePointAdd = useCallback((pt) => {
     setDrawnPoints(prev => [...prev, pt])
   }, [])
 
-  // Called when user double-clicks or clicks "Finish Zone"
   const handleZoneComplete = useCallback(async () => {
     if (!activeZoneMeta || drawnPoints.length < 1) return
     if (!pixelsPerFoot) {
@@ -114,10 +172,10 @@ export default function SessionPage() {
 
     try {
       if (redrawingZoneId) {
-        // Retrace an existing zone — update points and result only
+        // Retrace — replace points and result on the existing zone record
         await redrawZone(redrawingZoneId, drawnPoints, result)
       } else {
-        // New zone — insert with all fields
+        // New zone — include the current page so it stays on this page
         await saveZone({
           name: activeZoneMeta.name,
           description: activeZoneMeta.description,
@@ -126,6 +184,7 @@ export default function SessionPage() {
           measurement_type: activeZoneMeta.type,
           points: drawnPoints,
           result,
+          page_number: currentPage,
         })
       }
     } catch (err) {
@@ -136,7 +195,7 @@ export default function SessionPage() {
     setActiveZoneMeta(null)
     setDrawnPoints([])
     setRedrawingZoneId(null)
-  }, [activeZoneMeta, drawnPoints, pixelsPerFoot, saveZone, redrawZone, redrawingZoneId])
+  }, [activeZoneMeta, drawnPoints, pixelsPerFoot, saveZone, redrawZone, redrawingZoneId, currentPage])
 
   function handleCancelDrawing() {
     setIsDrawing(false)
@@ -169,6 +228,8 @@ export default function SessionPage() {
     exportCSV(session, zones)
   }
 
+  // ── Loading / error screens ───────────────────────────────────────────────────
+
   if (loading) {
     return (
       <div className={styles.loading}>
@@ -188,24 +249,32 @@ export default function SessionPage() {
     )
   }
 
-  // When redrawing, use the existing zone's color index so it matches.
+  // ── Canvas props ──────────────────────────────────────────────────────────────
+
+  // Color index for the active zone — preserves color during a redraw
   const redrawingZoneIndex = redrawingZoneId
-    ? zones.findIndex(z => z.id === redrawingZoneId)
+    ? pageZones.findIndex(z => z.id === redrawingZoneId)
     : -1
 
   const activeZoneForCanvas = isDrawing
     ? {
         points: drawnPoints,
         measurement_type: activeZoneMeta?.type,
-        colorIndex: redrawingZoneIndex >= 0 ? redrawingZoneIndex : zones.length,
+        colorIndex: redrawingZoneIndex >= 0 ? redrawingZoneIndex : pageZones.length,
         redrawingId: redrawingZoneId,
       }
     : null
+
+  // For PDFs: pass the rendered data URL. For images: pass the storage URL directly.
+  const canvasImageUrl = isPdf ? renderedPageUrl : blueprintUrl
+
+  // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
     <div className={styles.layout}>
       {/* ── Sidebar ── */}
       <aside className={styles.sidebar}>
+
         {/* Header */}
         <div className={styles.sidebarHeader}>
           <Link to="/dashboard" className={styles.backLink}>← Dashboard</Link>
@@ -225,13 +294,33 @@ export default function SessionPage() {
               <span className={styles.blueprintCheck}>✓</span> Blueprint loaded
               <button
                 className={styles.replaceBtn}
-                onClick={() => setBlueprintUrl(null)}
+                onClick={() => {
+                  setBlueprintUrl(null)
+                  setRenderedPageUrl(null)
+                  setThumbnails({})
+                  setCurrentPage(1)
+                }}
               >
                 Replace
               </button>
             </div>
           )}
         </div>
+
+        {/* PDF page selector — only shown for multi-page PDFs */}
+        {blueprintUrl && isPdf && pageCount > 1 && (
+          <div className={styles.section}>
+            <div className={styles.sectionTitle}>
+              Pages ({pageCount})
+            </div>
+            <PdfPageSelector
+              pageCount={pageCount}
+              currentPage={currentPage}
+              thumbnails={thumbnails}
+              onPageSelect={handlePageSwitch}
+            />
+          </div>
+        )}
 
         {/* Scale */}
         {blueprintUrl && (
@@ -246,15 +335,17 @@ export default function SessionPage() {
           </div>
         )}
 
-        {/* Summary totals */}
-        {blueprintUrl && zones.length > 0 && (
+        {/* Summary totals — scoped to current page for PDFs */}
+        {blueprintUrl && pageZones.length > 0 && (
           <div className={styles.section}>
-            <div className={styles.sectionTitle}>Summary</div>
-            <SessionSummary zones={zones} />
+            <div className={styles.sectionTitle}>
+              {isPdf && pageCount > 1 ? `Page ${currentPage} Summary` : 'Summary'}
+            </div>
+            <SessionSummary zones={pageZones} />
           </div>
         )}
 
-        {/* Draw */}
+        {/* Add Zone */}
         {blueprintUrl && pixelsPerFoot && (
           <div className={styles.section}>
             <div className={styles.sectionTitle}>
@@ -271,14 +362,17 @@ export default function SessionPage() {
           </div>
         )}
 
-        {/* Zone list */}
-        {zones.length > 0 && (
+        {/* Zone list — scoped to current page for PDFs */}
+        {pageZones.length > 0 && (
           <div className={`${styles.section} ${styles.zoneListSection}`}>
             <div className={styles.sectionTitle}>
-              Zones ({zones.length})
+              Zones ({pageZones.length})
+              {isPdf && pageCount > 1 && (
+                <span className={styles.pageTag}> · Page {currentPage}</span>
+              )}
             </div>
             <ZoneList
-              zones={zones}
+              zones={pageZones}
               onDelete={handleDeleteZone}
               onUpdate={handleUpdateZone}
               onRedraw={handleRedrawZone}
@@ -287,7 +381,7 @@ export default function SessionPage() {
           </div>
         )}
 
-        {/* Export */}
+        {/* Export — always exports all zones across all pages */}
         {zones.length > 0 && (
           <div className={styles.section}>
             <button className={styles.exportBtn} onClick={handleExportCSV}>
@@ -295,14 +389,15 @@ export default function SessionPage() {
             </button>
           </div>
         )}
+
       </aside>
 
       {/* ── Canvas ── */}
       <main className={styles.canvasArea}>
         {blueprintUrl ? (
           <BlueprintCanvas
-            imageUrl={blueprintType === 'application/pdf' ? null : blueprintUrl}
-            zones={zones}
+            imageUrl={canvasImageUrl}
+            zones={pageZones}
             activeZone={activeZoneForCanvas}
             onPointAdd={handlePointAdd}
             onZoneComplete={handleZoneComplete}
@@ -319,7 +414,14 @@ export default function SessionPage() {
           </div>
         )}
 
-        {/* Keyboard hint */}
+        {/* PDF loading indicator */}
+        {isPdf && pdfLoading && (
+          <div className={styles.hint}>
+            Loading PDF…
+          </div>
+        )}
+
+        {/* Drawing hint */}
         {isDrawing && (
           <div className={styles.hint}>
             {activeZoneMeta?.type === 'count'
@@ -329,6 +431,7 @@ export default function SessionPage() {
               : 'Click to place points · Double-click to finish'}
           </div>
         )}
+
         {calibrating && (
           <div className={styles.hint} style={{ background: 'rgba(245,158,11,0.15)', color: '#fbbf24' }}>
             Click two points that span your known distance
