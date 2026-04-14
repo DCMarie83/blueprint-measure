@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import * as pdfjsLib from 'pdfjs-dist'
 
-// Point pdfjs at its worker. The ?url suffix tells Vite to treat this as a
-// static asset and return the URL string rather than bundling the module.
-import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
-pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
+// Point pdfjs at its worker using a pinned CDN URL.
+// Using a CDN URL is more reliable than the ?url Vite import, which can fail
+// to resolve correctly in Vercel production builds when pdfjs-dist is excluded
+// from Vite's pre-bundler (as it must be, to avoid mangling its dynamic imports).
+// The version is pinned to match the installed pdfjs-dist package exactly.
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://unpkg.com/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs'
 
 // Loads a PDF from a URL and exposes utilities for rendering individual pages.
 //

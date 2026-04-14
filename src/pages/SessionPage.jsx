@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useSession } from '../hooks/useSession'
 import { usePdf } from '../hooks/usePdf'
@@ -51,8 +51,16 @@ export default function SessionPage() {
   // Runs when Supabase returns the session — restores blueprint URL and saved page.
   useEffect(() => {
     if (session?.blueprint_url && !blueprintUrl) {
+      // Fall back to URL extension if blueprint_type wasn't saved (older sessions)
+      let type = session.blueprint_type
+      if (!type) {
+        const lower = session.blueprint_url.toLowerCase()
+        if (lower.includes('.pdf')) type = 'application/pdf'
+        else if (lower.includes('.png')) type = 'image/png'
+        else type = 'image/jpeg'
+      }
       setBlueprintUrl(session.blueprint_url)
-      setBlueprintType(session.blueprint_type)
+      setBlueprintType(type)
       setCurrentPage(session.page_number ?? 1)
     }
   }, [session])
