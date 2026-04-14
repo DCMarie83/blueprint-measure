@@ -8,6 +8,7 @@ import styles from './ScalePanel.module.css'
 export default function ScalePanel({ pixelsPerFoot, onScaleChange, onStartCalibration, calibrating }) {
   const [selected, setSelected] = useState('1/4')
   const [knownFeet, setKnownFeet] = useState('')
+  const [helpOpen, setHelpOpen] = useState(false)
 
   // Fire the default scale immediately on mount so the parent knows a scale
   // is active without the user having to touch the dropdown first.
@@ -84,6 +85,46 @@ export default function ScalePanel({ pixelsPerFoot, onScaleChange, onStartCalibr
           Scale active — 1 ft = {(pixelsPerFoot).toFixed(1)} px
         </div>
       )}
+
+      {/* Collapsible help section */}
+      <div className={styles.helpSection}>
+        <button
+          type="button"
+          className={styles.helpToggle}
+          onClick={() => setHelpOpen(o => !o)}
+        >
+          <span className={styles.helpIcon}>?</span>
+          How to set scale
+          <span className={styles.helpArrow}>{helpOpen ? '▲' : '▼'}</span>
+        </button>
+
+        {helpOpen && (
+          <div className={styles.helpBody}>
+            <div className={styles.helpOption}>
+              <div className={styles.helpOptionLabel}>Option A — Use the dropdown</div>
+              <p className={styles.helpOptionText}>
+                If you know the blueprint scale (e.g. 1/4 inch = 1 foot), select it from the
+                dropdown above. This is printed on most architectural blueprints in the title
+                block or corner.
+              </p>
+            </div>
+
+            <div className={styles.helpOption}>
+              <div className={styles.helpOptionLabel}>Option B — Manual calibration</div>
+              <p className={styles.helpOptionText}>
+                If you are unsure of the scale, find any dimension printed on the blueprint —
+                like a wall labeled 20 ft. Enter that number, click{' '}
+                <strong>Set Calibration Line</strong>, then click both ends of that dimension
+                on the blueprint.
+              </p>
+            </div>
+
+            <div className={styles.helpTip}>
+              Tip: For residential blueprints, 1/4 inch = 1 foot is the most common scale.
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
