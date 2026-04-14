@@ -38,6 +38,9 @@ export default function SessionPage() {
   const [calibrating, setCalibrating] = useState(false)
   const [pendingCalibFeet, setPendingCalibFeet] = useState(null)
 
+  // ── Canvas ref (used for resetView) ─────────────────────────────────────────
+  const blueprintCanvasRef = useRef(null)
+
   // ── Drawing state ────────────────────────────────────────────────────────────
   const [isDrawing, setIsDrawing] = useState(false)
   const [activeZoneMeta, setActiveZoneMeta] = useState(null)
@@ -220,6 +223,10 @@ export default function SessionPage() {
     }
   }
 
+  function handleResetView() {
+    blueprintCanvasRef.current?.resetView()
+  }
+
   function handleExportCSV() {
     if (zones.length === 0) {
       alert('No zones to export yet.')
@@ -396,6 +403,7 @@ export default function SessionPage() {
       <main className={styles.canvasArea}>
         {blueprintUrl ? (
           <BlueprintCanvas
+            ref={blueprintCanvasRef}
             imageUrl={canvasImageUrl}
             zones={pageZones}
             activeZone={activeZoneForCanvas}
@@ -412,6 +420,13 @@ export default function SessionPage() {
             <div className={styles.emptyCanvasIcon}>📐</div>
             <p>Upload a blueprint to start measuring</p>
           </div>
+        )}
+
+        {/* Reset view button — always visible when a blueprint is loaded */}
+        {blueprintUrl && (
+          <button className={styles.resetViewBtn} onClick={handleResetView}>
+            ⊡ Reset view
+          </button>
         )}
 
         {/* PDF loading indicator */}

@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from 'react'
+import { useRef, useEffect, useCallback, useState, forwardRef, useImperativeHandle } from 'react'
 import styles from './BlueprintCanvas.module.css'
 
 // Color palette for zones — cycles through these
@@ -8,21 +8,11 @@ const ZONE_COLORS = [
 ]
 
 // BlueprintCanvas renders the blueprint image and all drawn zones on a <canvas>.
-// It handles mouse events for drawing new zones.
+// It handles mouse events for drawing new zones and pan/zoom navigation.
 //
-// Props:
-//   imageUrl      — URL of the blueprint image to display as background
-//   zones         — array of saved zone objects from the database
-//   activeZone    — the zone currently being drawn (has { points, measurement_type })
-//   onPointAdd    — called with {x, y} (in image-space) when user clicks to add a point
-//   onZoneComplete— called when user double-clicks to finish a zone
-//   pixelsPerFoot — scale calibration value
-//   isDrawing     — boolean: are we in drawing mode?
-//   calibrating   — boolean: are we drawing the calibration line?
-//   onCalibrationLine — called with two points when calibration line is complete
-//   canvasTransform — { scale, offsetX, offsetY } for pan/zoom
-
-export default function BlueprintCanvas({
+// Exposed via ref (forwardRef):
+//   resetView() — snaps the canvas back to the initial fit-to-screen position
+const BlueprintCanvas = forwardRef(function BlueprintCanvas({
   imageUrl,
   zones,
   activeZone,
@@ -33,15 +23,26 @@ export default function BlueprintCanvas({
   calibrating,
   onCalibrationLine,
   redrawingZoneId,
-}) {
+}, ref) {
   const canvasRef = useRef(null)
   const imageRef = useRef(null)
   const transformRef = useRef({ scale: 1, offsetX: 0, offsetY: 0 })
+  const initialTransformRef = useRef(null) // saved on image load, used by resetView
+
+  // Pan tracking
   const isPanning = useRef(false)
   const lastPan = useRef({ x: 0, y: 0 })
+  const panStart = useRef({ x: 0, y: 0 })
+  const didPan = useRef(false) // true once mouse moves past the drag threshold
+
+  const [isDragging, setIsDragging] = useState(false)
+
   const calibPoints = useRef([])
 
-  // Draw everything onto the canvas
+  // ── redraw ───────────────────────────────────────────────────────────────────
+  // Recreated when zones/activeZone/calibrating change. All effects that need
+  // the latest redraw use redrawRef so they don't become stale dependencies.
+
   const redraw = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -66,7 +67,7 @@ export default function BlueprintCanvas({
       drawZone(ctx, zone.points, color, zone.measurement_type, zone.name, zone.result, false, zone.description, zone.surface_type, zone.coat_count)
     })
 
-    // Draw active (in-progress) zone — use colorIndex if provided (preserves color on redraw)
+    // Draw active (in-progress) zone
     if (activeZone && activeZone.points && activeZone.points.length > 0) {
       const colorIdx = (activeZone.colorIndex ?? zones.length) % ZONE_COLORS.length
       const color = ZONE_COLORS[colorIdx]
@@ -93,11 +94,109 @@ export default function BlueprintCanvas({
     }
 
     ctx.restore()
-  }, [zones, activeZone, calibrating])
+  }, [zones, activeZone, calibrating, redrawingZoneId])
+
+  // Stable ref so effects and event listeners always call the latest redraw
+  // without needing it in their dependency arrays (which would cause side-effects
+  // like re-loading the image or re-registering listeners on every zone change).
+  const redrawRef = useRef(redraw)
+  useEffect(() => { redrawRef.current = redraw }, [redraw])
+
+  // ── Expose resetView to parent ───────────────────────────────────────────────
+  useImperativeHandle(ref, () => ({
+    resetView() {
+      if (initialTransformRef.current) {
+        transformRef.current = { ...initialTransformRef.current }
+        redrawRef.current()
+      }
+    }
+  }), []) // stable — uses only refs
+
+  // ── Image loading ────────────────────────────────────────────────────────────
+  // Depends ONLY on imageUrl — not on redraw. Previously including redraw here
+  // caused the transform to reset every time zones changed (because redraw is
+  // recreated on each zone change), which locked the view in place after any edit.
+  useEffect(() => {
+    if (!imageUrl) return
+    const img = new Image()
+    img.onload = () => {
+      imageRef.current = img
+      const canvas = canvasRef.current
+      if (!canvas) return
+
+      const container = canvas.parentElement
+      const cw = container.clientWidth
+      const ch = container.clientHeight
+      canvas.width = cw
+      canvas.height = ch
+
+      const scaleX = cw / img.width
+      const scaleY = ch / img.height
+      const fitScale = Math.min(scaleX, scaleY, 1) * 0.92
+
+      const fitTransform = {
+        scale: fitScale,
+        offsetX: (cw - img.width * fitScale) / 2,
+        offsetY: (ch - img.height * fitScale) / 2,
+      }
+      transformRef.current = { ...fitTransform }
+      initialTransformRef.current = { ...fitTransform }
+      redrawRef.current()
+    }
+    img.src = imageUrl
+  }, [imageUrl]) // ← no redraw here — that was the bug
+
+  // Redraw when zones / active zone / calibrating changes (without reloading image)
+  useEffect(() => {
+    redraw()
+  }, [redraw])
+
+  // ── Resize ───────────────────────────────────────────────────────────────────
+  // Uses redrawRef so the listener doesn't need to be re-registered on zone changes.
+  useEffect(() => {
+    function onResize() {
+      const canvas = canvasRef.current
+      if (!canvas) return
+      canvas.width = canvas.parentElement.clientWidth
+      canvas.height = canvas.parentElement.clientHeight
+      redrawRef.current()
+    }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, []) // stable
+
+  // ── Scroll-wheel zoom ────────────────────────────────────────────────────────
+  // Registered as a direct DOM listener with passive:false so e.preventDefault()
+  // actually works. React JSX onWheel is passive in React 17+ and can't prevent
+  // the page from scrolling.
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    function onWheel(e) {
+      e.preventDefault()
+      const factor = e.deltaY < 0 ? 1.1 : 0.9
+      const rect = canvas.getBoundingClientRect()
+      const mx = e.clientX - rect.left
+      const my = e.clientY - rect.top
+      const { scale, offsetX, offsetY } = transformRef.current
+      const newScale = Math.max(0.1, Math.min(10, scale * factor))
+      transformRef.current = {
+        scale: newScale,
+        offsetX: mx - (mx - offsetX) * (newScale / scale),
+        offsetY: my - (my - offsetY) * (newScale / scale),
+      }
+      redrawRef.current()
+    }
+
+    canvas.addEventListener('wheel', onWheel, { passive: false })
+    return () => canvas.removeEventListener('wheel', onWheel)
+  }, []) // stable — uses only refs
+
+  // ── Drawing helpers ──────────────────────────────────────────────────────────
 
   function drawZone(ctx, points, color, type, name, result, isActive, description, surfaceType, coatCount) {
     if (points.length === 0) return
-
     ctx.save()
 
     // Fill for SF zones
@@ -127,7 +226,6 @@ export default function BlueprintCanvas({
       const s = transformRef.current.scale
       points.forEach((p, idx) => {
         const r = 10 / s
-        // Filled circle
         ctx.fillStyle = color
         ctx.strokeStyle = '#fff'
         ctx.lineWidth = 1.5 / s
@@ -135,7 +233,6 @@ export default function BlueprintCanvas({
         ctx.arc(p.x, p.y, r, 0, Math.PI * 2)
         ctx.fill()
         ctx.stroke()
-        // Number label inside
         ctx.fillStyle = '#fff'
         ctx.font = `bold ${r * 1.4}px Inter, sans-serif`
         ctx.textAlign = 'center'
@@ -161,7 +258,6 @@ export default function BlueprintCanvas({
       const unitLabel = type === 'count' ? 'each' : type
       const labelParts = [name]
       if (description) labelParts.push(description)
-      // Combine surface type and coat count onto one line if either is set
       const metaParts = [
         surfaceType || null,
         coatCount > 1 ? `${coatCount} coats` : null,
@@ -174,8 +270,6 @@ export default function BlueprintCanvas({
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       const lineH = fs * 1.3
-
-      // Background pill
       const maxW = Math.max(...lines.map(l => ctx.measureText(l).width))
       const padX = 8 / transformRef.current.scale
       const padY = 5 / transformRef.current.scale
@@ -184,8 +278,6 @@ export default function BlueprintCanvas({
       const rx = 4 / transformRef.current.scale
       roundRect(ctx, cx - maxW / 2 - padX, cy - totalH / 2, maxW + 2 * padX, totalH, rx)
       ctx.fill()
-
-      // Text
       lines.forEach((line, i) => {
         ctx.fillStyle = i === 0 ? '#e8edf2' : color
         ctx.fillText(line, cx, cy + (i - (lines.length - 1) / 2) * lineH)
@@ -209,66 +301,75 @@ export default function BlueprintCanvas({
     ctx.closePath()
   }
 
-  // Convert mouse event coords to image-space coords
+  // Convert a mouse event's screen coordinates to image-space coordinates,
+  // accounting for the current pan offset and zoom scale.
   function toImageSpace(e) {
     const canvas = canvasRef.current
     const rect = canvas.getBoundingClientRect()
     const { scale, offsetX, offsetY } = transformRef.current
-    const x = (e.clientX - rect.left - offsetX) / scale
-    const y = (e.clientY - rect.top - offsetY) / scale
-    return { x, y }
+    return {
+      x: (e.clientX - rect.left - offsetX) / scale,
+      y: (e.clientY - rect.top - offsetY) / scale,
+    }
   }
 
-  // Load image and fit to canvas on mount / imageUrl change
-  useEffect(() => {
-    if (!imageUrl) return
-    const img = new Image()
-    img.onload = () => {
-      imageRef.current = img
-      const canvas = canvasRef.current
-      if (!canvas) return
+  // ── Mouse event handlers ─────────────────────────────────────────────────────
 
-      // Fit image to canvas container
-      const container = canvas.parentElement
-      const cw = container.clientWidth
-      const ch = container.clientHeight
-      canvas.width = cw
-      canvas.height = ch
+  function handleMouseDown(e) {
+    if (e.button !== 0) return // left-click only
+    // In drawing or calibrating mode, left-click places points — don't capture for pan
+    if (isDrawing || calibrating) return
 
-      const scaleX = cw / img.width
-      const scaleY = ch / img.height
-      const fitScale = Math.min(scaleX, scaleY, 1) * 0.92
+    isPanning.current = true
+    didPan.current = false
+    lastPan.current = { x: e.clientX, y: e.clientY }
+    panStart.current = { x: e.clientX, y: e.clientY }
+  }
 
-      transformRef.current = {
-        scale: fitScale,
-        offsetX: (cw - img.width * fitScale) / 2,
-        offsetY: (ch - img.height * fitScale) / 2,
-      }
-      redraw()
+  function handleMouseMove(e) {
+    if (!isPanning.current) return
+
+    const dx = e.clientX - lastPan.current.x
+    const dy = e.clientY - lastPan.current.y
+
+    // Only commit to pan mode after moving at least 4px — keeps a small click
+    // from accidentally shifting the view.
+    const totalDx = e.clientX - panStart.current.x
+    const totalDy = e.clientY - panStart.current.y
+    if (!didPan.current && Math.sqrt(totalDx * totalDx + totalDy * totalDy) > 4) {
+      didPan.current = true
+      setIsDragging(true) // update cursor once
     }
-    img.src = imageUrl
-  }, [imageUrl, redraw])
 
-  // Redraw whenever zones or active zone changes
-  useEffect(() => {
-    redraw()
-  }, [redraw])
-
-  // Resize canvas when window resizes
-  useEffect(() => {
-    function onResize() {
-      const canvas = canvasRef.current
-      if (!canvas) return
-      canvas.width = canvas.parentElement.clientWidth
-      canvas.height = canvas.parentElement.clientHeight
-      redraw()
+    if (didPan.current) {
+      transformRef.current.offsetX += dx
+      transformRef.current.offsetY += dy
+      redrawRef.current()
     }
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
-  }, [redraw])
+
+    lastPan.current = { x: e.clientX, y: e.clientY }
+  }
+
+  function handleMouseUp() {
+    isPanning.current = false
+    if (isDragging) setIsDragging(false) // update cursor once
+  }
+
+  function handleMouseLeave() {
+    // Stop panning if the pointer leaves the canvas mid-drag
+    if (isPanning.current) {
+      isPanning.current = false
+      if (isDragging) setIsDragging(false)
+    }
+  }
 
   function handleClick(e) {
-    if (isPanning.current) return
+    // If this mouseup completed a drag, eat the click — don't place a point
+    if (didPan.current) {
+      didPan.current = false
+      return
+    }
+
     const pt = toImageSpace(e)
 
     if (calibrating) {
@@ -277,7 +378,7 @@ export default function BlueprintCanvas({
         onCalibrationLine(calibPoints.current[0], calibPoints.current[1])
         calibPoints.current = []
       }
-      redraw()
+      redrawRef.current()
       return
     }
 
@@ -288,58 +389,16 @@ export default function BlueprintCanvas({
 
   function handleDoubleClick(e) {
     if (!isDrawing) return
-    // Count zones are finished with the Finish Zone button only —
-    // double-click would accidentally add 2 extra items first.
+    // Count zones finish with the button only — double-click adds 2 extra items
     if (activeZone?.measurement_type === 'count') return
     e.preventDefault()
     onZoneComplete()
   }
 
-  // Pan with middle mouse or space+drag
-  function handleMouseDown(e) {
-    if (e.button === 1 || (e.button === 0 && e.altKey)) {
-      isPanning.current = true
-      lastPan.current = { x: e.clientX, y: e.clientY }
-      e.preventDefault()
-    }
-  }
-
-  function handleMouseMove(e) {
-    if (!isPanning.current) return
-    const dx = e.clientX - lastPan.current.x
-    const dy = e.clientY - lastPan.current.y
-    transformRef.current.offsetX += dx
-    transformRef.current.offsetY += dy
-    lastPan.current = { x: e.clientX, y: e.clientY }
-    redraw()
-  }
-
-  function handleMouseUp() {
-    isPanning.current = false
-  }
-
-  // Zoom with scroll wheel
-  function handleWheel(e) {
-    e.preventDefault()
-    const factor = e.deltaY < 0 ? 1.1 : 0.9
-    const canvas = canvasRef.current
-    const rect = canvas.getBoundingClientRect()
-    const mx = e.clientX - rect.left
-    const my = e.clientY - rect.top
-
-    const { scale, offsetX, offsetY } = transformRef.current
-    const newScale = Math.max(0.1, Math.min(10, scale * factor))
-
-    transformRef.current = {
-      scale: newScale,
-      offsetX: mx - (mx - offsetX) * (newScale / scale),
-      offsetY: my - (my - offsetY) * (newScale / scale),
-    }
-    redraw()
-  }
-
+  // ── Cursor ───────────────────────────────────────────────────────────────────
   const cursor = calibrating ? 'crosshair'
     : isDrawing ? 'crosshair'
+    : isDragging ? 'grabbing'
     : 'grab'
 
   return (
@@ -353,7 +412,7 @@ export default function BlueprintCanvas({
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        onWheel={handleWheel}
+        onMouseLeave={handleMouseLeave}
       />
       {!imageUrl && (
         <div className={styles.placeholder}>
@@ -362,4 +421,6 @@ export default function BlueprintCanvas({
       )}
     </div>
   )
-}
+})
+
+export default BlueprintCanvas
