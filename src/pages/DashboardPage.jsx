@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useSessions } from '../hooks/useSessions'
@@ -43,6 +43,9 @@ export default function DashboardPage() {
         </div>
         <div className={styles.userBar}>
           <span className={styles.email}>{user?.email}</span>
+          {user?.email === 'main@ngautomationhub.com' && (
+            <Link to="/admin" className={styles.adminLink}>Admin</Link>
+          )}
           <button className={styles.logout} onClick={handleLogout}>Sign out</button>
         </div>
       </header>
