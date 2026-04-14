@@ -4,7 +4,7 @@ export function exportCSV(session, zones) {
   const rows = []
 
   // Header row
-  rows.push(['Zone Name', 'Description', 'Type', 'Result', 'Unit', 'Notes'])
+  rows.push(['Zone Name', 'Description', 'Surface Type', 'Coats', 'Type', 'Result', 'Unit', 'Notes'])
 
   // One row per zone
   zones.forEach(zone => {
@@ -14,6 +14,8 @@ export function exportCSV(session, zones) {
     rows.push([
       zone.name,
       zone.description ?? '',
+      zone.surface_type ?? '',
+      zone.coat_count ?? 1,
       zone.measurement_type,
       zone.result ?? 0,
       unit,
@@ -33,10 +35,10 @@ export function exportCSV(session, zones) {
     .reduce((sum, z) => sum + (z.result ?? 0), 0)
 
   rows.push([]) // blank separator
-  rows.push(['SUMMARY', '', '', '', '', ''])
-  rows.push(['Total SF', '', 'SF', totalSF.toFixed(2), 'sq ft', ''])
-  rows.push(['Total LF', '', 'LF', totalLF.toFixed(2), 'lin ft', ''])
-  rows.push(['Total Count', '', 'count', totalCount, 'each', ''])
+  rows.push(['SUMMARY', '', '', '', '', '', '', ''])
+  rows.push(['Total SF', '', '', '', 'SF', totalSF.toFixed(2), 'sq ft', ''])
+  rows.push(['Total LF', '', '', '', 'LF', totalLF.toFixed(2), 'lin ft', ''])
+  rows.push(['Total Count', '', '', '', 'count', totalCount, 'each', ''])
 
   // Build CSV string
   const csv = rows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n')

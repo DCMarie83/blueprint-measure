@@ -46,12 +46,14 @@ export function useSession(sessionId) {
   }, [fetchSession])
 
   async function saveZone(zoneData) {
-    // zoneData: { name, description, notes, measurement_type, points, result }
+    // zoneData: { name, description, notes, surface_type, coat_count, measurement_type, points, result }
     const payload = {
       session_id: sessionId,
       name: zoneData.name,
       description: zoneData.description ?? null,
       notes: zoneData.notes ?? null,
+      surface_type: zoneData.surface_type ?? null,
+      coat_count: zoneData.coat_count ?? 1,
       measurement_type: zoneData.measurement_type,
       points: zoneData.points,
       result: zoneData.result,
@@ -68,7 +70,7 @@ export function useSession(sessionId) {
     return data
   }
 
-  // Updates only the editable text fields on an existing zone (name, description, notes).
+  // Updates the editable text fields on an existing zone.
   // Does not touch points or result.
   async function updateZone(zoneId, updates) {
     const { data, error } = await supabase
@@ -77,7 +79,23 @@ export function useSession(sessionId) {
         name: updates.name,
         description: updates.description ?? null,
         notes: updates.notes ?? null,
+        surface_type: updates.surface_type ?? null,
+        coat_count: updates.coat_count ?? 1,
       })
+      .eq('id', zoneId)
+      .select()
+      .single()
+    if (error) throw new Error(error.message)
+    setZones(prev => prev.map(z => z.id === data.id ? data : z))
+    return data
+  }
+
+  // Replaces the drawn points and recalculated result on an existing zone.
+  // Called when the contractor retraces a zone. Does not touch text fields.
+  async function redrawZone(zoneId, points, result) {
+    const { data, error } = await supabase
+      .from('zones')
+      .update({ points, result })
       .eq('id', zoneId)
       .select()
       .single()
@@ -104,5 +122,5 @@ export function useSession(sessionId) {
     return data
   }
 
-  return { session, zones, loading, error, saveZone, updateZone, deleteZone, updateSession, refetch: fetchSession }
+  return { session, zones, loading, error, saveZone, updateZone, redrawZone, deleteZone, updateSession, refetch: fetchSession }
 }

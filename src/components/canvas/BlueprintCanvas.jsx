@@ -32,6 +32,7 @@ export default function BlueprintCanvas({
   isDrawing,
   calibrating,
   onCalibrationLine,
+  redrawingZoneId,
 }) {
   const canvasRef = useRef(null)
   const imageRef = useRef(null)
@@ -57,17 +58,19 @@ export default function BlueprintCanvas({
       ctx.drawImage(imageRef.current, 0, 0)
     }
 
-    // Draw saved zones
+    // Draw saved zones (skip the one currently being redrawn)
     zones.forEach((zone, i) => {
+      if (zone.id === redrawingZoneId) return
       if (!zone.points || zone.points.length < 2) return
       const color = ZONE_COLORS[i % ZONE_COLORS.length]
-      drawZone(ctx, zone.points, color, zone.measurement_type, zone.name, zone.result, false, zone.description)
+      drawZone(ctx, zone.points, color, zone.measurement_type, zone.name, zone.result, false, zone.description, zone.surface_type, zone.coat_count)
     })
 
-    // Draw active (in-progress) zone
+    // Draw active (in-progress) zone — use colorIndex if provided (preserves color on redraw)
     if (activeZone && activeZone.points && activeZone.points.length > 0) {
-      const color = ZONE_COLORS[zones.length % ZONE_COLORS.length]
-      drawZone(ctx, activeZone.points, color, activeZone.measurement_type, '', null, true)
+      const colorIdx = (activeZone.colorIndex ?? zones.length) % ZONE_COLORS.length
+      const color = ZONE_COLORS[colorIdx]
+      drawZone(ctx, activeZone.points, color, activeZone.measurement_type, '', null, true, null, null, null)
     }
 
     // Draw calibration points
@@ -92,7 +95,7 @@ export default function BlueprintCanvas({
     ctx.restore()
   }, [zones, activeZone, calibrating])
 
-  function drawZone(ctx, points, color, type, name, result, isActive, description) {
+  function drawZone(ctx, points, color, type, name, result, isActive, description, surfaceType, coatCount) {
     if (points.length === 0) return
 
     ctx.save()
@@ -158,6 +161,12 @@ export default function BlueprintCanvas({
       const unitLabel = type === 'count' ? 'each' : type
       const labelParts = [name]
       if (description) labelParts.push(description)
+      // Combine surface type and coat count onto one line if either is set
+      const metaParts = [
+        surfaceType || null,
+        coatCount > 1 ? `${coatCount} coats` : null,
+      ].filter(Boolean)
+      if (metaParts.length > 0) labelParts.push(metaParts.join(' · '))
       if (result != null) labelParts.push(`${result} ${unitLabel}`)
       const lines = labelParts
       const fs = 13 / transformRef.current.scale

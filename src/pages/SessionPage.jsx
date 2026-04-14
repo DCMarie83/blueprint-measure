@@ -17,7 +17,7 @@ import styles from './SessionPage.module.css'
 export default function SessionPage() {
   const { sessionId } = useParams()
   const navigate = useNavigate()
-  const { session, zones, loading, error, saveZone, updateZone, deleteZone, updateSession } = useSession(sessionId)
+  const { session, zones, loading, error, saveZone, updateZone, redrawZone, deleteZone, updateSession } = useSession(sessionId)
 
   // Blueprint image state
   const [blueprintUrl, setBlueprintUrl] = useState(null)
@@ -30,12 +30,14 @@ export default function SessionPage() {
 
   // Drawing state
   const [isDrawing, setIsDrawing] = useState(false)
-  const [activeZoneMeta, setActiveZoneMeta] = useState(null) // { name, type }
+  const [activeZoneMeta, setActiveZoneMeta] = useState(null) // { name, description, type, surface_type, coat_count, notes }
   const [drawnPoints, setDrawnPoints] = useState([])
 
+  // Redraw state — when set, finishing a zone updates the existing record
+  // instead of creating a new one.
+  const [redrawingZoneId, setRedrawingZoneId] = useState(null)
+
   // When the session loads from the database, restore the blueprint image.
-  // useEffect re-runs whenever `session` changes — so when Supabase returns
-  // the session data, this fires and populates blueprintUrl from the saved URL.
   useEffect(() => {
     if (session?.blueprint_url && !blueprintUrl) {
       setBlueprintUrl(session.blueprint_url)
@@ -71,9 +73,25 @@ export default function SessionPage() {
     setPendingCalibFeet(null)
   }
 
-  // Called when user clicks "Start Drawing" in the ZoneDrawPanel
-  function handleStartDrawing({ name, description, type }) {
-    setActiveZoneMeta({ name, description, type })
+  // Called when user clicks "Start Drawing" in the ZoneDrawPanel form
+  function handleStartDrawing({ name, description, surface_type, coat_count, type }) {
+    setActiveZoneMeta({ name, description, surface_type, coat_count, type })
+    setDrawnPoints([])
+    setIsDrawing(true)
+  }
+
+  // Called when user clicks Redraw on an existing zone.
+  // Enters drawing mode immediately (skips the form) using the zone's existing fields.
+  function handleRedrawZone(zone) {
+    setRedrawingZoneId(zone.id)
+    setActiveZoneMeta({
+      name: zone.name,
+      description: zone.description,
+      surface_type: zone.surface_type,
+      coat_count: zone.coat_count,
+      type: zone.measurement_type,
+      notes: zone.notes,
+    })
     setDrawnPoints([])
     setIsDrawing(true)
   }
@@ -94,13 +112,21 @@ export default function SessionPage() {
     const result = calculate(activeZoneMeta.type, drawnPoints, pixelsPerFoot)
 
     try {
-      await saveZone({
-        name: activeZoneMeta.name,
-        description: activeZoneMeta.description,
-        measurement_type: activeZoneMeta.type,
-        points: drawnPoints,
-        result,
-      })
+      if (redrawingZoneId) {
+        // Retrace an existing zone — update points and result only
+        await redrawZone(redrawingZoneId, drawnPoints, result)
+      } else {
+        // New zone — insert with all fields
+        await saveZone({
+          name: activeZoneMeta.name,
+          description: activeZoneMeta.description,
+          surface_type: activeZoneMeta.surface_type,
+          coat_count: activeZoneMeta.coat_count,
+          measurement_type: activeZoneMeta.type,
+          points: drawnPoints,
+          result,
+        })
+      }
     } catch (err) {
       alert('Error saving zone: ' + err.message)
     }
@@ -108,12 +134,14 @@ export default function SessionPage() {
     setIsDrawing(false)
     setActiveZoneMeta(null)
     setDrawnPoints([])
-  }, [activeZoneMeta, drawnPoints, pixelsPerFoot, saveZone])
+    setRedrawingZoneId(null)
+  }, [activeZoneMeta, drawnPoints, pixelsPerFoot, saveZone, redrawZone, redrawingZoneId])
 
   function handleCancelDrawing() {
     setIsDrawing(false)
     setActiveZoneMeta(null)
     setDrawnPoints([])
+    setRedrawingZoneId(null)
   }
 
   async function handleUpdateZone(zoneId, updates) {
@@ -159,8 +187,18 @@ export default function SessionPage() {
     )
   }
 
+  // When redrawing, use the existing zone's color index so it matches.
+  const redrawingZoneIndex = redrawingZoneId
+    ? zones.findIndex(z => z.id === redrawingZoneId)
+    : -1
+
   const activeZoneForCanvas = isDrawing
-    ? { points: drawnPoints, measurement_type: activeZoneMeta?.type }
+    ? {
+        points: drawnPoints,
+        measurement_type: activeZoneMeta?.type,
+        colorIndex: redrawingZoneIndex >= 0 ? redrawingZoneIndex : zones.length,
+        redrawingId: redrawingZoneId,
+      }
     : null
 
   return (
@@ -211,7 +249,7 @@ export default function SessionPage() {
         {blueprintUrl && pixelsPerFoot && (
           <div className={styles.section}>
             <div className={styles.sectionTitle}>
-              {isDrawing ? 'Drawing…' : 'Add Zone'}
+              {isDrawing ? (redrawingZoneId ? 'Redrawing…' : 'Drawing…') : 'Add Zone'}
             </div>
             <ZoneDrawPanel
               onStart={handleStartDrawing}
@@ -219,6 +257,7 @@ export default function SessionPage() {
               isDrawing={isDrawing}
               pointCount={drawnPoints.length}
               onFinish={handleZoneComplete}
+              drawingType={activeZoneMeta?.type}
             />
           </div>
         )}
@@ -229,7 +268,13 @@ export default function SessionPage() {
             <div className={styles.sectionTitle}>
               Zones ({zones.length})
             </div>
-            <ZoneList zones={zones} onDelete={handleDeleteZone} onUpdate={handleUpdateZone} />
+            <ZoneList
+              zones={zones}
+              onDelete={handleDeleteZone}
+              onUpdate={handleUpdateZone}
+              onRedraw={handleRedrawZone}
+              redrawingZoneId={redrawingZoneId}
+            />
           </div>
         )}
 
@@ -256,6 +301,7 @@ export default function SessionPage() {
             isDrawing={isDrawing}
             calibrating={calibrating}
             onCalibrationLine={handleCalibrationLine}
+            redrawingZoneId={redrawingZoneId}
           />
         ) : (
           <div className={styles.emptyCanvas}>
@@ -269,6 +315,8 @@ export default function SessionPage() {
           <div className={styles.hint}>
             {activeZoneMeta?.type === 'count'
               ? 'Click each item to count it · Click Finish Zone when done'
+              : redrawingZoneId
+              ? 'Retrace the zone · Double-click or Finish Zone when done'
               : 'Click to place points · Double-click to finish'}
           </div>
         )}

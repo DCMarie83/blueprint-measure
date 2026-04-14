@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { SCALE_OPTIONS, calcPixelsPerFoot } from '../../utils/scaleOptions'
 import styles from './ScalePanel.module.css'
 
@@ -8,6 +8,18 @@ import styles from './ScalePanel.module.css'
 export default function ScalePanel({ pixelsPerFoot, onScaleChange, onStartCalibration, calibrating }) {
   const [selected, setSelected] = useState('1/4')
   const [knownFeet, setKnownFeet] = useState('')
+
+  // Fire the default scale immediately on mount so the parent knows a scale
+  // is active without the user having to touch the dropdown first.
+  // This fixes sessions that reload with a blueprint already set — the
+  // zone draw panel would stay hidden because pixelsPerFoot was never pushed.
+  useEffect(() => {
+    const defaultOption = SCALE_OPTIONS.find(o => o.value === '1/4')
+    if (defaultOption?.inchesPerFoot) {
+      onScaleChange(calcPixelsPerFoot(defaultOption.inchesPerFoot))
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // intentionally runs once on mount only
 
   function handleSelect(value) {
     setSelected(value)
