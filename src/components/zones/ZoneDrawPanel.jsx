@@ -18,11 +18,19 @@ export default function ZoneDrawPanel({ onStart, onCancel, isDrawing, pointCount
       <div className={styles.panel}>
         <div className={styles.status}>
           <div className={styles.dot} />
-          Drawing zone — {pointCount} {pointCount === 1 ? 'point' : 'points'} placed
+          {type === 'count'
+            ? `${pointCount} ${pointCount === 1 ? 'item' : 'items'} placed`
+            : `Drawing zone — ${pointCount} ${pointCount === 1 ? 'point' : 'points'} placed`}
         </div>
+        {type === 'count' && (
+          <div className={styles.countDisplay}>
+            <span className={styles.countNumber}>{pointCount}</span>
+            <span className={styles.countLabel}>items counted</span>
+          </div>
+        )}
         <p className={styles.hint}>
           {type === 'count'
-            ? 'Click to place each item. Click Finish when done.'
+            ? 'Click each item on the blueprint to count it. Click Finish Zone when done.'
             : type === 'LF'
             ? 'Click to trace the line. Double-click or Finish to close.'
             : 'Click to draw polygon corners. Double-click or Finish to close.'}

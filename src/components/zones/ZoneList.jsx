@@ -34,7 +34,7 @@ export default function ZoneList({ zones, onDelete }) {
             <span className={styles.zoneUnit}>
               {zone.measurement_type === 'SF' ? 'sq ft'
                 : zone.measurement_type === 'LF' ? 'lin ft'
-                : 'count'}
+                : 'each'}
             </span>
           </div>
           <button className={styles.deleteBtn} onClick={() => onDelete(zone.id)}>

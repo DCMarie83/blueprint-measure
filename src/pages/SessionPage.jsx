@@ -258,7 +258,9 @@ export default function SessionPage() {
         {/* Keyboard hint */}
         {isDrawing && (
           <div className={styles.hint}>
-            Click to place points · Double-click to finish
+            {activeZoneMeta?.type === 'count'
+              ? 'Click each item to count it · Click Finish Zone when done'
+              : 'Click to place points · Double-click to finish'}
           </div>
         )}
         {calibrating && (

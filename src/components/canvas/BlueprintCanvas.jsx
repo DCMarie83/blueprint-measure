@@ -107,8 +107,8 @@ export default function BlueprintCanvas({
       ctx.fill()
     }
 
-    // Stroke
-    if (points.length >= 2) {
+    // Stroke — skip for count (markers don't connect)
+    if (type !== 'count' && points.length >= 2) {
       ctx.beginPath()
       ctx.moveTo(points[0].x, points[0].y)
       points.slice(1).forEach(p => ctx.lineTo(p.x, p.y))
@@ -119,22 +119,44 @@ export default function BlueprintCanvas({
       ctx.stroke()
     }
 
-    // Draw points
-    points.forEach((p, idx) => {
-      ctx.fillStyle = isActive && idx === points.length - 1 ? '#fff' : color
-      ctx.strokeStyle = '#fff'
-      ctx.lineWidth = 1.5 / transformRef.current.scale
-      ctx.beginPath()
-      ctx.arc(p.x, p.y, (isActive && idx === points.length - 1 ? 6 : 4) / transformRef.current.scale, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.stroke()
-    })
+    // Draw points — numbered circles for count, regular dots for others
+    if (type === 'count') {
+      const s = transformRef.current.scale
+      points.forEach((p, idx) => {
+        const r = 10 / s
+        // Filled circle
+        ctx.fillStyle = color
+        ctx.strokeStyle = '#fff'
+        ctx.lineWidth = 1.5 / s
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, r, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.stroke()
+        // Number label inside
+        ctx.fillStyle = '#fff'
+        ctx.font = `bold ${r * 1.4}px Inter, sans-serif`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(String(idx + 1), p.x, p.y)
+      })
+    } else {
+      points.forEach((p, idx) => {
+        ctx.fillStyle = isActive && idx === points.length - 1 ? '#fff' : color
+        ctx.strokeStyle = '#fff'
+        ctx.lineWidth = 1.5 / transformRef.current.scale
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, (isActive && idx === points.length - 1 ? 6 : 4) / transformRef.current.scale, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.stroke()
+      })
+    }
 
     // Label for completed zones
     if (!isActive && name && points.length >= 1) {
       const cx = points.reduce((s, p) => s + p.x, 0) / points.length
       const cy = points.reduce((s, p) => s + p.y, 0) / points.length
-      const label = result != null ? `${name}\n${result} ${type}` : name
+      const unitLabel = type === 'count' ? 'each' : type
+      const label = result != null ? `${name}\n${result} ${unitLabel}` : name
       const lines = label.split('\n')
       const fs = 13 / transformRef.current.scale
       ctx.font = `bold ${fs}px Inter, sans-serif`
@@ -255,6 +277,9 @@ export default function BlueprintCanvas({
 
   function handleDoubleClick(e) {
     if (!isDrawing) return
+    // Count zones are finished with the Finish Zone button only —
+    // double-click would accidentally add 2 extra items first.
+    if (activeZone?.measurement_type === 'count') return
     e.preventDefault()
     onZoneComplete()
   }
