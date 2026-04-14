@@ -17,7 +17,7 @@ import styles from './SessionPage.module.css'
 export default function SessionPage() {
   const { sessionId } = useParams()
   const navigate = useNavigate()
-  const { session, zones, loading, error, saveZone, deleteZone, updateSession } = useSession(sessionId)
+  const { session, zones, loading, error, saveZone, updateZone, deleteZone, updateSession } = useSession(sessionId)
 
   // Blueprint image state
   const [blueprintUrl, setBlueprintUrl] = useState(null)
@@ -72,8 +72,8 @@ export default function SessionPage() {
   }
 
   // Called when user clicks "Start Drawing" in the ZoneDrawPanel
-  function handleStartDrawing({ name, type }) {
-    setActiveZoneMeta({ name, type })
+  function handleStartDrawing({ name, description, type }) {
+    setActiveZoneMeta({ name, description, type })
     setDrawnPoints([])
     setIsDrawing(true)
   }
@@ -96,6 +96,7 @@ export default function SessionPage() {
     try {
       await saveZone({
         name: activeZoneMeta.name,
+        description: activeZoneMeta.description,
         measurement_type: activeZoneMeta.type,
         points: drawnPoints,
         result,
@@ -113,6 +114,14 @@ export default function SessionPage() {
     setIsDrawing(false)
     setActiveZoneMeta(null)
     setDrawnPoints([])
+  }
+
+  async function handleUpdateZone(zoneId, updates) {
+    try {
+      await updateZone(zoneId, updates)
+    } catch (err) {
+      alert('Error updating zone: ' + err.message)
+    }
   }
 
   async function handleDeleteZone(zoneId) {
@@ -220,7 +229,7 @@ export default function SessionPage() {
             <div className={styles.sectionTitle}>
               Zones ({zones.length})
             </div>
-            <ZoneList zones={zones} onDelete={handleDeleteZone} />
+            <ZoneList zones={zones} onDelete={handleDeleteZone} onUpdate={handleUpdateZone} />
           </div>
         )}
 

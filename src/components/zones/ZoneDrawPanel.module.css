@@ -19,6 +19,13 @@
   color: var(--color-text-muted);
 }
 
+.optional {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  opacity: 0.7;
+}
+
 .field input {
   background: var(--color-bg);
   border: 1px solid var(--color-border);

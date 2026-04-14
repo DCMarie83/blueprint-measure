@@ -46,38 +46,44 @@ export function useSession(sessionId) {
   }, [fetchSession])
 
   async function saveZone(zoneData) {
-    // zoneData: { name, measurement_type, points, result }
+    // zoneData: { name, description, notes, measurement_type, points, result }
     const payload = {
       session_id: sessionId,
       name: zoneData.name,
+      description: zoneData.description ?? null,
+      notes: zoneData.notes ?? null,
       measurement_type: zoneData.measurement_type,
       points: zoneData.points,
       result: zoneData.result,
-      // unit_cost and labor_rate remain null (future pricing layer)
     }
 
-    if (zoneData.id) {
-      // Update existing zone
-      const { data, error } = await supabase
-        .from('zones')
-        .update(payload)
-        .eq('id', zoneData.id)
-        .select()
-        .single()
-      if (error) throw new Error(error.message)
-      setZones(prev => prev.map(z => z.id === data.id ? data : z))
-      return data
-    } else {
-      // Create new zone
-      const { data, error } = await supabase
-        .from('zones')
-        .insert(payload)
-        .select()
-        .single()
-      if (error) throw new Error(error.message)
-      setZones(prev => [...prev, data])
-      return data
-    }
+    // Create new zone
+    const { data, error } = await supabase
+      .from('zones')
+      .insert(payload)
+      .select()
+      .single()
+    if (error) throw new Error(error.message)
+    setZones(prev => [...prev, data])
+    return data
+  }
+
+  // Updates only the editable text fields on an existing zone (name, description, notes).
+  // Does not touch points or result.
+  async function updateZone(zoneId, updates) {
+    const { data, error } = await supabase
+      .from('zones')
+      .update({
+        name: updates.name,
+        description: updates.description ?? null,
+        notes: updates.notes ?? null,
+      })
+      .eq('id', zoneId)
+      .select()
+      .single()
+    if (error) throw new Error(error.message)
+    setZones(prev => prev.map(z => z.id === data.id ? data : z))
+    return data
   }
 
   async function deleteZone(zoneId) {
@@ -98,5 +104,5 @@ export function useSession(sessionId) {
     return data
   }
 
-  return { session, zones, loading, error, saveZone, deleteZone, updateSession, refetch: fetchSession }
+  return { session, zones, loading, error, saveZone, updateZone, deleteZone, updateSession, refetch: fetchSession }
 }

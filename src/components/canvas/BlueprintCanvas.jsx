@@ -61,7 +61,7 @@ export default function BlueprintCanvas({
     zones.forEach((zone, i) => {
       if (!zone.points || zone.points.length < 2) return
       const color = ZONE_COLORS[i % ZONE_COLORS.length]
-      drawZone(ctx, zone.points, color, zone.measurement_type, zone.name, zone.result, false)
+      drawZone(ctx, zone.points, color, zone.measurement_type, zone.name, zone.result, false, zone.description)
     })
 
     // Draw active (in-progress) zone
@@ -92,7 +92,7 @@ export default function BlueprintCanvas({
     ctx.restore()
   }, [zones, activeZone, calibrating])
 
-  function drawZone(ctx, points, color, type, name, result, isActive) {
+  function drawZone(ctx, points, color, type, name, result, isActive, description) {
     if (points.length === 0) return
 
     ctx.save()
@@ -156,8 +156,10 @@ export default function BlueprintCanvas({
       const cx = points.reduce((s, p) => s + p.x, 0) / points.length
       const cy = points.reduce((s, p) => s + p.y, 0) / points.length
       const unitLabel = type === 'count' ? 'each' : type
-      const label = result != null ? `${name}\n${result} ${unitLabel}` : name
-      const lines = label.split('\n')
+      const labelParts = [name]
+      if (description) labelParts.push(description)
+      if (result != null) labelParts.push(`${result} ${unitLabel}`)
+      const lines = labelParts
       const fs = 13 / transformRef.current.scale
       ctx.font = `bold ${fs}px Inter, sans-serif`
       ctx.textAlign = 'center'

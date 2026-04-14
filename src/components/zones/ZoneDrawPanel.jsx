@@ -5,12 +5,13 @@ import styles from './ZoneDrawPanel.module.css'
 // User picks measurement type, names the zone, then clicks "Start Drawing".
 export default function ZoneDrawPanel({ onStart, onCancel, isDrawing, pointCount, onFinish }) {
   const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
   const [type, setType] = useState('SF')
 
   function handleStart(e) {
     e.preventDefault()
     if (!name.trim()) return
-    onStart({ name: name.trim(), type })
+    onStart({ name: name.trim(), description: description.trim() || null, type })
   }
 
   if (isDrawing) {
@@ -54,6 +55,15 @@ export default function ZoneDrawPanel({ onStart, onCancel, isDrawing, pointCount
           onChange={e => setName(e.target.value)}
           placeholder="e.g. Living Room, Door Frames…"
           required
+        />
+      </div>
+
+      <div className={styles.field}>
+        <label>Description <span className={styles.optional}>(optional)</span></label>
+        <input
+          value={description}
+          onChange={e => setDescription(e.target.value)}
+          placeholder="e.g. Right wall, Windows…"
         />
       </div>
 

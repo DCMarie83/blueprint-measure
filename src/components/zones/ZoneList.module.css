@@ -47,17 +47,52 @@
   flex-shrink: 0;
 }
 
+.zoneDescription {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-bottom: 4px;
+}
+
 .zoneResult {
   font-size: 16px;
   font-weight: 700;
   color: var(--color-text);
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .zoneUnit {
   font-size: 12px;
   font-weight: 400;
   color: var(--color-text-muted);
+}
+
+.zoneNotes {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-style: italic;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.zoneActions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.editBtn {
+  font-size: 12px;
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  padding: 0;
+  opacity: 0.8;
+  transition: opacity 0.15s;
+}
+
+.editBtn:hover {
+  opacity: 1;
 }
 
 .deleteBtn {
@@ -72,4 +107,81 @@
 
 .deleteBtn:hover {
   opacity: 1;
+}
+
+/* --- Inline edit form --- */
+.editForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.editInput {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 7px 10px;
+  font-size: 13px;
+  color: var(--color-text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.editInput:focus {
+  border-color: var(--color-primary);
+}
+
+.editTextarea {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 7px 10px;
+  font-size: 13px;
+  color: var(--color-text);
+  outline: none;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.4;
+  transition: border-color 0.15s;
+}
+
+.editTextarea:focus {
+  border-color: var(--color-primary);
+}
+
+.editActions {
+  display: flex;
+  gap: 8px;
+}
+
+.saveBtn {
+  flex: 1;
+  background: var(--color-primary);
+  border: none;
+  border-radius: var(--radius);
+  padding: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+  transition: opacity 0.15s;
+}
+
+.saveBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.cancelEditBtn {
+  flex: 1;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 7px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  transition: color 0.15s;
+}
+
+.cancelEditBtn:hover {
+  color: var(--color-text);
 }
