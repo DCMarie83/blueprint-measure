@@ -1,13 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const serviceRoleKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY
-
-// The admin client uses the service_role key, which bypasses Row Level Security
-// and allows listing / creating auth users. It is only used by AdminPage.
-// Never use this client outside of admin-only code paths.
-export const adminSupabase = serviceRoleKey
-  ? createClient(supabaseUrl, serviceRoleKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    })
-  : null
+// This file is intentionally empty.
+// The admin Supabase client was removed because the service_role key must
+// never be bundled into browser JavaScript. User-management operations are
+// now handled by the admin-users Edge Function which runs server-side.
+// See: supabase/functions/admin-users/index.ts

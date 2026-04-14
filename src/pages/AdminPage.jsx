@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { adminSupabase } from '../lib/supabaseAdmin'
+import { supabase } from '../lib/supabase'
 import styles from './AdminPage.module.css'
 
 // The three feature flags tracked per company.
@@ -20,11 +20,11 @@ export default function AdminPage() {
   const [loadError,    setLoadError]    = useState('')
 
   // ── Add company form ──────────────────────────────────────────────────────────
-  const [showAddCompany,  setShowAddCompany]  = useState(false)
-  const [newCompanyName,  setNewCompanyName]  = useState('')
-  const [newCompanyPlan,  setNewCompanyPlan]  = useState('free')
-  const [savingCompany,   setSavingCompany]   = useState(false)
-  const [companyError,    setCompanyError]    = useState('')
+  const [showAddCompany, setShowAddCompany] = useState(false)
+  const [newCompanyName, setNewCompanyName] = useState('')
+  const [newCompanyPlan, setNewCompanyPlan] = useState('free')
+  const [savingCompany,  setSavingCompany]  = useState(false)
+  const [companyError,   setCompanyError]   = useState('')
 
   // ── Add user form ─────────────────────────────────────────────────────────────
   const [showAddUser,      setShowAddUser]      = useState(false)
@@ -35,7 +35,6 @@ export default function AdminPage() {
   const [userError,        setUserError]        = useState('')
 
   // ── Feature flag saving ───────────────────────────────────────────────────────
-  // Tracks which company rows are currently saving so we can disable their toggles.
   const [savingFlags, setSavingFlags] = useState({}) // { [companyId]: boolean }
 
   // ── Load all data ─────────────────────────────────────────────────────────────
@@ -43,27 +42,35 @@ export default function AdminPage() {
     setLoading(true)
     setLoadError('')
     try {
+      // Companies, user profiles, and session user_ids all come from the
+      // regular database — protected by RLS policies set to admin-only.
       const [
         { data: companiesData, error: companiesErr },
-        { data: authData,      error: usersErr      },
-        { data: profilesData,  error: profilesErr   },
+        { data: profilesData,  error: profilesErr  },
         { data: sessionsData,  error: sessionsErr   },
       ] = await Promise.all([
-        adminSupabase.from('companies').select('*').order('created_at', { ascending: true }),
-        adminSupabase.auth.admin.listUsers({ perPage: 1000 }),
-        adminSupabase.from('user_profiles').select('*'),
-        adminSupabase.from('sessions').select('user_id'),
+        supabase.from('companies').select('*').order('created_at', { ascending: true }),
+        supabase.from('user_profiles').select('*'),
+        supabase.from('sessions').select('user_id'),
       ])
 
       if (companiesErr) throw new Error('companies: ' + companiesErr.message)
-      if (usersErr)     throw new Error('auth users: ' + usersErr.message)
       if (profilesErr)  throw new Error('user_profiles: ' + profilesErr.message)
       if (sessionsErr)  throw new Error('sessions: ' + sessionsErr.message)
 
       setCompanies(companiesData ?? [])
-      setUsers(authData?.users ?? [])
       setUserProfiles(profilesData ?? [])
       setSessions(sessionsData ?? [])
+
+      // Auth user listing requires service role — call the Edge Function.
+      // supabase.functions.invoke() automatically includes the caller's
+      // auth token so the function can verify we are the admin.
+      const { data: fnData, error: fnErr } = await supabase.functions.invoke('admin-users', {
+        body: { action: 'list' },
+      })
+      if (fnErr) throw new Error('user list: ' + fnErr.message)
+      setUsers(fnData?.users ?? [])
+
     } catch (err) {
       setLoadError(err.message)
     } finally {
@@ -72,17 +79,11 @@ export default function AdminPage() {
   }, [])
 
   useEffect(() => {
-    if (!adminSupabase) {
-      setLoadError('VITE_SUPABASE_SERVICE_ROLE_KEY is not set — see setup instructions below.')
-      setLoading(false)
-      return
-    }
     loadAll()
   }, [loadAll])
 
   // ── Derived helpers ───────────────────────────────────────────────────────────
 
-  // Count sessions that belong to any user in this company.
   function sessionCountFor(companyId) {
     const companyUserIds = userProfiles
       .filter(p => p.company_id === companyId)
@@ -90,7 +91,6 @@ export default function AdminPage() {
     return sessions.filter(s => companyUserIds.includes(s.user_id)).length
   }
 
-  // Find the company name for a given auth user id.
   function companyNameFor(userId) {
     const profile = userProfiles.find(p => p.user_id === userId)
     if (!profile?.company_id) return '—'
@@ -105,7 +105,7 @@ export default function AdminPage() {
     setSavingCompany(true)
     setCompanyError('')
     try {
-      const { data, error } = await adminSupabase
+      const { data, error } = await supabase
         .from('companies')
         .insert({ name: newCompanyName.trim(), plan: newCompanyPlan, features: {} })
         .select()
@@ -128,25 +128,19 @@ export default function AdminPage() {
     setSavingUser(true)
     setUserError('')
     try {
-      // Step 1 — create the Supabase auth account
-      const { data: authData, error: authErr } = await adminSupabase.auth.admin.createUser({
-        email: newUserEmail.trim(),
-        password: newUserPassword,
-        email_confirm: true, // skip the confirmation email, they can log in immediately
-      })
-      if (authErr) throw new Error(authErr.message)
-
-      // Step 2 — link the new user to their company in user_profiles
-      const { error: profileErr } = await adminSupabase
-        .from('user_profiles')
-        .insert({
-          user_id:    authData.user.id,
+      // The edge function creates the auth user AND the user_profile row
+      // server-side using the service_role key.
+      const { data, error } = await supabase.functions.invoke('admin-users', {
+        body: {
+          action:     'create',
+          email:      newUserEmail.trim(),
+          password:   newUserPassword,
           company_id: newUserCompanyId || null,
-          email:      authData.user.email,
-        })
-      if (profileErr) throw new Error(profileErr.message)
+        },
+      })
+      if (error) throw new Error(error.message)
+      if (data?.error) throw new Error(data.error)
 
-      // Refresh everything so the table shows the new user
       await loadAll()
       setNewUserEmail('')
       setNewUserPassword('')
@@ -160,46 +154,26 @@ export default function AdminPage() {
   }
 
   async function handleToggleFlag(company, flagKey) {
-    // Disable all toggles for this row while saving
     setSavingFlags(prev => ({ ...prev, [company.id]: true }))
-
-    const current  = company.features ?? {}
-    const updated  = { ...current, [flagKey]: !current[flagKey] }
+    const current = company.features ?? {}
+    const updated = { ...current, [flagKey]: !current[flagKey] }
 
     // Optimistic update — flip the toggle immediately so it feels instant
     setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, features: updated } : c))
 
     try {
-      const { error } = await adminSupabase
+      const { error } = await supabase
         .from('companies')
         .update({ features: updated })
         .eq('id', company.id)
       if (error) throw new Error(error.message)
     } catch (err) {
-      // Revert the optimistic update on failure
+      // Revert on failure
       setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, features: current } : c))
       alert('Failed to save: ' + err.message)
     } finally {
       setSavingFlags(prev => ({ ...prev, [company.id]: false }))
     }
-  }
-
-  // ── Missing env key screen ────────────────────────────────────────────────────
-  if (!adminSupabase) {
-    return (
-      <div className={styles.page}>
-        <div className={styles.center}>
-          <div className={styles.errorBox}>
-            <strong>Service role key not configured.</strong>
-            <p>
-              Add <code>VITE_SUPABASE_SERVICE_ROLE_KEY</code> to your <code>.env.local</code> file,
-              then restart the dev server. You can find this key in your Supabase dashboard
-              under Project Settings → API → service_role (secret).
-            </p>
-          </div>
-        </div>
-      </div>
-    )
   }
 
   // ── Loading screen ────────────────────────────────────────────────────────────
@@ -231,6 +205,12 @@ export default function AdminPage() {
         {loadError && (
           <div className={styles.errorBox}>
             <strong>Error loading data:</strong> {loadError}
+            {loadError.includes('user list') && (
+              <p style={{ marginTop: 8 }}>
+                The <code>admin-users</code> Edge Function may not be deployed yet.
+                See setup instructions below.
+              </p>
+            )}
           </div>
         )}
 
@@ -251,7 +231,6 @@ export default function AdminPage() {
             </button>
           </div>
 
-          {/* Add company form */}
           {showAddCompany && (
             <form className={styles.form} onSubmit={handleAddCompany}>
               <div className={styles.formGrid}>
@@ -286,7 +265,6 @@ export default function AdminPage() {
             </form>
           )}
 
-          {/* Companies table */}
           {companies.length === 0 ? (
             <p className={styles.empty}>No companies yet — add one above.</p>
           ) : (
@@ -317,7 +295,7 @@ export default function AdminPage() {
                               <input
                                 type="checkbox"
                                 className={styles.flagCheck}
-                                checked={!!( (company.features ?? {})[key] )}
+                                checked={!!((company.features ?? {})[key])}
                                 onChange={() => handleToggleFlag(company, key)}
                                 disabled={!!savingFlags[company.id]}
                               />
@@ -351,7 +329,6 @@ export default function AdminPage() {
             </button>
           </div>
 
-          {/* Add user form */}
           {showAddUser && (
             <form className={styles.form} onSubmit={handleAddUser}>
               <div className={styles.formGrid}>
@@ -401,9 +378,12 @@ export default function AdminPage() {
             </form>
           )}
 
-          {/* Users table */}
           {users.length === 0 ? (
-            <p className={styles.empty}>No users found.</p>
+            <p className={styles.empty}>
+              {loadError.includes('user list')
+                ? 'Could not load users — deploy the Edge Function first.'
+                : 'No users found.'}
+            </p>
           ) : (
             <div className={styles.tableWrap}>
               <table className={styles.table}>
