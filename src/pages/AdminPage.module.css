@@ -398,6 +398,41 @@
   white-space: nowrap;
 }
 
+.resetBtn {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.resetBtn:hover:not(:disabled) {
+  color: var(--color-primary);
+  border-color: rgba(46, 139, 255, 0.35);
+}
+
+.resetBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.resetSent {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-success);
+  margin-right: 8px;
+  animation: fadeOut 3s forwards;
+}
+
+@keyframes fadeOut {
+  0%   { opacity: 1; }
+  60%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 .deleteUserBtn {
   background: none;
   border: 1px solid transparent;
@@ -415,6 +450,244 @@
 }
 
 .deleteUserBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PLATFORM METRICS BAR
+══════════════════════════════════════════════════════════════════════════ */
+.metricsBar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.metricCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+}
+
+.metricValue {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.metricLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   INLINE EDITING — shared between company name and user company
+══════════════════════════════════════════════════════════════════════════ */
+
+/* Row showing the current value + pencil icon */
+.companyNameRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.companyNameText {
+  font-weight: 500;
+}
+
+/* Small pencil/edit icon button */
+.iconBtn {
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+  line-height: 1;
+}
+
+/* Show the pencil when the row is hovered */
+.tr:hover .iconBtn,
+.companyNameRow:hover .iconBtn {
+  opacity: 1;
+}
+
+.iconBtn:hover {
+  color: var(--color-primary);
+}
+
+/* Wrapper holding the input/select + save + cancel */
+.inlineEdit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+.inlineInput {
+  flex: 1;
+  min-width: 0;
+  background: var(--color-bg);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius);
+  padding: 5px 8px;
+  font-size: 13px;
+  color: var(--color-text);
+  outline: none;
+}
+
+.inlineSelect {
+  flex: 1;
+  min-width: 0;
+  background: var(--color-bg);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius);
+  padding: 5px 8px;
+  font-size: 13px;
+  color: var(--color-text);
+  outline: none;
+}
+
+.inlineSaveBtn {
+  background: var(--color-primary);
+  border: none;
+  border-radius: var(--radius);
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.inlineSaveBtn:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.inlineSaveBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.inlineCancelBtn {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 5px 8px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.inlineCancelBtn:hover {
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   COMPANY NOTES
+══════════════════════════════════════════════════════════════════════════ */
+
+/* Clickable notes display — invisible border until hover so it feels like text */
+.notesBtn {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  background: none;
+  border: 1px dashed transparent;
+  border-radius: var(--radius);
+  padding: 4px 6px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  text-align: left;
+  line-height: 1.5;
+  transition: border-color 0.15s, background 0.15s;
+  cursor: text;
+}
+
+.notesBtn:hover {
+  border-color: var(--color-border);
+  background: var(--color-surface-2);
+}
+
+.notesPlaceholder {
+  color: var(--color-text-muted);
+  opacity: 0.5;
+  font-style: italic;
+}
+
+.notesEditArea {
+  margin-top: 6px;
+}
+
+.notesTextarea {
+  width: 100%;
+  background: var(--color-bg);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius);
+  padding: 6px 8px;
+  font-size: 12px;
+  color: var(--color-text);
+  resize: vertical;
+  outline: none;
+  font-family: var(--font);
+  line-height: 1.5;
+}
+
+.notesActions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   USER TABLE — email cell + pending badge
+══════════════════════════════════════════════════════════════════════════ */
+
+.emailCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pendingBadge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--color-accent);
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+/* ── Resend invitation button ─────────────────────────────────────────────── */
+.resendBtn {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.resendBtn:hover:not(:disabled) {
+  color: var(--color-accent);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.resendBtn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }

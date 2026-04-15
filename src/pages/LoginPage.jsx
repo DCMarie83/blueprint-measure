@@ -3,25 +3,101 @@ import { supabase } from '../lib/supabase'
 import styles from './LoginPage.module.css'
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('')
+  const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [error,    setError]    = useState('')
+  const [loading,  setLoading]  = useState(false)
+
+  // ── Forgot password state ─────────────────────────────────────────────────
+  const [showForgot,    setShowForgot]    = useState(false)
+  const [forgotEmail,   setForgotEmail]   = useState('')
+  const [forgotLoading, setForgotLoading] = useState(false)
+  const [forgotSent,    setForgotSent]    = useState(false)
+  const [forgotError,   setForgotError]   = useState('')
 
   async function handleLogin(e) {
     e.preventDefault()
     setError('')
     setLoading(true)
-
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-
-    if (error) {
-      setError(error.message)
-    }
+    if (error) setError(error.message)
     // On success, AuthContext updates automatically and App.jsx redirects to /dashboard
     setLoading(false)
   }
 
+  async function handleForgot(e) {
+    e.preventDefault()
+    setForgotError('')
+    setForgotLoading(true)
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim())
+    if (error) {
+      setForgotError(error.message)
+    } else {
+      setForgotSent(true)
+    }
+    setForgotLoading(false)
+  }
+
+  function handleBackToLogin() {
+    setShowForgot(false)
+    setForgotEmail('')
+    setForgotSent(false)
+    setForgotError('')
+  }
+
+  // ── Forgot password view ──────────────────────────────────────────────────
+  if (showForgot) {
+    return (
+      <div className={styles.page}>
+        <div className={styles.card}>
+          <div className={styles.logo}>
+            <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+              <rect width="36" height="36" rx="8" fill="#2e8bff"/>
+              <path d="M8 28V10h4v14h12V10h4v18H8z" fill="white" opacity="0.9"/>
+              <path d="M14 10h8v8h-8z" fill="white"/>
+            </svg>
+            <span>BlueprintMeasure</span>
+          </div>
+
+          <h1 className={styles.title}>Reset your password</h1>
+
+          {forgotSent ? (
+            <div className={styles.successBox}>
+              Check your email for a password reset link.
+            </div>
+          ) : (
+            <form className={styles.form} onSubmit={handleForgot}>
+              <div className={styles.field}>
+                <label htmlFor="forgot-email">Email address</label>
+                <input
+                  id="forgot-email"
+                  type="email"
+                  value={forgotEmail}
+                  onChange={e => setForgotEmail(e.target.value)}
+                  placeholder="you@company.com"
+                  required
+                  autoComplete="email"
+                  autoFocus
+                />
+              </div>
+
+              {forgotError && <div className={styles.error}>{forgotError}</div>}
+
+              <button type="submit" className={styles.btn} disabled={forgotLoading}>
+                {forgotLoading ? 'Sending…' : 'Send reset link'}
+              </button>
+            </form>
+          )}
+
+          <button className={styles.backLink} onClick={handleBackToLogin}>
+            ← Back to sign in
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Normal login view ─────────────────────────────────────────────────────
   return (
     <div className={styles.page}>
       <div className={styles.card}>
@@ -69,6 +145,10 @@ export default function LoginPage() {
             {loading ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
+
+        <button className={styles.forgotBtn} onClick={() => setShowForgot(true)}>
+          Forgot password?
+        </button>
 
         <p className={styles.footer}>
           BlueprintMeasure — Professional Blueprint Measurement
