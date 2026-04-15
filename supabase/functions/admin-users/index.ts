@@ -1,13 +1,14 @@
 // admin-users Edge Function
-// Handles listing auth users and creating new auth users.
+// Handles listing, inviting, and deleting auth users.
 // Runs on Supabase's servers — the service_role key never reaches the browser.
 //
-// Deploy via Supabase Dashboard → Edge Functions → New Function
+// Deploy via Supabase Dashboard → Edge Functions → admin-users → redeploy
 // or: supabase functions deploy admin-users
 //
 // Actions (all via POST with JSON body):
 //   { action: 'list' }
-//   { action: 'create', email, password, company_id }
+//   { action: 'invite', email, company_id }
+//   { action: 'delete', user_id }
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -36,9 +37,6 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) return json({ error: 'Missing Authorization header' }, 401)
 
-    // Use the caller's own JWT to look up who they are.
-    // SUPABASE_URL and SUPABASE_ANON_KEY are built-in env vars in every
-    // Supabase Edge Function — no secrets file needed.
     const callerClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
@@ -52,13 +50,21 @@ Deno.serve(async (req) => {
       return json({ error: 'Forbidden' }, 403)
     }
 
-    // ── Step 3: parse the request body ─────────────────────────────────────
-    const body = await req.json()
-    const { action } = body
+    // ── Step 3: safely parse the request body ───────────────────────────────
+    // req.json() throws on an empty body, so read raw text first.
+    // A missing/empty body defaults to action: 'list'.
+    let body: Record<string, unknown> = {}
+    try {
+      const text = await req.text()
+      if (text.trim().length > 0) {
+        body = JSON.parse(text)
+      }
+    } catch {
+      return json({ error: 'Invalid JSON in request body' }, 400)
+    }
+    const action = body.action ?? 'list'
 
     // ── Step 4: build a service-role client for admin operations ───────────
-    // SUPABASE_SERVICE_ROLE_KEY is also a built-in env var — Supabase injects
-    // it automatically. It never appears in any frontend code or env file.
     const adminClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
@@ -72,23 +78,22 @@ Deno.serve(async (req) => {
       return json({ users: data.users })
     }
 
-    // ── Action: create a new auth user + user_profile row ───────────────────
-    if (action === 'create') {
-      const { email, password, company_id } = body
+    // ── Action: invite a new user by email ──────────────────────────────────
+    // Sends a Supabase invitation email. The user clicks the link to set their
+    // own password — we never handle or store a password on their behalf.
+    if (action === 'invite') {
+      const { email, company_id } = body
 
-      if (!email || !password) {
-        return json({ error: 'email and password are required' }, 400)
+      if (!email) {
+        return json({ error: 'email is required' }, 400)
       }
 
-      // Create the Supabase auth account
-      const { data: authData, error: authErr } = await adminClient.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true, // lets them log in immediately without a confirmation email
-      })
+      const { data: authData, error: authErr } =
+        await adminClient.auth.admin.inviteUserByEmail(email as string)
       if (authErr) throw authErr
 
-      // Link the new user to their company in user_profiles
+      // Link the invited user to their company in user_profiles.
+      // The user row exists immediately in auth.users even before they accept.
       const { error: profileErr } = await adminClient
         .from('user_profiles')
         .insert({
@@ -99,6 +104,30 @@ Deno.serve(async (req) => {
       if (profileErr) throw profileErr
 
       return json({ user: authData.user })
+    }
+
+    // ── Action: delete a user ───────────────────────────────────────────────
+    // Deletes the user_profile row first, then the auth account.
+    // user_profiles has ON DELETE CASCADE so the profile would auto-delete
+    // anyway, but being explicit avoids any timing edge cases.
+    if (action === 'delete') {
+      const { user_id } = body
+
+      if (!user_id) {
+        return json({ error: 'user_id is required' }, 400)
+      }
+
+      // Remove the profile row (ignore error if it doesn't exist)
+      await adminClient
+        .from('user_profiles')
+        .delete()
+        .eq('user_id', user_id)
+
+      // Delete the auth account — this is permanent
+      const { error: deleteErr } = await adminClient.auth.admin.deleteUser(user_id as string)
+      if (deleteErr) throw deleteErr
+
+      return json({ success: true })
     }
 
     return json({ error: `Unknown action: ${action}` }, 400)

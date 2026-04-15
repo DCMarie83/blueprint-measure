@@ -345,3 +345,76 @@
   color: var(--color-text-muted);
   text-align: center;
 }
+
+/* ── Plan cell — badge stacked above description ─────────────────────────── */
+.planCell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.planDesc {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+/* ── Feature flags — on state ────────────────────────────────────────────── */
+.flagRowOn {
+  /* no extra layout change — just used to scope child selectors */
+}
+
+.flagLabelOn {
+  font-size: 13px;
+  color: var(--color-text);
+  font-weight: 500;
+  transition: color 0.15s;
+}
+
+.flagOnBadge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--color-primary);
+  background: rgba(46, 139, 255, 0.1);
+  border: 1px solid rgba(46, 139, 255, 0.25);
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-left: 2px;
+}
+
+/* ── Form hint text ──────────────────────────────────────────────────────── */
+.formHint {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+/* ── Users table action cell ─────────────────────────────────────────────── */
+.tdAction {
+  padding: 13px 24px 13px 8px;
+  vertical-align: middle;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.deleteUserBtn {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.deleteUserBtn:hover:not(:disabled) {
+  color: var(--color-danger);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.deleteUserBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
