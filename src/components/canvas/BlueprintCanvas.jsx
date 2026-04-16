@@ -1,6 +1,13 @@
 import { useRef, useEffect, useCallback, useState, forwardRef, useImperativeHandle } from 'react'
 import styles from './BlueprintCanvas.module.css'
 
+// Human-readable ceiling type names shown in the canvas label
+const CEILING_TYPE_LABELS = {
+  vaulted: 'Vaulted',
+  tray: 'Tray',
+  shed: 'Shed',
+}
+
 // Color palette for zones — cycles through these
 const ZONE_COLORS = [
   '#2e8bff', '#22c55e', '#f59e0b', '#ef4444', '#a855f7',
@@ -64,7 +71,7 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
       if (zone.id === redrawingZoneId) return
       if (!zone.points || zone.points.length < 2) return
       const color = ZONE_COLORS[i % ZONE_COLORS.length]
-      drawZone(ctx, zone.points, color, zone.measurement_type, zone.name, zone.result, false, zone.description, zone.surface_type, zone.coat_count)
+      drawZone(ctx, zone.points, color, zone.measurement_type, zone.name, zone.result, false, zone.description, zone.surface_type, zone.coat_count, zone.ceiling_type)
     })
 
     // Draw active (in-progress) zone
@@ -195,7 +202,7 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
 
   // ── Drawing helpers ──────────────────────────────────────────────────────────
 
-  function drawZone(ctx, points, color, type, name, result, isActive, description, surfaceType, coatCount) {
+  function drawZone(ctx, points, color, type, name, result, isActive, description, surfaceType, coatCount, ceilingType) {
     if (points.length === 0) return
     ctx.save()
 
@@ -258,8 +265,12 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
       const unitLabel = type === 'count' ? 'each' : type
       const labelParts = [name]
       if (description) labelParts.push(description)
+      // Show ceiling type alongside surface type when it's not flat (default)
+      const surfaceLabel = (surfaceType === 'Ceiling' && ceilingType && CEILING_TYPE_LABELS[ceilingType])
+        ? `${surfaceType} · ${CEILING_TYPE_LABELS[ceilingType]}`
+        : surfaceType || null
       const metaParts = [
-        surfaceType || null,
+        surfaceLabel,
         coatCount > 1 ? `${coatCount} coats` : null,
       ].filter(Boolean)
       if (metaParts.length > 0) labelParts.push(metaParts.join(' · '))

@@ -65,9 +65,24 @@ create table if not exists public.zones (
   id                uuid primary key default gen_random_uuid(),
   session_id        uuid not null references public.sessions(id) on delete cascade,
   name              text not null,
+  description       text,
+  notes             text,
+  surface_type      text,
+  coat_count        int  default 1,
+  page_number       int  default 1,
   measurement_type  text not null check (measurement_type in ('SF', 'LF', 'count')),
   points            jsonb,        -- Array of {x: number, y: number} objects
   result            numeric,      -- Calculated measurement result
+
+  -- ── Ceiling type and height measurements ──
+  -- Only populated when surface_type = 'Ceiling' and ceiling_type != 'flat'
+  ceiling_type            text check (ceiling_type in ('flat', 'vaulted', 'tray', 'shed')),
+  ceiling_peak_height     numeric,   -- Vaulted: ridge height in feet
+  ceiling_wall_height     numeric,   -- Vaulted: eave/wall height in feet
+  ceiling_tray_perimeter  numeric,   -- Tray: inner perimeter of the tray in feet
+  ceiling_drop_depth      numeric,   -- Tray: depth of the tray walls in inches
+  ceiling_low_wall_height  numeric,  -- Shed: low-side wall height in feet
+  ceiling_high_wall_height numeric,  -- Shed: high-side wall height in feet
 
   -- ── Future pricing layer (hidden in UI, present in DB) ──
   unit_cost         numeric,      -- Cost per SF/LF/count — NOT shown in UI yet
@@ -215,3 +230,22 @@ create trigger on_auth_user_created
 -- insert into storage.buckets (id, name, public)
 -- values ('blueprints', 'blueprints', true)
 -- on conflict do nothing;
+
+
+-- ============================================================
+-- MIGRATION: Run this block if the zones table already exists
+-- (i.e. you ran the original schema before these columns were added)
+-- ============================================================
+alter table public.zones
+  add column if not exists description             text,
+  add column if not exists notes                   text,
+  add column if not exists surface_type            text,
+  add column if not exists coat_count              int  default 1,
+  add column if not exists page_number             int  default 1,
+  add column if not exists ceiling_type            text check (ceiling_type in ('flat', 'vaulted', 'tray', 'shed')),
+  add column if not exists ceiling_peak_height     numeric,
+  add column if not exists ceiling_wall_height     numeric,
+  add column if not exists ceiling_tray_perimeter  numeric,
+  add column if not exists ceiling_drop_depth      numeric,
+  add column if not exists ceiling_low_wall_height  numeric,
+  add column if not exists ceiling_high_wall_height numeric;

@@ -1,6 +1,14 @@
 // All measurement math lives here.
 // pixelsPerFoot = how many canvas pixels equal one real-world foot.
 
+// Human-readable labels for ceiling types (used in labels and UI)
+export const CEILING_TYPE_LABELS = {
+  flat: 'Flat',
+  vaulted: 'Vaulted',
+  tray: 'Tray',
+  shed: 'Shed',
+}
+
 // Distance between two canvas points in pixels
 function dist(a, b) {
   return Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2)
@@ -57,6 +65,64 @@ export function calculateLF(points, pixelsPerFoot) {
 // Count is just the number of points placed
 export function calculateCount(points) {
   return points.length
+}
+
+// Bounding box of a point array, in feet.
+// Used by ceiling calculations to derive room width/length from the drawn polygon.
+function bboxFeet(points, pixelsPerFoot) {
+  if (!points || points.length < 1) return { width: 0, length: 0 }
+  const xs = points.map(p => p.x)
+  const ys = points.map(p => p.y)
+  return {
+    width:  (Math.max(...xs) - Math.min(...xs)) / pixelsPerFoot,
+    length: (Math.max(...ys) - Math.min(...ys)) / pixelsPerFoot,
+  }
+}
+
+// Adjust ceiling SF based on ceiling type.
+// Returns { adjustedSF, adjustment } where:
+//   adjustedSF = the final result to store on the zone
+//   adjustment = how much was added/changed vs the flat footprint
+//
+// ceilingType: 'flat' | 'vaulted' | 'tray' | 'shed'
+// params: { peakHeight, wallHeight, trayPerimeter, dropDepth, lowWallHeight, highWallHeight }
+// points / pixelsPerFoot: the drawn polygon (used to derive room width + length)
+export function calculateCeilingSF(baseSF, ceilingType, params, points, pixelsPerFoot) {
+  if (!ceilingType || ceilingType === 'flat') {
+    return { adjustedSF: baseSF, adjustment: 0 }
+  }
+
+  const { width, length } = bboxFeet(points, pixelsPerFoot)
+
+  if (ceilingType === 'vaulted') {
+    const { peakHeight = 0, wallHeight = 0 } = params
+    const rise = peakHeight - wallHeight
+    if (rise <= 0 || width <= 0 || length <= 0) return { adjustedSF: baseSF, adjustment: 0 }
+    // Slope length is one side (eave to ridge); two sides × room length = total area
+    const slopeLength = Math.sqrt((width / 2) ** 2 + rise ** 2)
+    const adjustedSF  = Math.round(2 * slopeLength * length * 100) / 100
+    return { adjustedSF, adjustment: Math.round((adjustedSF - baseSF) * 100) / 100 }
+  }
+
+  if (ceilingType === 'tray') {
+    const { trayPerimeter = 0, dropDepth = 0 } = params
+    if (trayPerimeter <= 0 || dropDepth <= 0) return { adjustedSF: baseSF, adjustment: 0 }
+    const dropFt     = dropDepth / 12          // convert inches → feet
+    const additional = Math.round(trayPerimeter * dropFt * 100) / 100
+    return { adjustedSF: Math.round((baseSF + additional) * 100) / 100, adjustment: additional }
+  }
+
+  if (ceilingType === 'shed') {
+    const { lowWallHeight = 0, highWallHeight = 0 } = params
+    const rise = highWallHeight - lowWallHeight
+    if (rise <= 0 || width <= 0 || length <= 0) return { adjustedSF: baseSF, adjustment: 0 }
+    // Slope runs across the full width (not half like a vault)
+    const slopeLength = Math.sqrt(width ** 2 + rise ** 2)
+    const adjustedSF  = Math.round(slopeLength * length * 100) / 100
+    return { adjustedSF, adjustment: Math.round((adjustedSF - baseSF) * 100) / 100 }
+  }
+
+  return { adjustedSF: baseSF, adjustment: 0 }
 }
 
 // Master function — picks the right formula based on type

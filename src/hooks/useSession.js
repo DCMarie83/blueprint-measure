@@ -46,7 +46,11 @@ export function useSession(sessionId) {
   }, [fetchSession])
 
   async function saveZone(zoneData) {
-    // zoneData: { name, description, notes, surface_type, coat_count, measurement_type, points, result, page_number }
+    // zoneData: { name, description, notes, surface_type, coat_count,
+    //             ceiling_type, ceiling_peak_height, ceiling_wall_height,
+    //             ceiling_tray_perimeter, ceiling_drop_depth,
+    //             ceiling_low_wall_height, ceiling_high_wall_height,
+    //             measurement_type, points, result, page_number }
     const payload = {
       session_id: sessionId,
       name: zoneData.name,
@@ -54,6 +58,13 @@ export function useSession(sessionId) {
       notes: zoneData.notes ?? null,
       surface_type: zoneData.surface_type ?? null,
       coat_count: zoneData.coat_count ?? 1,
+      ceiling_type: zoneData.ceiling_type ?? null,
+      ceiling_peak_height:    zoneData.ceiling_peak_height    ?? null,
+      ceiling_wall_height:    zoneData.ceiling_wall_height    ?? null,
+      ceiling_tray_perimeter: zoneData.ceiling_tray_perimeter ?? null,
+      ceiling_drop_depth:     zoneData.ceiling_drop_depth     ?? null,
+      ceiling_low_wall_height:  zoneData.ceiling_low_wall_height  ?? null,
+      ceiling_high_wall_height: zoneData.ceiling_high_wall_height ?? null,
       measurement_type: zoneData.measurement_type,
       points: zoneData.points,
       result: zoneData.result,
@@ -71,18 +82,30 @@ export function useSession(sessionId) {
     return data
   }
 
-  // Updates the editable text fields on an existing zone.
-  // Does not touch points or result.
+  // Updates the editable fields on an existing zone.
+  // Does not touch points. If updates.result is provided (e.g. after ceiling
+  // param change) it will also update the stored result.
   async function updateZone(zoneId, updates) {
+    const updateData = {
+      name: updates.name,
+      description: updates.description ?? null,
+      notes: updates.notes ?? null,
+      surface_type: updates.surface_type ?? null,
+      coat_count: updates.coat_count ?? 1,
+      ceiling_type: updates.ceiling_type ?? null,
+      ceiling_peak_height:    updates.ceiling_peak_height    ?? null,
+      ceiling_wall_height:    updates.ceiling_wall_height    ?? null,
+      ceiling_tray_perimeter: updates.ceiling_tray_perimeter ?? null,
+      ceiling_drop_depth:     updates.ceiling_drop_depth     ?? null,
+      ceiling_low_wall_height:  updates.ceiling_low_wall_height  ?? null,
+      ceiling_high_wall_height: updates.ceiling_high_wall_height ?? null,
+    }
+    // Only include result when the caller explicitly provides it (ceiling param edits)
+    if (updates.result !== undefined) updateData.result = updates.result
+
     const { data, error } = await supabase
       .from('zones')
-      .update({
-        name: updates.name,
-        description: updates.description ?? null,
-        notes: updates.notes ?? null,
-        surface_type: updates.surface_type ?? null,
-        coat_count: updates.coat_count ?? 1,
-      })
+      .update(updateData)
       .eq('id', zoneId)
       .select()
       .single()

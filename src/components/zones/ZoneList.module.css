@@ -267,3 +267,25 @@
 .cancelEditBtn:hover {
   color: var(--color-text);
 }
+
+/* --- Ceiling height fields in edit form --- */
+
+.editHeightRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.editHeightField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.editHeightLabel {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}

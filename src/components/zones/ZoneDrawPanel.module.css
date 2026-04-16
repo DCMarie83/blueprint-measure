@@ -237,3 +237,92 @@
 .cancelBtn:hover {
   color: var(--color-text);
 }
+
+/* --- Ceiling type extra fields --- */
+
+.heightRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.heightField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.heightField label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.heightField input {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--color-text);
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+}
+
+.heightField input:focus {
+  border-color: var(--color-primary);
+}
+
+.heightField input::placeholder {
+  color: var(--color-text-muted);
+  opacity: 0.5;
+}
+
+/* --- Real-time SF preview shown during drawing --- */
+
+.sfPreview {
+  background: rgba(46, 139, 255, 0.07);
+  border: 1px solid rgba(46, 139, 255, 0.2);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sfPreviewRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.sfPreviewLabel {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.sfPreviewValue {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.sfPreviewValueHighlight {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.sfPreviewAdj {
+  font-size: 11px;
+  font-weight: 600;
+  color: #22c55e;
+  text-align: right;
+}

@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useSession } from '../hooks/useSession'
 import { usePdf } from '../hooks/usePdf'
 import { calcPixelsPerFoot } from '../utils/scaleOptions'
-import { calculate } from '../utils/measurements'
+import { calculate, calculateSF, calculateCeilingSF } from '../utils/measurements'
 import { exportCSV } from '../utils/csvExport'
 import BlueprintCanvas from '../components/canvas/BlueprintCanvas'
 import BlueprintUploader from '../components/canvas/BlueprintUploader'
@@ -148,8 +148,20 @@ export default function SessionPage() {
     }
   }
 
-  function handleStartDrawing({ name, description, surface_type, coat_count, type }) {
-    setActiveZoneMeta({ name, description, surface_type, coat_count, type })
+  function handleStartDrawing({ name, description, surface_type, coat_count, type,
+    ceiling_type, ceiling_peak_height, ceiling_wall_height,
+    ceiling_tray_perimeter, ceiling_drop_depth,
+    ceiling_low_wall_height, ceiling_high_wall_height }) {
+    setActiveZoneMeta({
+      name, description, surface_type, coat_count, type,
+      ceiling_type: ceiling_type ?? null,
+      ceiling_peak_height:    ceiling_peak_height    ?? null,
+      ceiling_wall_height:    ceiling_wall_height    ?? null,
+      ceiling_tray_perimeter: ceiling_tray_perimeter ?? null,
+      ceiling_drop_depth:     ceiling_drop_depth     ?? null,
+      ceiling_low_wall_height:  ceiling_low_wall_height  ?? null,
+      ceiling_high_wall_height: ceiling_high_wall_height ?? null,
+    })
     setDrawnPoints([])
     setIsDrawing(true)
   }
@@ -163,6 +175,13 @@ export default function SessionPage() {
       coat_count: zone.coat_count,
       type: zone.measurement_type,
       notes: zone.notes,
+      ceiling_type: zone.ceiling_type ?? null,
+      ceiling_peak_height:    zone.ceiling_peak_height    ?? null,
+      ceiling_wall_height:    zone.ceiling_wall_height    ?? null,
+      ceiling_tray_perimeter: zone.ceiling_tray_perimeter ?? null,
+      ceiling_drop_depth:     zone.ceiling_drop_depth     ?? null,
+      ceiling_low_wall_height:  zone.ceiling_low_wall_height  ?? null,
+      ceiling_high_wall_height: zone.ceiling_high_wall_height ?? null,
     })
     setDrawnPoints([])
     setIsDrawing(true)
@@ -179,7 +198,21 @@ export default function SessionPage() {
       return
     }
 
-    const result = calculate(activeZoneMeta.type, drawnPoints, pixelsPerFoot)
+    let result = calculate(activeZoneMeta.type, drawnPoints, pixelsPerFoot)
+
+    // For ceiling zones with a non-flat type, apply the slope/tray adjustment
+    if (activeZoneMeta.surface_type === 'Ceiling' &&
+        activeZoneMeta.ceiling_type && activeZoneMeta.ceiling_type !== 'flat') {
+      const { adjustedSF } = calculateCeilingSF(result, activeZoneMeta.ceiling_type, {
+        peakHeight:    parseFloat(activeZoneMeta.ceiling_peak_height)    || 0,
+        wallHeight:    parseFloat(activeZoneMeta.ceiling_wall_height)    || 0,
+        trayPerimeter: parseFloat(activeZoneMeta.ceiling_tray_perimeter) || 0,
+        dropDepth:     parseFloat(activeZoneMeta.ceiling_drop_depth)     || 0,
+        lowWallHeight:  parseFloat(activeZoneMeta.ceiling_low_wall_height)  || 0,
+        highWallHeight: parseFloat(activeZoneMeta.ceiling_high_wall_height) || 0,
+      }, drawnPoints, pixelsPerFoot)
+      result = adjustedSF
+    }
 
     try {
       if (redrawingZoneId) {
@@ -192,6 +225,13 @@ export default function SessionPage() {
           description: activeZoneMeta.description,
           surface_type: activeZoneMeta.surface_type,
           coat_count: activeZoneMeta.coat_count,
+          ceiling_type: activeZoneMeta.ceiling_type ?? null,
+          ceiling_peak_height:    activeZoneMeta.ceiling_peak_height    ?? null,
+          ceiling_wall_height:    activeZoneMeta.ceiling_wall_height    ?? null,
+          ceiling_tray_perimeter: activeZoneMeta.ceiling_tray_perimeter ?? null,
+          ceiling_drop_depth:     activeZoneMeta.ceiling_drop_depth     ?? null,
+          ceiling_low_wall_height:  activeZoneMeta.ceiling_low_wall_height  ?? null,
+          ceiling_high_wall_height: activeZoneMeta.ceiling_high_wall_height ?? null,
           measurement_type: activeZoneMeta.type,
           points: drawnPoints,
           result,
@@ -217,7 +257,33 @@ export default function SessionPage() {
 
   async function handleUpdateZone(zoneId, updates) {
     try {
-      await updateZone(zoneId, updates)
+      let finalUpdates = { ...updates }
+
+      // When ceiling type or params change, recalculate the stored result so
+      // the zone list stays in sync without requiring a redraw.
+      if (updates.surface_type === 'Ceiling' && updates.ceiling_type && updates.ceiling_type !== 'flat' && pixelsPerFoot) {
+        const zone = zones.find(z => z.id === zoneId)
+        if (zone && zone.points && zone.measurement_type === 'SF') {
+          const baseSF = calculateSF(zone.points, pixelsPerFoot)
+          const { adjustedSF } = calculateCeilingSF(baseSF, updates.ceiling_type, {
+            peakHeight:    parseFloat(updates.ceiling_peak_height)    || 0,
+            wallHeight:    parseFloat(updates.ceiling_wall_height)    || 0,
+            trayPerimeter: parseFloat(updates.ceiling_tray_perimeter) || 0,
+            dropDepth:     parseFloat(updates.ceiling_drop_depth)     || 0,
+            lowWallHeight:  parseFloat(updates.ceiling_low_wall_height)  || 0,
+            highWallHeight: parseFloat(updates.ceiling_high_wall_height) || 0,
+          }, zone.points, pixelsPerFoot)
+          finalUpdates.result = adjustedSF
+        }
+      } else if (pixelsPerFoot && (updates.surface_type !== 'Ceiling' || updates.ceiling_type === 'flat')) {
+        // Switched away from a ceiling adjustment — restore the flat SF
+        const zone = zones.find(z => z.id === zoneId)
+        if (zone && zone.points && zone.measurement_type === 'SF') {
+          finalUpdates.result = calculateSF(zone.points, pixelsPerFoot)
+        }
+      }
+
+      await updateZone(zoneId, finalUpdates)
     } catch (err) {
       alert('Error updating zone: ' + err.message)
     }
@@ -263,6 +329,28 @@ export default function SessionPage() {
       </div>
     )
   }
+
+  // ── Ceiling SF preview ────────────────────────────────────────────────────────
+  // Computed in real-time as the contractor places points while drawing a ceiling
+  // zone with a non-flat ceiling type. Passed to ZoneDrawPanel for display.
+  const sfPreview = useMemo(() => {
+    if (!isDrawing || !activeZoneMeta ||
+        activeZoneMeta.surface_type !== 'Ceiling' ||
+        !activeZoneMeta.ceiling_type || activeZoneMeta.ceiling_type === 'flat' ||
+        drawnPoints.length < 3 || !pixelsPerFoot) {
+      return null
+    }
+    const flat = calculateSF(drawnPoints, pixelsPerFoot)
+    const { adjustedSF, adjustment } = calculateCeilingSF(flat, activeZoneMeta.ceiling_type, {
+      peakHeight:    parseFloat(activeZoneMeta.ceiling_peak_height)    || 0,
+      wallHeight:    parseFloat(activeZoneMeta.ceiling_wall_height)    || 0,
+      trayPerimeter: parseFloat(activeZoneMeta.ceiling_tray_perimeter) || 0,
+      dropDepth:     parseFloat(activeZoneMeta.ceiling_drop_depth)     || 0,
+      lowWallHeight:  parseFloat(activeZoneMeta.ceiling_low_wall_height)  || 0,
+      highWallHeight: parseFloat(activeZoneMeta.ceiling_high_wall_height) || 0,
+    }, drawnPoints, pixelsPerFoot)
+    return { flat, adjusted: adjustedSF, adjustment }
+  }, [isDrawing, activeZoneMeta, drawnPoints, pixelsPerFoot])
 
   // ── Canvas props ──────────────────────────────────────────────────────────────
 
@@ -373,6 +461,7 @@ export default function SessionPage() {
               pointCount={drawnPoints.length}
               onFinish={handleZoneComplete}
               drawingType={activeZoneMeta?.type}
+              sfPreview={sfPreview}
             />
           </div>
         )}
