@@ -309,6 +309,29 @@ export default function SessionPage() {
     exportCSV(session, zones)
   }
 
+  // ── Ceiling SF preview ────────────────────────────────────────────────────────
+  // Computed in real-time as the contractor places points while drawing a ceiling
+  // zone with a non-flat ceiling type. Passed to ZoneDrawPanel for display.
+  // Must stay here (before the early returns) so hook call order is always stable.
+  const sfPreview = useMemo(() => {
+    if (!isDrawing || !activeZoneMeta ||
+        activeZoneMeta.surface_type !== 'Ceiling' ||
+        !activeZoneMeta.ceiling_type || activeZoneMeta.ceiling_type === 'flat' ||
+        drawnPoints.length < 3 || !pixelsPerFoot) {
+      return null
+    }
+    const flat = calculateSF(drawnPoints, pixelsPerFoot)
+    const { adjustedSF, adjustment } = calculateCeilingSF(flat, activeZoneMeta.ceiling_type, {
+      peakHeight:    parseFloat(activeZoneMeta.ceiling_peak_height)    || 0,
+      wallHeight:    parseFloat(activeZoneMeta.ceiling_wall_height)    || 0,
+      trayPerimeter: parseFloat(activeZoneMeta.ceiling_tray_perimeter) || 0,
+      dropDepth:     parseFloat(activeZoneMeta.ceiling_drop_depth)     || 0,
+      lowWallHeight:  parseFloat(activeZoneMeta.ceiling_low_wall_height)  || 0,
+      highWallHeight: parseFloat(activeZoneMeta.ceiling_high_wall_height) || 0,
+    }, drawnPoints, pixelsPerFoot)
+    return { flat, adjusted: adjustedSF, adjustment }
+  }, [isDrawing, activeZoneMeta, drawnPoints, pixelsPerFoot])
+
   // ── Loading / error screens ───────────────────────────────────────────────────
 
   if (loading) {
@@ -329,28 +352,6 @@ export default function SessionPage() {
       </div>
     )
   }
-
-  // ── Ceiling SF preview ────────────────────────────────────────────────────────
-  // Computed in real-time as the contractor places points while drawing a ceiling
-  // zone with a non-flat ceiling type. Passed to ZoneDrawPanel for display.
-  const sfPreview = useMemo(() => {
-    if (!isDrawing || !activeZoneMeta ||
-        activeZoneMeta.surface_type !== 'Ceiling' ||
-        !activeZoneMeta.ceiling_type || activeZoneMeta.ceiling_type === 'flat' ||
-        drawnPoints.length < 3 || !pixelsPerFoot) {
-      return null
-    }
-    const flat = calculateSF(drawnPoints, pixelsPerFoot)
-    const { adjustedSF, adjustment } = calculateCeilingSF(flat, activeZoneMeta.ceiling_type, {
-      peakHeight:    parseFloat(activeZoneMeta.ceiling_peak_height)    || 0,
-      wallHeight:    parseFloat(activeZoneMeta.ceiling_wall_height)    || 0,
-      trayPerimeter: parseFloat(activeZoneMeta.ceiling_tray_perimeter) || 0,
-      dropDepth:     parseFloat(activeZoneMeta.ceiling_drop_depth)     || 0,
-      lowWallHeight:  parseFloat(activeZoneMeta.ceiling_low_wall_height)  || 0,
-      highWallHeight: parseFloat(activeZoneMeta.ceiling_high_wall_height) || 0,
-    }, drawnPoints, pixelsPerFoot)
-    return { flat, adjusted: adjustedSF, adjustment }
-  }, [isDrawing, activeZoneMeta, drawnPoints, pixelsPerFoot])
 
   // ── Canvas props ──────────────────────────────────────────────────────────────
 
