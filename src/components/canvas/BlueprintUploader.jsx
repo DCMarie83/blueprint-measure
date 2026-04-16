@@ -21,7 +21,7 @@ export default function BlueprintUploader({ sessionId, onUploaded }) {
       return
     }
 
-    const maxMB = 20
+    const maxMB = 100
     if (file.size > maxMB * 1024 * 1024) {
       setError(`File too large. Maximum is ${maxMB}MB.`)
       return
@@ -94,7 +94,7 @@ export default function BlueprintUploader({ sessionId, onUploaded }) {
           <div className={styles.text}>
             <strong>Drop blueprint here</strong> or click to browse
           </div>
-          <div className={styles.sub}>JPG, PNG, or PDF — up to 20MB</div>
+          <div className={styles.sub}>JPG, PNG, or PDF — up to 100MB</div>
           {error && <div className={styles.error}>{error}</div>}
         </>
       )}
