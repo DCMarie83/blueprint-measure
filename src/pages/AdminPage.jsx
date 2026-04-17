@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, Fragment } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import styles from './AdminPage.module.css'
@@ -76,6 +76,12 @@ export default function AdminPage() {
   const [deletingUserId,  setDeletingUserId]  = useState(null)
   const [resetSentId,     flashResetSent]     = useTempId()
   const [resendSentId,    flashResendSent]    = useTempId()
+
+  // ── Set password (inline) ─────────────────────────────────────────────────────
+  const [setPasswordUserId, setSetPasswordUserId] = useState(null) // which row is open
+  const [setPasswordValue,  setSetPasswordValue]  = useState('')
+  const [setPasswordSaving, setSetPasswordSaving] = useState(false)
+  const [setPasswordDoneId, flashSetPasswordDone] = useTempId()
 
   // ── Load all data ─────────────────────────────────────────────────────────────
   const loadAll = useCallback(async () => {
@@ -358,6 +364,26 @@ export default function AdminPage() {
       alert('Failed to delete user: ' + err.message)
     } finally {
       setDeletingUserId(null)
+    }
+  }
+
+  // ── Set password (inline) ────────────────────────────────────────────────────
+  async function handleSetPassword(userId) {
+    if (!setPasswordValue.trim()) return
+    setSetPasswordSaving(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-users', {
+        body: { action: 'set_password', user_id: userId, new_password: setPasswordValue },
+      })
+      if (error) throw new Error(error.message)
+      if (data?.error) throw new Error(data.error)
+      flashSetPasswordDone(userId)
+      setSetPasswordUserId(null)
+      setSetPasswordValue('')
+    } catch (err) {
+      alert('Failed to set password: ' + err.message)
+    } finally {
+      setSetPasswordSaving(false)
     }
   }
 
@@ -747,8 +773,10 @@ export default function AdminPage() {
                   {users.map(u => {
                     const isEditingCo = editingCompanyUserId === u.id
                     const neverLoggedIn = !u.last_sign_in_at
+                    const isSettingPw = setPasswordUserId === u.id
                     return (
-                      <tr key={u.id} className={styles.tr}>
+                      <Fragment key={u.id}>
+                      <tr className={styles.tr}>
 
                         {/* ── Email ── */}
                         <td className={styles.td}>
@@ -826,6 +854,25 @@ export default function AdminPage() {
                             </button>
                           )}
 
+                          {/* Set password */}
+                          {setPasswordDoneId === u.id && (
+                            <span className={styles.resetSent}>Password updated!</span>
+                          )}
+                          <button
+                            className={styles.setPasswordBtn}
+                            onClick={() => {
+                              if (isSettingPw) {
+                                setSetPasswordUserId(null)
+                                setSetPasswordValue('')
+                              } else {
+                                setSetPasswordUserId(u.id)
+                                setSetPasswordValue('')
+                              }
+                            }}
+                          >
+                            {isSettingPw ? 'Cancel' : 'Set Password'}
+                          </button>
+
                           {/* Reset password */}
                           {resetSentId === u.id && (
                             <span className={styles.resetSent}>Email sent!</span>
@@ -848,6 +895,36 @@ export default function AdminPage() {
                           </button>
                         </td>
                       </tr>
+
+                      {/* ── Inline set-password form row ── */}
+                      {isSettingPw && (
+                        <tr className={styles.setPasswordRow}>
+                          <td colSpan={4} className={styles.setPasswordCell}>
+                            <div className={styles.setPasswordForm}>
+                              <input
+                                type="password"
+                                className={styles.setPasswordInput}
+                                value={setPasswordValue}
+                                onChange={e => setSetPasswordValue(e.target.value)}
+                                placeholder="New temporary password"
+                                autoFocus
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') { e.preventDefault(); handleSetPassword(u.id) }
+                                  if (e.key === 'Escape') { setSetPasswordUserId(null); setSetPasswordValue('') }
+                                }}
+                              />
+                              <button
+                                className={styles.setPasswordSaveBtn}
+                                onClick={() => handleSetPassword(u.id)}
+                                disabled={setPasswordSaving || !setPasswordValue.trim()}
+                              >
+                                {setPasswordSaving ? 'Saving…' : 'Save'}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      </Fragment>
                     )
                   })}
                 </tbody>

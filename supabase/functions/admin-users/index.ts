@@ -125,6 +125,26 @@ Deno.serve(async (req) => {
       return json({ user: authData.user })
     }
 
+    // ── set_password ────────────────────────────────────────────────────────
+    // Sets a new temporary password for an existing user and re-flags them
+    // to change it on next login.
+    if (action === 'set_password') {
+      const { user_id, new_password } = body
+      if (!user_id)      return json({ error: 'user_id is required' }, 400)
+      if (!new_password) return json({ error: 'new_password is required' }, 400)
+
+      const { error: updateErr } = await adminClient.auth.admin.updateUserById(
+        user_id as string,
+        {
+          password:      new_password as string,
+          user_metadata: { force_password_change: true },
+        }
+      )
+      if (updateErr) throw updateErr
+
+      return json({ success: true })
+    }
+
     // ── resend ──────────────────────────────────────────────────────────────
     // Re-sends the invitation email to a user who hasn't accepted yet.
     // Does NOT touch user_profiles — the row already exists from the first invite.

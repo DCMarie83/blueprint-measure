@@ -728,3 +728,74 @@
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* ── Set Password button ─────────────────────────────────────────────────── */
+.setPasswordBtn {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.setPasswordBtn:hover {
+  color: var(--color-primary);
+  border-color: rgba(46, 139, 255, 0.35);
+}
+
+/* ── Inline set-password row ─────────────────────────────────────────────── */
+.setPasswordRow {
+  background: var(--color-surface-hover, #f9fafb);
+}
+
+.setPasswordCell {
+  padding: 10px 24px 10px 24px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.setPasswordForm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 380px;
+}
+
+.setPasswordInput {
+  flex: 1;
+  height: 34px;
+  padding: 0 10px;
+  font-size: 13px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text);
+  outline: none;
+}
+
+.setPasswordInput:focus {
+  border-color: var(--color-primary);
+}
+
+.setPasswordSaveBtn {
+  height: 34px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--color-primary, #2563eb);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  white-space: nowrap;
+  opacity: 1;
+  transition: opacity 0.15s;
+}
+
+.setPasswordSaveBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
