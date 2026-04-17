@@ -382,6 +382,43 @@
   margin-left: 2px;
 }
 
+/* ── Method toggle (invite vs create) ───────────────────────────────────── */
+.methodToggle {
+  display: flex;
+  gap: 0;
+  margin-bottom: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  overflow: hidden;
+  width: fit-content;
+}
+
+.methodBtn {
+  padding: 7px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  background: transparent;
+  color: var(--color-text-muted);
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.methodBtn:hover {
+  background: var(--color-surface-hover, #f5f5f5);
+  color: var(--color-text);
+}
+
+.methodBtnActive {
+  padding: 7px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--color-primary, #2563eb);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+}
+
 /* ── Form hint text ──────────────────────────────────────────────────────── */
 .formHint {
   font-size: 13px;

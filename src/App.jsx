@@ -4,12 +4,14 @@ import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import SessionPage from './pages/SessionPage'
 import AdminPage from './pages/AdminPage'
+import ChangePasswordPage from './pages/ChangePasswordPage'
 
 // The only email address that can access /admin.
 const ADMIN_EMAIL = 'main@ngautomationhub.com'
 
 // ProtectedRoute wraps pages that require a login.
-// If the user isn't logged in, they get sent to /login automatically.
+// If the user isn't logged in, they get sent to /login.
+// If the user must change their password first, they get sent to /change-password.
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
 
@@ -21,7 +23,9 @@ function ProtectedRoute({ children }) {
     )
   }
 
-  return user ? children : <Navigate to="/login" replace />
+  if (!user) return <Navigate to="/login" replace />
+  if (user.user_metadata?.force_password_change) return <Navigate to="/change-password" replace />
+  return children
 }
 
 // AdminRoute wraps /admin. Requires login AND the hardcoded admin email.
@@ -64,6 +68,9 @@ export default function App() {
         path="/session/:sessionId"
         element={<ProtectedRoute><SessionPage /></ProtectedRoute>}
       />
+
+      {/* Password change — shown when force_password_change flag is set */}
+      <Route path="/change-password" element={<ChangePasswordPage />} />
 
       {/* Admin route — only accessible to ADMIN_EMAIL */}
       <Route

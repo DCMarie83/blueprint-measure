@@ -7,6 +7,7 @@
 // Actions (all via POST with JSON body):
 //   { action: 'list' }
 //   { action: 'invite',  email, company_id }
+//   { action: 'create',  email, password, company_id }
 //   { action: 'resend',  email }
 //   { action: 'delete',  user_id }
 
@@ -81,6 +82,35 @@ Deno.serve(async (req) => {
 
       const { data: authData, error: authErr } =
         await adminClient.auth.admin.inviteUserByEmail(email as string)
+      if (authErr) throw authErr
+
+      const { error: profileErr } = await adminClient
+        .from('user_profiles')
+        .insert({
+          user_id:    authData.user.id,
+          company_id: company_id || null,
+          email:      authData.user.email,
+        })
+      if (profileErr) throw profileErr
+
+      return json({ user: authData.user })
+    }
+
+    // ── create ──────────────────────────────────────────────────────────────
+    // Creates a user with a temporary password set by the admin.
+    // email_confirm is true so they can log in immediately.
+    // force_password_change in user_metadata forces them to change it on first login.
+    if (action === 'create') {
+      const { email, password, company_id } = body
+      if (!email)    return json({ error: 'email is required' }, 400)
+      if (!password) return json({ error: 'password is required' }, 400)
+
+      const { data: authData, error: authErr } = await adminClient.auth.admin.createUser({
+        email:          email as string,
+        password:       password as string,
+        email_confirm:  true,
+        user_metadata:  { force_password_change: true },
+      })
       if (authErr) throw authErr
 
       const { error: profileErr } = await adminClient

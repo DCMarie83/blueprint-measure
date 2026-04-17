@@ -1,0 +1,110 @@
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
+import styles from './LoginPage.module.css'
+
+export default function ChangePasswordPage() {
+  const navigate = useNavigate()
+  const [newPassword,     setNewPassword]     = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [error,           setError]           = useState('')
+  const [loading,         setLoading]         = useState(false)
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setError('')
+
+    if (newPassword.length < 6) {
+      setError('Password must be at least 6 characters.')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match.')
+      return
+    }
+
+    setLoading(true)
+    try {
+      // 1. Update the password
+      const { error: updateErr } = await supabase.auth.updateUser({ password: newPassword })
+      if (updateErr) throw updateErr
+
+      // 2. Clear the force_password_change flag
+      const { error: metaErr } = await supabase.auth.updateUser({
+        data: { force_password_change: false },
+      })
+      if (metaErr) throw metaErr
+
+      // 3. Send them to the dashboard
+      navigate('/dashboard', { replace: true })
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className={styles.page}>
+      <div className={styles.card}>
+        <div className={styles.logo}>
+          <span>BlueprintMeasure</span>
+        </div>
+
+        <h1 className={styles.title}>Change your password</h1>
+        <p style={{ fontSize: 14, color: 'var(--color-text-muted)', marginBottom: 24, lineHeight: 1.5 }}>
+          Your account requires a new password before you can continue. Choose something only you know.
+        </p>
+
+        <form className={styles.form} onSubmit={handleSubmit}>
+          <div className={styles.field}>
+            <label>New Password</label>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+              placeholder="At least 6 characters"
+              required
+              autoFocus
+            />
+          </div>
+
+          <div className={styles.field}>
+            <label>Confirm Password</label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
+              placeholder="Repeat new password"
+              required
+            />
+          </div>
+
+          {error && (
+            <p style={{ fontSize: 13, color: 'var(--color-danger, #dc2626)', margin: 0 }}>
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              padding: '11px',
+              background: 'var(--color-primary, #2563eb)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 'var(--radius)',
+              fontWeight: 600,
+              fontSize: 15,
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.7 : 1,
+            }}
+          >
+            {loading ? 'Saving…' : 'Set New Password'}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}

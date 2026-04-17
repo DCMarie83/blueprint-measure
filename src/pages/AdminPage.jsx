@@ -58,9 +58,11 @@ export default function AdminPage() {
   // ── Feature flag saving ───────────────────────────────────────────────────────
   const [savingFlags, setSavingFlags] = useState({})
 
-  // ── Invite user form ──────────────────────────────────────────────────────────
+  // ── Invite / create user form ─────────────────────────────────────────────────
   const [showAddUser,      setShowAddUser]      = useState(false)
+  const [addUserMethod,    setAddUserMethod]    = useState('invite') // 'invite' | 'create'
   const [newUserEmail,     setNewUserEmail]     = useState('')
+  const [newUserPassword,  setNewUserPassword]  = useState('')
   const [newUserCompanyId, setNewUserCompanyId] = useState('')
   const [savingUser,       setSavingUser]       = useState(false)
   const [userError,        setUserError]        = useState('')
@@ -255,19 +257,25 @@ export default function AdminPage() {
   // USER HANDLERS
   // ══════════════════════════════════════════════════════════════════════════════
 
-  async function handleInviteUser(e) {
+  async function handleAddUser(e) {
     e.preventDefault()
     if (!newUserEmail.trim()) return
+    if (addUserMethod === 'create' && !newUserPassword.trim()) {
+      setUserError('Password is required.')
+      return
+    }
     setSavingUser(true)
     setUserError('')
     try {
-      const { data, error } = await supabase.functions.invoke('admin-users', {
-        body: { action: 'invite', email: newUserEmail.trim(), company_id: newUserCompanyId || null },
-      })
+      const body = addUserMethod === 'invite'
+        ? { action: 'invite', email: newUserEmail.trim(), company_id: newUserCompanyId || null }
+        : { action: 'create', email: newUserEmail.trim(), password: newUserPassword, company_id: newUserCompanyId || null }
+      const { data, error } = await supabase.functions.invoke('admin-users', { body })
       if (error) throw new Error(error.message)
       if (data?.error) throw new Error(data.error)
       await loadAll()
       setNewUserEmail('')
+      setNewUserPassword('')
       setNewUserCompanyId('')
       setShowAddUser(false)
     } catch (err) {
@@ -641,10 +649,31 @@ export default function AdminPage() {
           </div>
 
           {showAddUser && (
-            <form className={styles.form} onSubmit={handleInviteUser}>
+            <form className={styles.form} onSubmit={handleAddUser}>
+              {/* ── Method toggle ── */}
+              <div className={styles.methodToggle}>
+                <button
+                  type="button"
+                  className={addUserMethod === 'invite' ? styles.methodBtnActive : styles.methodBtn}
+                  onClick={() => { setAddUserMethod('invite'); setUserError('') }}
+                >
+                  Send invitation email
+                </button>
+                <button
+                  type="button"
+                  className={addUserMethod === 'create' ? styles.methodBtnActive : styles.methodBtn}
+                  onClick={() => { setAddUserMethod('create'); setUserError('') }}
+                >
+                  Set temporary password
+                </button>
+              </div>
+
               <p className={styles.formHint}>
-                An invitation email will be sent. The user sets their own password when they accept.
+                {addUserMethod === 'invite'
+                  ? 'An invitation email will be sent. The user sets their own password when they accept.'
+                  : 'The account is created immediately. The user must change the temporary password on first login.'}
               </p>
+
               <div className={styles.formGrid}>
                 <div className={styles.formField}>
                   <label className={styles.formLabel}>Email</label>
@@ -657,6 +686,21 @@ export default function AdminPage() {
                     required
                   />
                 </div>
+
+                {addUserMethod === 'create' && (
+                  <div className={styles.formField}>
+                    <label className={styles.formLabel}>Temporary Password</label>
+                    <input
+                      type="password"
+                      className={styles.formInput}
+                      value={newUserPassword}
+                      onChange={e => setNewUserPassword(e.target.value)}
+                      placeholder="Temporary password"
+                      required
+                    />
+                  </div>
+                )}
+
                 <div className={styles.formField}>
                   <label className={styles.formLabel}>Company</label>
                   <select
@@ -674,7 +718,9 @@ export default function AdminPage() {
               {userError && <p className={styles.fieldError}>{userError}</p>}
               <div className={styles.formActions}>
                 <button type="submit" className={styles.submitBtn} disabled={savingUser}>
-                  {savingUser ? 'Sending invite…' : 'Send Invitation'}
+                  {savingUser
+                    ? (addUserMethod === 'invite' ? 'Sending invite…' : 'Creating user…')
+                    : (addUserMethod === 'invite' ? 'Send Invitation' : 'Create User')}
                 </button>
               </div>
             </form>
