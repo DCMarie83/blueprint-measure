@@ -841,3 +841,212 @@
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   COMPANY ROW EXPANSION — plan select, chevron, expansion panel
+══════════════════════════════════════════════════════════════════════════ */
+
+/* Highlighted background on the main row when expanded */
+.trExpanded {
+  background: var(--color-surface-2) !important;
+}
+
+/* Wrapper inside the name cell — aligns chevron + content horizontally */
+.companyExpandRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+/* Chevron icon that rotates when the row is expanded */
+.expandChevron {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  display: inline-block;
+  transition: transform 0.15s;
+  user-select: none;
+}
+
+/* Plan select dropdown — replaces static badge inside the plan cell */
+.planSelect {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 5px 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text);
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  width: 100%;
+  max-width: 140px;
+}
+
+.planSelect:focus {
+  border-color: var(--color-primary);
+}
+
+/* "✓ Saved" flash message below the plan select */
+.planSaved {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-success);
+  margin-top: 4px;
+  animation: fadeOut 3s forwards;
+}
+
+/* ── Expansion <tr> ──────────────────────────────────────────────────────── */
+.expandedRow {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.expandedRow:hover {
+  background: none !important;
+}
+
+.expandedCell {
+  padding: 0;
+}
+
+/* Outer panel with subtle tinted background */
+.expandedPanel {
+  background: var(--color-surface-2);
+  border-top: 1px solid var(--color-border);
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Each sub-section inside the panel ───────────────────────────────────── */
+.expandedSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.expandedSectionTitle {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--color-text-muted);
+}
+
+/* ── Activity stat tiles ─────────────────────────────────────────────────── */
+.expandedStats {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.expandedStat {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 12px 18px;
+  min-width: 110px;
+}
+
+.expandedStatNum {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1;
+  margin-bottom: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.expandedStatLabel {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Users mini-table ────────────────────────────────────────────────────── */
+.expandedTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.expandedTh {
+  padding: 6px 10px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.expandedTd {
+  padding: 8px 10px;
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-border);
+  font-size: 13px;
+}
+
+.expandedTd:last-child {
+  color: var(--color-text-muted);
+}
+
+/* Muted "Never" text for users with no last login */
+.expandedNever {
+  font-style: italic;
+  color: var(--color-text-muted);
+  opacity: 0.6;
+}
+
+/* Empty state message within the panel */
+.expandedEmpty {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* ── Feature flags readable list ─────────────────────────────────────────── */
+.expandedFlags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.expandedFlagOn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: rgba(46, 139, 255, 0.08);
+  border: 1px solid rgba(46, 139, 255, 0.22);
+  border-radius: 20px;
+  padding: 3px 10px;
+}
+
+.expandedFlagOff {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  padding: 3px 10px;
+  opacity: 0.6;
+}
+
+/* Colored dot before each flag name */
+.expandedFlagDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: currentColor;
+}

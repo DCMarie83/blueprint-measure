@@ -92,10 +92,19 @@ export default function AdminPage() {
   const [resendSentId,    flashResendSent]    = useTempId()
 
   // ── Set password (inline) ─────────────────────────────────────────────────────
-  const [setPasswordUserId, setSetPasswordUserId] = useState(null) // which row is open
+  const [setPasswordUserId, setSetPasswordUserId] = useState(null)
   const [setPasswordValue,  setSetPasswordValue]  = useState('')
   const [setPasswordSaving, setSetPasswordSaving] = useState(false)
   const [setPasswordDoneId, flashSetPasswordDone] = useTempId()
+
+  // ── Plan change ───────────────────────────────────────────────────────────────
+  const [savingPlanId, setSavingPlanId] = useState(null)
+  const [planSavedId,  flashPlanSaved]  = useTempId()
+
+  // ── Row expansion ─────────────────────────────────────────────────────────────
+  const [expandedCompanyId, setExpandedCompanyId] = useState(null)
+  const [companyZoneCounts, setCompanyZoneCounts] = useState({}) // { [companyId]: number }
+  const [loadingZoneCount,  setLoadingZoneCount]  = useState({}) // { [companyId]: bool }
 
   // ── Load all data ─────────────────────────────────────────────────────────────
   const loadAll = useCallback(async () => {
@@ -110,7 +119,7 @@ export default function AdminPage() {
         supabase.from('companies').select('*').order('created_at', { ascending: true }),
         supabase.from('user_profiles').select('*'),
         // Fetch created_at + blueprint_url so metrics can be computed client-side
-        supabase.from('sessions').select('user_id, created_at, blueprint_url'),
+        supabase.from('sessions').select('id, user_id, created_at, blueprint_url'),
       ])
 
       if (companiesErr) throw new Error('companies: ' + companiesErr.message)
@@ -419,6 +428,73 @@ export default function AdminPage() {
     }
   }
 
+  // ── Change company plan ───────────────────────────────────────────────────────
+  // Updates plan, blueprint_limit, and features atomically.
+  async function handleChangePlan(companyId, newPlan) {
+    const planConfig = PLANS.find(p => p.value === newPlan)
+    const newFeatures = PLAN_FEATURES[newPlan] ?? {}
+    const newLimit    = planConfig?.limit ?? 10
+    setSavingPlanId(companyId)
+    // Optimistic update so the dropdown reflects the new value immediately
+    setCompanies(prev => prev.map(c =>
+      c.id === companyId
+        ? { ...c, plan: newPlan, blueprint_limit: newLimit, features: newFeatures }
+        : c
+    ))
+    try {
+      const { error } = await supabase
+        .from('companies')
+        .update({ plan: newPlan, blueprint_limit: newLimit, features: newFeatures })
+        .eq('id', companyId)
+      if (error) throw new Error(error.message)
+      flashPlanSaved(companyId)
+    } catch (err) {
+      alert('Failed to update plan: ' + err.message)
+      // Reload to restore accurate state
+      await loadAll()
+    } finally {
+      setSavingPlanId(null)
+    }
+  }
+
+  // ── Toggle company row expansion ──────────────────────────────────────────────
+  async function handleToggleExpand(companyId) {
+    // Collapse if already open
+    if (expandedCompanyId === companyId) {
+      setExpandedCompanyId(null)
+      return
+    }
+    setExpandedCompanyId(companyId)
+
+    // Don't re-fetch if we already have the count
+    if (companyZoneCounts[companyId] !== undefined) return
+
+    setLoadingZoneCount(prev => ({ ...prev, [companyId]: true }))
+    try {
+      const userIds = userProfiles.filter(p => p.company_id === companyId).map(p => p.user_id)
+      const now        = new Date()
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+
+      // Find sessions this month belonging to this company's users (IDs available now)
+      const thisMonthSessionIds = sessions
+        .filter(s => userIds.includes(s.user_id) && s.created_at >= monthStart)
+        .map(s => s.id)
+        .filter(Boolean)
+
+      let zoneCount = 0
+      if (thisMonthSessionIds.length > 0) {
+        const { count } = await supabase
+          .from('zones')
+          .select('id', { count: 'exact', head: true })
+          .in('session_id', thisMonthSessionIds)
+        zoneCount = count ?? 0
+      }
+      setCompanyZoneCounts(prev => ({ ...prev, [companyId]: zoneCount }))
+    } finally {
+      setLoadingZoneCount(prev => ({ ...prev, [companyId]: false }))
+    }
+  }
+
   // ── Loading screen ────────────────────────────────────────────────────────────
   if (loading) {
     return (
@@ -546,107 +622,134 @@ export default function AdminPage() {
                 </thead>
                 <tbody>
                   {companies.map(company => {
-                    const flags = company.features ?? {}
-                    const isSaving = !!savingFlags[company.id]
-                    const isEditingName = editingNameId === company.id
-                    const isEditingNotes = editingNotesId === company.id
+                    const flags           = company.features ?? {}
+                    const isSaving        = !!savingFlags[company.id]
+                    const isEditingName   = editingNameId === company.id
+                    const isEditingNotes  = editingNotesId === company.id
+                    const isExpanded      = expandedCompanyId === company.id
+                    const companyUserIds  = userProfiles.filter(p => p.company_id === company.id).map(p => p.user_id)
+                    const companyUsers    = users.filter(u => companyUserIds.includes(u.id))
+
                     return (
-                      <tr key={company.id} className={styles.tr}>
+                      <Fragment key={company.id}>
+                      {/* ── Main row — click outside interactive elements to expand ── */}
+                      <tr
+                        className={`${styles.tr} ${isExpanded ? styles.trExpanded : ''}`}
+                        onClick={e => {
+                          if (e.target.closest('[data-no-expand]')) return
+                          handleToggleExpand(company.id)
+                        }}
+                        style={{ cursor: 'pointer' }}
+                      >
 
                         {/* ── Company name + notes ── */}
                         <td className={styles.td}>
-                          {isEditingName ? (
-                            <div className={styles.inlineEdit}>
-                              <input
-                                className={styles.inlineInput}
-                                value={editingNameValue}
-                                onChange={e => setEditingNameValue(e.target.value)}
-                                onKeyDown={e => {
-                                  if (e.key === 'Enter') handleSaveName(company.id)
-                                  if (e.key === 'Escape') setEditingNameId(null)
-                                }}
-                                autoFocus
-                              />
-                              <button
-                                className={styles.inlineSaveBtn}
-                                onClick={() => handleSaveName(company.id)}
-                                disabled={savingNameId === company.id}
-                              >
-                                {savingNameId === company.id ? '…' : 'Save'}
-                              </button>
-                              <button
-                                className={styles.inlineCancelBtn}
-                                onClick={() => setEditingNameId(null)}
-                              >
-                                ✕
-                              </button>
-                            </div>
-                          ) : (
-                            <div className={styles.companyNameRow}>
-                              <span className={styles.companyNameText}>{company.name}</span>
-                              <button
-                                className={styles.iconBtn}
-                                onClick={() => handleStartEditName(company)}
-                                title="Edit name"
-                              >
-                                ✎
-                              </button>
-                            </div>
-                          )}
+                          <div className={styles.companyExpandRow}>
+                            <span className={styles.expandChevron}>
+                              {isExpanded ? '▾' : '▸'}
+                            </span>
+                            <div data-no-expand>
+                              {isEditingName ? (
+                                <div className={styles.inlineEdit}>
+                                  <input
+                                    className={styles.inlineInput}
+                                    value={editingNameValue}
+                                    onChange={e => setEditingNameValue(e.target.value)}
+                                    onKeyDown={e => {
+                                      if (e.key === 'Enter') handleSaveName(company.id)
+                                      if (e.key === 'Escape') setEditingNameId(null)
+                                    }}
+                                    autoFocus
+                                  />
+                                  <button
+                                    className={styles.inlineSaveBtn}
+                                    onClick={() => handleSaveName(company.id)}
+                                    disabled={savingNameId === company.id}
+                                  >
+                                    {savingNameId === company.id ? '…' : 'Save'}
+                                  </button>
+                                  <button
+                                    className={styles.inlineCancelBtn}
+                                    onClick={() => setEditingNameId(null)}
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className={styles.companyNameRow}>
+                                  <span className={styles.companyNameText}>{company.name}</span>
+                                  <button
+                                    className={styles.iconBtn}
+                                    onClick={() => handleStartEditName(company)}
+                                    title="Edit name"
+                                  >
+                                    ✎
+                                  </button>
+                                </div>
+                              )}
 
-                          {/* Notes */}
-                          {isEditingNotes ? (
-                            <div className={styles.notesEditArea}>
-                              <textarea
-                                className={styles.notesTextarea}
-                                value={notesValue}
-                                onChange={e => setNotesValue(e.target.value)}
-                                rows={2}
-                                placeholder="Add notes…"
-                                autoFocus
-                              />
-                              <div className={styles.notesActions}>
+                              {/* Notes */}
+                              {isEditingNotes ? (
+                                <div className={styles.notesEditArea}>
+                                  <textarea
+                                    className={styles.notesTextarea}
+                                    value={notesValue}
+                                    onChange={e => setNotesValue(e.target.value)}
+                                    rows={2}
+                                    placeholder="Add notes…"
+                                    autoFocus
+                                  />
+                                  <div className={styles.notesActions}>
+                                    <button
+                                      className={styles.inlineSaveBtn}
+                                      onClick={() => handleSaveNotes(company.id)}
+                                      disabled={savingNotesId === company.id}
+                                    >
+                                      {savingNotesId === company.id ? 'Saving…' : 'Save'}
+                                    </button>
+                                    <button
+                                      className={styles.inlineCancelBtn}
+                                      onClick={() => setEditingNotesId(null)}
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
                                 <button
-                                  className={styles.inlineSaveBtn}
-                                  onClick={() => handleSaveNotes(company.id)}
-                                  disabled={savingNotesId === company.id}
+                                  className={styles.notesBtn}
+                                  onClick={() => handleStartEditNotes(company)}
                                 >
-                                  {savingNotesId === company.id ? 'Saving…' : 'Save'}
+                                  {company.notes
+                                    ? company.notes
+                                    : <span className={styles.notesPlaceholder}>+ Add notes</span>
+                                  }
                                 </button>
-                                <button
-                                  className={styles.inlineCancelBtn}
-                                  onClick={() => setEditingNotesId(null)}
-                                >
-                                  Cancel
-                                </button>
-                              </div>
+                              )}
                             </div>
-                          ) : (
-                            <button
-                              className={styles.notesBtn}
-                              onClick={() => handleStartEditNotes(company)}
-                            >
-                              {company.notes
-                                ? company.notes
-                                : <span className={styles.notesPlaceholder}>+ Add notes</span>
-                              }
-                            </button>
-                          )}
+                          </div>
                         </td>
 
-                        {/* ── Plan ── */}
+                        {/* ── Plan — inline select ── */}
                         <td className={styles.td}>
-                          {(() => {
-                            const p = PLANS.find(p => p.value === company.plan)
-                            return (
-                              <div className={styles.planCell}>
-                                <span className={styles[`badge_${company.plan}`] ?? styles.badgeBasic}>
-                                  {p?.label ?? company.plan}
+                          <div className={styles.planCell} data-no-expand>
+                            <select
+                              className={styles.planSelect}
+                              value={company.plan}
+                              onChange={e => handleChangePlan(company.id, e.target.value)}
+                              disabled={savingPlanId === company.id}
+                            >
+                              {PLANS.map(p => (
+                                <option key={p.value} value={p.value}>{p.label}</option>
+                              ))}
+                            </select>
+                            {planSavedId === company.id
+                              ? <span className={styles.planSaved}>✓ Saved</span>
+                              : <span className={styles.planDesc}>
+                                  {PLANS.find(p => p.value === company.plan)?.desc ?? ''}
                                 </span>
-                                <span className={styles.planDesc}>{p?.desc ?? ''}</span>
-                              </div>
-                            )
-                          })()}
+                            }
+                          </div>
                         </td>
 
                         {/* ── Usage this month ── */}
@@ -661,7 +764,7 @@ export default function AdminPage() {
 
                         {/* ── Feature flags ── */}
                         <td className={styles.td}>
-                          <div className={styles.flagGroup}>
+                          <div className={styles.flagGroup} data-no-expand>
                             {FEATURES.map(({ key, label }) => {
                               const on = !!flags[key]
                               return (
@@ -684,7 +787,7 @@ export default function AdminPage() {
                         </td>
 
                         {/* ── Delete ── */}
-                        <td className={styles.tdAction}>
+                        <td className={styles.tdAction} data-no-expand>
                           <button
                             className={styles.deleteUserBtn}
                             onClick={() => handleDeleteCompany(company)}
@@ -694,6 +797,95 @@ export default function AdminPage() {
                           </button>
                         </td>
                       </tr>
+
+                      {/* ── Expansion panel ── */}
+                      {isExpanded && (
+                        <tr className={styles.expandedRow}>
+                          <td colSpan={5} className={styles.expandedCell}>
+                            <div className={styles.expandedPanel}>
+
+                              {/* Activity stats */}
+                              <div className={styles.expandedSection}>
+                                <div className={styles.expandedSectionTitle}>Activity</div>
+                                <div className={styles.expandedStats}>
+                                  <div className={styles.expandedStat}>
+                                    <span className={styles.expandedStatNum}>
+                                      {sessionsThisMonthFor(company.id)}
+                                    </span>
+                                    <span className={styles.expandedStatLabel}>sessions this month</span>
+                                  </div>
+                                  <div className={styles.expandedStat}>
+                                    <span className={styles.expandedStatNum}>
+                                      {sessionCountFor(company.id)}
+                                    </span>
+                                    <span className={styles.expandedStatLabel}>sessions all time</span>
+                                  </div>
+                                  <div className={styles.expandedStat}>
+                                    <span className={styles.expandedStatNum}>
+                                      {loadingZoneCount[company.id]
+                                        ? '…'
+                                        : (companyZoneCounts[company.id] ?? 0)}
+                                    </span>
+                                    <span className={styles.expandedStatLabel}>zones added this month</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Users */}
+                              <div className={styles.expandedSection}>
+                                <div className={styles.expandedSectionTitle}>
+                                  Users ({companyUsers.length})
+                                </div>
+                                {companyUsers.length === 0 ? (
+                                  <p className={styles.expandedEmpty}>No users assigned to this company.</p>
+                                ) : (
+                                  <table className={styles.expandedTable}>
+                                    <thead>
+                                      <tr>
+                                        <th className={styles.expandedTh}>Email</th>
+                                        <th className={styles.expandedTh}>Last login</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {companyUsers.map(u => (
+                                        <tr key={u.id}>
+                                          <td className={styles.expandedTd}>{u.email}</td>
+                                          <td className={styles.expandedTd}>
+                                            {u.last_sign_in_at
+                                              ? new Date(u.last_sign_in_at).toLocaleDateString('en-US', {
+                                                  month: 'short', day: 'numeric', year: 'numeric',
+                                                })
+                                              : <span className={styles.expandedNever}>Never logged in</span>
+                                            }
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                )}
+                              </div>
+
+                              {/* Feature flags readable summary */}
+                              <div className={styles.expandedSection}>
+                                <div className={styles.expandedSectionTitle}>Feature Flags</div>
+                                <div className={styles.expandedFlags}>
+                                  {FEATURES.map(f => (
+                                    <div
+                                      key={f.key}
+                                      className={flags[f.key] ? styles.expandedFlagOn : styles.expandedFlagOff}
+                                    >
+                                      <span className={styles.expandedFlagDot} />
+                                      {f.label}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      </Fragment>
                     )
                   })}
                 </tbody>
