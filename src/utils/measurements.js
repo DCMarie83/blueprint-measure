@@ -125,6 +125,20 @@ export function calculateCeilingSF(baseSF, ceilingType, params, points, pixelsPe
   return { adjustedSF: baseSF, adjustment: 0 }
 }
 
+// Returns the maximum height a painter needs to reach for vaulted or shed ceilings.
+// Vaulted → peak height is the highest point.
+// Shed    → high wall height is the highest point.
+// All other ceiling types (flat, tray) or non-ceiling zones → null.
+export function getMaxReach(zone) {
+  if (zone.ceiling_type === 'vaulted' && zone.ceiling_peak_height > 0) {
+    return zone.ceiling_peak_height
+  }
+  if (zone.ceiling_type === 'shed' && zone.ceiling_high_wall_height > 0) {
+    return zone.ceiling_high_wall_height
+  }
+  return null
+}
+
 // Master function — picks the right formula based on type
 export function calculate(measurementType, points, pixelsPerFoot) {
   if (!points || points.length === 0) return 0

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import styles from './ZoneList.module.css'
+import { getMaxReach } from '../../utils/measurements'
 
 const TYPE_COLORS = {
   SF: '#2e8bff',
@@ -275,6 +276,14 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                       : 'each'}
                   </span>
                 </div>
+                {(() => {
+                  const reach = getMaxReach(zone)
+                  return reach !== null ? (
+                    <div className={styles.zoneMaxReach}>
+                      Max reach: {reach} ft
+                    </div>
+                  ) : null
+                })()}
                 {zone.notes && (
                   <div className={styles.zoneNotes}>{zone.notes}</div>
                 )}

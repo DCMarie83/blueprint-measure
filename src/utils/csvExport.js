@@ -1,16 +1,18 @@
 // Generates and triggers a CSV download for all zones in a session.
+import { getMaxReach } from './measurements'
 
 export function exportCSV(session, zones) {
   const rows = []
 
   // Header row
-  rows.push(['Zone Name', 'Description', 'Surface Type', 'Coats', 'Type', 'Result', 'Unit', 'Notes'])
+  rows.push(['Zone Name', 'Description', 'Surface Type', 'Coats', 'Type', 'Result', 'Unit', 'Max Reach (ft)', 'Notes'])
 
   // One row per zone
   zones.forEach(zone => {
     const unit = zone.measurement_type === 'SF' ? 'sq ft'
                 : zone.measurement_type === 'LF' ? 'lin ft'
                 : 'each'
+    const maxReach = getMaxReach(zone)
     rows.push([
       zone.name,
       zone.description ?? '',
@@ -19,6 +21,7 @@ export function exportCSV(session, zones) {
       zone.measurement_type,
       zone.result ?? 0,
       unit,
+      maxReach !== null ? maxReach : '',
       zone.notes ?? '',
     ])
   })
@@ -35,10 +38,10 @@ export function exportCSV(session, zones) {
     .reduce((sum, z) => sum + (z.result ?? 0), 0)
 
   rows.push([]) // blank separator
-  rows.push(['SUMMARY', '', '', '', '', '', '', ''])
-  rows.push(['Total SF', '', '', '', 'SF', totalSF.toFixed(2), 'sq ft', ''])
-  rows.push(['Total LF', '', '', '', 'LF', totalLF.toFixed(2), 'lin ft', ''])
-  rows.push(['Total Count', '', '', '', 'count', totalCount, 'each', ''])
+  rows.push(['SUMMARY', '', '', '', '', '', '', '', ''])
+  rows.push(['Total SF', '', '', '', 'SF', totalSF.toFixed(2), 'sq ft', '', ''])
+  rows.push(['Total LF', '', '', '', 'LF', totalLF.toFixed(2), 'lin ft', '', ''])
+  rows.push(['Total Count', '', '', '', 'count', totalCount, 'each', '', ''])
 
   // Build CSV string
   const csv = rows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n')
