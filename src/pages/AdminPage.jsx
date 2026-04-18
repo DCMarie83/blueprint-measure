@@ -4,9 +4,10 @@ import { supabase } from '../lib/supabase'
 import styles from './AdminPage.module.css'
 
 const FEATURES = [
-  { key: 'multi_page_pdf', label: 'Multi-page PDF' },
-  { key: 'csv_export',     label: 'CSV Export'     },
-  { key: 'redraw_zones',   label: 'Redraw Zones'   },
+  { key: 'multi_page_pdf',   label: 'Multi-page PDF'   },
+  { key: 'csv_export',       label: 'CSV Export'       },
+  { key: 'redraw_zones',     label: 'Redraw Zones'     },
+  { key: 'paint_calculator', label: 'Paint Calculator' },
 ]
 
 const PLAN_DESC = {

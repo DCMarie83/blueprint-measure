@@ -7,6 +7,7 @@ export function useSession(sessionId) {
   const { user } = useAuth()
   const [session, setSession] = useState(null)
   const [zones, setZones] = useState([])
+  const [enabledFeatures, setEnabledFeatures] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -38,6 +39,16 @@ export function useSession(sessionId) {
       setSession(sessionData)
       setZones(zonesData)
     }
+
+    // Load the tenant's feature flags via user_profiles → companies join.
+    // Silently falls back to an empty object if the user has no company assigned.
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('company_id, companies(features)')
+      .eq('user_id', user.id)
+      .single()
+    setEnabledFeatures(profile?.companies?.features ?? {})
+
     setLoading(false)
   }, [user, sessionId])
 
@@ -92,6 +103,7 @@ export function useSession(sessionId) {
       notes: updates.notes ?? null,
       surface_type: updates.surface_type ?? null,
       coat_count: updates.coat_count ?? 1,
+      surface_finish: updates.surface_finish ?? 'smooth',
       ceiling_type: updates.ceiling_type ?? null,
       ceiling_peak_height:    updates.ceiling_peak_height    ?? null,
       ceiling_wall_height:    updates.ceiling_wall_height    ?? null,
@@ -146,5 +158,5 @@ export function useSession(sessionId) {
     return data
   }
 
-  return { session, zones, loading, error, saveZone, updateZone, redrawZone, deleteZone, updateSession, refetch: fetchSession }
+  return { session, zones, enabledFeatures, loading, error, saveZone, updateZone, redrawZone, deleteZone, updateSession, refetch: fetchSession }
 }

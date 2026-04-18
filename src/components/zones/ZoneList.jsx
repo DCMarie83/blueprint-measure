@@ -17,7 +17,7 @@ const CEILING_TYPE_LABELS = {
   shed: 'Shed',
 }
 
-export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawingZoneId }) {
+export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawingZoneId, enabledFeatures = {} }) {
   const [editingId, setEditingId] = useState(null)
   const [editName, setEditName] = useState('')
   const [editDescription, setEditDescription] = useState('')
@@ -229,24 +229,26 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                   ))}
                 </div>
 
-                <div className={styles.editFinishGroup}>
-                  <span className={styles.editFinishLabel}>Surface finish</span>
-                  <div className={styles.editFinishBtns}>
-                    {[
-                      { value: 'smooth',   label: 'Smooth' },
-                      { value: 'textured', label: 'Textured' },
-                    ].map(({ value, label }) => (
-                      <button
-                        key={value}
-                        type="button"
-                        className={`${styles.editCoatBtn} ${editSurfaceFinish === value ? styles.editCoatActive : ''}`}
-                        onClick={() => setEditSurfaceFinish(value)}
-                      >
-                        {label}
-                      </button>
-                    ))}
+                {enabledFeatures.paint_calculator && (
+                  <div className={styles.editFinishGroup}>
+                    <span className={styles.editFinishLabel}>Surface finish</span>
+                    <div className={styles.editFinishBtns}>
+                      {[
+                        { value: 'smooth',   label: 'Smooth (350 SF/gal)' },
+                        { value: 'textured', label: 'Textured (275 SF/gal)' },
+                      ].map(({ value, label }) => (
+                        <button
+                          key={value}
+                          type="button"
+                          className={`${styles.editCoatBtn} ${editSurfaceFinish === value ? styles.editCoatActive : ''}`}
+                          onClick={() => setEditSurfaceFinish(value)}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
                 <textarea
                   className={styles.editTextarea}
                   value={editNotes}
@@ -306,14 +308,22 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                     </div>
                   ) : null
                 })()}
-                {(() => {
-                  const gal = estimatePaint(zone)
-                  return gal !== null ? (
-                    <div className={styles.zonePaintEstimate}>
-                      Est. paint: {gal} gal
+                {zone.measurement_type === 'SF' && (
+                  enabledFeatures.paint_calculator ? (
+                    (() => {
+                      const gal = estimatePaint(zone)
+                      return gal !== null ? (
+                        <div className={styles.zonePaintEstimate}>
+                          Est. paint: {gal} gal
+                        </div>
+                      ) : null
+                    })()
+                  ) : (
+                    <div className={styles.zonePaintLocked}>
+                      🔒 Paint calculator — available on paid plans
                     </div>
-                  ) : null
-                })()}
+                  )
+                )}
                 {zone.notes && (
                   <div className={styles.zoneNotes}>{zone.notes}</div>
                 )}

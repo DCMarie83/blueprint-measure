@@ -20,7 +20,7 @@ import styles from './SessionPage.module.css'
 export default function SessionPage() {
   const { sessionId } = useParams()
   const navigate = useNavigate()
-  const { session, zones, loading, error, saveZone, updateZone, redrawZone, deleteZone, updateSession } = useSession(sessionId)
+  const { session, zones, enabledFeatures, loading, error, saveZone, updateZone, redrawZone, deleteZone, updateSession } = useSession(sessionId)
 
   // ── Blueprint state ──────────────────────────────────────────────────────────
   const [blueprintUrl, setBlueprintUrl] = useState(null)
@@ -482,6 +482,7 @@ export default function SessionPage() {
               onUpdate={handleUpdateZone}
               onRedraw={handleRedrawZone}
               redrawingZoneId={redrawingZoneId}
+              enabledFeatures={enabledFeatures}
             />
           </div>
         )}
