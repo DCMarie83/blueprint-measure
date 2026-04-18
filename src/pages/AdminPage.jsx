@@ -10,9 +10,22 @@ const FEATURES = [
   { key: 'paint_calculator', label: 'Paint Calculator' },
 ]
 
-const PLAN_DESC = {
-  free: 'Basic measurement only',
-  paid: 'All features unlocked',
+const PLANS = [
+  { value: 'basic',    label: 'Basic',    limit: 10,  desc: '$150/mo — 10 blueprints/month, standard measurement' },
+  { value: 'plus',     label: 'Plus',     limit: 25,  desc: '$250/mo — 25 blueprints/month, all features' },
+  { value: 'ultra',    label: 'Ultra',    limit: 50,  desc: '$399/mo — 50 blueprints/month, everything plus priority support' },
+  { value: 'founders', label: 'Founders', limit: 25,  desc: '$50/mo — 25 blueprints/month, Plus features, locked for life' },
+  { value: 'pilot',    label: 'Pilot',    limit: 999, desc: 'Free pilot access' },
+]
+
+// Default feature flags applied when a company is created. Admins can override
+// individual flags at any time using the toggles in the company table.
+const PLAN_FEATURES = {
+  basic:    { multi_page_pdf: false, csv_export: true,  redraw_zones: false, paint_calculator: false },
+  plus:     { multi_page_pdf: true,  csv_export: true,  redraw_zones: true,  paint_calculator: true  },
+  ultra:    { multi_page_pdf: true,  csv_export: true,  redraw_zones: true,  paint_calculator: true  },
+  founders: { multi_page_pdf: true,  csv_export: true,  redraw_zones: true,  paint_calculator: true  },
+  pilot:    { multi_page_pdf: true,  csv_export: true,  redraw_zones: true,  paint_calculator: true  },
 }
 
 // ── tiny helper — show an inline "Sent!" / "Email sent!" for 3 s ─────────────
@@ -39,7 +52,7 @@ export default function AdminPage() {
   // ── Add company form ──────────────────────────────────────────────────────────
   const [showAddCompany, setShowAddCompany] = useState(false)
   const [newCompanyName, setNewCompanyName] = useState('')
-  const [newCompanyPlan, setNewCompanyPlan] = useState('free')
+  const [newCompanyPlan, setNewCompanyPlan] = useState('basic')
   const [savingCompany,  setSavingCompany]  = useState(false)
   const [companyError,   setCompanyError]   = useState('')
 
@@ -137,6 +150,17 @@ export default function AdminPage() {
     return sessions.filter(s => ids.includes(s.user_id)).length
   }
 
+  function sessionsThisMonthFor(companyId) {
+    const now = new Date()
+    const ids = userProfiles.filter(p => p.company_id === companyId).map(p => p.user_id)
+    return sessions.filter(s => {
+      const d = new Date(s.created_at)
+      return ids.includes(s.user_id) &&
+        d.getFullYear() === now.getFullYear() &&
+        d.getMonth()    === now.getMonth()
+    }).length
+  }
+
   function companyNameFor(userId) {
     const profile = userProfiles.find(p => p.user_id === userId)
     if (!profile?.company_id) return '—'
@@ -157,15 +181,22 @@ export default function AdminPage() {
     setSavingCompany(true)
     setCompanyError('')
     try {
+      const plan       = newCompanyPlan
+      const planConfig = PLANS.find(p => p.value === plan)
       const { data, error } = await supabase
         .from('companies')
-        .insert({ name: newCompanyName.trim(), plan: newCompanyPlan, features: {} })
+        .insert({
+          name:            newCompanyName.trim(),
+          plan,
+          blueprint_limit: planConfig?.limit ?? 10,
+          features:        PLAN_FEATURES[plan] ?? {},
+        })
         .select()
         .single()
       if (error) throw new Error(error.message)
       setCompanies(prev => [...prev, data])
       setNewCompanyName('')
-      setNewCompanyPlan('free')
+      setNewCompanyPlan('basic')
       setShowAddCompany(false)
     } catch (err) {
       setCompanyError(err.message)
@@ -484,8 +515,9 @@ export default function AdminPage() {
                     value={newCompanyPlan}
                     onChange={e => setNewCompanyPlan(e.target.value)}
                   >
-                    <option value="free">Free</option>
-                    <option value="paid">Paid</option>
+                    {PLANS.map(p => (
+                      <option key={p.value} value={p.value}>{p.label} — {p.desc}</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -507,7 +539,7 @@ export default function AdminPage() {
                   <tr>
                     <th className={styles.th}>Company</th>
                     <th className={styles.th}>Plan</th>
-                    <th className={styles.th}>Sessions</th>
+                    <th className={styles.th}>Usage / Month</th>
                     <th className={styles.th}>Feature Flags</th>
                     <th className={styles.th}></th>
                   </tr>
@@ -604,16 +636,28 @@ export default function AdminPage() {
 
                         {/* ── Plan ── */}
                         <td className={styles.td}>
-                          <div className={styles.planCell}>
-                            <span className={company.plan === 'paid' ? styles.badgePaid : styles.badgeFree}>
-                              {company.plan}
-                            </span>
-                            <span className={styles.planDesc}>{PLAN_DESC[company.plan]}</span>
-                          </div>
+                          {(() => {
+                            const p = PLANS.find(p => p.value === company.plan)
+                            return (
+                              <div className={styles.planCell}>
+                                <span className={styles[`badge_${company.plan}`] ?? styles.badgeBasic}>
+                                  {p?.label ?? company.plan}
+                                </span>
+                                <span className={styles.planDesc}>{p?.desc ?? ''}</span>
+                              </div>
+                            )
+                          })()}
                         </td>
 
-                        {/* ── Sessions ── */}
-                        <td className={styles.td}>{sessionCountFor(company.id)}</td>
+                        {/* ── Usage this month ── */}
+                        <td className={styles.td}>
+                          <div className={styles.usageCell}>
+                            <span className={styles.usageCount}>
+                              {sessionsThisMonthFor(company.id)} / {company.blueprint_limit ?? '∞'}
+                            </span>
+                            <span className={styles.usageLabel}>blueprints this month</span>
+                          </div>
+                        </td>
 
                         {/* ── Feature flags ── */}
                         <td className={styles.td}>

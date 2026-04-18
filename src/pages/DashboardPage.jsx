@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -13,7 +13,20 @@ export default function DashboardPage() {
   const { sessions, loading, createSession, deleteSession } = useSessions()
   const [showNewSession, setShowNewSession] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(null) // session id to confirm delete
+  const [companyPlan, setCompanyPlan] = useState(null)
   const navigate = useNavigate()
+
+  // Fetch the user's company plan to show the Founders badge.
+  // Skipped for the super admin who has no company assignment.
+  useEffect(() => {
+    if (!user || user.email === 'main@ngautomationhub.com') return
+    supabase
+      .from('user_profiles')
+      .select('companies(plan)')
+      .eq('user_id', user.id)
+      .single()
+      .then(({ data }) => setCompanyPlan(data?.companies?.plan ?? null))
+  }, [user])
 
   async function handleCreate(fields) {
     const session = await createSession(fields)
@@ -43,6 +56,9 @@ export default function DashboardPage() {
         </div>
         <div className={styles.userBar}>
           <span className={styles.email}>{user?.email}</span>
+          {companyPlan === 'founders' && (
+            <span className={styles.foundersBadge}>⭐ Founders</span>
+          )}
           {user?.email === 'main@ngautomationhub.com' && (
             <Link to="/admin" className={styles.adminLink}>Admin</Link>
           )}

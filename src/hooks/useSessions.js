@@ -30,6 +30,43 @@ export function useSessions() {
   }, [fetchSessions])
 
   async function createSession({ clientName, projectName }) {
+    // Check blueprint limit before creating — skipped for super admin.
+    if (user.email !== 'main@ngautomationhub.com') {
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('company_id, companies(blueprint_limit)')
+        .eq('user_id', user.id)
+        .single()
+
+      const companyId    = profile?.company_id
+      const blueprintLimit = profile?.companies?.blueprint_limit
+
+      if (companyId && blueprintLimit != null) {
+        // Find all users in the same company, then count their sessions this month.
+        const { data: peers } = await supabase
+          .from('user_profiles')
+          .select('user_id')
+          .eq('company_id', companyId)
+
+        const peerIds = (peers ?? []).map(p => p.user_id)
+
+        const now        = new Date()
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+
+        const { count } = await supabase
+          .from('sessions')
+          .select('id', { count: 'exact', head: true })
+          .in('user_id', peerIds)
+          .gte('created_at', monthStart)
+
+        if (count >= blueprintLimit) {
+          throw new Error(
+            'You have reached your monthly blueprint limit. Please upgrade your plan to continue.'
+          )
+        }
+      }
+    }
+
     const { data, error } = await supabase
       .from('sessions')
       .insert({
