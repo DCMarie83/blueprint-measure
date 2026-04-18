@@ -40,14 +40,24 @@ export function useSession(sessionId) {
       setZones(zonesData)
     }
 
-    // Load the tenant's feature flags via user_profiles → companies join.
-    // Silently falls back to an empty object if the user has no company assigned.
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('company_id, companies(features)')
-      .eq('user_id', user.id)
-      .single()
-    setEnabledFeatures(profile?.companies?.features ?? {})
+    // The super admin always gets every feature unlocked, regardless of company flags.
+    if (user.email === 'main@ngautomationhub.com') {
+      setEnabledFeatures({
+        multi_page_pdf:   true,
+        csv_export:       true,
+        redraw_zones:     true,
+        paint_calculator: true,
+      })
+    } else {
+      // Load the tenant's feature flags via user_profiles → companies join.
+      // Silently falls back to an empty object if the user has no company assigned.
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('company_id, companies(features)')
+        .eq('user_id', user.id)
+        .single()
+      setEnabledFeatures(profile?.companies?.features ?? {})
+    }
 
     setLoading(false)
   }, [user, sessionId])
