@@ -125,6 +125,19 @@ export function calculateCeilingSF(baseSF, ceilingType, params, points, pixelsPe
   return { adjustedSF: baseSF, adjustment: 0 }
 }
 
+// Estimates paint quantity in gallons for a zone.
+// Coverage rates: smooth = 350 SF/gal, textured = 275 SF/gal.
+// Accounts for coat_count and rounds up to the nearest quarter gallon.
+// Returns null when result is 0 or measurement type isn't SF.
+export function estimatePaint(zone) {
+  if (zone.measurement_type !== 'SF' || !zone.result || zone.result <= 0) return null
+  const coverageRate = zone.surface_finish === 'textured' ? 275 : 350
+  const coats        = zone.coat_count && zone.coat_count > 0 ? zone.coat_count : 1
+  const rawGallons   = (zone.result * coats) / coverageRate
+  // Round up to nearest 0.25
+  return Math.ceil(rawGallons * 4) / 4
+}
+
 // Returns the maximum height a painter needs to reach for vaulted or shed ceilings.
 // Vaulted → peak height is the highest point.
 // Shed    → high wall height is the highest point.

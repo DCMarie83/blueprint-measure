@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import styles from './ZoneList.module.css'
-import { getMaxReach } from '../../utils/measurements'
+import { getMaxReach, estimatePaint } from '../../utils/measurements'
 
 const TYPE_COLORS = {
   SF: '#2e8bff',
@@ -23,6 +23,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
   const [editDescription, setEditDescription] = useState('')
   const [editSurfaceType, setEditSurfaceType] = useState('')
   const [editCoatCount, setEditCoatCount] = useState(1)
+  const [editSurfaceFinish, setEditSurfaceFinish] = useState('smooth')
   const [editNotes, setEditNotes] = useState('')
 
   // Ceiling edit fields
@@ -42,6 +43,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
     setEditDescription(zone.description ?? '')
     setEditSurfaceType(zone.surface_type ?? '')
     setEditCoatCount(zone.coat_count ?? 1)
+    setEditSurfaceFinish(zone.surface_finish ?? 'smooth')
     setEditNotes(zone.notes ?? '')
     setEditCeilingType(zone.ceiling_type ?? 'flat')
     setEditCeilingPeakHeight(zone.ceiling_peak_height ?? '')
@@ -66,6 +68,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
         description: editDescription.trim() || null,
         surface_type: editSurfaceType || null,
         coat_count: editCoatCount,
+        surface_finish: editSurfaceFinish,
         notes: editNotes.trim() || null,
         ceiling_type: isCeiling ? editCeilingType : null,
         ceiling_peak_height:    isCeiling && editCeilingType === 'vaulted' ? parseFloat(editCeilingPeakHeight)    || null : null,
@@ -225,6 +228,25 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                     </button>
                   ))}
                 </div>
+
+                <div className={styles.editFinishGroup}>
+                  <span className={styles.editFinishLabel}>Surface finish</span>
+                  <div className={styles.editFinishBtns}>
+                    {[
+                      { value: 'smooth',   label: 'Smooth' },
+                      { value: 'textured', label: 'Textured' },
+                    ].map(({ value, label }) => (
+                      <button
+                        key={value}
+                        type="button"
+                        className={`${styles.editCoatBtn} ${editSurfaceFinish === value ? styles.editCoatActive : ''}`}
+                        onClick={() => setEditSurfaceFinish(value)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <textarea
                   className={styles.editTextarea}
                   value={editNotes}
@@ -281,6 +303,14 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                   return reach !== null ? (
                     <div className={styles.zoneMaxReach}>
                       Max reach: {reach} ft
+                    </div>
+                  ) : null
+                })()}
+                {(() => {
+                  const gal = estimatePaint(zone)
+                  return gal !== null ? (
+                    <div className={styles.zonePaintEstimate}>
+                      Est. paint: {gal} gal
                     </div>
                   ) : null
                 })()}

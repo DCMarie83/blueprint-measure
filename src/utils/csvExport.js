@@ -1,11 +1,11 @@
 // Generates and triggers a CSV download for all zones in a session.
-import { getMaxReach } from './measurements'
+import { getMaxReach, estimatePaint } from './measurements'
 
 export function exportCSV(session, zones) {
   const rows = []
 
   // Header row
-  rows.push(['Zone Name', 'Description', 'Surface Type', 'Coats', 'Type', 'Result', 'Unit', 'Max Reach (ft)', 'Notes'])
+  rows.push(['Zone Name', 'Description', 'Surface Type', 'Coats', 'Surface Finish', 'Type', 'Result', 'Unit', 'Max Reach (ft)', 'Est. Paint (gal)', 'Notes'])
 
   // One row per zone
   zones.forEach(zone => {
@@ -13,15 +13,18 @@ export function exportCSV(session, zones) {
                 : zone.measurement_type === 'LF' ? 'lin ft'
                 : 'each'
     const maxReach = getMaxReach(zone)
+    const paintGal = estimatePaint(zone)
     rows.push([
       zone.name,
       zone.description ?? '',
       zone.surface_type ?? '',
       zone.coat_count ?? 1,
+      zone.surface_finish ?? 'smooth',
       zone.measurement_type,
       zone.result ?? 0,
       unit,
       maxReach !== null ? maxReach : '',
+      paintGal !== null ? paintGal : '',
       zone.notes ?? '',
     ])
   })
@@ -38,10 +41,10 @@ export function exportCSV(session, zones) {
     .reduce((sum, z) => sum + (z.result ?? 0), 0)
 
   rows.push([]) // blank separator
-  rows.push(['SUMMARY', '', '', '', '', '', '', '', ''])
-  rows.push(['Total SF', '', '', '', 'SF', totalSF.toFixed(2), 'sq ft', '', ''])
-  rows.push(['Total LF', '', '', '', 'LF', totalLF.toFixed(2), 'lin ft', '', ''])
-  rows.push(['Total Count', '', '', '', 'count', totalCount, 'each', '', ''])
+  rows.push(['SUMMARY', '', '', '', '', '', '', '', '', '', ''])
+  rows.push(['Total SF', '', '', '', '', 'SF', totalSF.toFixed(2), 'sq ft', '', '', ''])
+  rows.push(['Total LF', '', '', '', '', 'LF', totalLF.toFixed(2), 'lin ft', '', '', ''])
+  rows.push(['Total Count', '', '', '', '', 'count', totalCount, 'each', '', '', ''])
 
   // Build CSV string
   const csv = rows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n')
