@@ -244,6 +244,38 @@
   cursor: not-allowed;
 }
 
+/* "Done — Save Zone" — same green as finishBtn, used during accumulation */
+.finalizeBtn {
+  background: var(--color-success);
+  border: none;
+  border-radius: var(--radius);
+  padding: 9px;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  transition: opacity 0.15s;
+}
+
+.finalizeBtn:hover {
+  opacity: 0.88;
+}
+
+/* "Add Another Segment" — blue secondary action */
+.addSegmentBtn {
+  background: rgba(46, 139, 255, 0.10);
+  border: 1px solid rgba(46, 139, 255, 0.35);
+  border-radius: var(--radius);
+  padding: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary);
+  transition: background 0.15s;
+}
+
+.addSegmentBtn:hover {
+  background: rgba(46, 139, 255, 0.18);
+}
+
 .cancelBtn {
   background: none;
   border: 1px solid var(--color-border);
@@ -256,6 +288,74 @@
 
 .cancelBtn:hover {
   color: var(--color-text);
+}
+
+/* Running total display during accumulation */
+.accumTotal {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  background: rgba(46, 139, 255, 0.07);
+  border: 1px solid rgba(46, 139, 255, 0.2);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+}
+
+.accumLabel {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.accumValue {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+/* Zone color picker */
+.colorSwatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.colorSwatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.1s, border-color 0.1s;
+  flex-shrink: 0;
+}
+
+.colorSwatch:hover {
+  transform: scale(1.15);
+}
+
+.colorSwatchActive {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+.colorAuto {
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.colorAuto.colorSwatchActive {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary);
+  color: var(--color-primary);
 }
 
 /* --- Ceiling type extra fields --- */

@@ -30,6 +30,7 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
   calibrating,
   onCalibrationLine,
   redrawingZoneId,
+  hiddenZoneIds,
 }, ref) {
   const canvasRef = useRef(null)
   const imageRef = useRef(null)
@@ -70,18 +71,20 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
       ctx.drawImage(imageRef.current, 0, 0)
     }
 
-    // Draw saved zones (skip the one currently being redrawn)
+    // Draw saved zones (skip hidden zones and the one being redrawn)
     zones.forEach((zone, i) => {
       if (zone.id === redrawingZoneId) return
-      if (!zone.points || zone.points.length < 2) return
-      const color = ZONE_COLORS[i % ZONE_COLORS.length]
+      if (hiddenZoneIds?.has(zone.id)) return
+      if (!zone.points || zone.points.filter(p => p !== null).length < 2) return
+      // Use the zone's custom color if set, otherwise cycle through the palette
+      const color = zone.color ?? ZONE_COLORS[i % ZONE_COLORS.length]
       drawZone(ctx, zone.points, color, zone.measurement_type, zone.name, zone.result, false, zone.description, zone.surface_type, zone.coat_count, zone.ceiling_type)
     })
 
-    // Draw active (in-progress) zone
-    if (activeZone && activeZone.points && activeZone.points.length > 0) {
+    // Draw active (in-progress) zone — includes finished segments + current points
+    if (activeZone && activeZone.points && activeZone.points.some(p => p !== null)) {
       const colorIdx = (activeZone.colorIndex ?? zones.length) % ZONE_COLORS.length
-      const color = ZONE_COLORS[colorIdx]
+      const color = activeZone.color ?? ZONE_COLORS[colorIdx]
       drawZone(ctx, activeZone.points, color, activeZone.measurement_type, '', null, true, null, null, null)
     }
 
@@ -105,7 +108,7 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
     }
 
     ctx.restore()
-  }, [zones, activeZone, calibrating, redrawingZoneId])
+  }, [zones, activeZone, calibrating, redrawingZoneId, hiddenZoneIds])
 
   // Stable ref so effects and event listeners always call the latest redraw
   // without needing it in their dependency arrays (which would cause side-effects
@@ -210,21 +213,34 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
     if (points.length === 0) return
     ctx.save()
 
-    // Fill for SF zones
-    if (type === 'SF' && points.length >= 3) {
+    // Filter out null sentinels for operations that need actual point coordinates
+    const nonNullPoints = points.filter(p => p !== null && p !== undefined)
+
+    // Fill for SF zones (SF never has nulls, but filter defensively)
+    if (type === 'SF' && nonNullPoints.length >= 3) {
       ctx.beginPath()
-      ctx.moveTo(points[0].x, points[0].y)
-      points.slice(1).forEach(p => ctx.lineTo(p.x, p.y))
+      ctx.moveTo(nonNullPoints[0].x, nonNullPoints[0].y)
+      nonNullPoints.slice(1).forEach(p => ctx.lineTo(p.x, p.y))
       ctx.closePath()
       ctx.fillStyle = color + (isActive ? '28' : '22')
       ctx.fill()
     }
 
-    // Stroke — skip for count (markers don't connect)
-    if (type !== 'count' && points.length >= 2) {
+    // Stroke — skip for count (markers don't connect).
+    // Null sentinels lift the pen so disconnected segments draw as separate lines.
+    if (type !== 'count' && nonNullPoints.length >= 2) {
       ctx.beginPath()
-      ctx.moveTo(points[0].x, points[0].y)
-      points.slice(1).forEach(p => ctx.lineTo(p.x, p.y))
+      let penDown = false
+      for (const p of points) {
+        if (p === null || p === undefined) {
+          penDown = false
+        } else if (!penDown) {
+          ctx.moveTo(p.x, p.y)
+          penDown = true
+        } else {
+          ctx.lineTo(p.x, p.y)
+        }
+      }
       if (type === 'SF' && !isActive) ctx.closePath()
       ctx.strokeStyle = color
       ctx.lineWidth = 2 / transformRef.current.scale
@@ -232,10 +248,11 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
       ctx.stroke()
     }
 
-    // Draw points — numbered circles for count, regular dots for others
+    // Draw points — numbered circles for count, regular dots for others.
+    // Always operate on nonNullPoints so null sentinels are invisible.
     if (type === 'count') {
       const s = transformRef.current.scale
-      points.forEach((p, idx) => {
+      nonNullPoints.forEach((p, idx) => {
         const r = 10 / s
         ctx.fillStyle = color
         ctx.strokeStyle = '#fff'
@@ -251,21 +268,21 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
         ctx.fillText(String(idx + 1), p.x, p.y)
       })
     } else {
-      points.forEach((p, idx) => {
-        ctx.fillStyle = isActive && idx === points.length - 1 ? '#fff' : color
+      nonNullPoints.forEach((p, idx) => {
+        ctx.fillStyle = isActive && idx === nonNullPoints.length - 1 ? '#fff' : color
         ctx.strokeStyle = '#fff'
         ctx.lineWidth = 1.5 / transformRef.current.scale
         ctx.beginPath()
-        ctx.arc(p.x, p.y, (isActive && idx === points.length - 1 ? 6 : 4) / transformRef.current.scale, 0, Math.PI * 2)
+        ctx.arc(p.x, p.y, (isActive && idx === nonNullPoints.length - 1 ? 6 : 4) / transformRef.current.scale, 0, Math.PI * 2)
         ctx.fill()
         ctx.stroke()
       })
     }
 
     // Label for completed zones
-    if (!isActive && name && points.length >= 1) {
-      const cx = points.reduce((s, p) => s + p.x, 0) / points.length
-      const cy = points.reduce((s, p) => s + p.y, 0) / points.length
+    if (!isActive && name && nonNullPoints.length >= 1) {
+      const cx = nonNullPoints.reduce((s, p) => s + p.x, 0) / nonNullPoints.length
+      const cy = nonNullPoints.reduce((s, p) => s + p.y, 0) / nonNullPoints.length
       const unitLabel = type === 'count' ? 'each' : type
       const labelParts = [name]
       if (description) labelParts.push(description)

@@ -50,6 +50,15 @@ export default function SessionPage() {
   const [drawnPoints, setDrawnPoints] = useState([])
   const [redrawingZoneId, setRedrawingZoneId] = useState(null)
 
+  // ── Multi-segment accumulation (LF and count zones only) ─────────────────────
+  // After finishing each segment the user can add more disconnected segments that
+  // accumulate into one zone total before saving.
+  const [finishedSegments, setFinishedSegments] = useState([]) // [{ points: [] }]
+  const [isAccumulating, setIsAccumulating] = useState(false)
+
+  // ── Zone visibility (hide/show layers on canvas) ──────────────────────────────
+  const [hiddenZoneIds, setHiddenZoneIds] = useState(new Set())
+
   // ── Session restore ──────────────────────────────────────────────────────────
   // Runs when Supabase returns the session — restores blueprint URL and saved page.
   useEffect(() => {
@@ -143,13 +152,15 @@ export default function SessionPage() {
   // Switch to a different PDF page. Warns and cancels any active zone drawing.
   async function handlePageSwitch(pageNum) {
     if (pageNum === currentPage) return
-    if (isDrawing) {
+    if (isDrawing || isAccumulating) {
       const confirmed = window.confirm(
         'You have an active zone in progress. Switch pages and discard it?'
       )
       if (!confirmed) return
       // Cancel the in-progress zone before switching
       setIsDrawing(false)
+      setIsAccumulating(false)
+      setFinishedSegments([])
       setActiveZoneMeta(null)
       setDrawnPoints([])
       setRedrawingZoneId(null)
@@ -166,7 +177,7 @@ export default function SessionPage() {
   function handleStartDrawing({ name, description, surface_type, coat_count, type,
     ceiling_type, ceiling_peak_height, ceiling_wall_height,
     ceiling_tray_perimeter, ceiling_drop_depth,
-    ceiling_low_wall_height, ceiling_high_wall_height }) {
+    ceiling_low_wall_height, ceiling_high_wall_height, color }) {
     setActiveZoneMeta({
       name, description, surface_type, coat_count, type,
       ceiling_type: ceiling_type ?? null,
@@ -176,7 +187,10 @@ export default function SessionPage() {
       ceiling_drop_depth:     ceiling_drop_depth     ?? null,
       ceiling_low_wall_height:  ceiling_low_wall_height  ?? null,
       ceiling_high_wall_height: ceiling_high_wall_height ?? null,
+      color: color ?? null,
     })
+    setFinishedSegments([])
+    setIsAccumulating(false)
     setDrawnPoints([])
     setIsDrawing(true)
   }
@@ -197,7 +211,10 @@ export default function SessionPage() {
       ceiling_drop_depth:     zone.ceiling_drop_depth     ?? null,
       ceiling_low_wall_height:  zone.ceiling_low_wall_height  ?? null,
       ceiling_high_wall_height: zone.ceiling_high_wall_height ?? null,
+      color: zone.color ?? null,
     })
+    setFinishedSegments([])
+    setIsAccumulating(false)
     setDrawnPoints([])
     setIsDrawing(true)
   }
@@ -233,9 +250,20 @@ export default function SessionPage() {
       return
     }
 
+    // LF and count zones enter accumulation mode: the finished segment is added
+    // to the running list and the user can trace additional disconnected segments
+    // before clicking "Done — Save Zone" to finalise.
+    if (activeZoneMeta.type === 'LF' || activeZoneMeta.type === 'count') {
+      setFinishedSegments(prev => [...prev, { points: drawnPoints }])
+      setDrawnPoints([])
+      setIsDrawing(false)
+      setIsAccumulating(true)
+      return
+    }
+
+    // SF zones: save immediately (single polygon only)
     let result = calculate(activeZoneMeta.type, drawnPoints, pixelsPerFoot)
 
-    // For ceiling zones with a non-flat type, apply the slope/tray adjustment
     if (activeZoneMeta.surface_type === 'Ceiling' &&
         activeZoneMeta.ceiling_type && activeZoneMeta.ceiling_type !== 'flat') {
       const { adjustedSF } = calculateCeilingSF(result, activeZoneMeta.ceiling_type, {
@@ -251,10 +279,8 @@ export default function SessionPage() {
 
     try {
       if (redrawingZoneId) {
-        // Retrace — replace points and result on the existing zone record
         await redrawZone(redrawingZoneId, drawnPoints, result)
       } else {
-        // New zone — include the current page so it stays on this page
         await saveZone({
           name: activeZoneMeta.name,
           description: activeZoneMeta.description,
@@ -267,6 +293,7 @@ export default function SessionPage() {
           ceiling_drop_depth:     activeZoneMeta.ceiling_drop_depth     ?? null,
           ceiling_low_wall_height:  activeZoneMeta.ceiling_low_wall_height  ?? null,
           ceiling_high_wall_height: activeZoneMeta.ceiling_high_wall_height ?? null,
+          color: activeZoneMeta.color ?? null,
           measurement_type: activeZoneMeta.type,
           points: drawnPoints,
           result,
@@ -283,11 +310,89 @@ export default function SessionPage() {
     setRedrawingZoneId(null)
   }, [activeZoneMeta, drawnPoints, pixelsPerFoot, saveZone, redrawZone, redrawingZoneId, currentPage])
 
-  function handleCancelDrawing() {
+  // Start drawing the next disconnected segment within the same zone.
+  function handleAddSegment() {
+    setDrawnPoints([])
+    setIsDrawing(true)
+  }
+
+  // Combine all finished segments (+ any current in-progress points) into one
+  // zone record and save it. Called when the user clicks "Done — Save Zone".
+  const handleFinalizeZone = useCallback(async () => {
+    if (!activeZoneMeta) return
+    if (!pixelsPerFoot) {
+      alert('Please set a scale before measuring.')
+      return
+    }
+
+    // Include any in-progress points as a final segment
+    const allSegments = drawnPoints.length > 0
+      ? [...finishedSegments, { points: drawnPoints }]
+      : finishedSegments
+
+    if (allSegments.length === 0) return
+
+    // Build flat points array with null sentinels between segments
+    const combinedPoints = []
+    allSegments.forEach((seg, i) => {
+      if (i > 0) combinedPoints.push(null)
+      combinedPoints.push(...seg.points)
+    })
+
+    const result = calculate(activeZoneMeta.type, combinedPoints, pixelsPerFoot)
+
+    try {
+      if (redrawingZoneId) {
+        await redrawZone(redrawingZoneId, combinedPoints, result)
+      } else {
+        await saveZone({
+          name: activeZoneMeta.name,
+          description: activeZoneMeta.description,
+          surface_type: activeZoneMeta.surface_type,
+          coat_count: activeZoneMeta.coat_count,
+          ceiling_type: activeZoneMeta.ceiling_type ?? null,
+          ceiling_peak_height:    activeZoneMeta.ceiling_peak_height    ?? null,
+          ceiling_wall_height:    activeZoneMeta.ceiling_wall_height    ?? null,
+          ceiling_tray_perimeter: activeZoneMeta.ceiling_tray_perimeter ?? null,
+          ceiling_drop_depth:     activeZoneMeta.ceiling_drop_depth     ?? null,
+          ceiling_low_wall_height:  activeZoneMeta.ceiling_low_wall_height  ?? null,
+          ceiling_high_wall_height: activeZoneMeta.ceiling_high_wall_height ?? null,
+          color: activeZoneMeta.color ?? null,
+          measurement_type: activeZoneMeta.type,
+          points: combinedPoints,
+          result,
+          page_number: currentPage,
+        })
+      }
+    } catch (err) {
+      alert('Error saving zone: ' + err.message)
+      return
+    }
+
     setIsDrawing(false)
+    setIsAccumulating(false)
+    setFinishedSegments([])
     setActiveZoneMeta(null)
     setDrawnPoints([])
     setRedrawingZoneId(null)
+  }, [activeZoneMeta, finishedSegments, drawnPoints, pixelsPerFoot, saveZone, redrawZone, redrawingZoneId, currentPage])
+
+  function handleCancelDrawing() {
+    setIsDrawing(false)
+    setIsAccumulating(false)
+    setFinishedSegments([])
+    setActiveZoneMeta(null)
+    setDrawnPoints([])
+    setRedrawingZoneId(null)
+  }
+
+  function handleToggleZoneVisibility(zoneId) {
+    setHiddenZoneIds(prev => {
+      const next = new Set(prev)
+      if (next.has(zoneId)) next.delete(zoneId)
+      else next.add(zoneId)
+      return next
+    })
   }
 
   async function handleUpdateZone(zoneId, updates) {
@@ -405,14 +510,41 @@ export default function SessionPage() {
     ? pageZones.findIndex(z => z.id === redrawingZoneId)
     : -1
 
-  const activeZoneForCanvas = isDrawing
+  // Combine finished segments (null-separated) + current in-progress points into
+  // one flat array so the canvas can render all segments simultaneously.
+  const activeCanvasPoints = (() => {
+    const pts = []
+    finishedSegments.forEach((seg, i) => {
+      if (i > 0) pts.push(null)
+      pts.push(...seg.points)
+    })
+    if (drawnPoints.length > 0) {
+      if (pts.length > 0) pts.push(null)
+      pts.push(...drawnPoints)
+    }
+    return pts
+  })()
+
+  const activeZoneForCanvas = (isDrawing || isAccumulating)
     ? {
-        points: drawnPoints,
+        points: activeCanvasPoints,
         measurement_type: activeZoneMeta?.type,
+        color: activeZoneMeta?.color ?? null,
         colorIndex: redrawingZoneIndex >= 0 ? redrawingZoneIndex : pageZones.length,
         redrawingId: redrawingZoneId,
       }
     : null
+
+  // Running total from all completed segments (for ZoneDrawPanel accumulation UI)
+  const accumulatedResult = (() => {
+    if (finishedSegments.length === 0 || !pixelsPerFoot || !activeZoneMeta) return 0
+    const pts = []
+    finishedSegments.forEach((seg, i) => {
+      if (i > 0) pts.push(null)
+      pts.push(...seg.points)
+    })
+    return calculate(activeZoneMeta.type, pts, pixelsPerFoot) ?? 0
+  })()
 
   // For PDFs: pass the rendered data URL. For images: pass the storage URL directly.
   const canvasImageUrl = isPdf ? renderedPageUrl : blueprintUrl
@@ -499,13 +631,20 @@ export default function SessionPage() {
         {blueprintUrl && pixelsPerFoot && (
           <div className={styles.section}>
             <div className={styles.sectionTitle}>
-              {isDrawing ? (redrawingZoneId ? 'Redrawing…' : 'Drawing…') : 'Add Zone'}
+              {isAccumulating && !isDrawing ? 'Adding Segments…'
+                : isDrawing ? (redrawingZoneId ? 'Redrawing…' : 'Drawing…')
+                : 'Add Zone'}
             </div>
             <ZoneDrawPanel
               onStart={handleStartDrawing}
               onCancel={handleCancelDrawing}
               onUndoPoint={handleUndoPoint}
+              onAddSegment={handleAddSegment}
+              onFinalizeZone={handleFinalizeZone}
               isDrawing={isDrawing}
+              isAccumulating={isAccumulating}
+              segmentCount={finishedSegments.length}
+              accumulatedResult={accumulatedResult}
               pointCount={drawnPoints.length}
               onFinish={handleZoneComplete}
               drawingType={activeZoneMeta?.type}
@@ -530,6 +669,8 @@ export default function SessionPage() {
               onRedraw={handleRedrawZone}
               redrawingZoneId={redrawingZoneId}
               enabledFeatures={enabledFeatures}
+              hiddenZoneIds={hiddenZoneIds}
+              onToggleVisibility={handleToggleZoneVisibility}
             />
           </div>
         )}
@@ -560,6 +701,7 @@ export default function SessionPage() {
             calibrating={calibrating}
             onCalibrationLine={handleCalibrationLine}
             redrawingZoneId={redrawingZoneId}
+            hiddenZoneIds={hiddenZoneIds}
           />
         ) : (
           <div className={styles.emptyCanvas}>
@@ -586,10 +728,19 @@ export default function SessionPage() {
         {isDrawing && (
           <div className={styles.hint}>
             {activeZoneMeta?.type === 'count'
-              ? 'Click each item to count it · Click Finish Zone when done'
+              ? isAccumulating
+                ? `Segment ${finishedSegments.length + 1} — click items · Finish Segment or Done to save`
+                : 'Click each item to count it · Finish Zone to add segments'
+              : isAccumulating
+              ? `Segment ${finishedSegments.length + 1} — click points · double-click or Finish Segment`
               : redrawingZoneId
               ? 'Retrace the zone · Double-click or Finish Zone when done'
               : 'Click to place points · Double-click to finish'}
+          </div>
+        )}
+        {isAccumulating && !isDrawing && (
+          <div className={styles.hint}>
+            Segment saved — click "Add Another Segment" or "Done — Save Zone"
           </div>
         )}
 

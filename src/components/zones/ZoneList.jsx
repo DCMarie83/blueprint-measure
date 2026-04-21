@@ -2,6 +2,33 @@ import { useState } from 'react'
 import styles from './ZoneList.module.css'
 import { getMaxReach, estimatePaint } from '../../utils/measurements'
 
+const PRESET_COLORS = [
+  '#2e8bff', '#22c55e', '#f59e0b', '#ef4444', '#a855f7',
+  '#06b6d4', '#f97316', '#84cc16', '#ec4899', '#14b8a6',
+  '#8b5cf6', '#f43f5e', '#64748b', '#0ea5e9',
+]
+
+// Simple inline SVG eye / eye-off icons for the visibility toggle
+function EyeIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+      <circle cx="12" cy="12" r="3"/>
+    </svg>
+  )
+}
+
+function EyeOffIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+      <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
+      <line x1="1" y1="1" x2="23" y2="23"/>
+    </svg>
+  )
+}
+
 const TYPE_COLORS = {
   SF: '#2e8bff',
   LF: '#22c55e',
@@ -17,7 +44,7 @@ const CEILING_TYPE_LABELS = {
   shed: 'Shed',
 }
 
-export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawingZoneId, enabledFeatures = {} }) {
+export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawingZoneId, enabledFeatures = {}, hiddenZoneIds, onToggleVisibility }) {
   const [editingId, setEditingId] = useState(null)
   const [editName, setEditName] = useState('')
   const [editDescription, setEditDescription] = useState('')
@@ -34,6 +61,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
   const [editCeilingDropDepth, setEditCeilingDropDepth] = useState('')
   const [editCeilingLowWallHeight, setEditCeilingLowWallHeight] = useState('')
   const [editCeilingHighWallHeight, setEditCeilingHighWallHeight] = useState('')
+  const [editColor, setEditColor] = useState(null)
 
   const [saving, setSaving] = useState(false)
 
@@ -52,6 +80,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
     setEditCeilingDropDepth(zone.ceiling_drop_depth ?? '')
     setEditCeilingLowWallHeight(zone.ceiling_low_wall_height ?? '')
     setEditCeilingHighWallHeight(zone.ceiling_high_wall_height ?? '')
+    setEditColor(zone.color ?? null)
   }
 
   function cancelEdit() {
@@ -77,6 +106,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
         ceiling_drop_depth:     isCeiling && editCeilingType === 'tray'    ? parseFloat(editCeilingDropDepth)     || null : null,
         ceiling_low_wall_height:  isCeiling && editCeilingType === 'shed'  ? parseFloat(editCeilingLowWallHeight)  || null : null,
         ceiling_high_wall_height: isCeiling && editCeilingType === 'shed'  ? parseFloat(editCeilingHighWallHeight) || null : null,
+        color: editColor ?? null,
       })
       setEditingId(null)
     } finally {
@@ -98,7 +128,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
         const isRedrawing = zone.id === redrawingZoneId
 
         return (
-          <div key={zone.id} className={`${styles.zone} ${isRedrawing ? styles.zoneRedrawing : ''}`}>
+          <div key={zone.id} className={`${styles.zone} ${isRedrawing ? styles.zoneRedrawing : ''} ${hiddenZoneIds?.has(zone.id) ? styles.zoneHidden : ''}`}>
             {editingId === zone.id ? (
               <div className={styles.editForm}>
                 <input
@@ -256,6 +286,32 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                   placeholder="Notes (optional)"
                   rows={2}
                 />
+
+                {/* Zone color picker */}
+                <div className={styles.editColorGroup}>
+                  <span className={styles.editColorLabel}>Zone Color</span>
+                  <div className={styles.editColorSwatches}>
+                    <button
+                      type="button"
+                      className={`${styles.editColorSwatch} ${styles.editColorAuto} ${editColor === null ? styles.editColorActive : ''}`}
+                      onClick={() => setEditColor(null)}
+                      title="Auto (default palette)"
+                    >
+                      A
+                    </button>
+                    {PRESET_COLORS.map(c => (
+                      <button
+                        key={c}
+                        type="button"
+                        className={`${styles.editColorSwatch} ${editColor === c ? styles.editColorActive : ''}`}
+                        style={{ background: c }}
+                        onClick={() => setEditColor(c)}
+                        title={c}
+                      />
+                    ))}
+                  </div>
+                </div>
+
                 <div className={styles.editActions}>
                   <button
                     className={styles.saveBtn}
@@ -270,6 +326,22 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
             ) : (
               <>
                 <div className={styles.zoneTop}>
+                  {/* Visibility toggle eye icon */}
+                  <button
+                    className={`${styles.visBtn} ${hiddenZoneIds?.has(zone.id) ? styles.visBtnHidden : ''}`}
+                    onClick={() => onToggleVisibility?.(zone.id)}
+                    title={hiddenZoneIds?.has(zone.id) ? 'Show on canvas' : 'Hide on canvas'}
+                  >
+                    {hiddenZoneIds?.has(zone.id) ? <EyeOffIcon /> : <EyeIcon />}
+                  </button>
+                  {/* Custom color dot (only shown when a custom color is set) */}
+                  {zone.color && (
+                    <span
+                      className={styles.colorDot}
+                      style={{ background: zone.color }}
+                      title={`Zone color: ${zone.color}`}
+                    />
+                  )}
                   <span className={styles.zoneName}>{zone.name}</span>
                   <span
                     className={styles.zoneType}

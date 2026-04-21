@@ -25,12 +25,46 @@
   opacity: 0.7;
 }
 
+.zoneHidden {
+  opacity: 0.45;
+}
+
 .zoneTop {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 4px;
-  gap: 8px;
+  gap: 6px;
+}
+
+/* Eye icon visibility toggle */
+.visBtn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 2px;
+  color: var(--color-text-muted);
+  opacity: 0.6;
+  line-height: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.visBtn:hover {
+  opacity: 1;
+}
+
+.visBtnHidden {
+  color: var(--color-text-muted);
+  opacity: 0.4;
+}
+
+/* Small colored circle showing the zone's custom color */
+.colorDot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
 }
 
 .zoneName {
@@ -332,4 +366,62 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--color-text-muted);
+}
+
+/* --- Zone color picker in edit form --- */
+
+.editColorGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.editColorLabel {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.editColorSwatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.editColorSwatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.1s, border-color 0.1s;
+  flex-shrink: 0;
+}
+
+.editColorSwatch:hover {
+  transform: scale(1.15);
+}
+
+.editColorActive {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+.editColorAuto {
+  background: var(--color-bg);
+  border-color: var(--color-border);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.editColorAuto.editColorActive {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary);
+  color: var(--color-primary);
 }

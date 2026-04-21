@@ -3,6 +3,13 @@ import styles from './ZoneDrawPanel.module.css'
 
 const SURFACE_TYPES = ['Wall', 'Ceiling', 'Trim', 'Door', 'Window', 'Cabinet', 'Floor', 'Exterior', 'Other']
 
+// Preset color swatches for zone colors. null = use the auto-cycling palette.
+const PRESET_COLORS = [
+  '#2e8bff', '#22c55e', '#f59e0b', '#ef4444', '#a855f7',
+  '#06b6d4', '#f97316', '#84cc16', '#ec4899', '#14b8a6',
+  '#8b5cf6', '#f43f5e', '#64748b', '#0ea5e9',
+]
+
 // The panel shown during active drawing.
 // User picks measurement type, names the zone, then clicks "Start Drawing".
 //
@@ -11,12 +18,17 @@ const SURFACE_TYPES = ['Wall', 'Ceiling', 'Trim', 'Door', 'Window', 'Cabinet', '
 // sfPreview   — { flat, adjusted, adjustment } computed by SessionPage in real-time
 //               from the points the contractor has placed so far. Only present when
 //               surface type is Ceiling and ceiling type is not Flat.
-export default function ZoneDrawPanel({ onStart, onCancel, onUndoPoint, isDrawing, pointCount, onFinish, drawingType, sfPreview }) {
+export default function ZoneDrawPanel({
+  onStart, onCancel, onUndoPoint, onAddSegment, onFinalizeZone,
+  isDrawing, isAccumulating, segmentCount = 0, accumulatedResult = 0,
+  pointCount, onFinish, drawingType, sfPreview,
+}) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [surfaceType, setSurfaceType] = useState('')
   const [coatCount, setCoatCount] = useState(1)
   const [type, setType] = useState('SF')
+  const [color, setColor] = useState(null) // null = auto palette
 
   // Ceiling-specific fields — only used when surfaceType === 'Ceiling'
   const [ceilingType, setCeilingType] = useState('flat')
@@ -37,6 +49,7 @@ export default function ZoneDrawPanel({ onStart, onCancel, onUndoPoint, isDrawin
       surface_type: surfaceType || null,
       coat_count: coatCount,
       type,
+      color: color ?? null,
       ceiling_type: isCeiling ? ceilingType : null,
       ceiling_peak_height:    isCeiling && ceilingType === 'vaulted' ? parseFloat(ceilingPeakHeight)    || null : null,
       ceiling_wall_height:    isCeiling && ceilingType === 'vaulted' ? parseFloat(ceilingWallHeight)    || null : null,
@@ -50,13 +63,42 @@ export default function ZoneDrawPanel({ onStart, onCancel, onUndoPoint, isDrawin
   // During drawing, use the type passed from the parent if available
   // (covers redraw mode where the form was never shown).
   const activeType = drawingType ?? type
+  const unitLabel = activeType === 'LF' ? 'lin ft' : activeType === 'count' ? 'items' : activeType
 
+  // ── Between-segment pause: segments finished, waiting for next action ─────────
+  if (isAccumulating && !isDrawing) {
+    return (
+      <div className={styles.panel}>
+        <div className={styles.status}>
+          <div className={styles.dot} />
+          {segmentCount} {segmentCount === 1 ? 'segment' : 'segments'} added
+        </div>
+        <div className={styles.accumTotal}>
+          <span className={styles.accumLabel}>Running total</span>
+          <span className={styles.accumValue}>{accumulatedResult} {unitLabel}</span>
+        </div>
+        <div className={styles.actions}>
+          <button className={styles.finalizeBtn} onClick={onFinalizeZone}>
+            Done — Save Zone
+          </button>
+          <button className={styles.addSegmentBtn} onClick={onAddSegment}>
+            + Add Another Segment
+          </button>
+          <button className={styles.cancelBtn} onClick={onCancel}>Cancel All</button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Active drawing (first segment or subsequent segments in accumulation mode) ─
   if (isDrawing) {
     return (
       <div className={styles.panel}>
         <div className={styles.status}>
           <div className={styles.dot} />
-          {activeType === 'count'
+          {isAccumulating
+            ? `Segment ${segmentCount + 1} — ${pointCount} ${pointCount === 1 ? 'point' : 'points'} placed`
+            : activeType === 'count'
             ? `${pointCount} ${pointCount === 1 ? 'item' : 'items'} placed`
             : `Drawing zone — ${pointCount} ${pointCount === 1 ? 'point' : 'points'} placed`}
         </div>
@@ -67,7 +109,15 @@ export default function ZoneDrawPanel({ onStart, onCancel, onUndoPoint, isDrawin
           </div>
         )}
 
-        {/* Real-time ceiling SF preview — only shown when enough points are placed */}
+        {/* Running total shown while adding segments in accumulation mode */}
+        {isAccumulating && segmentCount > 0 && (
+          <div className={styles.accumTotal}>
+            <span className={styles.accumLabel}>Added so far</span>
+            <span className={styles.accumValue}>{accumulatedResult} {unitLabel} ({segmentCount} {segmentCount === 1 ? 'seg' : 'segs'})</span>
+          </div>
+        )}
+
+        {/* Real-time ceiling SF preview */}
         {sfPreview && (
           <div className={styles.sfPreview}>
             <div className={styles.sfPreviewRow}>
@@ -88,19 +138,30 @@ export default function ZoneDrawPanel({ onStart, onCancel, onUndoPoint, isDrawin
 
         <p className={styles.hint}>
           {activeType === 'count'
-            ? 'Click each item on the blueprint to count it. Click Finish Zone when done.'
+            ? 'Click each item on the blueprint to count it.'
             : activeType === 'LF'
             ? 'Click to trace the line. Double-click or Finish to close.'
             : 'Click to draw polygon corners. Double-click or Finish to close.'}
         </p>
         <div className={styles.actions}>
-          <button className={styles.finishBtn} onClick={onFinish} disabled={pointCount < (activeType === 'count' ? 1 : 2)}>
-            Finish Zone
+          <button
+            className={styles.finishBtn}
+            onClick={onFinish}
+            disabled={pointCount < (activeType === 'count' ? 1 : 2)}
+          >
+            {isAccumulating ? 'Finish Segment' : 'Finish Zone'}
           </button>
+          {isAccumulating && (
+            <button className={styles.finalizeBtn} onClick={onFinalizeZone}>
+              Done — Save Zone
+            </button>
+          )}
           <button className={styles.undoBtn} onClick={onUndoPoint} disabled={pointCount === 0}>
             Undo Last Point
           </button>
-          <button className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
+          <button className={styles.cancelBtn} onClick={onCancel}>
+            {isAccumulating ? 'Cancel All' : 'Cancel'}
+          </button>
         </div>
       </div>
     )
@@ -270,6 +331,30 @@ export default function ZoneDrawPanel({ onStart, onCancel, onUndoPoint, isDrawin
                 {t === 'SF' ? 'Area' : t === 'LF' ? 'Length' : 'Count'}
               </span>
             </button>
+          ))}
+        </div>
+      </div>
+
+      <div className={styles.field}>
+        <label>Zone Color <span className={styles.optional}>(optional)</span></label>
+        <div className={styles.colorSwatches}>
+          <button
+            type="button"
+            className={`${styles.colorSwatch} ${styles.colorAuto} ${color === null ? styles.colorSwatchActive : ''}`}
+            onClick={() => setColor(null)}
+            title="Auto (cycles through default palette)"
+          >
+            A
+          </button>
+          {PRESET_COLORS.map(c => (
+            <button
+              key={c}
+              type="button"
+              className={`${styles.colorSwatch} ${color === c ? styles.colorSwatchActive : ''}`}
+              style={{ background: c }}
+              onClick={() => setColor(c)}
+              title={c}
+            />
           ))}
         </div>
       </div>

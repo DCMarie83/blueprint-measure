@@ -47,6 +47,23 @@ function polylineLength(points) {
   return total
 }
 
+// Split a points array at null sentinels — used for multi-segment LF/count zones.
+// A null entry in the array marks the boundary between two disconnected segments.
+// Single-segment zones (all legacy zones) have no nulls and return [allPoints].
+function splitSegments(points) {
+  const segs = []
+  let current = []
+  for (const p of points) {
+    if (p === null || p === undefined) {
+      if (current.length > 0) { segs.push(current); current = [] }
+    } else {
+      current.push(p)
+    }
+  }
+  if (current.length > 0) segs.push(current)
+  return segs.length > 0 ? segs : [points]
+}
+
 // ---- Public API ----
 
 export function calculateSF(points, pixelsPerFoot) {
@@ -56,15 +73,17 @@ export function calculateSF(points, pixelsPerFoot) {
   return Math.round(areaFeet * 100) / 100
 }
 
+// calculateLF supports multi-segment zones: sum the length of every segment,
+// where segments are separated by null sentinels in the points array.
 export function calculateLF(points, pixelsPerFoot) {
-  const lengthPixels = polylineLength(points)
-  const feet = lengthPixels / pixelsPerFoot
-  return Math.round(feet * 100) / 100
+  const segs = splitSegments(points)
+  const totalPixels = segs.reduce((sum, seg) => sum + polylineLength(seg), 0)
+  return Math.round(totalPixels / pixelsPerFoot * 100) / 100
 }
 
-// Count is just the number of points placed
+// Count is the number of non-null points (nulls are segment separators).
 export function calculateCount(points) {
-  return points.length
+  return points.filter(p => p !== null && p !== undefined).length
 }
 
 // Bounding box of a point array, in feet.

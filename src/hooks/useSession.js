@@ -86,6 +86,7 @@ export function useSession(sessionId) {
       ceiling_drop_depth:     zoneData.ceiling_drop_depth     ?? null,
       ceiling_low_wall_height:  zoneData.ceiling_low_wall_height  ?? null,
       ceiling_high_wall_height: zoneData.ceiling_high_wall_height ?? null,
+      color: zoneData.color ?? null,
       measurement_type: zoneData.measurement_type,
       points: zoneData.points,
       result: zoneData.result,
@@ -121,6 +122,7 @@ export function useSession(sessionId) {
       ceiling_drop_depth:     updates.ceiling_drop_depth     ?? null,
       ceiling_low_wall_height:  updates.ceiling_low_wall_height  ?? null,
       ceiling_high_wall_height: updates.ceiling_high_wall_height ?? null,
+      color: updates.color ?? null,
     }
     // Only include result when the caller explicitly provides it (ceiling param edits)
     if (updates.result !== undefined) updateData.result = updates.result
