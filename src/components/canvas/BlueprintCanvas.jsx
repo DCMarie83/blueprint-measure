@@ -36,11 +36,15 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
   const transformRef = useRef({ scale: 1, offsetX: 0, offsetY: 0 })
   const initialTransformRef = useRef(null) // saved on image load, used by resetView
 
-  // Pan tracking
+  // Pan tracking (left-button — disabled during drawing)
   const isPanning = useRef(false)
   const lastPan = useRef({ x: 0, y: 0 })
   const panStart = useRef({ x: 0, y: 0 })
   const didPan = useRef(false) // true once mouse moves past the drag threshold
+
+  // Right-click pan tracking — works even while drawing a zone
+  const isRightPanning = useRef(false)
+  const lastRightPan = useRef({ x: 0, y: 0 })
 
   const [isDragging, setIsDragging] = useState(false)
 
@@ -327,7 +331,14 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
   // ── Mouse event handlers ─────────────────────────────────────────────────────
 
   function handleMouseDown(e) {
-    if (e.button !== 0) return // left-click only
+    if (e.button === 2) {
+      // Right-click always starts a pan, even while drawing a zone
+      isRightPanning.current = true
+      lastRightPan.current = { x: e.clientX, y: e.clientY }
+      setIsDragging(true)
+      return
+    }
+    if (e.button !== 0) return // Ignore middle button etc.
     // In drawing or calibrating mode, left-click places points — don't capture for pan
     if (isDrawing || calibrating) return
 
@@ -338,6 +349,17 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
   }
 
   function handleMouseMove(e) {
+    // Right-click pan has priority and works during drawing
+    if (isRightPanning.current) {
+      const dx = e.clientX - lastRightPan.current.x
+      const dy = e.clientY - lastRightPan.current.y
+      transformRef.current.offsetX += dx
+      transformRef.current.offsetY += dy
+      redrawRef.current()
+      lastRightPan.current = { x: e.clientX, y: e.clientY }
+      return
+    }
+
     if (!isPanning.current) return
 
     const dx = e.clientX - lastPan.current.x
@@ -361,13 +383,22 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
     lastPan.current = { x: e.clientX, y: e.clientY }
   }
 
-  function handleMouseUp() {
+  function handleMouseUp(e) {
+    if (e.button === 2) {
+      isRightPanning.current = false
+      setIsDragging(false)
+      return
+    }
     isPanning.current = false
     if (isDragging) setIsDragging(false) // update cursor once
   }
 
   function handleMouseLeave() {
-    // Stop panning if the pointer leaves the canvas mid-drag
+    // Stop all pan modes if the pointer leaves the canvas mid-drag
+    if (isRightPanning.current) {
+      isRightPanning.current = false
+      setIsDragging(false)
+    }
     if (isPanning.current) {
       isPanning.current = false
       if (isDragging) setIsDragging(false)
@@ -424,6 +455,7 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
+        onContextMenu={e => e.preventDefault()}
       />
       {!imageUrl && (
         <div className={styles.placeholder}>

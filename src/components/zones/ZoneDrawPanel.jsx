@@ -11,7 +11,7 @@ const SURFACE_TYPES = ['Wall', 'Ceiling', 'Trim', 'Door', 'Window', 'Cabinet', '
 // sfPreview   — { flat, adjusted, adjustment } computed by SessionPage in real-time
 //               from the points the contractor has placed so far. Only present when
 //               surface type is Ceiling and ceiling type is not Flat.
-export default function ZoneDrawPanel({ onStart, onCancel, isDrawing, pointCount, onFinish, drawingType, sfPreview }) {
+export default function ZoneDrawPanel({ onStart, onCancel, onUndoPoint, isDrawing, pointCount, onFinish, drawingType, sfPreview }) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [surfaceType, setSurfaceType] = useState('')
@@ -96,6 +96,9 @@ export default function ZoneDrawPanel({ onStart, onCancel, isDrawing, pointCount
         <div className={styles.actions}>
           <button className={styles.finishBtn} onClick={onFinish} disabled={pointCount < (activeType === 'count' ? 1 : 2)}>
             Finish Zone
+          </button>
+          <button className={styles.undoBtn} onClick={onUndoPoint} disabled={pointCount === 0}>
+            Undo Last Point
           </button>
           <button className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
         </div>

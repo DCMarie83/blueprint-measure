@@ -5,22 +5,24 @@ import styles from './ScalePanel.module.css'
 // ScalePanel lets the user set the blueprint's scale.
 // Either pick from the standard dropdown, or use manual calibration
 // (draw a line of known length on the blueprint).
-export default function ScalePanel({ pixelsPerFoot, onScaleChange, onStartCalibration, calibrating }) {
+export default function ScalePanel({ pixelsPerFoot, onScaleChange, onStartCalibration, calibrating, pageKey }) {
   const [selected, setSelected] = useState('1/4')
   const [knownFeet, setKnownFeet] = useState('')
   const [helpOpen, setHelpOpen] = useState(false)
 
-  // Fire the default scale immediately on mount so the parent knows a scale
-  // is active without the user having to touch the dropdown first.
-  // This fixes sessions that reload with a blueprint already set — the
-  // zone draw panel would stay hidden because pixelsPerFoot was never pushed.
+  // When the active page changes (or on first mount), apply the default 1/4" scale
+  // only if this page has no saved scale yet. When pixelsPerFoot is already set
+  // (the page has a persisted scale), we leave it alone — the badge will reflect it.
   useEffect(() => {
-    const defaultOption = SCALE_OPTIONS.find(o => o.value === '1/4')
-    if (defaultOption?.inchesPerFoot) {
-      onScaleChange(calcPixelsPerFoot(defaultOption.inchesPerFoot))
+    if (!pixelsPerFoot) {
+      const defaultOption = SCALE_OPTIONS.find(o => o.value === '1/4')
+      if (defaultOption?.inchesPerFoot) {
+        setSelected('1/4')
+        onScaleChange(calcPixelsPerFoot(defaultOption.inchesPerFoot))
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // intentionally runs once on mount only
+  }, [pageKey]) // Re-runs when the user switches pages
 
   function handleSelect(value) {
     setSelected(value)

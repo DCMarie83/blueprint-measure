@@ -224,6 +224,26 @@
   cursor: not-allowed;
 }
 
+.undoBtn {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 8px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.undoBtn:hover:not(:disabled) {
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
+
+.undoBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 .cancelBtn {
   background: none;
   border: 1px solid var(--color-border);

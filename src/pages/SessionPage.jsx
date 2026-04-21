@@ -34,7 +34,10 @@ export default function SessionPage() {
   const [thumbnails, setThumbnails] = useState({}) // { [pageNum]: dataUrl }
 
   // ── Scale state ──────────────────────────────────────────────────────────────
-  const [pixelsPerFoot, setPixelsPerFoot] = useState(null)
+  // pageScales: { [pageNumber]: pixelsPerFoot } — each PDF page has its own scale.
+  // pixelsPerFoot is derived from the current page's entry (null if not yet set).
+  const [pageScales, setPageScales] = useState({})
+  const pixelsPerFoot = pageScales[currentPage] ?? null
   const [calibrating, setCalibrating] = useState(false)
   const [pendingCalibFeet, setPendingCalibFeet] = useState(null)
 
@@ -62,6 +65,10 @@ export default function SessionPage() {
       setBlueprintUrl(session.blueprint_url)
       setBlueprintType(type)
       setCurrentPage(session.page_number ?? 1)
+      // Restore per-page scales saved in a previous session
+      if (session.page_scales && Object.keys(session.page_scales).length > 0) {
+        setPageScales(session.page_scales)
+      }
     }
   }, [session])
 
@@ -106,8 +113,16 @@ export default function SessionPage() {
     setThumbnails({})
   }
 
-  function handleScaleChange(ppf) {
-    setPixelsPerFoot(ppf)
+  // Save a new scale for the current page and persist it to the database so it
+  // survives a session reload. Each page stores its own independent scale value.
+  async function handleScaleChange(ppf) {
+    const newScales = { ...pageScales, [currentPage]: ppf }
+    setPageScales(newScales)
+    try {
+      await updateSession({ page_scales: newScales })
+    } catch (err) {
+      console.error('Failed to save page scale:', err)
+    }
   }
 
   function handleStartCalibration(knownFeet) {
@@ -120,7 +135,7 @@ export default function SessionPage() {
     const dy = pt2.y - pt1.y
     const pixelLength = Math.sqrt(dx * dx + dy * dy)
     const ppf = pixelLength / pendingCalibFeet
-    setPixelsPerFoot(ppf)
+    handleScaleChange(ppf)
     setCalibrating(false)
     setPendingCalibFeet(null)
   }
@@ -191,6 +206,26 @@ export default function SessionPage() {
     setDrawnPoints(prev => [...prev, pt])
   }, [])
 
+  function handleUndoPoint() {
+    setDrawnPoints(prev => prev.slice(0, -1))
+  }
+
+  // Keyboard shortcuts active while drawing:
+  //   U  or  Ctrl/Cmd+Z  — remove the last placed point
+  useEffect(() => {
+    function onKeyDown(e) {
+      if (!isDrawing) return
+      const isUndo = e.key === 'u' || e.key === 'U' ||
+        (e.key === 'z' && (e.ctrlKey || e.metaKey))
+      if (isUndo) {
+        e.preventDefault()
+        setDrawnPoints(prev => prev.slice(0, -1))
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [isDrawing])
+
   const handleZoneComplete = useCallback(async () => {
     if (!activeZoneMeta || drawnPoints.length < 1) return
     if (!pixelsPerFoot) {
@@ -258,28 +293,38 @@ export default function SessionPage() {
   async function handleUpdateZone(zoneId, updates) {
     try {
       let finalUpdates = { ...updates }
+      const zone = zones.find(z => z.id === zoneId)
 
-      // When ceiling type or params change, recalculate the stored result so
-      // the zone list stays in sync without requiring a redraw.
-      if (updates.surface_type === 'Ceiling' && updates.ceiling_type && updates.ceiling_type !== 'flat' && pixelsPerFoot) {
-        const zone = zones.find(z => z.id === zoneId)
-        if (zone && zone.points && zone.measurement_type === 'SF') {
-          const baseSF = calculateSF(zone.points, pixelsPerFoot)
-          const { adjustedSF } = calculateCeilingSF(baseSF, updates.ceiling_type, {
-            peakHeight:    parseFloat(updates.ceiling_peak_height)    || 0,
-            wallHeight:    parseFloat(updates.ceiling_wall_height)    || 0,
-            trayPerimeter: parseFloat(updates.ceiling_tray_perimeter) || 0,
-            dropDepth:     parseFloat(updates.ceiling_drop_depth)     || 0,
-            lowWallHeight:  parseFloat(updates.ceiling_low_wall_height)  || 0,
-            highWallHeight: parseFloat(updates.ceiling_high_wall_height) || 0,
-          }, zone.points, pixelsPerFoot)
-          finalUpdates.result = adjustedSF
-        }
-      } else if (pixelsPerFoot && (updates.surface_type !== 'Ceiling' || updates.ceiling_type === 'flat')) {
-        // Switched away from a ceiling adjustment — restore the flat SF
-        const zone = zones.find(z => z.id === zoneId)
-        if (zone && zone.points && zone.measurement_type === 'SF') {
-          finalUpdates.result = calculateSF(zone.points, pixelsPerFoot)
+      // Only recalculate the stored result when ceiling-specific fields actually
+      // changed. Editing name, notes, or coat_count should never silently alter
+      // the measurement result.
+      if (zone && pixelsPerFoot && zone.points && zone.measurement_type === 'SF') {
+        const ceilingParamsChanged =
+          updates.surface_type       !== zone.surface_type ||
+          updates.ceiling_type       !== zone.ceiling_type ||
+          updates.ceiling_peak_height    !== zone.ceiling_peak_height ||
+          updates.ceiling_wall_height    !== zone.ceiling_wall_height ||
+          updates.ceiling_tray_perimeter !== zone.ceiling_tray_perimeter ||
+          updates.ceiling_drop_depth     !== zone.ceiling_drop_depth ||
+          updates.ceiling_low_wall_height  !== zone.ceiling_low_wall_height ||
+          updates.ceiling_high_wall_height !== zone.ceiling_high_wall_height
+
+        if (ceilingParamsChanged) {
+          if (updates.surface_type === 'Ceiling' && updates.ceiling_type && updates.ceiling_type !== 'flat') {
+            const baseSF = calculateSF(zone.points, pixelsPerFoot)
+            const { adjustedSF } = calculateCeilingSF(baseSF, updates.ceiling_type, {
+              peakHeight:    parseFloat(updates.ceiling_peak_height)    || 0,
+              wallHeight:    parseFloat(updates.ceiling_wall_height)    || 0,
+              trayPerimeter: parseFloat(updates.ceiling_tray_perimeter) || 0,
+              dropDepth:     parseFloat(updates.ceiling_drop_depth)     || 0,
+              lowWallHeight:  parseFloat(updates.ceiling_low_wall_height)  || 0,
+              highWallHeight: parseFloat(updates.ceiling_high_wall_height) || 0,
+            }, zone.points, pixelsPerFoot)
+            finalUpdates.result = adjustedSF
+          } else if (updates.surface_type !== 'Ceiling' || updates.ceiling_type === 'flat') {
+            // Switched away from a ceiling adjustment — restore the flat SF
+            finalUpdates.result = calculateSF(zone.points, pixelsPerFoot)
+          }
         }
       }
 
@@ -435,6 +480,7 @@ export default function SessionPage() {
               onScaleChange={handleScaleChange}
               onStartCalibration={handleStartCalibration}
               calibrating={calibrating}
+              pageKey={currentPage}
             />
           </div>
         )}
@@ -458,6 +504,7 @@ export default function SessionPage() {
             <ZoneDrawPanel
               onStart={handleStartDrawing}
               onCancel={handleCancelDrawing}
+              onUndoPoint={handleUndoPoint}
               isDrawing={isDrawing}
               pointCount={drawnPoints.length}
               onFinish={handleZoneComplete}
