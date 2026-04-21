@@ -4,10 +4,11 @@ import { supabase } from '../lib/supabase'
 import styles from './AdminPage.module.css'
 
 const FEATURES = [
-  { key: 'multi_page_pdf',   label: 'Multi-page PDF'   },
-  { key: 'csv_export',       label: 'CSV Export'       },
-  { key: 'redraw_zones',     label: 'Redraw Zones'     },
-  { key: 'paint_calculator', label: 'Paint Calculator' },
+  { key: 'multi_page_pdf',     label: 'Multi-page PDF'     },
+  { key: 'csv_export',         label: 'CSV Export'         },
+  { key: 'redraw_zones',       label: 'Redraw Zones'       },
+  { key: 'paint_calculator',   label: 'Paint Calculator'   },
+  { key: 'ai_scale_detection', label: 'AI Scale Detection' },
 ]
 
 const PLANS = [
@@ -21,11 +22,11 @@ const PLANS = [
 // Default feature flags applied when a company is created. Admins can override
 // individual flags at any time using the toggles in the company table.
 const PLAN_FEATURES = {
-  basic:    { multi_page_pdf: false, csv_export: true,  redraw_zones: false, paint_calculator: false },
-  plus:     { multi_page_pdf: true,  csv_export: true,  redraw_zones: true,  paint_calculator: true  },
-  ultra:    { multi_page_pdf: true,  csv_export: true,  redraw_zones: true,  paint_calculator: true  },
-  founders: { multi_page_pdf: true,  csv_export: true,  redraw_zones: true,  paint_calculator: true  },
-  pilot:    { multi_page_pdf: true,  csv_export: true,  redraw_zones: true,  paint_calculator: true  },
+  basic:    { multi_page_pdf: false, csv_export: true,  redraw_zones: false, paint_calculator: false, ai_scale_detection: false },
+  plus:     { multi_page_pdf: true,  csv_export: true,  redraw_zones: true,  paint_calculator: true,  ai_scale_detection: true  },
+  ultra:    { multi_page_pdf: true,  csv_export: true,  redraw_zones: true,  paint_calculator: true,  ai_scale_detection: true  },
+  founders: { multi_page_pdf: true,  csv_export: true,  redraw_zones: true,  paint_calculator: true,  ai_scale_detection: true  },
+  pilot:    { multi_page_pdf: true,  csv_export: true,  redraw_zones: true,  paint_calculator: true,  ai_scale_detection: true  },
 }
 
 // ── tiny helper — show an inline "Sent!" / "Email sent!" for 3 s ─────────────

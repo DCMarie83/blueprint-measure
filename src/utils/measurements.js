@@ -126,7 +126,7 @@ export function calculateCeilingSF(baseSF, ceilingType, params, points, pixelsPe
   if (ceilingType === 'tray') {
     const { trayPerimeter = 0, dropDepth = 0 } = params
     if (trayPerimeter <= 0 || dropDepth <= 0) return { adjustedSF: baseSF, adjustment: 0 }
-    const dropFt     = dropDepth / 12          // convert inches → feet
+    const dropFt     = dropDepth               // stored in feet (matches all other heights)
     const additional = Math.round(trayPerimeter * dropFt * 100) / 100
     return { adjustedSF: Math.round((baseSF + additional) * 100) / 100, adjustment: additional }
   }

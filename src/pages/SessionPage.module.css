@@ -201,6 +201,11 @@
   to { transform: rotate(360deg); }
 }
 
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
 .backBtn {
   background: none;
   border: 1px solid var(--color-border);
@@ -209,4 +214,90 @@
   font-size: 14px;
   color: var(--color-text-muted);
   cursor: pointer;
+}
+
+/* ─── Download buttons ─── */
+.downloadBtns {
+  display: flex;
+  gap: 6px;
+  padding: 0 12px;
+}
+
+.downloadBtn {
+  flex: 1;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 7px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  transition: background 0.15s, color 0.15s;
+}
+
+.downloadBtn:hover:not(:disabled) {
+  background: var(--color-border);
+  color: var(--color-text);
+}
+
+.downloadBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.downloadBtnMeasure {
+  color: var(--color-primary);
+  border-color: rgba(46, 139, 255, 0.35);
+  background: rgba(46, 139, 255, 0.07);
+}
+
+.downloadBtnMeasure:hover:not(:disabled) {
+  background: rgba(46, 139, 255, 0.14);
+}
+
+/* ─── AI scale detection banner ─── */
+.scaleBanner {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: 20px;
+  padding: 7px 16px;
+  font-size: 13px;
+  color: #f59e0b;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+.scaleBanner strong {
+  color: #fbbf24;
+}
+
+.scaleBannerDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f59e0b;
+  flex-shrink: 0;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.scaleBannerDismiss {
+  background: none;
+  border: none;
+  color: #f59e0b;
+  font-size: 13px;
+  padding: 0 2px;
+  opacity: 0.7;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.scaleBannerDismiss:hover {
+  opacity: 1;
 }

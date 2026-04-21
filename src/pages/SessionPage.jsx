@@ -5,6 +5,8 @@ import { usePdf } from '../hooks/usePdf'
 import { calcPixelsPerFoot } from '../utils/scaleOptions'
 import { calculate, calculateSF, calculateCeilingSF } from '../utils/measurements'
 import { exportCSV } from '../utils/csvExport'
+import { downloadPdfWithMeasurements } from '../utils/pdfExport'
+import { detectScaleFromImage } from '../utils/detectScale'
 import BlueprintCanvas from '../components/canvas/BlueprintCanvas'
 import BlueprintUploader from '../components/canvas/BlueprintUploader'
 import ScalePanel from '../components/canvas/ScalePanel'
@@ -58,6 +60,16 @@ export default function SessionPage() {
 
   // ── Zone visibility (hide/show layers on canvas) ──────────────────────────────
   const [hiddenZoneIds, setHiddenZoneIds] = useState(new Set())
+
+  // ── AI scale detection ────────────────────────────────────────────────────────
+  // pendingScaleDetection is set to true when a new blueprint is uploaded (not on
+  // session restore) so the detection only fires on fresh uploads.
+  const [pendingScaleDetection, setPendingScaleDetection] = useState(false)
+  const [detectingScale, setDetectingScale] = useState(false)
+  const [scaleDetectionBanner, setScaleDetectionBanner] = useState(null) // { label }
+
+  // ── PDF download state ────────────────────────────────────────────────────────
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
 
   // ── Session restore ──────────────────────────────────────────────────────────
   // Runs when Supabase returns the session — restores blueprint URL and saved page.
@@ -120,6 +132,11 @@ export default function SessionPage() {
     setCurrentPage(1)
     setRenderedPageUrl(null)
     setThumbnails({})
+    // Trigger AI scale detection for eligible plans
+    if (enabledFeatures?.ai_scale_detection) {
+      setPendingScaleDetection(true)
+      setScaleDetectionBanner(null)
+    }
   }
 
   // Save a new scale for the current page and persist it to the database so it
@@ -459,6 +476,80 @@ export default function SessionPage() {
     exportCSV(session, zones)
   }
 
+  // ── AI scale detection ────────────────────────────────────────────────────────
+  // Runs after a new blueprint upload when the feature flag is enabled.
+  // For PDFs it waits for the first page to finish rendering before calling the API.
+  useEffect(() => {
+    if (!pendingScaleDetection) return
+    if (!blueprintUrl) return
+
+    const isPdfBlueprint = blueprintType === 'application/pdf'
+
+    // For PDFs, wait until the first page has been rendered to a data URL
+    if (isPdfBlueprint && !renderedPageUrl) return
+
+    async function run() {
+      setDetectingScale(true)
+      setPendingScaleDetection(false)
+      try {
+        const imageUrl = isPdfBlueprint ? renderedPageUrl : blueprintUrl
+        const result = await detectScaleFromImage(imageUrl)
+        if (result?.inchesPerFoot) {
+          const ppf = calcPixelsPerFoot(result.inchesPerFoot)
+          await handleScaleChange(ppf)
+          setScaleDetectionBanner({ label: result.label })
+        }
+      } catch (err) {
+        console.error('Scale detection error:', err)
+      } finally {
+        setDetectingScale(false)
+      }
+    }
+    run()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingScaleDetection, renderedPageUrl, blueprintUrl, blueprintType])
+
+  // ── Download handlers ─────────────────────────────────────────────────────────
+
+  // Download the original blueprint file (fetched as blob to work cross-origin)
+  async function handleDownloadClean() {
+    if (!blueprintUrl) return
+    try {
+      const resp = await fetch(blueprintUrl)
+      const blob = await resp.blob()
+      const blobUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = blobUrl
+      const ext = blueprintType === 'application/pdf' ? 'pdf'
+        : blueprintType === 'image/png' ? 'png' : 'jpg'
+      a.download = `${(session?.project_name || 'blueprint').replace(/[^a-z0-9_-]/gi, '_')}.${ext}`
+      a.click()
+      URL.revokeObjectURL(blobUrl)
+    } catch (err) {
+      alert('Download failed: ' + err.message)
+    }
+  }
+
+  // Generate a PDF with zone overlays drawn over each blueprint page
+  async function handleDownloadWithMeasurements() {
+    if (!blueprintUrl || zones.length === 0) return
+    setDownloadingPdf(true)
+    try {
+      await downloadPdfWithMeasurements({
+        session,
+        zones,
+        renderPage,
+        pageCount,
+        isPdf,
+        blueprintUrl,
+      })
+    } catch (err) {
+      alert('PDF export failed: ' + err.message)
+    } finally {
+      setDownloadingPdf(false)
+    }
+  }
+
   // ── Ceiling SF preview ────────────────────────────────────────────────────────
   // Computed in real-time as the contractor places points while drawing a ceiling
   // zone with a non-flat ceiling type. Passed to ZoneDrawPanel for display.
@@ -675,6 +766,26 @@ export default function SessionPage() {
           </div>
         )}
 
+        {/* Download original file and annotated PDF */}
+        {blueprintUrl && (
+          <div className={styles.section}>
+            <div className={styles.sectionTitle}>Download</div>
+            <div className={styles.downloadBtns}>
+              <button className={styles.downloadBtn} onClick={handleDownloadClean}>
+                ↓ Clean PDF
+              </button>
+              <button
+                className={`${styles.downloadBtn} ${styles.downloadBtnMeasure}`}
+                onClick={handleDownloadWithMeasurements}
+                disabled={downloadingPdf || zones.length === 0}
+                title={zones.length === 0 ? 'Add zones first' : 'Download PDF with zone overlays'}
+              >
+                {downloadingPdf ? 'Generating…' : '↓ With Zones'}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Export — always exports all zones across all pages */}
         {zones.length > 0 && (
           <div className={styles.section}>
@@ -715,6 +826,26 @@ export default function SessionPage() {
           <button className={styles.resetViewBtn} onClick={handleResetView}>
             ⊡ Reset view
           </button>
+        )}
+
+        {/* AI scale detection banner */}
+        {detectingScale && (
+          <div className={styles.scaleBanner}>
+            <span className={styles.scaleBannerDot} />
+            Detecting scale…
+          </div>
+        )}
+        {scaleDetectionBanner && !detectingScale && (
+          <div className={styles.scaleBanner}>
+            Scale auto-detected: <strong>{scaleDetectionBanner.label}</strong>
+            <button
+              className={styles.scaleBannerDismiss}
+              onClick={() => setScaleDetectionBanner(null)}
+              aria-label="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
         )}
 
         {/* PDF loading indicator */}

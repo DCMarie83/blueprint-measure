@@ -1,3 +1,4 @@
+import { formatLF } from '../../utils/fractions'
 import styles from './SessionSummary.module.css'
 
 const TYPE_COLORS = {
@@ -18,10 +19,13 @@ export default function SessionSummary({ zones }) {
   const totalLF    = lfZones.reduce((sum, z) => sum + (z.result ?? 0), 0)
   const totalCount = countZones.reduce((sum, z) => sum + (z.result ?? 0), 0)
 
+  // SF: keep as decimal — "245.50" with "sq ft" label fits the narrow card.
+  // LF: feet-inches format — "12' 6½"" with "linear" label.
+  // count: whole number with "items" label.
   const cards = [
-    sfZones.length    > 0 && { label: 'sq ft',  value: totalSF.toFixed(1),          color: TYPE_COLORS.SF    },
-    lfZones.length    > 0 && { label: 'lin ft',  value: totalLF.toFixed(1),          color: TYPE_COLORS.LF    },
-    countZones.length > 0 && { label: 'count',   value: String(Math.round(totalCount)), color: TYPE_COLORS.count },
+    sfZones.length    > 0 && { label: 'sq ft',  value: totalSF.toFixed(2),           color: TYPE_COLORS.SF    },
+    lfZones.length    > 0 && { label: 'linear',  value: formatLF(totalLF),            color: TYPE_COLORS.LF    },
+    countZones.length > 0 && { label: 'items',   value: String(Math.round(totalCount)), color: TYPE_COLORS.count },
   ].filter(Boolean)
 
   if (cards.length === 0) return null

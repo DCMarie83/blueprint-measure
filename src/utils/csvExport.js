@@ -1,5 +1,6 @@
 // Generates and triggers a CSV download for all zones in a session.
 import { getMaxReach, estimatePaint } from './measurements'
+import { formatSF, formatLF } from './fractions'
 
 export function exportCSV(session, zones) {
   const rows = []
@@ -9,6 +10,11 @@ export function exportCSV(session, zones) {
 
   // One row per zone
   zones.forEach(zone => {
+    const result = zone.measurement_type === 'SF'
+      ? formatSF(zone.result ?? 0)
+      : zone.measurement_type === 'LF'
+      ? formatLF(zone.result ?? 0)
+      : `${Math.round(zone.result ?? 0)} items`
     const unit = zone.measurement_type === 'SF' ? 'sq ft'
                 : zone.measurement_type === 'LF' ? 'lin ft'
                 : 'each'
@@ -21,7 +27,7 @@ export function exportCSV(session, zones) {
       zone.coat_count ?? 1,
       zone.surface_finish ?? 'smooth',
       zone.measurement_type,
-      zone.result ?? 0,
+      result,
       unit,
       maxReach !== null ? maxReach : '',
       paintGal !== null ? paintGal : '',
@@ -42,9 +48,9 @@ export function exportCSV(session, zones) {
 
   rows.push([]) // blank separator
   rows.push(['SUMMARY', '', '', '', '', '', '', '', '', '', ''])
-  rows.push(['Total SF', '', '', '', '', 'SF', totalSF.toFixed(2), 'sq ft', '', '', ''])
-  rows.push(['Total LF', '', '', '', '', 'LF', totalLF.toFixed(2), 'lin ft', '', '', ''])
-  rows.push(['Total Count', '', '', '', '', 'count', totalCount, 'each', '', '', ''])
+  rows.push(['Total SF', '', '', '', '', 'SF', formatSF(totalSF), 'sq ft', '', '', ''])
+  rows.push(['Total LF', '', '', '', '', 'LF', formatLF(totalLF), 'lin ft', '', '', ''])
+  rows.push(['Total Count', '', '', '', '', 'count', Math.round(totalCount) + ' items', 'each', '', '', ''])
 
   // Build CSV string
   const csv = rows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n')

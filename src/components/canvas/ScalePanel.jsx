@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { SCALE_OPTIONS, calcPixelsPerFoot } from '../../utils/scaleOptions'
+import { parseFeetInches } from '../../utils/fractions'
 import styles from './ScalePanel.module.css'
 
 // ScalePanel lets the user set the blueprint's scale.
@@ -37,7 +38,7 @@ export default function ScalePanel({ pixelsPerFoot, onScaleChange, onStartCalibr
 
   function handleCalibrationStart(e) {
     e.preventDefault()
-    const feet = parseFloat(knownFeet)
+    const feet = parseFeetInches(knownFeet)
     if (!feet || feet <= 0) return
     onStartCalibration(feet)
   }
@@ -63,10 +64,8 @@ export default function ScalePanel({ pixelsPerFoot, onScaleChange, onStartCalibr
           </p>
           <div className={styles.calibRow}>
             <input
-              type="number"
-              min="0.1"
-              step="0.1"
-              placeholder="Known length (feet)"
+              type="text"
+              placeholder="e.g. 12'6&quot; or 15"
               value={knownFeet}
               onChange={e => setKnownFeet(e.target.value)}
               className={styles.calibInput}

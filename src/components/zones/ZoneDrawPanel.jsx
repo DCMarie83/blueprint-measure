@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { parseFeetInches } from '../../utils/fractions'
 import styles from './ZoneDrawPanel.module.css'
 
 const SURFACE_TYPES = ['Wall', 'Ceiling', 'Trim', 'Door', 'Window', 'Cabinet', 'Floor', 'Exterior', 'Other']
@@ -51,12 +52,12 @@ export default function ZoneDrawPanel({
       type,
       color: color ?? null,
       ceiling_type: isCeiling ? ceilingType : null,
-      ceiling_peak_height:    isCeiling && ceilingType === 'vaulted' ? parseFloat(ceilingPeakHeight)    || null : null,
-      ceiling_wall_height:    isCeiling && ceilingType === 'vaulted' ? parseFloat(ceilingWallHeight)    || null : null,
-      ceiling_tray_perimeter: isCeiling && ceilingType === 'tray'    ? parseFloat(ceilingTrayPerimeter) || null : null,
-      ceiling_drop_depth:     isCeiling && ceilingType === 'tray'    ? parseFloat(ceilingDropDepth)     || null : null,
-      ceiling_low_wall_height:  isCeiling && ceilingType === 'shed'  ? parseFloat(ceilingLowWallHeight)  || null : null,
-      ceiling_high_wall_height: isCeiling && ceilingType === 'shed'  ? parseFloat(ceilingHighWallHeight) || null : null,
+      ceiling_peak_height:      isCeiling && ceilingType === 'vaulted' ? parseFeetInches(ceilingPeakHeight)    : null,
+      ceiling_wall_height:      isCeiling && ceilingType === 'vaulted' ? parseFeetInches(ceilingWallHeight)    : null,
+      ceiling_tray_perimeter:   isCeiling && ceilingType === 'tray'    ? parseFeetInches(ceilingTrayPerimeter) : null,
+      ceiling_drop_depth:       isCeiling && ceilingType === 'tray'    ? parseFeetInches(ceilingDropDepth)     : null,
+      ceiling_low_wall_height:  isCeiling && ceilingType === 'shed'    ? parseFeetInches(ceilingLowWallHeight)  : null,
+      ceiling_high_wall_height: isCeiling && ceilingType === 'shed'    ? parseFeetInches(ceilingHighWallHeight) : null,
     })
   }
 
@@ -225,21 +226,21 @@ export default function ZoneDrawPanel({
           <label>Vault Heights</label>
           <div className={styles.heightRow}>
             <div className={styles.heightField}>
-              <label>Peak height (ft)</label>
+              <label>Peak height</label>
               <input
-                type="number" min="0" step="0.5"
+                type="text"
                 value={ceilingPeakHeight}
                 onChange={e => setCeilingPeakHeight(e.target.value)}
-                placeholder="e.g. 14"
+                placeholder="e.g. 14' or 13'6&quot;"
               />
             </div>
             <div className={styles.heightField}>
-              <label>Wall height (ft)</label>
+              <label>Wall height</label>
               <input
-                type="number" min="0" step="0.5"
+                type="text"
                 value={ceilingWallHeight}
                 onChange={e => setCeilingWallHeight(e.target.value)}
-                placeholder="e.g. 8"
+                placeholder="e.g. 8' or 7'6&quot;"
               />
             </div>
           </div>
@@ -252,21 +253,21 @@ export default function ZoneDrawPanel({
           <label>Tray Details</label>
           <div className={styles.heightRow}>
             <div className={styles.heightField}>
-              <label>Tray perimeter (ft)</label>
+              <label>Tray perimeter</label>
               <input
-                type="number" min="0" step="0.5"
+                type="text"
                 value={ceilingTrayPerimeter}
                 onChange={e => setCeilingTrayPerimeter(e.target.value)}
-                placeholder="e.g. 24"
+                placeholder="e.g. 24' or 22'6&quot;"
               />
             </div>
             <div className={styles.heightField}>
-              <label>Drop depth (in)</label>
+              <label>Drop depth</label>
               <input
-                type="number" min="0" step="0.25"
+                type="text"
                 value={ceilingDropDepth}
                 onChange={e => setCeilingDropDepth(e.target.value)}
-                placeholder="e.g. 6"
+                placeholder="e.g. 0'6&quot; or 6&quot;"
               />
             </div>
           </div>
@@ -279,21 +280,21 @@ export default function ZoneDrawPanel({
           <label>Shed Heights</label>
           <div className={styles.heightRow}>
             <div className={styles.heightField}>
-              <label>Low wall (ft)</label>
+              <label>Low wall</label>
               <input
-                type="number" min="0" step="0.5"
+                type="text"
                 value={ceilingLowWallHeight}
                 onChange={e => setCeilingLowWallHeight(e.target.value)}
-                placeholder="e.g. 8"
+                placeholder="e.g. 8' or 7'6&quot;"
               />
             </div>
             <div className={styles.heightField}>
-              <label>High wall (ft)</label>
+              <label>High wall</label>
               <input
-                type="number" min="0" step="0.5"
+                type="text"
                 value={ceilingHighWallHeight}
                 onChange={e => setCeilingHighWallHeight(e.target.value)}
-                placeholder="e.g. 12"
+                placeholder="e.g. 12' or 11'6&quot;"
               />
             </div>
           </div>

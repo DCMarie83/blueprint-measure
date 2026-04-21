@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import styles from './ZoneList.module.css'
 import { getMaxReach, estimatePaint } from '../../utils/measurements'
+import { parseFeetInches, formatFeetInches, formatSF, formatLF } from '../../utils/fractions'
 
 const PRESET_COLORS = [
   '#2e8bff', '#22c55e', '#f59e0b', '#ef4444', '#a855f7',
@@ -74,12 +75,12 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
     setEditSurfaceFinish(zone.surface_finish ?? 'smooth')
     setEditNotes(zone.notes ?? '')
     setEditCeilingType(zone.ceiling_type ?? 'flat')
-    setEditCeilingPeakHeight(zone.ceiling_peak_height ?? '')
-    setEditCeilingWallHeight(zone.ceiling_wall_height ?? '')
-    setEditCeilingTrayPerimeter(zone.ceiling_tray_perimeter ?? '')
-    setEditCeilingDropDepth(zone.ceiling_drop_depth ?? '')
-    setEditCeilingLowWallHeight(zone.ceiling_low_wall_height ?? '')
-    setEditCeilingHighWallHeight(zone.ceiling_high_wall_height ?? '')
+    setEditCeilingPeakHeight(zone.ceiling_peak_height    ? formatFeetInches(zone.ceiling_peak_height)    : '')
+    setEditCeilingWallHeight(zone.ceiling_wall_height    ? formatFeetInches(zone.ceiling_wall_height)    : '')
+    setEditCeilingTrayPerimeter(zone.ceiling_tray_perimeter ? formatFeetInches(zone.ceiling_tray_perimeter) : '')
+    setEditCeilingDropDepth(zone.ceiling_drop_depth      ? formatFeetInches(zone.ceiling_drop_depth)      : '')
+    setEditCeilingLowWallHeight(zone.ceiling_low_wall_height  ? formatFeetInches(zone.ceiling_low_wall_height)  : '')
+    setEditCeilingHighWallHeight(zone.ceiling_high_wall_height ? formatFeetInches(zone.ceiling_high_wall_height) : '')
     setEditColor(zone.color ?? null)
   }
 
@@ -100,12 +101,12 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
         surface_finish: editSurfaceFinish,
         notes: editNotes.trim() || null,
         ceiling_type: isCeiling ? editCeilingType : null,
-        ceiling_peak_height:    isCeiling && editCeilingType === 'vaulted' ? parseFloat(editCeilingPeakHeight)    || null : null,
-        ceiling_wall_height:    isCeiling && editCeilingType === 'vaulted' ? parseFloat(editCeilingWallHeight)    || null : null,
-        ceiling_tray_perimeter: isCeiling && editCeilingType === 'tray'    ? parseFloat(editCeilingTrayPerimeter) || null : null,
-        ceiling_drop_depth:     isCeiling && editCeilingType === 'tray'    ? parseFloat(editCeilingDropDepth)     || null : null,
-        ceiling_low_wall_height:  isCeiling && editCeilingType === 'shed'  ? parseFloat(editCeilingLowWallHeight)  || null : null,
-        ceiling_high_wall_height: isCeiling && editCeilingType === 'shed'  ? parseFloat(editCeilingHighWallHeight) || null : null,
+        ceiling_peak_height:      isCeiling && editCeilingType === 'vaulted' ? parseFeetInches(editCeilingPeakHeight)    : null,
+        ceiling_wall_height:      isCeiling && editCeilingType === 'vaulted' ? parseFeetInches(editCeilingWallHeight)    : null,
+        ceiling_tray_perimeter:   isCeiling && editCeilingType === 'tray'    ? parseFeetInches(editCeilingTrayPerimeter) : null,
+        ceiling_drop_depth:       isCeiling && editCeilingType === 'tray'    ? parseFeetInches(editCeilingDropDepth)     : null,
+        ceiling_low_wall_height:  isCeiling && editCeilingType === 'shed'    ? parseFeetInches(editCeilingLowWallHeight)  : null,
+        ceiling_high_wall_height: isCeiling && editCeilingType === 'shed'    ? parseFeetInches(editCeilingHighWallHeight) : null,
         color: editColor ?? null,
       })
       setEditingId(null)
@@ -172,23 +173,23 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                 {editSurfaceType === 'Ceiling' && editCeilingType === 'vaulted' && (
                   <div className={styles.editHeightRow}>
                     <div className={styles.editHeightField}>
-                      <span className={styles.editHeightLabel}>Peak height (ft)</span>
+                      <span className={styles.editHeightLabel}>Peak height</span>
                       <input
                         className={styles.editInput}
-                        type="number" min="0" step="0.5"
+                        type="text"
                         value={editCeilingPeakHeight}
                         onChange={e => setEditCeilingPeakHeight(e.target.value)}
-                        placeholder="e.g. 14"
+                        placeholder="e.g. 14' or 13'6&quot;"
                       />
                     </div>
                     <div className={styles.editHeightField}>
-                      <span className={styles.editHeightLabel}>Wall height (ft)</span>
+                      <span className={styles.editHeightLabel}>Wall height</span>
                       <input
                         className={styles.editInput}
-                        type="number" min="0" step="0.5"
+                        type="text"
                         value={editCeilingWallHeight}
                         onChange={e => setEditCeilingWallHeight(e.target.value)}
-                        placeholder="e.g. 8"
+                        placeholder="e.g. 8' or 7'6&quot;"
                       />
                     </div>
                   </div>
@@ -198,23 +199,23 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                 {editSurfaceType === 'Ceiling' && editCeilingType === 'tray' && (
                   <div className={styles.editHeightRow}>
                     <div className={styles.editHeightField}>
-                      <span className={styles.editHeightLabel}>Tray perimeter (ft)</span>
+                      <span className={styles.editHeightLabel}>Tray perimeter</span>
                       <input
                         className={styles.editInput}
-                        type="number" min="0" step="0.5"
+                        type="text"
                         value={editCeilingTrayPerimeter}
                         onChange={e => setEditCeilingTrayPerimeter(e.target.value)}
-                        placeholder="e.g. 24"
+                        placeholder="e.g. 24' or 22'6&quot;"
                       />
                     </div>
                     <div className={styles.editHeightField}>
-                      <span className={styles.editHeightLabel}>Drop depth (in)</span>
+                      <span className={styles.editHeightLabel}>Drop depth</span>
                       <input
                         className={styles.editInput}
-                        type="number" min="0" step="0.25"
+                        type="text"
                         value={editCeilingDropDepth}
                         onChange={e => setEditCeilingDropDepth(e.target.value)}
-                        placeholder="e.g. 6"
+                        placeholder="e.g. 0'6&quot; or 6&quot;"
                       />
                     </div>
                   </div>
@@ -224,23 +225,23 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                 {editSurfaceType === 'Ceiling' && editCeilingType === 'shed' && (
                   <div className={styles.editHeightRow}>
                     <div className={styles.editHeightField}>
-                      <span className={styles.editHeightLabel}>Low wall (ft)</span>
+                      <span className={styles.editHeightLabel}>Low wall</span>
                       <input
                         className={styles.editInput}
-                        type="number" min="0" step="0.5"
+                        type="text"
                         value={editCeilingLowWallHeight}
                         onChange={e => setEditCeilingLowWallHeight(e.target.value)}
-                        placeholder="e.g. 8"
+                        placeholder="e.g. 8' or 7'6&quot;"
                       />
                     </div>
                     <div className={styles.editHeightField}>
-                      <span className={styles.editHeightLabel}>High wall (ft)</span>
+                      <span className={styles.editHeightLabel}>High wall</span>
                       <input
                         className={styles.editInput}
-                        type="number" min="0" step="0.5"
+                        type="text"
                         value={editCeilingHighWallHeight}
                         onChange={e => setEditCeilingHighWallHeight(e.target.value)}
-                        placeholder="e.g. 12"
+                        placeholder="e.g. 12' or 11'6&quot;"
                       />
                     </div>
                   </div>
@@ -365,18 +366,17 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                   </div>
                 )}
                 <div className={styles.zoneResult}>
-                  {zone.result ?? 0}{' '}
-                  <span className={styles.zoneUnit}>
-                    {zone.measurement_type === 'SF' ? 'sq ft'
-                      : zone.measurement_type === 'LF' ? 'lin ft'
-                      : 'each'}
-                  </span>
+                  {zone.measurement_type === 'SF'
+                    ? formatSF(zone.result ?? 0)
+                    : zone.measurement_type === 'LF'
+                    ? formatLF(zone.result ?? 0)
+                    : `${Math.round(zone.result ?? 0)} items`}
                 </div>
                 {(() => {
                   const reach = getMaxReach(zone)
                   return reach !== null ? (
                     <div className={styles.zoneMaxReach}>
-                      Max reach: {reach} ft
+                      Max reach: {formatFeetInches(reach)}
                     </div>
                   ) : null
                 })()}
