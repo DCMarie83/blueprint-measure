@@ -25,6 +25,7 @@ export default function ZoneDrawPanel({
   onStart, onCancel, onUndoPoint, onAddSegment, onFinalizeZone,
   isDrawing, isAccumulating, segmentCount = 0, accumulatedResult = 0,
   pointCount, onFinish, drawingType, sfPreview, wallPreview,
+  enabledFeatures = {},
 }) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -352,54 +353,60 @@ export default function ZoneDrawPanel({
 
       {/* Wall height & openings — shown when Surface=Wall and Type=SF */}
       {surfaceType === 'Wall' && type === 'SF' && (
-        <div className={styles.field}>
-          <label>Wall Height &amp; Openings <span className={styles.optional}>(optional)</span></label>
+        enabledFeatures.wall_calculator ? (
+          <div className={styles.field}>
+            <label>Wall Height &amp; Openings <span className={styles.optional}>(optional)</span></label>
 
-          <div className={styles.heightField}>
-            <label>Wall height</label>
-            <input
-              type="text"
-              value={wallHeight}
-              onChange={e => setWallHeight(e.target.value)}
-              placeholder="e.g. 9' or 8'6&quot;"
-            />
-          </div>
+            <div className={styles.heightField}>
+              <label>Wall height</label>
+              <input
+                type="text"
+                value={wallHeight}
+                onChange={e => setWallHeight(e.target.value)}
+                placeholder="e.g. 9' or 8'6&quot;"
+              />
+            </div>
 
-          {wallHeight && (
-            <>
-              <div className={styles.openingsHeader}>Opening Deductions</div>
-              {openings.map(o => (
-                <div key={o.id} className={styles.openingRow}>
-                  <input
-                    className={styles.openingName}
-                    value={o.name}
-                    onChange={e => updateOpening(o.id, 'name', e.target.value)}
-                    placeholder="Name"
-                  />
-                  <input
-                    className={styles.openingSf}
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={o.sf}
-                    onChange={e => updateOpening(o.id, 'sf', parseFloat(e.target.value) || 0)}
-                  />
-                  <span className={styles.openingSfUnit}>sf</span>
-                  <button type="button" className={styles.openingRemove}
-                    onClick={() => removeOpening(o.id)}>✕</button>
+            {wallHeight && (
+              <>
+                <div className={styles.openingsHeader}>Opening Deductions</div>
+                {openings.map(o => (
+                  <div key={o.id} className={styles.openingRow}>
+                    <input
+                      className={styles.openingName}
+                      value={o.name}
+                      onChange={e => updateOpening(o.id, 'name', e.target.value)}
+                      placeholder="Name"
+                    />
+                    <input
+                      className={styles.openingSf}
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={o.sf}
+                      onChange={e => updateOpening(o.id, 'sf', parseFloat(e.target.value) || 0)}
+                    />
+                    <span className={styles.openingSfUnit}>sf</span>
+                    <button type="button" className={styles.openingRemove}
+                      onClick={() => removeOpening(o.id)}>✕</button>
+                  </div>
+                ))}
+                <div className={styles.openingBtns}>
+                  <button type="button" className={styles.openingAddBtn}
+                    onClick={() => addOpening('Door', 21)}>+ Door (21sf)</button>
+                  <button type="button" className={styles.openingAddBtn}
+                    onClick={() => addOpening('Window', 15)}>+ Window (15sf)</button>
+                  <button type="button" className={styles.openingAddBtn}
+                    onClick={() => addOpening('Opening', 0)}>+ Custom</button>
                 </div>
-              ))}
-              <div className={styles.openingBtns}>
-                <button type="button" className={styles.openingAddBtn}
-                  onClick={() => addOpening('Door', 21)}>+ Door (21sf)</button>
-                <button type="button" className={styles.openingAddBtn}
-                  onClick={() => addOpening('Window', 15)}>+ Window (15sf)</button>
-                <button type="button" className={styles.openingAddBtn}
-                  onClick={() => addOpening('Opening', 0)}>+ Custom</button>
-              </div>
-            </>
-          )}
-        </div>
+              </>
+            )}
+          </div>
+        ) : (
+          <div className={styles.lockedFeature}>
+            🔒 Wall calculator — available on Plus plan
+          </div>
+        )
       )}
 
       <div className={styles.field}>

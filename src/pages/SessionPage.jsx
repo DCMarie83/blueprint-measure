@@ -801,6 +801,7 @@ export default function SessionPage() {
               drawingType={activeZoneMeta?.type}
               sfPreview={sfPreview}
               wallPreview={wallPreview}
+              enabledFeatures={enabledFeatures}
             />
           </div>
         )}

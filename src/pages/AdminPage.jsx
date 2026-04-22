@@ -9,6 +9,7 @@ const FEATURES = [
   { key: 'redraw_zones',       label: 'Redraw Zones'       },
   { key: 'paint_calculator',   label: 'Paint Calculator'   },
   { key: 'ai_scale_detection', label: 'AI Scale Detection' },
+  { key: 'wall_calculator',   label: 'Wall Calculator'   },
 ]
 
 const PLANS = [
@@ -22,11 +23,11 @@ const PLANS = [
 // Default feature flags applied when a company is created. Admins can override
 // individual flags at any time using the toggles in the company table.
 const PLAN_FEATURES = {
-  basic:    { multi_page_pdf: false, csv_export: true,  redraw_zones: false, paint_calculator: false, ai_scale_detection: false },
-  plus:     { multi_page_pdf: true,  csv_export: true,  redraw_zones: true,  paint_calculator: true,  ai_scale_detection: true  },
-  ultra:    { multi_page_pdf: true,  csv_export: true,  redraw_zones: true,  paint_calculator: true,  ai_scale_detection: true  },
-  founders: { multi_page_pdf: true,  csv_export: true,  redraw_zones: true,  paint_calculator: true,  ai_scale_detection: true  },
-  pilot:    { multi_page_pdf: true,  csv_export: true,  redraw_zones: true,  paint_calculator: true,  ai_scale_detection: true  },
+  basic:    { multi_page_pdf: false, csv_export: true,  redraw_zones: false, paint_calculator: false, ai_scale_detection: false, wall_calculator: false },
+  plus:     { multi_page_pdf: true,  csv_export: true,  redraw_zones: true,  paint_calculator: true,  ai_scale_detection: true,  wall_calculator: true  },
+  ultra:    { multi_page_pdf: true,  csv_export: true,  redraw_zones: true,  paint_calculator: true,  ai_scale_detection: true,  wall_calculator: true  },
+  founders: { multi_page_pdf: true,  csv_export: true,  redraw_zones: true,  paint_calculator: true,  ai_scale_detection: true,  wall_calculator: true  },
+  pilot:    { multi_page_pdf: true,  csv_export: true,  redraw_zones: true,  paint_calculator: true,  ai_scale_detection: true,  wall_calculator: true  },
 }
 
 // ── tiny helper — show an inline "Sent!" / "Email sent!" for 3 s ─────────────

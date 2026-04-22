@@ -64,6 +64,10 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
   const [editCeilingHighWallHeight, setEditCeilingHighWallHeight] = useState('')
   const [editColor, setEditColor] = useState(null)
 
+  // Wall edit fields
+  const [editWallHeight, setEditWallHeight] = useState('')
+  const [editOpenings, setEditOpenings] = useState([])
+
   const [saving, setSaving] = useState(false)
 
   function startEdit(zone) {
@@ -82,6 +86,8 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
     setEditCeilingLowWallHeight(zone.ceiling_low_wall_height  ? formatFeetInches(zone.ceiling_low_wall_height)  : '')
     setEditCeilingHighWallHeight(zone.ceiling_high_wall_height ? formatFeetInches(zone.ceiling_high_wall_height) : '')
     setEditColor(zone.color ?? null)
+    setEditWallHeight(zone.wall_height ? formatFeetInches(zone.wall_height) : '')
+    setEditOpenings((zone.opening_deductions ?? []).map((o, i) => ({ id: i + 1, ...o })))
   }
 
   function cancelEdit() {
@@ -108,6 +114,10 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
         ceiling_low_wall_height:  isCeiling && editCeilingType === 'shed'    ? parseFeetInches(editCeilingLowWallHeight)  : null,
         ceiling_high_wall_height: isCeiling && editCeilingType === 'shed'    ? parseFeetInches(editCeilingHighWallHeight) : null,
         color: editColor ?? null,
+        wall_height: editSurfaceType === 'Wall' ? parseFeetInches(editWallHeight) : null,
+        opening_deductions: editSurfaceType === 'Wall' && editOpenings.length > 0
+          ? editOpenings.map(o => ({ name: o.name, sf: o.sf }))
+          : null,
       })
       setEditingId(null)
     } finally {
@@ -247,6 +257,65 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                   </div>
                 )}
 
+                {/* Wall height & openings — shown when editing a Wall/SF zone */}
+                {editSurfaceType === 'Wall' && !enabledFeatures.wall_calculator && (
+                  <div className={styles.zonePaintLocked}>
+                    🔒 Wall calculator — available on Plus plan
+                  </div>
+                )}
+                {editSurfaceType === 'Wall' && enabledFeatures.wall_calculator && (
+                  <div className={styles.editFinishGroup}>
+                    <span className={styles.editFinishLabel}>Wall Height &amp; Openings</span>
+                    <input
+                      className={styles.editInput}
+                      type="text"
+                      value={editWallHeight}
+                      onChange={e => setEditWallHeight(e.target.value)}
+                      placeholder="e.g. 9' or 8'6&quot;"
+                    />
+                    {editWallHeight && (
+                      <>
+                        {editOpenings.map(o => (
+                          <div key={o.id} className={styles.editHeightRow}>
+                            <input
+                              className={styles.editInput}
+                              value={o.name}
+                              onChange={e => setEditOpenings(prev =>
+                                prev.map(x => x.id === o.id ? { ...x, name: e.target.value } : x))}
+                              placeholder="Name"
+                              style={{ flex: 1 }}
+                            />
+                            <input
+                              className={styles.editInput}
+                              type="number" min="0" step="1"
+                              value={o.sf}
+                              onChange={e => setEditOpenings(prev =>
+                                prev.map(x => x.id === o.id ? { ...x, sf: parseFloat(e.target.value) || 0 } : x))}
+                              style={{ width: 60 }}
+                            />
+                            <button type="button" className={styles.editBtn}
+                              onClick={() => setEditOpenings(prev => prev.filter(x => x.id !== o.id))}>✕</button>
+                          </div>
+                        ))}
+                        <div className={styles.editFinishBtns}>
+                          <button type="button" className={styles.editCoatBtn}
+                            onClick={() => setEditOpenings(prev => [...prev, { id: Date.now(), name: 'Door', sf: 21 }])}>
+                            + Door
+                          </button>
+                          <button type="button" className={styles.editCoatBtn}
+                            onClick={() => setEditOpenings(prev => [...prev, { id: Date.now() + 1, name: 'Window', sf: 15 }])}>
+                            + Window
+                          </button>
+                          <button type="button" className={styles.editCoatBtn}
+                            onClick={() => setEditOpenings(prev => [...prev, { id: Date.now() + 2, name: 'Opening', sf: 0 }])}>
+                            + Custom
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
                 <div className={styles.editCoatGroup}>
                   {[1, 2].map(n => (
                     <button
@@ -372,6 +441,16 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                     ? formatLF(zone.result ?? 0)
                     : `${Math.round(zone.result ?? 0)} items`}
                 </div>
+                {/* Wall breakdown — shown when wall_height is set and feature enabled */}
+                {zone.wall_height && zone.gross_wall_sf && enabledFeatures.wall_calculator && (
+                  <div className={styles.zonePaintEstimate}>
+                    <div>Wall: {formatFeetInches(zone.wall_height)} high · Gross {zone.gross_wall_sf} sf</div>
+                    {zone.opening_deductions?.length > 0 && (
+                      <div>Deductions: −{(zone.opening_deductions).reduce((s, o) => s + (o.sf ?? 0), 0)} sf ({zone.opening_deductions.length} openings)</div>
+                    )}
+                    <div>Net wall: {zone.net_wall_sf} sf</div>
+                  </div>
+                )}
                 {(() => {
                   const reach = getMaxReach(zone)
                   return reach !== null ? (
@@ -386,7 +465,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                       const gal = estimatePaint(zone)
                       return gal !== null ? (
                         <div className={styles.zonePaintEstimate}>
-                          Est. paint: {gal} gal
+                          Est. {zone.surface_type === 'Wall' ? 'wall ' : ''}paint: {gal} gal
                         </div>
                       ) : null
                     })()

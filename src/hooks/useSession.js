@@ -48,6 +48,7 @@ export function useSession(sessionId) {
         redraw_zones:       true,
         paint_calculator:   true,
         ai_scale_detection: true,
+        wall_calculator:    true,
       })
     } else {
       // Load the tenant's feature flags via user_profiles → companies join.
