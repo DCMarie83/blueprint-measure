@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { SCALE_OPTIONS, calcPixelsPerFoot } from '../../utils/scaleOptions'
-import { parseFeetInches } from '../../utils/fractions'
+import { parseFeetInches, formatFeetInches } from '../../utils/fractions'
 import styles from './ScalePanel.module.css'
 
 // ScalePanel lets the user set the blueprint's scale.
 // Either pick from the standard dropdown, or use manual calibration
 // (draw a line of known length on the blueprint).
-export default function ScalePanel({ pixelsPerFoot, onScaleChange, onStartCalibration, calibrating, pageKey, enabledFeatures = {}, onDetectScale }) {
+export default function ScalePanel({ pixelsPerFoot, onScaleChange, onStartCalibration, calibrating, pageKey, enabledFeatures = {}, onDetectScale,
+  scaleVerification, scaleVerificationStatus, onRecalibrate }) {
   const [selected, setSelected] = useState('1/4')
   const [knownFeet, setKnownFeet] = useState('')
   const [helpOpen, setHelpOpen] = useState(false)
@@ -85,6 +86,28 @@ export default function ScalePanel({ pixelsPerFoot, onScaleChange, onStartCalibr
       {pixelsPerFoot && (
         <div className={styles.activeScale}>
           Scale active — 1 ft = {(pixelsPerFoot).toFixed(1)} px
+        </div>
+      )}
+
+      {/* Scale verification badge */}
+      {scaleVerificationStatus === 'verifying' && (
+        <div className={styles.verifyBadge}>
+          <span className={styles.verifyDot} />
+          Verifying scale…
+        </div>
+      )}
+      {scaleVerificationStatus === 'verified' && scaleVerification && (
+        <div className={styles.verifyPass}>
+          ✓ Scale verified — {scaleVerification.dimensionText} confirmed
+        </div>
+      )}
+      {scaleVerificationStatus === 'warning' && scaleVerification && (
+        <div className={styles.verifyWarn}>
+          ⚠ Scale may be off — {scaleVerification.dimensionText} printed but measured {formatFeetInches(scaleVerification.measuredFeet)}.{' '}
+          <button type="button" className={styles.verifyRecalBtn}
+            onClick={() => onRecalibrate?.(scaleVerification.statedFeet)}>
+            Recalibrate
+          </button>
         </div>
       )}
 
