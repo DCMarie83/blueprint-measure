@@ -49,6 +49,7 @@ export function useSession(sessionId) {
         paint_calculator:   true,
         ai_scale_detection: true,
         wall_calculator:    true,
+        test_mode:          true,
       })
     } else {
       // Load the tenant's feature flags via user_profiles → companies join.

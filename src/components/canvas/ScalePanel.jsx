@@ -1,16 +1,18 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { SCALE_OPTIONS, calcPixelsPerFoot } from '../../utils/scaleOptions'
 import { parseFeetInches } from '../../utils/fractions'
 import styles from './ScalePanel.module.css'
 
 export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, pdfPageInfo, currentPage, pageCount,
-  isSuperAdmin = false, onScaleChange, onStartCalibration, calibrating, pageKey,
+  isSuperAdmin = false, isPdf = false, onScaleChange, onStartCalibration, calibrating, pageKey,
   enabledFeatures = {}, onDetectScale, scaleSanity, scaleDetectionBanner }) {
   const [selected, setSelected] = useState('1/4')
   const [knownFeet, setKnownFeet] = useState('')
   const [helpOpen, setHelpOpen] = useState(false)
   const [detecting, setDetecting] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [infoOpen, setInfoOpen] = useState(false)
+  const infoRef = useRef(null)
 
   // ── Default scale on page mount ────────────────────────────────────────────
   // Apply 1/4" default only when NO scale is set for this page.
@@ -113,6 +115,42 @@ export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, pdfPageI
           Scale active — 1 ft = {(pixelsPerFoot).toFixed(1)} px
         </div>
       )}
+
+      {/* ── Scale notice pill (standard users only) ── */}
+      {!isSuperAdmin && pixelsPerFoot && (() => {
+        const sanityFail = scaleSanity && !scaleSanity.passes
+        const pdfMissing = isPdf && !pdfPageInfo
+        const pillColor = pdfMissing ? 'red' : sanityFail ? 'amber' : 'green'
+        return (
+          <div className={`${styles.scalePill} ${styles[`scalePill_${pillColor}`]}`}>
+            <span className={styles.scalePillText}>
+              {pdfMissing
+                ? '⚠ PDF scale not detected — please use Manual Calibration to set the scale'
+                : sanityFail
+                ? '⚠ Scale may not match'
+                : `✓ Scale set — ${selectedOption?.label ?? selected}`}
+            </span>
+            {!pdfMissing && (
+              <button type="button" className={styles.scalePillInfo}
+                onClick={() => setInfoOpen(o => !o)}>ⓘ</button>
+            )}
+            {sanityFail && !pdfMissing && (
+              <div className={styles.scalePillHelper}>
+                Check the scale printed on the page title block (usually bottom right) and pick it from the dropdown. If the issue continues, use Manual Calibration.
+              </div>
+            )}
+            {infoOpen && (
+              <div className={styles.scalePillPopover} ref={infoRef}>
+                <div className={styles.scalePillPopTitle}>How the scale works</div>
+                <p className={styles.scalePillPopBody}>
+                  BlueprintMeasure reads the rendered resolution of your PDF automatically. You only need to pick the architectural scale that matches what's printed on the blueprint's title block (usually bottom right corner, e.g. 1/4" = 1').
+                  If your scale is non-standard, or the drawing was scanned and resized, use Manual Calibration: click Manual from the dropdown, draw a line along a dimension you know (like a wall labeled 10'-0"), and enter the actual length.
+                </p>
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* ── Scale diagnostic (super admin only) ── */}
       {isSuperAdmin && pixelsPerFoot && (

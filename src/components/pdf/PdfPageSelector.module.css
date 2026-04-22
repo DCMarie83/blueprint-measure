@@ -46,6 +46,7 @@
 
 /* Wrapper keeps aspect ratio consistent whether image or placeholder */
 .preview {
+  position: relative;
   width: 100%;
   height: 46px;
   display: flex;
@@ -78,4 +79,15 @@
 
 .thumb.active .pageLabel {
   color: var(--color-primary);
+}
+
+.savedDot {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  border: 1px solid rgba(0,0,0,0.2);
 }

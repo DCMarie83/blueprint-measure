@@ -81,7 +81,12 @@ export function evaluateZoneTest(zone, input, pixelsPerFoot) {
 
   const variance = Math.round((measured - stated) * 100) / 100
   const variancePct = stated !== 0 ? Math.round((variance / stated) * 10000) / 100 : 0
-  const tolerance = 2.0
+  // Upper tolerance: whichever is larger between +2 flat and +2% of stated.
+  // This prevents large rooms (e.g. 1000 SF) from requiring sub-0.2% accuracy.
+  const toleranceFlat = 2.0
+  const tolerancePct = stated * 0.02
+  const tolerance = Math.max(toleranceFlat, tolerancePct)
+  const toleranceRounded = Math.round(tolerance * 100) / 100
   const unit = type === 'SF' ? 'SF' : 'LF'
 
   if (measured < stated) {
@@ -98,7 +103,7 @@ export function evaluateZoneTest(zone, input, pixelsPerFoot) {
     const label = type === 'SF' ? 'OVER TOLERANCE' : 'LF OVER TOLERANCE'
     return {
       verdict: 'FAIL', errorCode: code, stated, variance, variancePct,
-      errorMessage: `${label} — Measured ${measured} ${unit} exceeds stated ${stated.toFixed(2)} ${unit} by ${variance.toFixed(2)} ${unit} (max allowed: +${tolerance} ${unit}).`,
+      errorMessage: `${label} — Measured ${measured} ${unit} exceeds stated ${stated.toFixed(2)} ${unit} by ${variance.toFixed(2)} ${unit} (max allowed: +${toleranceRounded} ${unit} or +2%, whichever is greater).`,
     }
   }
 

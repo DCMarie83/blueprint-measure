@@ -95,6 +95,10 @@ export default function SessionPage() {
   const [consecutiveFailCount, setConsecutiveFailCount] = useState(0)
   const [calibBannerInput, setCalibBannerInput] = useState('')
 
+  // ── Save status ─────────────────────────────────────────────────────────────
+  const [lastSavedAt, setLastSavedAt] = useState(null)
+  const [manualSaving, setManualSaving] = useState(false)
+
   // ── Pixel sanity check (all users, all tiers) ────────────────────────────────
   // After any scale change, checks if the drawing dimensions are reasonable.
   // null = no check run yet, object = check result.
@@ -176,6 +180,7 @@ export default function SessionPage() {
     setPageScales(newScales)
     try {
       await updateSession({ page_scales: newScales })
+      setLastSavedAt(new Date())
     } catch (err) {
       console.error('Failed to save page scale:', err)
     }
@@ -573,6 +578,18 @@ export default function SessionPage() {
     exportCSV(session, zones)
   }
 
+  async function handleManualSave() {
+    setManualSaving(true)
+    try {
+      await updateSession({ page_scales: pageScales, page_number: currentPage })
+      setLastSavedAt(new Date())
+    } catch (err) {
+      alert('Save failed — ' + err.message)
+    } finally {
+      setManualSaving(false)
+    }
+  }
+
   // ── Test mode handlers ────────────────────────────────────────────────────────
 
   function handleTestDataChange(zoneId, updates) {
@@ -926,8 +943,16 @@ export default function SessionPage() {
           <div className={styles.sessionInfo}>
             <div className={styles.sessionProject}>{session?.project_name}</div>
             <div className={styles.sessionClient}>{session?.client_name}</div>
+            <div className={styles.saveRow}>
+              <span className={styles.lastSaved}>
+                {lastSavedAt ? `Saved ${lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Not yet saved'}
+              </span>
+              <button className={styles.saveBtn} onClick={handleManualSave} disabled={manualSaving}>
+                {manualSaving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
           </div>
-          {isAdmin && (
+          {(isAdmin || enabledFeatures?.test_mode) && (
             <button
               className={`${styles.testToggle} ${isTestMode ? styles.testToggleOn : ''}`}
               onClick={() => setIsTestMode(v => !v)}
@@ -971,6 +996,7 @@ export default function SessionPage() {
               currentPage={currentPage}
               thumbnails={thumbnails}
               onPageSelect={handlePageSwitch}
+              pageScales={pageScales}
             />
           </div>
         )}
@@ -986,6 +1012,7 @@ export default function SessionPage() {
               currentPage={currentPage}
               pageCount={pageCount}
               isSuperAdmin={isAdmin}
+              isPdf={isPdf}
               onScaleChange={(ppf) => { handleScaleChange(ppf); runScaleSanityCheck(ppf, 'dropdown') }}
               onStartCalibration={handleStartCalibration}
               calibrating={calibrating}
