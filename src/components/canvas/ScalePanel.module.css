@@ -90,6 +90,15 @@
   padding: 6px 10px;
 }
 
+/* ── Render resolution info ── */
+
+.renderInfo {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  opacity: 0.7;
+  line-height: 1.4;
+}
+
 /* ── Pixel sanity check badges ── */
 
 .sanityPass {

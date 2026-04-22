@@ -5,7 +5,7 @@ import styles from './ScalePanel.module.css'
 
 // ScalePanel lets the user set the blueprint's scale.
 // Either pick from the standard dropdown, use manual calibration, or AI detection.
-export default function ScalePanel({ pixelsPerFoot, onScaleChange, onStartCalibration, calibrating, pageKey,
+export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, onScaleChange, onStartCalibration, calibrating, pageKey,
   enabledFeatures = {}, onDetectScale, scaleSanity, scaleDetectionBanner }) {
   const [selected, setSelected] = useState('1/4')
   const [knownFeet, setKnownFeet] = useState('')
@@ -19,18 +19,18 @@ export default function ScalePanel({ pixelsPerFoot, onScaleChange, onStartCalibr
       const defaultOption = SCALE_OPTIONS.find(o => o.value === '1/4')
       if (defaultOption?.inchesPerFoot) {
         setSelected('1/4')
-        onScaleChange(calcPixelsPerFoot(defaultOption.inchesPerFoot))
+        onScaleChange(calcPixelsPerFoot(defaultOption.inchesPerFoot, pixelsPerInch))
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageKey])
+  }, [pageKey, pixelsPerInch])
 
   function handleSelect(value) {
     setSelected(value)
     if (value !== 'manual') {
       const option = SCALE_OPTIONS.find(o => o.value === value)
       if (option) {
-        const ppf = calcPixelsPerFoot(option.inchesPerFoot)
+        const ppf = calcPixelsPerFoot(option.inchesPerFoot, pixelsPerInch)
         onScaleChange(ppf)
       }
     }
@@ -84,6 +84,14 @@ export default function ScalePanel({ pixelsPerFoot, onScaleChange, onStartCalibr
       {pixelsPerFoot && (
         <div className={styles.activeScale}>
           Scale active — 1 ft = {(pixelsPerFoot).toFixed(1)} px
+        </div>
+      )}
+
+      {/* Render resolution info — confirms the math is grounded in reality */}
+      {pixelsPerInch !== 96 && pixelsPerFoot && (
+        <div className={styles.renderInfo}>
+          Page renders at {Math.round(pixelsPerInch)} px/inch.
+          {' '}At {SCALE_OPTIONS.find(o => calcPixelsPerFoot(o.inchesPerFoot, pixelsPerInch) === pixelsPerFoot)?.label ?? 'this scale'} = {pixelsPerFoot.toFixed(1)} px/ft.
         </div>
       )}
 

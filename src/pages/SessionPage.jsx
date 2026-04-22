@@ -39,7 +39,9 @@ export default function SessionPage() {
 
   // ── PDF state ────────────────────────────────────────────────────────────────
   const isPdf = blueprintType === 'application/pdf'
-  const { pageCount, pdfLoading, renderPage } = usePdf(isPdf ? blueprintUrl : null)
+  const { pageCount, pdfLoading, renderPage, pdfPageInfo } = usePdf(isPdf ? blueprintUrl : null)
+  // Actual render resolution from PDF metadata. Falls back to 96 for non-PDF images.
+  const pixelsPerInch = (isPdf && pdfPageInfo?.pixelsPerInch) ? pdfPageInfo.pixelsPerInch : 96
   const [currentPage, setCurrentPage] = useState(1)
   const [renderedPageUrl, setRenderedPageUrl] = useState(null)
   const [thumbnails, setThumbnails] = useState({}) // { [pageNum]: dataUrl }
@@ -661,7 +663,7 @@ export default function SessionPage() {
         const imageUrl = isPdfBlueprint ? await renderPage(1, 2.0) : blueprintUrl
         const result = await detectScaleFromImage(imageUrl)
         if (result?.inchesPerFoot) {
-          const ppf = calcPixelsPerFoot(result.inchesPerFoot)
+          const ppf = calcPixelsPerFoot(result.inchesPerFoot, pixelsPerInch)
           await handleScaleChange(ppf)
           setScaleDetectionBanner({ label: result.label })
         }
@@ -734,7 +736,7 @@ export default function SessionPage() {
     try {
       const result = await detectScaleFromImage(imageUrl)
       if (result?.inchesPerFoot) {
-        const ppf = calcPixelsPerFoot(result.inchesPerFoot)
+        const ppf = calcPixelsPerFoot(result.inchesPerFoot, pixelsPerInch)
         await handleScaleChange(ppf)
         // Run sanity check and set banner based on result
         const sanity = runScaleSanityCheck(ppf, 'ai')
@@ -948,6 +950,7 @@ export default function SessionPage() {
             <div className={styles.sectionTitle}>Scale</div>
             <ScalePanel
               pixelsPerFoot={pixelsPerFoot}
+              pixelsPerInch={pixelsPerInch}
               onScaleChange={(ppf) => { handleScaleChange(ppf); runScaleSanityCheck(ppf, 'dropdown') }}
               onStartCalibration={handleStartCalibration}
               calibrating={calibrating}

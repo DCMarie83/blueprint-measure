@@ -1,7 +1,6 @@
 // Standard architectural scales used in the dropdown.
-// pixelsPerFoot is not stored here — it's calculated at runtime based on
-// the calibration: (96 pixels per inch on screen) / (scale inches per foot)
-// For the manual calibration option, the user draws a known line instead.
+// inchesPerFoot = how many drawing inches represent 1 real-world foot.
+// pixelsPerFoot is calculated at runtime from the actual render resolution.
 
 export const SCALE_OPTIONS = [
   { label: '1/8" = 1\'',  value: '1/8',  inchesPerFoot: 0.125 },
@@ -19,9 +18,15 @@ export const SCALE_OPTIONS = [
   { label: 'Manual calibration…', value: 'manual', inchesPerFoot: null },
 ]
 
-// Given inchesPerFoot from the scale and the on-screen DPI (dots per inch),
-// return how many canvas pixels equal one real-world foot.
-// We assume 96 CSS px per inch (standard screen).
-export function calcPixelsPerFoot(inchesPerFoot, screenDPI = 96) {
-  return screenDPI / inchesPerFoot
+// Calculate how many canvas pixels equal one real-world foot.
+//
+// inchesPerFoot — drawing inches per real foot (from the scale, e.g. 0.25 for 1/4")
+// pixelsPerInch — render resolution from usePdf (pixels per physical page inch)
+//                 Falls back to 96 (CSS standard) for non-PDF images.
+//
+// The math: 1 real foot = inchesPerFoot drawing inches.
+// Each drawing inch = pixelsPerInch rendered pixels.
+// So: pixelsPerFoot = pixelsPerInch × inchesPerFoot.
+export function calcPixelsPerFoot(inchesPerFoot, pixelsPerInch = 96) {
+  return pixelsPerInch * inchesPerFoot
 }
