@@ -3,17 +3,17 @@ import { SCALE_OPTIONS, calcPixelsPerFoot } from '../../utils/scaleOptions'
 import { parseFeetInches } from '../../utils/fractions'
 import styles from './ScalePanel.module.css'
 
-// ScalePanel lets the user set the blueprint's scale.
-// Either pick from the standard dropdown, use manual calibration, or AI detection.
-export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, onScaleChange, onStartCalibration, calibrating, pageKey,
+export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, pdfPageInfo, currentPage, pageCount,
+  onScaleChange, onStartCalibration, calibrating, pageKey,
   enabledFeatures = {}, onDetectScale, scaleSanity, scaleDetectionBanner }) {
   const [selected, setSelected] = useState('1/4')
   const [knownFeet, setKnownFeet] = useState('')
   const [helpOpen, setHelpOpen] = useState(false)
   const [detecting, setDetecting] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
-  // When the active page changes (or on first mount), apply the default 1/4" scale
-  // only if this page has no saved scale yet.
+  // ── Default scale on page mount ────────────────────────────────────────────
+  // Apply 1/4" default only when NO scale is set for this page.
   useEffect(() => {
     if (!pixelsPerFoot) {
       const defaultOption = SCALE_OPTIONS.find(o => o.value === '1/4')
@@ -25,12 +25,31 @@ export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, onScaleC
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageKey, pixelsPerInch])
 
+  // ── Recalculate when pixelsPerInch changes from fallback to real ────────────
+  // On PDF load the sequence is: mount → default fires with pixelsPerInch=96 →
+  // PDF renders → pixelsPerInch updates to real value (e.g. 108). At that point
+  // pixelsPerFoot is already set (to the wrong 96-based value). This effect
+  // detects the transition and recalculates using the dropdown selection.
+  useEffect(() => {
+    if (pixelsPerInch === 96) return // still fallback, nothing to fix
+    if (!pixelsPerFoot) return       // no scale set yet
+    const option = SCALE_OPTIONS.find(o => o.value === selected)
+    if (!option?.inchesPerFoot) return // manual calibration — don't override
+    const correct = calcPixelsPerFoot(option.inchesPerFoot, pixelsPerInch)
+    if (Math.abs(pixelsPerFoot - correct) > 0.01) {
+      console.log('[ScalePanel] pixelsPerInch changed, recalculating', { selected, old: pixelsPerFoot, correct, pixelsPerInch })
+      onScaleChange(correct)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pixelsPerInch])
+
   function handleSelect(value) {
     setSelected(value)
     if (value !== 'manual') {
       const option = SCALE_OPTIONS.find(o => o.value === value)
       if (option) {
         const ppf = calcPixelsPerFoot(option.inchesPerFoot, pixelsPerInch)
+        console.log('[ScalePanel] scale selected', { value, inchesPerFoot: option.inchesPerFoot, pixelsPerInch, calculatedPpf: ppf })
         onScaleChange(ppf)
       }
     }
@@ -42,6 +61,14 @@ export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, onScaleC
     if (!feet || feet <= 0) return
     onStartCalibration(feet)
   }
+
+  // Find the selected option for the diagnostic display
+  const selectedOption = SCALE_OPTIONS.find(o => o.value === selected)
+  const expectedPpf = selectedOption?.inchesPerFoot
+    ? calcPixelsPerFoot(selectedOption.inchesPerFoot, pixelsPerInch)
+    : null
+  const hasMismatch = expectedPpf != null && pixelsPerFoot != null &&
+    selected !== 'manual' && Math.abs(pixelsPerFoot - expectedPpf) > 0.01
 
   return (
     <div className={styles.panel}>
@@ -87,11 +114,21 @@ export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, onScaleC
         </div>
       )}
 
-      {/* Render resolution info — confirms the math is grounded in reality */}
-      {pixelsPerInch !== 96 && pixelsPerFoot && (
-        <div className={styles.renderInfo}>
-          Page renders at {Math.round(pixelsPerInch)} px/inch.
-          {' '}At {SCALE_OPTIONS.find(o => calcPixelsPerFoot(o.inchesPerFoot, pixelsPerInch) === pixelsPerFoot)?.label ?? 'this scale'} = {pixelsPerFoot.toFixed(1)} px/ft.
+      {/* ── Always-on scale diagnostic ── */}
+      {pixelsPerFoot && (
+        <div className={styles.diagnostic}>
+          <div><span className={styles.diagLabel}>Source:</span> {pixelsPerInch !== 96 ? 'PDF metadata' : 'Fallback 96 DPI (non-PDF or metadata not loaded)'}</div>
+          <div><span className={styles.diagLabel}>Render:</span> {pixelsPerInch.toFixed(1)} px/inch</div>
+          {selectedOption?.inchesPerFoot && (
+            <div><span className={styles.diagLabel}>Scale:</span> {selectedOption.label} ({selectedOption.inchesPerFoot} in/ft)</div>
+          )}
+          {expectedPpf != null && (
+            <div><span className={styles.diagLabel}>Calc:</span> {pixelsPerInch.toFixed(1)} × {selectedOption.inchesPerFoot} = {expectedPpf.toFixed(1)} px/ft</div>
+          )}
+          <div><span className={styles.diagLabel}>Stored:</span> {pixelsPerFoot.toFixed(1)} px/ft</div>
+          {hasMismatch && (
+            <div className={styles.diagMismatch}>MISMATCH — scale state is stale, refresh the scale dropdown.</div>
+          )}
         </div>
       )}
 
@@ -119,7 +156,53 @@ export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, onScaleC
         </div>
       )}
 
-      {/* AI scale detection */}
+      {/* ── Confirm PDF Scale button (available to everyone) ── */}
+      <button
+        type="button"
+        className={styles.confirmBtn}
+        onClick={() => setConfirmOpen(o => !o)}
+      >
+        {confirmOpen ? 'Close' : 'Confirm PDF Scale'}
+      </button>
+
+      {confirmOpen && (
+        <div className={styles.confirmPanel}>
+          {pdfPageInfo ? (
+            <>
+              <div className={styles.confirmRow}>
+                <span className={styles.diagLabel}>Page:</span> {currentPage} of {pageCount}
+              </div>
+              <div className={styles.confirmRow}>
+                <span className={styles.diagLabel}>Physical:</span> {pdfPageInfo.widthInches.toFixed(2)}" × {pdfPageInfo.heightInches.toFixed(2)}"
+              </div>
+              <div className={styles.confirmRow}>
+                <span className={styles.diagLabel}>Rendered at:</span> {pdfPageInfo.pixelsPerInch.toFixed(1)} pixels per physical inch
+              </div>
+              <div className={styles.confirmTableLabel}>Scale reference table:</div>
+              <table className={styles.confirmTable}>
+                <thead>
+                  <tr><th>Scale</th><th>in/ft</th><th>px/ft</th></tr>
+                </thead>
+                <tbody>
+                  {SCALE_OPTIONS.filter(o => o.value !== 'manual').map(o => (
+                    <tr key={o.value} className={o.value === selected ? styles.confirmTableActive : ''}>
+                      <td>{o.label}</td>
+                      <td>{o.inchesPerFoot}</td>
+                      <td>{calcPixelsPerFoot(o.inchesPerFoot, pdfPageInfo.pixelsPerInch).toFixed(1)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          ) : (
+            <div className={styles.confirmError}>
+              PDF metadata not available. Falling back to 96 DPI. Measurements will be inaccurate until this is fixed.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* AI scale detection — only for Plus+ */}
       {enabledFeatures.ai_scale_detection ? (
         <div className={styles.aiSection}>
           <button
@@ -136,10 +219,10 @@ export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, onScaleC
               }
             }}
           >
-            {detecting ? 'Detecting…' : 'Detect Scale'}
+            {detecting ? 'Detecting…' : 'AI Detect Scale'}
           </button>
           <p className={styles.aiHint}>
-            AI reads your blueprint title block and sets the scale automatically. Works best when the title block is visible on the current page.
+            AI reads your blueprint title block and sets the scale automatically.
           </p>
         </div>
       ) : (
@@ -175,7 +258,7 @@ export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, onScaleC
               <div className={styles.helpOption}>
                 <div className={styles.helpOptionLabel}>Fast and accurate — AI Detection (Plus+)</div>
                 <p className={styles.helpOptionText}>
-                  Click <strong>Detect Scale</strong> above. AI reads the title block and applies
+                  Click <strong>AI Detect Scale</strong> above. AI reads the title block and applies
                   the scale. Verified automatically with a dimension check.
                 </p>
               </div>

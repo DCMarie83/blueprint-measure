@@ -42,6 +42,8 @@ export default function SessionPage() {
   const { pageCount, pdfLoading, renderPage, pdfPageInfo } = usePdf(isPdf ? blueprintUrl : null)
   // Actual render resolution from PDF metadata. Falls back to 96 for non-PDF images.
   const pixelsPerInch = (isPdf && pdfPageInfo?.pixelsPerInch) ? pdfPageInfo.pixelsPerInch : 96
+
+  console.log('[SessionPage] scale resolution', { isPdf, pdfPageInfo, pixelsPerInch })
   const [currentPage, setCurrentPage] = useState(1)
   const [renderedPageUrl, setRenderedPageUrl] = useState(null)
   const [thumbnails, setThumbnails] = useState({}) // { [pageNum]: dataUrl }
@@ -951,6 +953,9 @@ export default function SessionPage() {
             <ScalePanel
               pixelsPerFoot={pixelsPerFoot}
               pixelsPerInch={pixelsPerInch}
+              pdfPageInfo={pdfPageInfo}
+              currentPage={currentPage}
+              pageCount={pageCount}
               onScaleChange={(ppf) => { handleScaleChange(ppf); runScaleSanityCheck(ppf, 'dropdown') }}
               onStartCalibration={handleStartCalibration}
               calibrating={calibrating}

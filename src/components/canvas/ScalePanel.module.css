@@ -90,13 +90,109 @@
   padding: 6px 10px;
 }
 
-/* ── Render resolution info ── */
+/* ── Scale diagnostic panel ── */
 
-.renderInfo {
-  font-size: 10px;
+.diagnostic {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 9px;
+  line-height: 1.6;
   color: var(--color-text-muted);
-  opacity: 0.7;
-  line-height: 1.4;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 6px 8px;
+}
+
+.diagLabel {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.diagMismatch {
+  color: #ef4444;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+/* ── Confirm PDF Scale panel ── */
+
+.confirmBtn {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.confirmBtn:hover {
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
+
+.confirmPanel {
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.confirmRow {
+  display: flex;
+  gap: 4px;
+}
+
+.confirmTableLabel {
+  font-weight: 600;
+  color: var(--color-text);
+  margin-top: 4px;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.confirmTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+.confirmTable th {
+  text-align: left;
+  font-size: 8px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  padding: 2px 4px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.confirmTable td {
+  padding: 2px 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+
+.confirmTableActive {
+  background: rgba(46, 139, 255, 0.08);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.confirmError {
+  color: #ef4444;
+  font-weight: 600;
+  padding: 6px 0;
 }
 
 /* ── Pixel sanity check badges ── */
