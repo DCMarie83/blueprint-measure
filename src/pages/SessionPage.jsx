@@ -22,7 +22,7 @@ import styles from './SessionPage.module.css'
 export default function SessionPage() {
   const { sessionId } = useParams()
   const navigate = useNavigate()
-  const { session, zones, enabledFeatures, loading, error, saveZone, updateZone, redrawZone, deleteZone, updateSession } = useSession(sessionId)
+  const { session, zones, enabledFeatures, loading, error, saveZone, updateZone, updateZoneLabelOffset, redrawZone, deleteZone, updateSession } = useSession(sessionId)
 
   // ── Blueprint state ──────────────────────────────────────────────────────────
   const [blueprintUrl, setBlueprintUrl] = useState(null)
@@ -468,6 +468,14 @@ export default function SessionPage() {
     blueprintCanvasRef.current?.resetView()
   }
 
+  async function handleLabelOffsetChange(zoneId, offsetX, offsetY) {
+    try {
+      await updateZoneLabelOffset(zoneId, offsetX, offsetY)
+    } catch (err) {
+      console.error('Failed to save label position:', err)
+    }
+  }
+
   function handleExportCSV() {
     if (zones.length === 0) {
       alert('No zones to export yet.')
@@ -813,6 +821,7 @@ export default function SessionPage() {
             onCalibrationLine={handleCalibrationLine}
             redrawingZoneId={redrawingZoneId}
             hiddenZoneIds={hiddenZoneIds}
+            onLabelOffsetChange={handleLabelOffsetChange}
           />
         ) : (
           <div className={styles.emptyCanvas}>

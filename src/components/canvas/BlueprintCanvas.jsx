@@ -15,7 +15,8 @@ const ZONE_COLORS = [
 ]
 
 // BlueprintCanvas renders the blueprint image and all drawn zones on a <canvas>.
-// It handles mouse events for drawing new zones and pan/zoom navigation.
+// It handles mouse events for drawing new zones, pan/zoom navigation, and
+// dragging zone labels to reposition them.
 //
 // Exposed via ref (forwardRef):
 //   resetView() — snaps the canvas back to the initial fit-to-screen position
@@ -31,6 +32,7 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
   onCalibrationLine,
   redrawingZoneId,
   hiddenZoneIds,
+  onLabelOffsetChange,
 }, ref) {
   const canvasRef = useRef(null)
   const imageRef = useRef(null)
@@ -51,10 +53,22 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
 
   const calibPoints = useRef([])
 
-  // ── redraw ───────────────────────────────────────────────────────────────────
-  // Recreated when zones/activeZone/calibrating change. All effects that need
-  // the latest redraw use redrawRef so they don't become stale dependencies.
+  // ── Label drag state ────────────────────────────────────────────────────────
+  // Local offsets that haven't been saved to the DB yet. Keyed by zone ID.
+  // Values are the TOTAL offset (not delta from saved) — when present, they
+  // override zone.label_offset_x/y until the save round-trips.
+  const labelOffsetsRef = useRef({})
 
+  // Active label drag. null when not dragging.
+  const draggingLabelRef = useRef(null) // { zoneId, startImgX, startImgY, startOx, startOy }
+  const didDragLabel = useRef(false)
+
+  // Last resolved (post-overlap) label positions — used for hit testing so the
+  // user clicks on the label where it actually appears, not where it would be
+  // before overlap resolution.
+  const resolvedLabelsRef = useRef([]) // [{ zoneId, x, y }]
+
+  // ── redraw ───────────────────────────────────────────────────────────────────
   const redraw = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -71,21 +85,66 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
       ctx.drawImage(imageRef.current, 0, 0)
     }
 
-    // Draw saved zones (skip hidden zones and the one being redrawn)
+    // ── 1. Compute label positions for all visible saved zones ───────────────
+    const visibleZones = []
+    const labelPositions = []
+
     zones.forEach((zone, i) => {
       if (zone.id === redrawingZoneId) return
       if (hiddenZoneIds?.has(zone.id)) return
       if (!zone.points || zone.points.filter(p => p !== null).length < 2) return
-      // Use the zone's custom color if set, otherwise cycle through the palette
-      const color = zone.color ?? ZONE_COLORS[i % ZONE_COLORS.length]
-      drawZone(ctx, zone.points, color, zone.measurement_type, zone.name, zone.result, false, zone.description, zone.surface_type, zone.coat_count, zone.ceiling_type)
+
+      const pts = zone.points.filter(p => p !== null && p !== undefined)
+      const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length
+      const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length
+
+      // Use local override if present, otherwise fall back to DB values
+      const local = labelOffsetsRef.current[zone.id]
+      const ox = local ? local.x : (zone.label_offset_x ?? 0)
+      const oy = local ? local.y : (zone.label_offset_y ?? 0)
+
+      const lp = { zoneId: zone.id, x: cx + ox, y: cy + oy, centX: cx, centY: cy }
+      labelPositions.push(lp)
+      visibleZones.push({ zone, colorIdx: i, lp })
+    })
+
+    // ── 2. Resolve label overlaps ────────────────────────────────────────────
+    const minDist = 30 / scale
+    for (let i = 0; i < labelPositions.length; i++) {
+      for (let j = i + 1; j < labelPositions.length; j++) {
+        const a = labelPositions[i]
+        const b = labelPositions[j]
+        const dx = b.x - a.x
+        const dy = b.y - a.y
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        if (dist < minDist && dist > 0) {
+          // Nudge the later label downward
+          b.y += minDist - dist + 2 / scale
+        } else if (dist === 0) {
+          b.y += minDist
+        }
+      }
+    }
+
+    // Store resolved positions for hit testing
+    resolvedLabelsRef.current = labelPositions.map(lp => ({
+      zoneId: lp.zoneId, x: lp.x, y: lp.y,
+    }))
+
+    // ── 3. Draw saved zones with resolved label positions ────────────────────
+    visibleZones.forEach(({ zone, colorIdx, lp }) => {
+      const color = zone.color ?? ZONE_COLORS[colorIdx % ZONE_COLORS.length]
+      drawZone(ctx, zone.points, color, zone.measurement_type, zone.name, zone.result, false,
+        zone.description, zone.surface_type, zone.coat_count, zone.ceiling_type,
+        lp.x, lp.y, lp.centX, lp.centY)
     })
 
     // Draw active (in-progress) zone — includes finished segments + current points
     if (activeZone && activeZone.points && activeZone.points.some(p => p !== null)) {
       const colorIdx = (activeZone.colorIndex ?? zones.length) % ZONE_COLORS.length
       const color = activeZone.color ?? ZONE_COLORS[colorIdx]
-      drawZone(ctx, activeZone.points, color, activeZone.measurement_type, '', null, true, null, null, null)
+      drawZone(ctx, activeZone.points, color, activeZone.measurement_type, '', null, true,
+        null, null, null, null, null, null, null, null)
     }
 
     // Draw calibration points
@@ -111,8 +170,6 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
   }, [zones, activeZone, calibrating, redrawingZoneId, hiddenZoneIds])
 
   // Stable ref so effects and event listeners always call the latest redraw
-  // without needing it in their dependency arrays (which would cause side-effects
-  // like re-loading the image or re-registering listeners on every zone change).
   const redrawRef = useRef(redraw)
   useEffect(() => { redrawRef.current = redraw }, [redraw])
 
@@ -124,12 +181,9 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
         redrawRef.current()
       }
     }
-  }), []) // stable — uses only refs
+  }), [])
 
   // ── Image loading ────────────────────────────────────────────────────────────
-  // Depends ONLY on imageUrl — not on redraw. Previously including redraw here
-  // caused the transform to reset every time zones changed (because redraw is
-  // recreated on each zone change), which locked the view in place after any edit.
   useEffect(() => {
     if (!imageUrl) return
     const img = new Image()
@@ -158,15 +212,14 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
       redrawRef.current()
     }
     img.src = imageUrl
-  }, [imageUrl]) // ← no redraw here — that was the bug
+  }, [imageUrl])
 
-  // Redraw when zones / active zone / calibrating changes (without reloading image)
+  // Redraw when zones / active zone / calibrating changes
   useEffect(() => {
     redraw()
   }, [redraw])
 
   // ── Resize ───────────────────────────────────────────────────────────────────
-  // Uses redrawRef so the listener doesn't need to be re-registered on zone changes.
   useEffect(() => {
     function onResize() {
       const canvas = canvasRef.current
@@ -177,12 +230,9 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
     }
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
-  }, []) // stable
+  }, [])
 
   // ── Scroll-wheel zoom ────────────────────────────────────────────────────────
-  // Registered as a direct DOM listener with passive:false so e.preventDefault()
-  // actually works. React JSX onWheel is passive in React 17+ and can't prevent
-  // the page from scrolling.
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -205,18 +255,21 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
 
     canvas.addEventListener('wheel', onWheel, { passive: false })
     return () => canvas.removeEventListener('wheel', onWheel)
-  }, []) // stable — uses only refs
+  }, [])
 
   // ── Drawing helpers ──────────────────────────────────────────────────────────
 
-  function drawZone(ctx, points, color, type, name, result, isActive, description, surfaceType, coatCount, ceilingType) {
+  // Draw a zone's shape (polygon/polyline/point markers) and optionally its label.
+  // labelX/labelY: resolved position for the label (null to skip label).
+  // centX/centY: the zone centroid (used to draw connector line when label is offset).
+  function drawZone(ctx, points, color, type, name, result, isActive,
+    description, surfaceType, coatCount, ceilingType, labelX, labelY, centX, centY) {
     if (points.length === 0) return
     ctx.save()
 
-    // Filter out null sentinels for operations that need actual point coordinates
     const nonNullPoints = points.filter(p => p !== null && p !== undefined)
 
-    // Fill for SF zones (SF never has nulls, but filter defensively)
+    // Fill for SF zones
     if (type === 'SF' && nonNullPoints.length >= 3) {
       ctx.beginPath()
       ctx.moveTo(nonNullPoints[0].x, nonNullPoints[0].y)
@@ -226,8 +279,7 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
       ctx.fill()
     }
 
-    // Stroke — skip for count (markers don't connect).
-    // Null sentinels lift the pen so disconnected segments draw as separate lines.
+    // Stroke — null sentinels lift the pen for multi-segment zones
     if (type !== 'count' && nonNullPoints.length >= 2) {
       ctx.beginPath()
       let penDown = false
@@ -248,8 +300,7 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
       ctx.stroke()
     }
 
-    // Draw points — numbered circles for count, regular dots for others.
-    // Always operate on nonNullPoints so null sentinels are invisible.
+    // Point markers
     if (type === 'count') {
       const s = transformRef.current.scale
       nonNullPoints.forEach((p, idx) => {
@@ -279,14 +330,30 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
       })
     }
 
-    // Label for completed zones
-    if (!isActive && name && nonNullPoints.length >= 1) {
-      const cx = nonNullPoints.reduce((s, p) => s + p.x, 0) / nonNullPoints.length
-      const cy = nonNullPoints.reduce((s, p) => s + p.y, 0) / nonNullPoints.length
+    // ── Label for completed zones ────────────────────────────────────────────
+    if (!isActive && name && nonNullPoints.length >= 1 && labelX != null && labelY != null) {
+      const s = transformRef.current.scale
+
+      // Connector line from centroid to label when offset
+      if (centX != null && centY != null) {
+        const connDist = Math.sqrt((labelX - centX) ** 2 + (labelY - centY) ** 2) * s
+        if (connDist > 8) {
+          ctx.strokeStyle = color
+          ctx.globalAlpha = 0.3
+          ctx.lineWidth = 1 / s
+          ctx.setLineDash([3 / s, 2 / s])
+          ctx.beginPath()
+          ctx.moveTo(centX, centY)
+          ctx.lineTo(labelX, labelY)
+          ctx.stroke()
+          ctx.setLineDash([])
+          ctx.globalAlpha = 1
+        }
+      }
+
       const unitLabel = type === 'count' ? 'each' : type
       const labelParts = [name]
       if (description) labelParts.push(description)
-      // Show ceiling type alongside surface type when it's not flat (default)
       const surfaceLabel = (surfaceType === 'Ceiling' && ceilingType && CEILING_TYPE_LABELS[ceilingType])
         ? `${surfaceType} · ${CEILING_TYPE_LABELS[ceilingType]}`
         : surfaceType || null
@@ -297,22 +364,22 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
       if (metaParts.length > 0) labelParts.push(metaParts.join(' · '))
       if (result != null) labelParts.push(`${result} ${unitLabel}`)
       const lines = labelParts
-      const fs = 13 / transformRef.current.scale
+      const fs = 13 / s
       ctx.font = `bold ${fs}px Inter, sans-serif`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       const lineH = fs * 1.3
       const maxW = Math.max(...lines.map(l => ctx.measureText(l).width))
-      const padX = 8 / transformRef.current.scale
-      const padY = 5 / transformRef.current.scale
+      const padX = 8 / s
+      const padY = 5 / s
       const totalH = lines.length * lineH + 2 * padY
       ctx.fillStyle = 'rgba(15,25,35,0.82)'
-      const rx = 4 / transformRef.current.scale
-      roundRect(ctx, cx - maxW / 2 - padX, cy - totalH / 2, maxW + 2 * padX, totalH, rx)
+      const rx = 4 / s
+      roundRect(ctx, labelX - maxW / 2 - padX, labelY - totalH / 2, maxW + 2 * padX, totalH, rx)
       ctx.fill()
       lines.forEach((line, i) => {
         ctx.fillStyle = i === 0 ? '#e8edf2' : color
-        ctx.fillText(line, cx, cy + (i - (lines.length - 1) / 2) * lineH)
+        ctx.fillText(line, labelX, labelY + (i - (lines.length - 1) / 2) * lineH)
       })
     }
 
@@ -333,8 +400,7 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
     ctx.closePath()
   }
 
-  // Convert a mouse event's screen coordinates to image-space coordinates,
-  // accounting for the current pan offset and zoom scale.
+  // Convert screen coordinates to image-space coordinates
   function toImageSpace(e) {
     const canvas = canvasRef.current
     const rect = canvas.getBoundingClientRect()
@@ -345,20 +411,58 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
     }
   }
 
+  // Check if an image-space point is within 20 screen-px of any zone label.
+  // Uses the last resolved (post-overlap) positions so the hit area matches
+  // what the user sees on screen.
+  function findLabelHit(imgPt) {
+    const threshold = 20 / transformRef.current.scale
+    const resolved = resolvedLabelsRef.current
+    // Check in reverse order so topmost (last drawn) labels are hit first
+    for (let i = resolved.length - 1; i >= 0; i--) {
+      const lp = resolved[i]
+      const dx = imgPt.x - lp.x
+      const dy = imgPt.y - lp.y
+      if (Math.sqrt(dx * dx + dy * dy) <= threshold) {
+        return zones.find(z => z.id === lp.zoneId) ?? null
+      }
+    }
+    return null
+  }
+
   // ── Mouse event handlers ─────────────────────────────────────────────────────
 
   function handleMouseDown(e) {
     if (e.button === 2) {
-      // Right-click always starts a pan, even while drawing a zone
       isRightPanning.current = true
       lastRightPan.current = { x: e.clientX, y: e.clientY }
       setIsDragging(true)
       return
     }
-    if (e.button !== 0) return // Ignore middle button etc.
-    // In drawing or calibrating mode, left-click places points — don't capture for pan
+    if (e.button !== 0) return
+
+    // In drawing or calibrating mode, left-click places points — no label drag or pan
     if (isDrawing || calibrating) return
 
+    // Check if the click is on a zone label
+    const pt = toImageSpace(e)
+    const hitZone = findLabelHit(pt)
+    if (hitZone) {
+      const local = labelOffsetsRef.current[hitZone.id]
+      const currentOx = local ? local.x : (hitZone.label_offset_x ?? 0)
+      const currentOy = local ? local.y : (hitZone.label_offset_y ?? 0)
+      draggingLabelRef.current = {
+        zoneId: hitZone.id,
+        startImgX: pt.x,
+        startImgY: pt.y,
+        startOx: currentOx,
+        startOy: currentOy,
+      }
+      didDragLabel.current = false
+      setIsDragging(true)
+      return
+    }
+
+    // Regular left-click pan
     isPanning.current = true
     didPan.current = false
     lastPan.current = { x: e.clientX, y: e.clientY }
@@ -377,18 +481,32 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
       return
     }
 
+    // Label drag — update offset and redraw
+    if (draggingLabelRef.current) {
+      const pt = toImageSpace(e)
+      const d = draggingLabelRef.current
+      didDragLabel.current = true
+      labelOffsetsRef.current = {
+        ...labelOffsetsRef.current,
+        [d.zoneId]: {
+          x: d.startOx + (pt.x - d.startImgX),
+          y: d.startOy + (pt.y - d.startImgY),
+        },
+      }
+      redrawRef.current()
+      return
+    }
+
     if (!isPanning.current) return
 
     const dx = e.clientX - lastPan.current.x
     const dy = e.clientY - lastPan.current.y
 
-    // Only commit to pan mode after moving at least 4px — keeps a small click
-    // from accidentally shifting the view.
     const totalDx = e.clientX - panStart.current.x
     const totalDy = e.clientY - panStart.current.y
     if (!didPan.current && Math.sqrt(totalDx * totalDx + totalDy * totalDy) > 4) {
       didPan.current = true
-      setIsDragging(true) // update cursor once
+      setIsDragging(true)
     }
 
     if (didPan.current) {
@@ -406,12 +524,40 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
       setIsDragging(false)
       return
     }
+
+    // Finish label drag — auto-save offset to DB
+    if (draggingLabelRef.current) {
+      if (didDragLabel.current) {
+        const d = draggingLabelRef.current
+        const offset = labelOffsetsRef.current[d.zoneId]
+        if (offset) {
+          onLabelOffsetChange?.(d.zoneId, offset.x, offset.y)
+        }
+      }
+      draggingLabelRef.current = null
+      didDragLabel.current = false
+      setIsDragging(false)
+      return
+    }
+
     isPanning.current = false
-    if (isDragging) setIsDragging(false) // update cursor once
+    if (isDragging) setIsDragging(false)
   }
 
   function handleMouseLeave() {
-    // Stop all pan modes if the pointer leaves the canvas mid-drag
+    // Save and stop any label drag in progress
+    if (draggingLabelRef.current) {
+      if (didDragLabel.current) {
+        const d = draggingLabelRef.current
+        const offset = labelOffsetsRef.current[d.zoneId]
+        if (offset) {
+          onLabelOffsetChange?.(d.zoneId, offset.x, offset.y)
+        }
+      }
+      draggingLabelRef.current = null
+      didDragLabel.current = false
+      setIsDragging(false)
+    }
     if (isRightPanning.current) {
       isRightPanning.current = false
       setIsDragging(false)
@@ -423,7 +569,7 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
   }
 
   function handleClick(e) {
-    // If this mouseup completed a drag, eat the click — don't place a point
+    // Eat the click after a drag (pan or label) so it doesn't place a point
     if (didPan.current) {
       didPan.current = false
       return
@@ -448,7 +594,6 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
 
   function handleDoubleClick(e) {
     if (!isDrawing) return
-    // Count zones finish with the button only — double-click adds 2 extra items
     if (activeZone?.measurement_type === 'count') return
     e.preventDefault()
     onZoneComplete()

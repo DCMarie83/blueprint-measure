@@ -43,10 +43,11 @@ export function useSession(sessionId) {
     // The super admin always gets every feature unlocked, regardless of company flags.
     if (user.email === 'main@ngautomationhub.com') {
       setEnabledFeatures({
-        multi_page_pdf:   true,
-        csv_export:       true,
-        redraw_zones:     true,
-        paint_calculator: true,
+        multi_page_pdf:     true,
+        csv_export:         true,
+        redraw_zones:       true,
+        paint_calculator:   true,
+        ai_scale_detection: true,
       })
     } else {
       // Load the tenant's feature flags via user_profiles → companies join.
@@ -152,6 +153,19 @@ export function useSession(sessionId) {
     return data
   }
 
+  // Saves the dragged label position for a zone without touching any other fields.
+  async function updateZoneLabelOffset(zoneId, offsetX, offsetY) {
+    const { data, error } = await supabase
+      .from('zones')
+      .update({ label_offset_x: offsetX, label_offset_y: offsetY })
+      .eq('id', zoneId)
+      .select()
+      .single()
+    if (error) throw new Error(error.message)
+    setZones(prev => prev.map(z => z.id === data.id ? data : z))
+    return data
+  }
+
   async function deleteZone(zoneId) {
     const { error } = await supabase.from('zones').delete().eq('id', zoneId)
     if (error) throw new Error(error.message)
@@ -170,5 +184,5 @@ export function useSession(sessionId) {
     return data
   }
 
-  return { session, zones, enabledFeatures, loading, error, saveZone, updateZone, redrawZone, deleteZone, updateSession, refetch: fetchSession }
+  return { session, zones, enabledFeatures, loading, error, saveZone, updateZone, updateZoneLabelOffset, redrawZone, deleteZone, updateSession, refetch: fetchSession }
 }

@@ -81,9 +81,9 @@ function drawZoneOnCanvas(ctx, zone, colorIndex) {
   ctx.globalAlpha = 0.9
   ctx.stroke()
 
-  // Label — placed at the centroid of all non-null points
-  const cx = nonNull.reduce((s, p) => s + p.x, 0) / nonNull.length
-  const cy = nonNull.reduce((s, p) => s + p.y, 0) / nonNull.length
+  // Label — placed at centroid + any saved drag offset
+  const cx = nonNull.reduce((s, p) => s + p.x, 0) / nonNull.length + (zone.label_offset_x ?? 0)
+  const cy = nonNull.reduce((s, p) => s + p.y, 0) / nonNull.length + (zone.label_offset_y ?? 0)
   const label = `${name}: ${formatResult(zone)}`
 
   ctx.globalAlpha = 1
