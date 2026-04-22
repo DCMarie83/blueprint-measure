@@ -9,8 +9,7 @@ import { parseFeetInches } from '../utils/fractions'
 import { calculate, calculateSF, calculateCeilingSF, calculateWallSF } from '../utils/measurements'
 import { exportCSV } from '../utils/csvExport'
 import { downloadPdfWithMeasurements } from '../utils/pdfExport'
-import { detectScaleFromImage, verifyScaleWithDimension } from '../utils/detectScale'
-import { formatFeetInches } from '../utils/fractions'
+import { detectScaleFromImage } from '../utils/detectScale'
 import { evaluateZoneTest } from '../utils/testEvaluation'
 import BlueprintCanvas from '../components/canvas/BlueprintCanvas'
 import BlueprintUploader from '../components/canvas/BlueprintUploader'
@@ -92,12 +91,11 @@ export default function SessionPage() {
   const [consecutiveFailCount, setConsecutiveFailCount] = useState(0)
   const [calibBannerInput, setCalibBannerInput] = useState('')
 
-  // ── Scale verification (triple-check) ───────────────────────────────────────
-  // After any scale change, the system cross-verifies by finding a printed
-  // dimension on the blueprint and checking it against the current scale.
-  const [scaleVerification, setScaleVerification] = useState(null)       // { dimensionText, statedFeet, measuredFeet, variance, passes }
-  const [scaleVerificationStatus, setScaleVerificationStatus] = useState(null) // null | 'verifying' | 'verified' | 'warning'
-  const verifyTimerRef = useRef(null)
+  // ── Pixel sanity check (all users, all tiers) ────────────────────────────────
+  // After any scale change, checks if the drawing dimensions are reasonable.
+  // null = no check run yet, object = check result.
+  const [scaleSanity, setScaleSanity] = useState(null) // { widthFt, heightFt, passes, source }
+  // source: 'dropdown' | 'calibration' | 'ai'
 
   // ── Session restore ──────────────────────────────────────────────────────────
   // Runs when Supabase returns the session — restores blueprint URL and saved page.
@@ -169,7 +167,7 @@ export default function SessionPage() {
 
   // Save a new scale for the current page and persist it to the database so it
   // survives a session reload. Each page stores its own independent scale value.
-  async function handleScaleChange(ppf, { skipVerification } = {}) {
+  async function handleScaleChange(ppf) {
     const newScales = { ...pageScales, [currentPage]: ppf }
     setPageScales(newScales)
     try {
@@ -177,10 +175,20 @@ export default function SessionPage() {
     } catch (err) {
       console.error('Failed to save page scale:', err)
     }
-    // Trigger debounced background verification (dropdown changes fire rapidly)
-    if (!skipVerification && blueprintUrl) {
-      fireScaleVerificationDebounced(ppf)
-    }
+  }
+
+  // Pixel sanity check — pure math, no API calls.
+  // Computes the drawing dimensions in feet at the given scale and checks
+  // if they fall within a reasonable range for an architectural drawing.
+  function runScaleSanityCheck(ppf, source) {
+    const dims = blueprintCanvasRef.current?.getImageDimensions()
+    if (!dims || !ppf) { setScaleSanity(null); return null }
+    const widthFt  = Math.round(dims.width  / ppf * 10) / 10
+    const heightFt = Math.round(dims.height / ppf * 10) / 10
+    const passes = widthFt >= 5 && widthFt <= 500 && heightFt >= 5 && heightFt <= 500
+    const result = { widthFt, heightFt, passes, source }
+    setScaleSanity(result)
+    return result
   }
 
   function handleStartCalibration(knownFeet) {
@@ -199,43 +207,8 @@ export default function SessionPage() {
     // Successful recalibration dismisses the calibration banner
     setConsecutiveFailCount(0)
     setCalibBannerInput('')
-    // Fire background verification for the new calibrated scale
-    fireScaleVerification(ppf)
-  }
-
-  // Background geometric cross-verification of the current scale.
-  // Renders the page at 3x, asks Claude to find a printed dimension, then
-  // checks whether the pixel distance / pixelsPerFoot matches the label.
-  // Fire-and-forget — never blocks the UI, never shows errors.
-  function fireScaleVerification(ppf) {
-    setScaleVerificationStatus('verifying')
-    setScaleVerification(null)
-
-    // Run completely async — caught errors result in silent null status
-    ;(async () => {
-      try {
-        const isPdfBlueprint = blueprintType === 'application/pdf'
-        const imageUrl = isPdfBlueprint
-          ? await renderPage(currentPage, 3.0)
-          : blueprintUrl
-        if (!imageUrl) { setScaleVerificationStatus(null); return }
-
-        const result = await verifyScaleWithDimension(imageUrl, ppf)
-        if (!result) { setScaleVerificationStatus(null); return }
-
-        setScaleVerification(result)
-        setScaleVerificationStatus(result.passes ? 'verified' : 'warning')
-      } catch {
-        setScaleVerificationStatus(null)
-      }
-    })()
-  }
-
-  // Debounced verification trigger for dropdown scale changes.
-  // Clears the previous timer so rapid changes don't fire multiple requests.
-  function fireScaleVerificationDebounced(ppf) {
-    if (verifyTimerRef.current) clearTimeout(verifyTimerRef.current)
-    verifyTimerRef.current = setTimeout(() => fireScaleVerification(ppf), 500)
+    // Run sanity check immediately after calibration
+    runScaleSanityCheck(ppf, 'calibration')
   }
 
   // Switch to a different PDF page. Warns and cancels any active zone drawing.
@@ -255,9 +228,8 @@ export default function SessionPage() {
       setRedrawingZoneId(null)
     }
     setCurrentPage(pageNum)
-    // Reset verification state for the new page
-    setScaleVerification(null)
-    setScaleVerificationStatus(null)
+    // Reset sanity check for the new page
+    setScaleSanity(null)
     // Persist so the session reopens on the right page
     try {
       await updateSession({ page_number: pageNum })
@@ -637,12 +609,7 @@ export default function SessionPage() {
 
     // Track consecutive fails for the calibration suggestion banner
     if (ev.verdict === 'FAIL') {
-      setConsecutiveFailCount(prev => {
-        const next = prev + 1
-        // After 3 consecutive fails, also trigger a scale verification check
-        if (next === 3 && pixelsPerFoot) fireScaleVerification(pixelsPerFoot)
-        return next
-      })
+      setConsecutiveFailCount(prev => prev + 1)
     } else {
       setConsecutiveFailCount(0)
     }
@@ -690,8 +657,8 @@ export default function SessionPage() {
       setDetectingScale(true)
       setPendingScaleDetection(false)
       try {
-        // For PDFs, render at 3x for the AI (higher res than the 1.5x canvas render)
-        const imageUrl = isPdfBlueprint ? await renderPage(1, 3.0) : blueprintUrl
+        // For PDFs, render at 2x for the AI (faster than 3x, sufficient for title block)
+        const imageUrl = isPdfBlueprint ? await renderPage(1, 2.0) : blueprintUrl
         const result = await detectScaleFromImage(imageUrl)
         if (result?.inchesPerFoot) {
           const ppf = calcPixelsPerFoot(result.inchesPerFoot)
@@ -750,16 +717,15 @@ export default function SessionPage() {
   }
 
   // ── Manual AI scale detection (triggered by the Detect Scale button) ────────
-  // For PDFs, renders the current page at 3x resolution (instead of the 1.5x
-  // used for the canvas) so the AI can read small title block text clearly.
+  // Renders at 2x (fast, sufficient for title block text), detects scale, then
+  // runs the pixel sanity check to confirm the detected value makes sense.
   async function handleDetectScale() {
     if (!blueprintUrl) return
     const isPdfBlueprint = blueprintType === 'application/pdf'
 
     let imageUrl
     if (isPdfBlueprint) {
-      // Render at 3x for higher resolution — title block text is often tiny
-      imageUrl = await renderPage(currentPage, 3.0)
+      imageUrl = await renderPage(currentPage, 2.0)
     } else {
       imageUrl = blueprintUrl
     }
@@ -770,7 +736,13 @@ export default function SessionPage() {
       if (result?.inchesPerFoot) {
         const ppf = calcPixelsPerFoot(result.inchesPerFoot)
         await handleScaleChange(ppf)
-        setScaleDetectionBanner({ label: result.label })
+        // Run sanity check and set banner based on result
+        const sanity = runScaleSanityCheck(ppf, 'ai')
+        if (sanity?.passes) {
+          setScaleDetectionBanner({ label: result.label, verified: true })
+        } else {
+          setScaleDetectionBanner({ label: result.label, verified: false })
+        }
       } else {
         alert('Could not detect a scale on this page. Try a page with a visible title block, or set the scale manually.')
       }
@@ -976,15 +948,14 @@ export default function SessionPage() {
             <div className={styles.sectionTitle}>Scale</div>
             <ScalePanel
               pixelsPerFoot={pixelsPerFoot}
-              onScaleChange={handleScaleChange}
+              onScaleChange={(ppf) => { handleScaleChange(ppf); runScaleSanityCheck(ppf, 'dropdown') }}
               onStartCalibration={handleStartCalibration}
               calibrating={calibrating}
               pageKey={currentPage}
               enabledFeatures={enabledFeatures}
               onDetectScale={handleDetectScale}
-              scaleVerification={scaleVerification}
-              scaleVerificationStatus={scaleVerificationStatus}
-              onRecalibrate={handleStartCalibration}
+              scaleSanity={scaleSanity}
+              scaleDetectionBanner={scaleDetectionBanner}
             />
           </div>
         )}

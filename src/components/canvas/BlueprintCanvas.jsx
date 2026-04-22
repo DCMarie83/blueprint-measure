@@ -180,7 +180,12 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
         transformRef.current = { ...initialTransformRef.current }
         redrawRef.current()
       }
-    }
+    },
+    getImageDimensions() {
+      const img = imageRef.current
+      if (img && img.complete) return { width: img.naturalWidth, height: img.naturalHeight }
+      return null
+    },
   }), [])
 
   // ── Image loading ────────────────────────────────────────────────────────────

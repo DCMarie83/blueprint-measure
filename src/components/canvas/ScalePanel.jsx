@@ -1,21 +1,19 @@
 import { useState, useEffect } from 'react'
 import { SCALE_OPTIONS, calcPixelsPerFoot } from '../../utils/scaleOptions'
-import { parseFeetInches, formatFeetInches } from '../../utils/fractions'
+import { parseFeetInches } from '../../utils/fractions'
 import styles from './ScalePanel.module.css'
 
 // ScalePanel lets the user set the blueprint's scale.
-// Either pick from the standard dropdown, or use manual calibration
-// (draw a line of known length on the blueprint).
-export default function ScalePanel({ pixelsPerFoot, onScaleChange, onStartCalibration, calibrating, pageKey, enabledFeatures = {}, onDetectScale,
-  scaleVerification, scaleVerificationStatus, onRecalibrate }) {
+// Either pick from the standard dropdown, use manual calibration, or AI detection.
+export default function ScalePanel({ pixelsPerFoot, onScaleChange, onStartCalibration, calibrating, pageKey,
+  enabledFeatures = {}, onDetectScale, scaleSanity, scaleDetectionBanner }) {
   const [selected, setSelected] = useState('1/4')
   const [knownFeet, setKnownFeet] = useState('')
   const [helpOpen, setHelpOpen] = useState(false)
   const [detecting, setDetecting] = useState(false)
 
   // When the active page changes (or on first mount), apply the default 1/4" scale
-  // only if this page has no saved scale yet. When pixelsPerFoot is already set
-  // (the page has a persisted scale), we leave it alone — the badge will reflect it.
+  // only if this page has no saved scale yet.
   useEffect(() => {
     if (!pixelsPerFoot) {
       const defaultOption = SCALE_OPTIONS.find(o => o.value === '1/4')
@@ -25,7 +23,7 @@ export default function ScalePanel({ pixelsPerFoot, onScaleChange, onStartCalibr
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageKey]) // Re-runs when the user switches pages
+  }, [pageKey])
 
   function handleSelect(value) {
     setSelected(value)
@@ -89,25 +87,27 @@ export default function ScalePanel({ pixelsPerFoot, onScaleChange, onStartCalibr
         </div>
       )}
 
-      {/* Scale verification badge */}
-      {scaleVerificationStatus === 'verifying' && (
-        <div className={styles.verifyBadge}>
-          <span className={styles.verifyDot} />
-          Verifying scale…
+      {/* Pixel sanity check results — shown for ALL users */}
+      {scaleSanity && scaleSanity.passes && scaleSanity.source === 'calibration' && (
+        <div className={styles.sanityPass}>
+          ✓ Scale calibrated — {scaleSanity.widthFt}' × {scaleSanity.heightFt}' drawing
         </div>
       )}
-      {scaleVerificationStatus === 'verified' && scaleVerification && (
-        <div className={styles.verifyPass}>
-          ✓ Scale verified — {scaleVerification.dimensionText} confirmed
+      {scaleSanity && !scaleSanity.passes && (
+        <div className={styles.sanityWarn}>
+          Scale may be incorrect. At this scale the page measures {scaleSanity.widthFt}' × {scaleSanity.heightFt}'. Typical floor plans are 20–200 feet. Verify your scale or use manual calibration.
         </div>
       )}
-      {scaleVerificationStatus === 'warning' && scaleVerification && (
-        <div className={styles.verifyWarn}>
-          ⚠ Scale may be off — {scaleVerification.dimensionText} printed but measured {formatFeetInches(scaleVerification.measuredFeet)}.{' '}
-          <button type="button" className={styles.verifyRecalBtn}
-            onClick={() => onRecalibrate?.(scaleVerification.statedFeet)}>
-            Recalibrate
-          </button>
+
+      {/* AI detection result banner */}
+      {scaleDetectionBanner && scaleDetectionBanner.verified === true && (
+        <div className={styles.sanityPass}>
+          ✓ Scale detected and verified — {scaleDetectionBanner.label}
+        </div>
+      )}
+      {scaleDetectionBanner && scaleDetectionBanner.verified === false && (
+        <div className={styles.sanityWarn}>
+          AI detected {scaleDetectionBanner.label} but dimensions seem off. Try manual calibration.
         </div>
       )}
 
@@ -155,21 +155,29 @@ export default function ScalePanel({ pixelsPerFoot, onScaleChange, onStartCalibr
         {helpOpen && (
           <div className={styles.helpBody}>
             <div className={styles.helpOption}>
-              <div className={styles.helpOptionLabel}>Option A — Use the dropdown</div>
+              <div className={styles.helpOptionLabel}>Most accurate — Manual calibration</div>
               <p className={styles.helpOptionText}>
-                If you know the blueprint scale (e.g. 1/4 inch = 1 foot), select it from the
-                dropdown above. This is printed on most architectural blueprints in the title
-                block or corner.
+                Find any printed dimension on the drawing (e.g. a wall labeled 24'-0"). Enter that
+                distance, click <strong>Set Calibration Line</strong>, then click both endpoints
+                of that dimension on the blueprint. Scale is set exactly.
               </p>
             </div>
 
+            {enabledFeatures.ai_scale_detection && (
+              <div className={styles.helpOption}>
+                <div className={styles.helpOptionLabel}>Fast and accurate — AI Detection (Plus+)</div>
+                <p className={styles.helpOptionText}>
+                  Click <strong>Detect Scale</strong> above. AI reads the title block and applies
+                  the scale. Verified automatically with a dimension check.
+                </p>
+              </div>
+            )}
+
             <div className={styles.helpOption}>
-              <div className={styles.helpOptionLabel}>Option B — Manual calibration</div>
+              <div className={styles.helpOptionLabel}>Quick start — Dropdown selection</div>
               <p className={styles.helpOptionText}>
-                If you are unsure of the scale, find any dimension printed on the blueprint —
-                like a wall labeled 20 ft. Enter that number, click{' '}
-                <strong>Set Calibration Line</strong>, then click both ends of that dimension
-                on the blueprint.
+                Pick the scale stated on the drawing from the dropdown above. The system checks
+                automatically that the resulting dimensions are reasonable.
               </p>
             </div>
 

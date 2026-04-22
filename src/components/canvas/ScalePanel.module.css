@@ -90,32 +90,9 @@
   padding: 6px 10px;
 }
 
-/* ── Scale verification badge ── */
+/* ── Pixel sanity check badges ── */
 
-.verifyBadge {
-  font-size: 11px;
-  color: var(--color-text-muted);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 10px;
-}
-
-.verifyDot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--color-text-muted);
-  flex-shrink: 0;
-  animation: verifyPulse 1.2s ease-in-out infinite;
-}
-
-@keyframes verifyPulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
-}
-
-.verifyPass {
+.sanityPass {
   font-size: 11px;
   color: var(--color-success);
   background: rgba(34, 197, 94, 0.08);
@@ -125,7 +102,7 @@
   line-height: 1.4;
 }
 
-.verifyWarn {
+.sanityWarn {
   font-size: 11px;
   color: #f59e0b;
   background: rgba(245, 158, 11, 0.08);
@@ -133,21 +110,6 @@
   border-radius: var(--radius);
   padding: 5px 10px;
   line-height: 1.4;
-}
-
-.verifyRecalBtn {
-  background: none;
-  border: none;
-  color: #f59e0b;
-  font-size: 11px;
-  font-weight: 600;
-  text-decoration: underline;
-  cursor: pointer;
-  padding: 0;
-}
-
-.verifyRecalBtn:hover {
-  opacity: 0.8;
 }
 
 /* ── AI scale detection ── */
