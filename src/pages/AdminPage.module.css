@@ -1073,3 +1073,74 @@
   flex-shrink: 0;
   background: currentColor;
 }
+
+/* ── Role select ──────────────────────────────────────────────────────────── */
+
+.roleSelect {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--color-text);
+  outline: none;
+}
+
+/* ── Seat warning ─────────────────────────────────────────────────────────── */
+
+.seatWarning {
+  font-size: 10px;
+  font-weight: 600;
+  color: #f59e0b;
+}
+
+/* ── Test logs ���───────────────────────────────────────────────────────────── */
+
+.testLogFilters {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.testLogSelect {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--color-text);
+  outline: none;
+}
+
+.testLogPrintBtn {
+  margin-left: auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.testLogPrintBtn:hover {
+  color: var(--color-text);
+}
+
+.testLogVerdict {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.testLogDetail {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  padding: 8px 0;
+}

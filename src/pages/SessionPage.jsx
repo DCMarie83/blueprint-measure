@@ -1,12 +1,16 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 import { useSession } from '../hooks/useSession'
 import { usePdf } from '../hooks/usePdf'
 import { calcPixelsPerFoot } from '../utils/scaleOptions'
+import { parseFeetInches } from '../utils/fractions'
 import { calculate, calculateSF, calculateCeilingSF, calculateWallSF } from '../utils/measurements'
 import { exportCSV } from '../utils/csvExport'
 import { downloadPdfWithMeasurements } from '../utils/pdfExport'
 import { detectScaleFromImage } from '../utils/detectScale'
+import { evaluateZoneTest } from '../utils/testEvaluation'
 import BlueprintCanvas from '../components/canvas/BlueprintCanvas'
 import BlueprintUploader from '../components/canvas/BlueprintUploader'
 import ScalePanel from '../components/canvas/ScalePanel'
@@ -19,9 +23,14 @@ import styles from './SessionPage.module.css'
 // SessionPage is the main working environment.
 // Left sidebar: controls (scale, draw panel, zone list, export)
 // Center: the blueprint canvas
+const ADMIN_EMAIL = 'main@ngautomationhub.com'
+const DEFAULT_TEST_INPUT = { width: '', depth: '', statedValue: '', useDimensions: true, countVerified: null, notes: '' }
+
 export default function SessionPage() {
   const { sessionId } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const isAdmin = user?.email === ADMIN_EMAIL
   const { session, zones, enabledFeatures, loading, error, saveZone, updateZone, updateZoneLabelOffset, redrawZone, deleteZone, updateSession } = useSession(sessionId)
 
   // ── Blueprint state ──────────────────────────────────────────────────────────
@@ -70,6 +79,17 @@ export default function SessionPage() {
 
   // ── PDF download state ────────────────────────────────────────────────────────
   const [downloadingPdf, setDownloadingPdf] = useState(false)
+
+  // ── Test mode (super admin only) ────────────────────────────────────────────
+  const [isTestMode, setIsTestMode] = useState(false)
+  const [testData, setTestData] = useState({}) // { [zoneId]: { width, depth, statedValue, useDimensions, countVerified, notes } }
+  const [savingTests, setSavingTests] = useState(false)
+
+  // ── Calibration suggestion (all users) ──────────────────────────────────────
+  // Fires when 3 consecutive test FAIL results are logged, or when 3+ soft
+  // warnings are showing across zones. Visible to all users, not just admin.
+  const [consecutiveFailCount, setConsecutiveFailCount] = useState(0)
+  const [calibBannerInput, setCalibBannerInput] = useState('')
 
   // ── Session restore ──────────────────────────────────────────────────────────
   // Runs when Supabase returns the session — restores blueprint URL and saved page.
@@ -164,6 +184,9 @@ export default function SessionPage() {
     handleScaleChange(ppf)
     setCalibrating(false)
     setPendingCalibFeet(null)
+    // Successful recalibration dismisses the calibration banner
+    setConsecutiveFailCount(0)
+    setCalibBannerInput('')
   }
 
   // Switch to a different PDF page. Warns and cancels any active zone drawing.
@@ -522,6 +545,75 @@ export default function SessionPage() {
     exportCSV(session, zones)
   }
 
+  // ── Test mode handlers ────────────────────────────────────────────────────────
+
+  function handleTestDataChange(zoneId, updates) {
+    setTestData(prev => ({
+      ...prev,
+      [zoneId]: { ...(prev[zoneId] ?? DEFAULT_TEST_INPUT), ...updates },
+    }))
+  }
+
+  async function handleLogTest(zone) {
+    const input = testData[zone.id]
+    const ev = evaluateZoneTest(zone, input, pixelsPerFoot)
+    if (!ev.verdict) return false
+
+    const w = input?.useDimensions !== false ? parseFeetInches(input?.width) : null
+    const d = input?.useDimensions !== false ? parseFeetInches(input?.depth) : null
+    const payload = {
+      session_id: sessionId,
+      zone_id: zone.id,
+      user_id: user.id,
+      zone_name: zone.name,
+      measurement_type: zone.measurement_type,
+      stated_width: zone.measurement_type === 'SF' ? w : null,
+      stated_depth: zone.measurement_type === 'SF' ? d : null,
+      stated_sf: zone.measurement_type === 'SF' ? ev.stated : null,
+      stated_lf: zone.measurement_type === 'LF' ? ev.stated : null,
+      measured_value: zone.result ?? 0,
+      variance: ev.variance ?? 0,
+      variance_pct: ev.variancePct ?? 0,
+      verdict: ev.verdict,
+      error_code: ev.errorCode ?? null,
+      error_message: ev.errorMessage ?? null,
+      notes: input?.notes || null,
+    }
+
+    const { error: err } = await supabase.from('session_test_logs').insert(payload)
+    if (err) { alert('Failed to log test: ' + err.message); return false }
+
+    // Track consecutive fails for the calibration suggestion banner
+    if (ev.verdict === 'FAIL') setConsecutiveFailCount(prev => prev + 1)
+    else setConsecutiveFailCount(0)
+
+    return true
+  }
+
+  async function handleSaveAllTests() {
+    setSavingTests(true)
+    let saved = 0
+    for (const zone of pageZones) {
+      const ev = evaluateZoneTest(zone, testData[zone.id], pixelsPerFoot)
+      if (ev.verdict) {
+        const ok = await handleLogTest(zone)
+        if (ok) saved++
+      }
+    }
+    setSavingTests(false)
+    if (saved > 0) alert(`${saved} test result${saved > 1 ? 's' : ''} logged.`)
+  }
+
+  // Computed test summary
+  const testSummary = useMemo(() => {
+    let pass = 0, fail = 0, total = 0
+    for (const zone of pageZones) {
+      const ev = evaluateZoneTest(zone, testData[zone.id], pixelsPerFoot)
+      if (ev.verdict) { total++; if (ev.verdict === 'PASS') pass++; else fail++ }
+    }
+    return { total, pass, fail, verdict: fail > 0 ? 'INACCURATE' : total > 0 ? 'ACCURATE' : null }
+  }, [pageZones, testData, pixelsPerFoot])
+
   // ── AI scale detection ────────────────────────────────────────────────────────
   // Runs after a new blueprint upload when the feature flag is enabled.
   // For PDFs it waits for the first page to finish rendering before calling the API.
@@ -633,6 +725,23 @@ export default function SessionPage() {
     return { floorSF, ...w }
   }, [isDrawing, activeZoneMeta, drawnPoints, pixelsPerFoot])
 
+  // ── Soft warning count (all users) ────────────────────────────────────────────
+  // Counts zones with implausibly small results that suggest a miscalibrated scale.
+  const softWarningCount = useMemo(() => {
+    let count = 0
+    for (const zone of pageZones) {
+      const r = zone.result ?? 0
+      const pts = zone.points?.filter(p => p !== null && p !== undefined) ?? []
+      if (zone.measurement_type === 'SF' && r > 0 && r < 10) { count++; continue }
+      if (zone.measurement_type === 'LF' && r > 0 && r < 1) { count++; continue }
+      if (zone.measurement_type === 'SF' && pts.length > 4 && r > 0 && r < 20) count++
+    }
+    return count
+  }, [pageZones])
+
+  // Show calibration banner when 3+ consecutive test fails OR 3+ soft warnings
+  const showCalibBanner = consecutiveFailCount >= 3 || softWarningCount >= 3
+
   // ── Loading / error screens ───────────────────────────────────────────────────
 
   if (loading) {
@@ -705,7 +814,14 @@ export default function SessionPage() {
   return (
     <div className={styles.layout}>
       {/* ── Sidebar ── */}
-      <aside className={styles.sidebar}>
+      <aside className={`${styles.sidebar} ${isTestMode ? styles.sidebarTestMode : ''}`}>
+
+        {/* Print-only report header */}
+        <div className={styles.printReportHeader}>
+          <h1>BlueprintMeasure — Test Report</h1>
+          <div>Project: {session?.project_name} | Client: {session?.client_name}</div>
+          <div>Tester: {user?.email} | Date: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+        </div>
 
         {/* Header */}
         <div className={styles.sidebarHeader}>
@@ -714,6 +830,14 @@ export default function SessionPage() {
             <div className={styles.sessionProject}>{session?.project_name}</div>
             <div className={styles.sessionClient}>{session?.client_name}</div>
           </div>
+          {isAdmin && (
+            <button
+              className={`${styles.testToggle} ${isTestMode ? styles.testToggleOn : ''}`}
+              onClick={() => setIsTestMode(v => !v)}
+            >
+              {isTestMode ? 'Test Mode ON' : 'Test Mode OFF'}
+            </button>
+          )}
         </div>
 
         {/* Blueprint upload / replace */}
@@ -815,6 +939,43 @@ export default function SessionPage() {
                 <span className={styles.pageTag}> · Page {currentPage}</span>
               )}
             </div>
+            {/* Calibration suggestion banner — visible to ALL users */}
+            {showCalibBanner && (
+              <div className={styles.calibBanner}>
+                <div className={styles.calibBannerTitle}>
+                  {consecutiveFailCount >= 3
+                    ? '3 measurements have failed. Your scale may be set incorrectly.'
+                    : 'Multiple measurements look too small. Your scale may be set incorrectly.'}
+                </div>
+                <div className={styles.calibBannerText}>Manual calibration is recommended.</div>
+                <div className={styles.calibSteps}>
+                  <div><strong>Step 1:</strong> Find a dimension printed on your blueprint (e.g. a room labeled 24'-0")</div>
+                  <div><strong>Step 2:</strong> Enter that known distance below</div>
+                  <div><strong>Step 3:</strong> Click Start Calibration, then click the two endpoints of that dimension on the blueprint</div>
+                  <div><strong>Step 4:</strong> The scale updates automatically</div>
+                </div>
+                <div className={styles.calibBannerRow}>
+                  <input
+                    className={styles.calibBannerInput}
+                    type="text"
+                    value={calibBannerInput}
+                    onChange={e => setCalibBannerInput(e.target.value)}
+                    placeholder="e.g. 24' or 20'6&quot;"
+                  />
+                  <button
+                    className={styles.calibBannerBtn}
+                    disabled={!parseFeetInches(calibBannerInput) || calibrating}
+                    onClick={() => {
+                      const ft = parseFeetInches(calibBannerInput)
+                      if (ft && ft > 0) handleStartCalibration(ft)
+                    }}
+                  >
+                    {calibrating ? 'Click 2 points…' : 'Start Calibration'}
+                  </button>
+                </div>
+              </div>
+            )}
+
             <ZoneList
               zones={pageZones}
               onDelete={handleDeleteZone}
@@ -824,7 +985,39 @@ export default function SessionPage() {
               enabledFeatures={enabledFeatures}
               hiddenZoneIds={hiddenZoneIds}
               onToggleVisibility={handleToggleZoneVisibility}
+              isTestMode={isTestMode}
+              testData={testData}
+              onTestDataChange={handleTestDataChange}
+              onLogTest={handleLogTest}
+              pixelsPerFoot={pixelsPerFoot}
             />
+          </div>
+        )}
+
+        {/* Test summary — shown when test mode is on */}
+        {isTestMode && pageZones.length > 0 && (
+          <div className={styles.section}>
+            <div className={styles.sectionTitle}>Test Results</div>
+            <div className={styles.testSummary}>
+              <div className={styles.testSummaryRow}>
+                <span>Tested: {testSummary.total}</span>
+                <span style={{ color: '#22c55e' }}>Pass: {testSummary.pass}</span>
+                <span style={{ color: '#ef4444' }}>Fail: {testSummary.fail}</span>
+              </div>
+              {testSummary.verdict && (
+                <div className={`${styles.testVerdict} ${testSummary.verdict === 'ACCURATE' ? styles.testVerdictPass : styles.testVerdictFail}`}>
+                  {testSummary.verdict}
+                </div>
+              )}
+              <div className={styles.testSummaryActions}>
+                <button className={styles.testSummaryBtn} onClick={handleSaveAllTests} disabled={savingTests || testSummary.total === 0}>
+                  {savingTests ? 'Saving…' : 'Save All Results'}
+                </button>
+                <button className={styles.testSummaryBtn} onClick={() => window.print()} disabled={testSummary.total === 0}>
+                  Print Report
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -856,6 +1049,11 @@ export default function SessionPage() {
             </button>
           </div>
         )}
+
+        {/* Print-only report footer */}
+        <div className={styles.printReportFooter}>
+          blueprintmeasure.com | Accuracy Test Report
+        </div>
 
       </aside>
 

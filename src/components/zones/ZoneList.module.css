@@ -425,3 +425,176 @@
   box-shadow: 0 0 0 2px var(--color-primary);
   color: var(--color-primary);
 }
+
+/* ── Soft warnings ── */
+
+.softWarning {
+  font-size: 10px;
+  font-weight: 400;
+  font-style: italic;
+  color: #f59e0b;
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+
+/* ── Test panel ── */
+
+.testBtn {
+  font-size: 12px;
+  background: none;
+  border: none;
+  color: #f59e0b;
+  padding: 0;
+  opacity: 0.8;
+  transition: opacity 0.15s;
+}
+
+.testBtn:hover {
+  opacity: 1;
+}
+
+.testPanel {
+  margin-top: 8px;
+  padding: 10px;
+  background: rgba(245, 158, 11, 0.05);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.testToggleRow {
+  display: flex;
+  gap: 4px;
+}
+
+.testModeBtn {
+  flex: 1;
+  padding: 5px 4px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.testModeBtnActive {
+  border-color: #f59e0b;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.testPassBtn {
+  border-color: #22c55e;
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.testFailBtn {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.testInputRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.testField {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.testField label {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.testInput {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 5px 7px;
+  font-size: 12px;
+  color: var(--color-text);
+  outline: none;
+  width: 100%;
+}
+
+.testInput:focus {
+  border-color: #f59e0b;
+}
+
+.testCalc {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.testCalc strong {
+  color: var(--color-text);
+}
+
+.testCountSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.testVerdict {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 5px;
+  border-radius: var(--radius);
+  letter-spacing: 0.04em;
+}
+
+.testVerdictPass {
+  background: rgba(34, 197, 94, 0.12);
+  color: #22c55e;
+}
+
+.testVerdictFail {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+
+.testError {
+  font-size: 10px;
+  line-height: 1.4;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.06);
+  border-radius: var(--radius);
+  padding: 6px 8px;
+}
+
+.testLogBtn {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: var(--radius);
+  padding: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #f59e0b;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.testLogBtn:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.2);
+}
+
+.testLogBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import styles from './ZoneList.module.css'
 import { getMaxReach, estimatePaint } from '../../utils/measurements'
 import { parseFeetInches, formatFeetInches, formatSF, formatLF } from '../../utils/fractions'
+import { evaluateZoneTest } from '../../utils/testEvaluation'
 
 const PRESET_COLORS = [
   '#2e8bff', '#22c55e', '#f59e0b', '#ef4444', '#a855f7',
@@ -45,7 +46,8 @@ const CEILING_TYPE_LABELS = {
   shed: 'Shed',
 }
 
-export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawingZoneId, enabledFeatures = {}, hiddenZoneIds, onToggleVisibility }) {
+export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawingZoneId, enabledFeatures = {}, hiddenZoneIds, onToggleVisibility,
+  isTestMode, testData = {}, onTestDataChange, onLogTest, pixelsPerFoot }) {
   const [editingId, setEditingId] = useState(null)
   const [editName, setEditName] = useState('')
   const [editDescription, setEditDescription] = useState('')
@@ -69,6 +71,8 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
   const [editOpenings, setEditOpenings] = useState([])
 
   const [saving, setSaving] = useState(false)
+  const [testingZoneId, setTestingZoneId] = useState(null)
+  const [loggingTestId, setLoggingTestId] = useState(null)
 
   function startEdit(zone) {
     setEditingId(zone.id)
@@ -441,6 +445,18 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                     ? formatLF(zone.result ?? 0)
                     : `${Math.round(zone.result ?? 0)} items`}
                 </div>
+
+                {/* Soft warnings — visible to ALL users, always on */}
+                {zone.measurement_type === 'SF' && (zone.result ?? 0) > 0 && (zone.result ?? 0) < 10 && (
+                  <div className={styles.softWarning}>Warning: Result seems small — verify your scale is correct for this page.</div>
+                )}
+                {zone.measurement_type === 'LF' && (zone.result ?? 0) > 0 && (zone.result ?? 0) < 1 && (
+                  <div className={styles.softWarning}>Warning: LF result seems very short — verify your scale.</div>
+                )}
+                {zone.measurement_type === 'SF' && (zone.points?.filter(p => p !== null && p !== undefined)?.length ?? 0) > 4 && (zone.result ?? 0) > 0 && (zone.result ?? 0) < 20 && (zone.result ?? 0) >= 10 && (
+                  <div className={styles.softWarning}>Warning: Complex zone with low SF — verify scale calibration.</div>
+                )}
+
                 {/* Wall breakdown — shown when wall_height is set and feature enabled */}
                 {zone.wall_height && zone.gross_wall_sf && enabledFeatures.wall_calculator && (
                   <div className={styles.zonePaintEstimate}>
@@ -500,7 +516,132 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                   >
                     Remove
                   </button>
+                  {isTestMode && (
+                    <button
+                      className={styles.testBtn}
+                      onClick={() => setTestingZoneId(testingZoneId === zone.id ? null : zone.id)}
+                    >
+                      {testingZoneId === zone.id ? 'Close Test' : 'Test'}
+                    </button>
+                  )}
                 </div>
+
+                {/* ── Test panel ── */}
+                {isTestMode && testingZoneId === zone.id && (() => {
+                  const input = testData[zone.id] ?? { width: '', depth: '', statedValue: '', useDimensions: true, countVerified: null, notes: '' }
+                  const ev = evaluateZoneTest(zone, input, pixelsPerFoot)
+                  const change = (field, val) => onTestDataChange?.(zone.id, { [field]: val })
+
+                  return (
+                    <div className={styles.testPanel}>
+                      {zone.measurement_type === 'SF' && (
+                        <>
+                          <div className={styles.testToggleRow}>
+                            <button type="button"
+                              className={`${styles.testModeBtn} ${input.useDimensions !== false ? styles.testModeBtnActive : ''}`}
+                              onClick={() => change('useDimensions', true)}>
+                              Use dimensions
+                            </button>
+                            <button type="button"
+                              className={`${styles.testModeBtn} ${input.useDimensions === false ? styles.testModeBtnActive : ''}`}
+                              onClick={() => change('useDimensions', false)}>
+                              Use stated SF
+                            </button>
+                          </div>
+                          {input.useDimensions !== false ? (
+                            <div className={styles.testInputRow}>
+                              <div className={styles.testField}>
+                                <label>Width</label>
+                                <input value={input.width} onChange={e => change('width', e.target.value)}
+                                  placeholder="e.g. 20'" className={styles.testInput} />
+                              </div>
+                              <div className={styles.testField}>
+                                <label>Depth</label>
+                                <input value={input.depth} onChange={e => change('depth', e.target.value)}
+                                  placeholder="e.g. 15'" className={styles.testInput} />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className={styles.testField}>
+                              <label>Stated SF</label>
+                              <input value={input.statedValue} onChange={e => change('statedValue', e.target.value)}
+                                placeholder="e.g. 300" className={styles.testInput} />
+                            </div>
+                          )}
+                          {ev.stated != null && (
+                            <div className={styles.testCalc}>Stated: {ev.stated.toFixed(2)} SF</div>
+                          )}
+                        </>
+                      )}
+
+                      {zone.measurement_type === 'LF' && (
+                        <div className={styles.testField}>
+                          <label>Stated LF</label>
+                          <input value={input.statedValue} onChange={e => change('statedValue', e.target.value)}
+                            placeholder="e.g. 12'6&quot;" className={styles.testInput} />
+                        </div>
+                      )}
+
+                      {zone.measurement_type === 'count' && (
+                        <div className={styles.testCountSection}>
+                          <div className={styles.testCalc}>Count verification is manual</div>
+                          <div className={styles.testInputRow}>
+                            <button type="button"
+                              className={`${styles.testModeBtn} ${input.countVerified === true ? styles.testPassBtn : ''}`}
+                              onClick={() => change('countVerified', true)}>
+                              Mark Verified
+                            </button>
+                            <button type="button"
+                              className={`${styles.testModeBtn} ${input.countVerified === false ? styles.testFailBtn : ''}`}
+                              onClick={() => change('countVerified', false)}>
+                              Mark Not Verified
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className={styles.testCalc}>
+                        Measured: <strong>{zone.result ?? 0} {zone.measurement_type}</strong>
+                      </div>
+
+                      {ev.variance != null && (
+                        <div className={styles.testCalc}>
+                          Variance: {ev.variance > 0 ? '+' : ''}{ev.variance.toFixed(2)} ({ev.variancePct > 0 ? '+' : ''}{ev.variancePct}%)
+                        </div>
+                      )}
+
+                      {/* Verdict */}
+                      {ev.verdict && (
+                        <div className={`${styles.testVerdict} ${ev.verdict === 'PASS' ? styles.testVerdictPass : styles.testVerdictFail}`}>
+                          {ev.verdict}
+                        </div>
+                      )}
+                      {ev.errorCode && (
+                        <div className={styles.testError}>
+                          <strong>{ev.errorCode}</strong>: {ev.errorMessage}
+                        </div>
+                      )}
+
+                      <div className={styles.testField}>
+                        <label>Notes</label>
+                        <input value={input.notes} onChange={e => change('notes', e.target.value)}
+                          placeholder="Test notes" className={styles.testInput} />
+                      </div>
+
+                      <button
+                        className={styles.testLogBtn}
+                        disabled={!ev.verdict || loggingTestId === zone.id}
+                        onClick={async () => {
+                          setLoggingTestId(zone.id)
+                          await onLogTest?.(zone)
+                          setLoggingTestId(null)
+                        }}
+                      >
+                        {loggingTestId === zone.id ? 'Logging…' : 'Log Test Result'}
+                      </button>
+                    </div>
+                  )
+                })()}
               </>
             )}
           </div>

@@ -301,3 +301,243 @@
 .scaleBannerDismiss:hover {
   opacity: 1;
 }
+
+/* ─── Test mode ─── */
+.sidebarTestMode {
+  border-right: 2px solid rgba(245, 158, 11, 0.5);
+}
+
+.testToggle {
+  margin-top: 8px;
+  width: 100%;
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.testToggleOn {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #f59e0b;
+}
+
+.testSummary {
+  padding: 0 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.testSummaryRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.testVerdict {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 800;
+  padding: 6px;
+  border-radius: var(--radius);
+  letter-spacing: 0.04em;
+}
+
+.testVerdictPass {
+  background: rgba(34, 197, 94, 0.12);
+  color: #22c55e;
+}
+
+.testVerdictFail {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+
+.testSummaryActions {
+  display: flex;
+  gap: 6px;
+}
+
+.testSummaryBtn {
+  flex: 1;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 6px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.testSummaryBtn:hover:not(:disabled) {
+  color: var(--color-text);
+}
+
+.testSummaryBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ─── Calibration suggestion banner ─── */
+.calibBanner {
+  margin: 0 8px 8px;
+  padding: 10px 12px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.calibBannerTitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: #f59e0b;
+}
+
+.calibBannerText {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.calibSteps {
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--color-text-muted);
+}
+
+.calibSteps strong {
+  color: var(--color-text);
+}
+
+.calibBannerRow {
+  display: flex;
+  gap: 6px;
+}
+
+.calibBannerInput {
+  flex: 1;
+  background: var(--color-bg);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: var(--radius);
+  padding: 6px 8px;
+  font-size: 12px;
+  color: var(--color-text);
+  outline: none;
+}
+
+.calibBannerInput:focus {
+  border-color: #f59e0b;
+}
+
+.calibBannerBtn {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #f59e0b;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.calibBannerBtn:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.25);
+}
+
+.calibBannerBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ─── Print-only elements (hidden on screen) ─── */
+.printReportHeader,
+.printReportFooter {
+  display: none;
+}
+
+/* ─── Print layout ─── */
+@media print {
+  .layout {
+    display: block;
+    height: auto;
+    overflow: visible;
+  }
+
+  .sidebar {
+    width: 100%;
+    height: auto;
+    overflow: visible;
+    border-right: none;
+    background: white;
+  }
+
+  .canvasArea {
+    display: none;
+  }
+
+  .printReportHeader {
+    display: block;
+    text-align: center;
+    padding: 16px 14px 12px;
+    border-bottom: 2px solid #333;
+  }
+
+  .printReportHeader h1 {
+    font-size: 16px;
+    margin: 0 0 4px;
+    color: #111;
+  }
+
+  .printReportHeader div {
+    font-size: 11px;
+    color: #555;
+  }
+
+  .printReportFooter {
+    display: block;
+    text-align: center;
+    padding: 16px 14px;
+    font-size: 10px;
+    color: #999;
+    border-top: 1px solid #ccc;
+    margin-top: 16px;
+  }
+
+  .testToggle,
+  .resetViewBtn,
+  .scaleBanner,
+  .hint,
+  .downloadBtns,
+  .exportBtn,
+  .replaceBtn,
+  .testSummaryActions,
+  .calibBannerRow,
+  .calibSteps {
+    display: none !important;
+  }
+
+  .sidebarTestMode {
+    border-right: none;
+  }
+
+  .sidebarHeader,
+  .section {
+    border-color: #ddd;
+  }
+}

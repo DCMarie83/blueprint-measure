@@ -108,6 +108,14 @@ export default function AdminPage() {
   const [companyZoneCounts, setCompanyZoneCounts] = useState({}) // { [companyId]: number }
   const [loadingZoneCount,  setLoadingZoneCount]  = useState({}) // { [companyId]: bool }
 
+  // ── Test logs ─────────────────────────────────────────────────────────────────
+  const [testLogsOpen, setTestLogsOpen]       = useState(false)
+  const [testLogs, setTestLogs]               = useState([])
+  const [testLogsLoading, setTestLogsLoading] = useState(false)
+  const [testVerdictFilter, setTestVerdictFilter] = useState('ALL')
+  const [testCompanyFilter, setTestCompanyFilter] = useState('')
+  const [expandedLogId, setExpandedLogId]     = useState(null)
+
   // ── Load all data ─────────────────────────────────────────────────────────────
   const loadAll = useCallback(async () => {
     setLoading(true)
@@ -180,6 +188,10 @@ export default function AdminPage() {
 
   function profileCompanyIdFor(userId) {
     return userProfiles.find(p => p.user_id === userId)?.company_id ?? ''
+  }
+
+  function roleFor(userId) {
+    return userProfiles.find(p => p.user_id === userId)?.role ?? 'contractor_user'
   }
 
   // ══════════════════════════════════════════════════════════════════════════════
@@ -353,6 +365,21 @@ export default function AdminPage() {
   }
 
   async function handleSaveUserCompany(user) {
+    // Seat limit check — warn if company is at capacity
+    if (editCompanyValue) {
+      const targetCompany = companies.find(c => c.id === editCompanyValue)
+      if (targetCompany) {
+        const currentCount = userProfiles.filter(p => p.company_id === editCompanyValue).length
+        const seats = targetCompany.seats_purchased ?? 1
+        if (currentCount >= seats) {
+          const ok = window.confirm(
+            `This company has reached its seat limit of ${seats}. Add anyway as super admin override?`
+          )
+          if (!ok) { setSavingCompanyUserId(null); return }
+        }
+      }
+    }
+
     setSavingCompanyUserId(user.id)
     try {
       const { error } = await supabase
@@ -407,6 +434,22 @@ export default function AdminPage() {
       alert('Failed to delete user: ' + err.message)
     } finally {
       setDeletingUserId(null)
+    }
+  }
+
+  // ── Change user role ───────────────────────────────────────────────────────
+  async function handleChangeRole(userId, newRole) {
+    try {
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({ role: newRole })
+        .eq('user_id', userId)
+      if (error) throw new Error(error.message)
+      setUserProfiles(prev => prev.map(p =>
+        p.user_id === userId ? { ...p, role: newRole } : p
+      ))
+    } catch (err) {
+      alert('Failed to update role: ' + err.message)
     }
   }
 
@@ -494,6 +537,27 @@ export default function AdminPage() {
       setCompanyZoneCounts(prev => ({ ...prev, [companyId]: zoneCount }))
     } finally {
       setLoadingZoneCount(prev => ({ ...prev, [companyId]: false }))
+    }
+  }
+
+  // ── Load test logs (on demand) ────────────────────────────────────────────────
+  async function handleToggleTestLogs() {
+    if (testLogsOpen) { setTestLogsOpen(false); return }
+    setTestLogsOpen(true)
+    if (testLogs.length > 0) return // already loaded
+    setTestLogsLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('session_test_logs')
+        .select('*, sessions(project_name, client_name)')
+        .order('logged_at', { ascending: false })
+        .limit(500)
+      if (error) throw new Error(error.message)
+      setTestLogs(data ?? [])
+    } catch (err) {
+      alert('Failed to load test logs: ' + err.message)
+    } finally {
+      setTestLogsLoading(false)
     }
   }
 
@@ -620,6 +684,7 @@ export default function AdminPage() {
                   <tr>
                     <th className={styles.th}>Company</th>
                     <th className={styles.th}>Plan</th>
+                    <th className={styles.th}>Seats</th>
                     <th className={styles.th}>Usage / Month</th>
                     <th className={styles.th}>Feature Flags</th>
                     <th className={styles.th}></th>
@@ -757,6 +822,18 @@ export default function AdminPage() {
                           </div>
                         </td>
 
+                        {/* ── Seats ── */}
+                        <td className={styles.td} data-no-expand>
+                          <div className={styles.usageCell}>
+                            <span className={styles.usageCount}>
+                              {companyUsers.length} / {company.seats_purchased ?? 1}
+                            </span>
+                            {companyUsers.length >= (company.seats_purchased ?? 1) && (
+                              <span className={styles.seatWarning}>At limit</span>
+                            )}
+                          </div>
+                        </td>
+
                         {/* ── Usage this month ── */}
                         <td className={styles.td}>
                           <div className={styles.usageCell}>
@@ -806,7 +883,7 @@ export default function AdminPage() {
                       {/* ── Expansion panel ── */}
                       {isExpanded && (
                         <tr className={styles.expandedRow}>
-                          <td colSpan={5} className={styles.expandedCell}>
+                          <td colSpan={6} className={styles.expandedCell}>
                             <div className={styles.expandedPanel}>
 
                               {/* Activity stats */}
@@ -1007,6 +1084,7 @@ export default function AdminPage() {
                   <tr>
                     <th className={styles.th}>Email</th>
                     <th className={styles.th}>Company</th>
+                    <th className={styles.th}>Role</th>
                     <th className={styles.th}>Created</th>
                     <th className={styles.th}></th>
                   </tr>
@@ -1073,14 +1151,27 @@ export default function AdminPage() {
                           )}
                         </td>
 
-                        {/* ── Created ── */}
+                        {/* ── Role ── */}
+                        <td className={styles.td}>
+                          <select
+                            className={styles.roleSelect}
+                            value={roleFor(u.id)}
+                            onChange={e => handleChangeRole(u.id, e.target.value)}
+                          >
+                            <option value="contractor_user">User</option>
+                            <option value="contractor_admin">Admin</option>
+                            <option value="super_admin">Super Admin</option>
+                          </select>
+                        </td>
+
+                        {/* ─��� Created ── */}
                         <td className={styles.td}>
                           {new Date(u.created_at).toLocaleDateString('en-US', {
                             year: 'numeric', month: 'short', day: 'numeric',
                           })}
                         </td>
 
-                        {/* ── Actions ── */}
+                        {/* ─�� Actions ── */}
                         <td className={styles.tdAction}>
                           {/* Resend — only for users who've never logged in */}
                           {resendSentId === u.id && (
@@ -1141,7 +1232,7 @@ export default function AdminPage() {
                       {/* ── Inline set-password form row ── */}
                       {isSettingPw && (
                         <tr className={styles.setPasswordRow}>
-                          <td colSpan={4} className={styles.setPasswordCell}>
+                          <td colSpan={5} className={styles.setPasswordCell}>
                             <div className={styles.setPasswordForm}>
                               <input
                                 type="password"
@@ -1172,6 +1263,117 @@ export default function AdminPage() {
                 </tbody>
               </table>
             </div>
+          )}
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════
+            SECTION 3 — Test Logs
+        ══════════════════════════════════════════════════════════ */}
+        <section className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>
+              Test Logs
+              {testLogs.length > 0 && <span className={styles.pill}>{testLogs.length}</span>}
+            </h2>
+            <button className={styles.addBtn} onClick={handleToggleTestLogs}>
+              {testLogsOpen ? 'Close' : 'View Logs'}
+            </button>
+          </div>
+
+          {testLogsOpen && (
+            <>
+              {testLogsLoading ? (
+                <p className={styles.empty}>Loading test logs…</p>
+              ) : testLogs.length === 0 ? (
+                <p className={styles.empty}>No test logs yet.</p>
+              ) : (
+                <>
+                  <div className={styles.testLogFilters}>
+                    <select className={styles.testLogSelect}
+                      value={testVerdictFilter} onChange={e => setTestVerdictFilter(e.target.value)}>
+                      <option value="ALL">All verdicts</option>
+                      <option value="PASS">PASS only</option>
+                      <option value="FAIL">FAIL only</option>
+                    </select>
+                    <select className={styles.testLogSelect}
+                      value={testCompanyFilter} onChange={e => setTestCompanyFilter(e.target.value)}>
+                      <option value="">All companies</option>
+                      {companies.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                    <button className={styles.testLogPrintBtn} onClick={() => window.print()}>
+                      Print Logs
+                    </button>
+                  </div>
+                  <div className={styles.tableWrap}>
+                    <table className={styles.table}>
+                      <thead>
+                        <tr>
+                          <th className={styles.th}>Date</th>
+                          <th className={styles.th}>User</th>
+                          <th className={styles.th}>Session</th>
+                          <th className={styles.th}>Zone</th>
+                          <th className={styles.th}>Type</th>
+                          <th className={styles.th}>Stated</th>
+                          <th className={styles.th}>Measured</th>
+                          <th className={styles.th}>Variance</th>
+                          <th className={styles.th}>Verdict</th>
+                          <th className={styles.th}>Error</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {testLogs
+                          .filter(l => testVerdictFilter === 'ALL' || l.verdict === testVerdictFilter)
+                          .filter(l => !testCompanyFilter || l.company_id === testCompanyFilter)
+                          .map(log => {
+                            const userEmail = users.find(u => u.id === log.user_id)?.email ?? '—'
+                            const sessionLabel = log.sessions
+                              ? `${log.sessions.client_name ?? ''} / ${log.sessions.project_name ?? ''}`
+                              : '—'
+                            const stated = log.stated_sf ?? log.stated_lf ?? '—'
+                            const isExpanded = expandedLogId === log.id
+                            return (
+                              <Fragment key={log.id}>
+                                <tr className={styles.tr} onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
+                                  style={{ cursor: 'pointer' }}>
+                                  <td className={styles.td}>{new Date(log.logged_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                                  <td className={styles.td}>{userEmail}</td>
+                                  <td className={styles.td}>{sessionLabel}</td>
+                                  <td className={styles.td}>{log.zone_name}</td>
+                                  <td className={styles.td}>{log.measurement_type}</td>
+                                  <td className={styles.td}>{typeof stated === 'number' ? stated.toFixed(2) : stated}</td>
+                                  <td className={styles.td}>{log.measured_value?.toFixed(2) ?? '—'}</td>
+                                  <td className={styles.td}>{log.variance != null ? `${log.variance > 0 ? '+' : ''}${log.variance.toFixed(2)}` : '—'}</td>
+                                  <td className={styles.td}>
+                                    <span className={styles.testLogVerdict} style={{
+                                      color: log.verdict === 'PASS' ? '#22c55e' : '#ef4444',
+                                      background: log.verdict === 'PASS' ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+                                    }}>{log.verdict}</span>
+                                  </td>
+                                  <td className={styles.td} style={{ color: '#ef4444', fontSize: '11px' }}>{log.error_code ?? ''}</td>
+                                </tr>
+                                {isExpanded && (
+                                  <tr className={styles.expandedRow}>
+                                    <td colSpan={10} className={styles.expandedCell}>
+                                      <div className={styles.testLogDetail}>
+                                        {log.error_message && <div><strong>Error:</strong> {log.error_message}</div>}
+                                        {log.stated_width && <div>Width: {log.stated_width} ft · Depth: {log.stated_depth} ft</div>}
+                                        {log.variance_pct != null && <div>Variance: {log.variance_pct}%</div>}
+                                        {log.notes && <div><strong>Notes:</strong> {log.notes}</div>}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                              </Fragment>
+                            )
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </>
           )}
         </section>
 
