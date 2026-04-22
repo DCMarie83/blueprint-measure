@@ -4,6 +4,7 @@ import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import SessionPage from './pages/SessionPage'
 import AdminPage from './pages/AdminPage'
+import AccuracyTestPage from './pages/AccuracyTestPage'
 import ChangePasswordPage from './pages/ChangePasswordPage'
 
 // The only email address that can access /admin.
@@ -72,10 +73,14 @@ export default function App() {
       {/* Password change — shown when force_password_change flag is set */}
       <Route path="/change-password" element={<ChangePasswordPage />} />
 
-      {/* Admin route — only accessible to ADMIN_EMAIL */}
+      {/* Admin routes — only accessible to ADMIN_EMAIL */}
       <Route
         path="/admin"
         element={<AdminRoute><AdminPage /></AdminRoute>}
+      />
+      <Route
+        path="/accuracy-test"
+        element={<AdminRoute><AccuracyTestPage /></AdminRoute>}
       />
 
       {/* Default: redirect to dashboard (or login if not authed) */}

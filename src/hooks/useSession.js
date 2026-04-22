@@ -88,6 +88,10 @@ export function useSession(sessionId) {
       ceiling_low_wall_height:  zoneData.ceiling_low_wall_height  ?? null,
       ceiling_high_wall_height: zoneData.ceiling_high_wall_height ?? null,
       color: zoneData.color ?? null,
+      wall_height:          zoneData.wall_height          ?? null,
+      opening_deductions:   zoneData.opening_deductions   ?? null,
+      gross_wall_sf:        zoneData.gross_wall_sf        ?? null,
+      net_wall_sf:          zoneData.net_wall_sf          ?? null,
       measurement_type: zoneData.measurement_type,
       points: zoneData.points,
       result: zoneData.result,
@@ -124,8 +128,12 @@ export function useSession(sessionId) {
       ceiling_low_wall_height:  updates.ceiling_low_wall_height  ?? null,
       ceiling_high_wall_height: updates.ceiling_high_wall_height ?? null,
       color: updates.color ?? null,
+      wall_height:          updates.wall_height          ?? null,
+      opening_deductions:   updates.opening_deductions   ?? null,
+      gross_wall_sf:        updates.gross_wall_sf        ?? null,
+      net_wall_sf:          updates.net_wall_sf          ?? null,
     }
-    // Only include result when the caller explicitly provides it (ceiling param edits)
+    // Only include result when the caller explicitly provides it (ceiling/wall param edits)
     if (updates.result !== undefined) updateData.result = updates.result
 
     const { data, error } = await supabase

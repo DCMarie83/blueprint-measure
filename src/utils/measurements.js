@@ -171,6 +171,24 @@ export function getMaxReach(zone) {
   return null
 }
 
+// Perimeter of a closed polygon in feet. Used by the wall measurement mode
+// to derive total linear wall footage from the floor plan trace.
+export function calculatePerimeterLF(points, pixelsPerFoot) {
+  const perimPixels = polygonPerimeterPixels(points)
+  return Math.round(perimPixels / pixelsPerFoot * 100) / 100
+}
+
+// Calculate paintable wall surface area from a floor plan polygon.
+// wallHeight is in decimal feet. openingDeductions is [{name, sf}, …].
+// Returns { perimeterLF, grossWallSF, totalDeductions, netWallSF }.
+export function calculateWallSF(points, pixelsPerFoot, wallHeight, openingDeductions) {
+  const perimeterLF = calculatePerimeterLF(points, pixelsPerFoot)
+  const grossWallSF = Math.round(perimeterLF * wallHeight * 100) / 100
+  const totalDeductions = (openingDeductions ?? []).reduce((s, o) => s + (o.sf ?? 0), 0)
+  const netWallSF = Math.round(Math.max(0, grossWallSF - totalDeductions) * 100) / 100
+  return { perimeterLF, grossWallSF, totalDeductions, netWallSF }
+}
+
 // Master function — picks the right formula based on type
 export function calculate(measurementType, points, pixelsPerFoot) {
   if (!points || points.length === 0) return 0

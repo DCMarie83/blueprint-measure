@@ -19,10 +19,12 @@ const PRESET_COLORS = [
 // sfPreview   — { flat, adjusted, adjustment } computed by SessionPage in real-time
 //               from the points the contractor has placed so far. Only present when
 //               surface type is Ceiling and ceiling type is not Flat.
+let openingIdCounter = 0
+
 export default function ZoneDrawPanel({
   onStart, onCancel, onUndoPoint, onAddSegment, onFinalizeZone,
   isDrawing, isAccumulating, segmentCount = 0, accumulatedResult = 0,
-  pointCount, onFinish, drawingType, sfPreview,
+  pointCount, onFinish, drawingType, sfPreview, wallPreview,
 }) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -40,10 +42,25 @@ export default function ZoneDrawPanel({
   const [ceilingLowWallHeight, setCeilingLowWallHeight] = useState('')
   const [ceilingHighWallHeight, setCeilingHighWallHeight] = useState('')
 
+  // Wall-specific fields — only used when surfaceType === 'Wall' && type === 'SF'
+  const [wallHeight, setWallHeight] = useState('')
+  const [openings, setOpenings] = useState([]) // [{ id, name, sf }]
+
+  function addOpening(name, sf) {
+    setOpenings(prev => [...prev, { id: ++openingIdCounter, name, sf }])
+  }
+  function updateOpening(id, field, value) {
+    setOpenings(prev => prev.map(o => o.id === id ? { ...o, [field]: value } : o))
+  }
+  function removeOpening(id) {
+    setOpenings(prev => prev.filter(o => o.id !== id))
+  }
+
   function handleStart(e) {
     e.preventDefault()
     if (!name.trim()) return
     const isCeiling = surfaceType === 'Ceiling'
+    const isWall = surfaceType === 'Wall' && type === 'SF'
     onStart({
       name: name.trim(),
       description: description.trim() || null,
@@ -58,6 +75,10 @@ export default function ZoneDrawPanel({
       ceiling_drop_depth:       isCeiling && ceilingType === 'tray'    ? parseFeetInches(ceilingDropDepth)     : null,
       ceiling_low_wall_height:  isCeiling && ceilingType === 'shed'    ? parseFeetInches(ceilingLowWallHeight)  : null,
       ceiling_high_wall_height: isCeiling && ceilingType === 'shed'    ? parseFeetInches(ceilingHighWallHeight) : null,
+      wall_height: isWall ? parseFeetInches(wallHeight) : null,
+      opening_deductions: isWall && openings.length > 0
+        ? openings.map(o => ({ name: o.name, sf: o.sf }))
+        : null,
     })
   }
 
@@ -134,6 +155,34 @@ export default function ZoneDrawPanel({
                 {sfPreview.adjustment > 0 ? '+' : ''}{sfPreview.adjustment} sq ft for slope
               </div>
             )}
+          </div>
+        )}
+
+        {/* Real-time wall SF preview */}
+        {wallPreview && (
+          <div className={styles.sfPreview}>
+            <div className={styles.sfPreviewRow}>
+              <span className={styles.sfPreviewLabel}>Floor area</span>
+              <span className={styles.sfPreviewValue}>{wallPreview.floorSF} sq ft</span>
+            </div>
+            <div className={styles.sfPreviewRow}>
+              <span className={styles.sfPreviewLabel}>Perimeter</span>
+              <span className={styles.sfPreviewValue}>{wallPreview.perimeterLF} lin ft</span>
+            </div>
+            <div className={styles.sfPreviewRow}>
+              <span className={styles.sfPreviewLabel}>Wall SF (gross)</span>
+              <span className={styles.sfPreviewValue}>{wallPreview.grossWallSF} sq ft</span>
+            </div>
+            {wallPreview.totalDeductions > 0 && (
+              <div className={styles.sfPreviewRow}>
+                <span className={styles.sfPreviewLabel}>Deductions</span>
+                <span className={styles.sfPreviewValue}>-{wallPreview.totalDeductions} sq ft</span>
+              </div>
+            )}
+            <div className={styles.sfPreviewRow}>
+              <span className={styles.sfPreviewLabel}>Net wall SF</span>
+              <span className={styles.sfPreviewValueHighlight}>{wallPreview.netWallSF} sq ft</span>
+            </div>
           </div>
         )}
 
@@ -298,6 +347,58 @@ export default function ZoneDrawPanel({
               />
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Wall height & openings — shown when Surface=Wall and Type=SF */}
+      {surfaceType === 'Wall' && type === 'SF' && (
+        <div className={styles.field}>
+          <label>Wall Height &amp; Openings <span className={styles.optional}>(optional)</span></label>
+
+          <div className={styles.heightField}>
+            <label>Wall height</label>
+            <input
+              type="text"
+              value={wallHeight}
+              onChange={e => setWallHeight(e.target.value)}
+              placeholder="e.g. 9' or 8'6&quot;"
+            />
+          </div>
+
+          {wallHeight && (
+            <>
+              <div className={styles.openingsHeader}>Opening Deductions</div>
+              {openings.map(o => (
+                <div key={o.id} className={styles.openingRow}>
+                  <input
+                    className={styles.openingName}
+                    value={o.name}
+                    onChange={e => updateOpening(o.id, 'name', e.target.value)}
+                    placeholder="Name"
+                  />
+                  <input
+                    className={styles.openingSf}
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={o.sf}
+                    onChange={e => updateOpening(o.id, 'sf', parseFloat(e.target.value) || 0)}
+                  />
+                  <span className={styles.openingSfUnit}>sf</span>
+                  <button type="button" className={styles.openingRemove}
+                    onClick={() => removeOpening(o.id)}>✕</button>
+                </div>
+              ))}
+              <div className={styles.openingBtns}>
+                <button type="button" className={styles.openingAddBtn}
+                  onClick={() => addOpening('Door', 21)}>+ Door (21sf)</button>
+                <button type="button" className={styles.openingAddBtn}
+                  onClick={() => addOpening('Window', 15)}>+ Window (15sf)</button>
+                <button type="button" className={styles.openingAddBtn}
+                  onClick={() => addOpening('Opening', 0)}>+ Custom</button>
+              </div>
+            </>
+          )}
         </div>
       )}
 

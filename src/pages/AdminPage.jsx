@@ -517,7 +517,10 @@ export default function AdminPage() {
           <span className={styles.logo}>📐 BlueprintMeasure</span>
           <span className={styles.adminBadge}>Super Admin</span>
         </div>
-        <Link to="/dashboard" className={styles.backLink}>← Back to Dashboard</Link>
+        <div className={styles.headerRight}>
+          <Link to="/accuracy-test" className={styles.testLink}>🧪 Accuracy Test</Link>
+          <Link to="/dashboard" className={styles.backLink}>← Back to Dashboard</Link>
+        </div>
       </header>
 
       <main className={styles.content}>

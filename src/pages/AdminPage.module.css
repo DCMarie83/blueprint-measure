@@ -54,6 +54,29 @@
   text-decoration: none;
 }
 
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.testLink {
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: var(--radius);
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #a78bfa;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.testLink:hover {
+  background: rgba(139, 92, 246, 0.18);
+  text-decoration: none;
+}
+
 /* ── Main content ─────────────────────────────────────────────────────────── */
 .content {
   max-width: 1100px;

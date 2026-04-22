@@ -401,6 +401,96 @@
   opacity: 0.5;
 }
 
+/* --- Wall openings list --- */
+
+.openingsHeader {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  margin-top: 6px;
+}
+
+.openingRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.openingName {
+  flex: 1;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 5px 7px;
+  font-size: 12px;
+  color: var(--color-text);
+  outline: none;
+  min-width: 0;
+}
+
+.openingSf {
+  width: 52px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 5px 6px;
+  font-size: 12px;
+  color: var(--color-text);
+  outline: none;
+  text-align: right;
+}
+
+.openingSfUnit {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.openingRemove {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  opacity: 0.5;
+  font-size: 13px;
+  padding: 2px;
+  cursor: pointer;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.openingRemove:hover {
+  opacity: 1;
+  color: var(--color-danger);
+}
+
+.openingBtns {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.openingAddBtn {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 4px 7px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.openingAddBtn:hover {
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
+
 /* --- Real-time SF preview shown during drawing --- */
 
 .sfPreview {

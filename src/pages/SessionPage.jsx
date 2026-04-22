@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useSession } from '../hooks/useSession'
 import { usePdf } from '../hooks/usePdf'
 import { calcPixelsPerFoot } from '../utils/scaleOptions'
-import { calculate, calculateSF, calculateCeilingSF } from '../utils/measurements'
+import { calculate, calculateSF, calculateCeilingSF, calculateWallSF } from '../utils/measurements'
 import { exportCSV } from '../utils/csvExport'
 import { downloadPdfWithMeasurements } from '../utils/pdfExport'
 import { detectScaleFromImage } from '../utils/detectScale'
@@ -194,7 +194,8 @@ export default function SessionPage() {
   function handleStartDrawing({ name, description, surface_type, coat_count, type,
     ceiling_type, ceiling_peak_height, ceiling_wall_height,
     ceiling_tray_perimeter, ceiling_drop_depth,
-    ceiling_low_wall_height, ceiling_high_wall_height, color }) {
+    ceiling_low_wall_height, ceiling_high_wall_height, color,
+    wall_height, opening_deductions }) {
     setActiveZoneMeta({
       name, description, surface_type, coat_count, type,
       ceiling_type: ceiling_type ?? null,
@@ -205,6 +206,8 @@ export default function SessionPage() {
       ceiling_low_wall_height:  ceiling_low_wall_height  ?? null,
       ceiling_high_wall_height: ceiling_high_wall_height ?? null,
       color: color ?? null,
+      wall_height: wall_height ?? null,
+      opening_deductions: opening_deductions ?? null,
     })
     setFinishedSegments([])
     setIsAccumulating(false)
@@ -229,6 +232,8 @@ export default function SessionPage() {
       ceiling_low_wall_height:  zone.ceiling_low_wall_height  ?? null,
       ceiling_high_wall_height: zone.ceiling_high_wall_height ?? null,
       color: zone.color ?? null,
+      wall_height: zone.wall_height ?? null,
+      opening_deductions: zone.opening_deductions ?? null,
     })
     setFinishedSegments([])
     setIsAccumulating(false)
@@ -294,6 +299,15 @@ export default function SessionPage() {
       result = adjustedSF
     }
 
+    // Wall mode: replace result with net wall SF when wall height is provided
+    let wallData = {}
+    if (activeZoneMeta.surface_type === 'Wall' && activeZoneMeta.wall_height) {
+      const w = calculateWallSF(drawnPoints, pixelsPerFoot,
+        activeZoneMeta.wall_height, activeZoneMeta.opening_deductions)
+      result = w.netWallSF
+      wallData = { gross_wall_sf: w.grossWallSF, net_wall_sf: w.netWallSF }
+    }
+
     try {
       if (redrawingZoneId) {
         await redrawZone(redrawingZoneId, drawnPoints, result)
@@ -311,6 +325,9 @@ export default function SessionPage() {
           ceiling_low_wall_height:  activeZoneMeta.ceiling_low_wall_height  ?? null,
           ceiling_high_wall_height: activeZoneMeta.ceiling_high_wall_height ?? null,
           color: activeZoneMeta.color ?? null,
+          wall_height: activeZoneMeta.wall_height ?? null,
+          opening_deductions: activeZoneMeta.opening_deductions ?? null,
+          ...wallData,
           measurement_type: activeZoneMeta.type,
           points: drawnPoints,
           result,
@@ -448,6 +465,27 @@ export default function SessionPage() {
             finalUpdates.result = calculateSF(zone.points, pixelsPerFoot)
           }
         }
+
+        // Wall recalculation: check if wall params changed
+        const wallParamsChanged =
+          updates.wall_height !== zone.wall_height ||
+          JSON.stringify(updates.opening_deductions) !== JSON.stringify(zone.opening_deductions) ||
+          updates.surface_type !== zone.surface_type
+
+        if (wallParamsChanged) {
+          if (updates.surface_type === 'Wall' && updates.wall_height) {
+            const w = calculateWallSF(zone.points, pixelsPerFoot,
+              updates.wall_height, updates.opening_deductions)
+            finalUpdates.result = w.netWallSF
+            finalUpdates.gross_wall_sf = w.grossWallSF
+            finalUpdates.net_wall_sf = w.netWallSF
+          } else if (zone.wall_height && updates.surface_type !== 'Wall') {
+            // Switched away from wall mode — restore floor SF
+            finalUpdates.result = calculateSF(zone.points, pixelsPerFoot)
+            finalUpdates.gross_wall_sf = null
+            finalUpdates.net_wall_sf = null
+          }
+        }
       }
 
       await updateZone(zoneId, finalUpdates)
@@ -579,6 +617,20 @@ export default function SessionPage() {
       highWallHeight: parseFloat(activeZoneMeta.ceiling_high_wall_height) || 0,
     }, drawnPoints, pixelsPerFoot)
     return { flat, adjusted: adjustedSF, adjustment }
+  }, [isDrawing, activeZoneMeta, drawnPoints, pixelsPerFoot])
+
+  // ── Wall SF preview ──────────────────────────────────────────────────────────
+  // Live wall calculation shown while drawing a Wall/SF zone with height entered.
+  const wallPreview = useMemo(() => {
+    if (!isDrawing || !activeZoneMeta ||
+        activeZoneMeta.surface_type !== 'Wall' || activeZoneMeta.type !== 'SF' ||
+        !activeZoneMeta.wall_height || drawnPoints.length < 3 || !pixelsPerFoot) {
+      return null
+    }
+    const floorSF = calculateSF(drawnPoints, pixelsPerFoot)
+    const w = calculateWallSF(drawnPoints, pixelsPerFoot,
+      activeZoneMeta.wall_height, activeZoneMeta.opening_deductions)
+    return { floorSF, ...w }
   }, [isDrawing, activeZoneMeta, drawnPoints, pixelsPerFoot])
 
   // ── Loading / error screens ───────────────────────────────────────────────────
@@ -748,6 +800,7 @@ export default function SessionPage() {
               onFinish={handleZoneComplete}
               drawingType={activeZoneMeta?.type}
               sfPreview={sfPreview}
+              wallPreview={wallPreview}
             />
           </div>
         )}
