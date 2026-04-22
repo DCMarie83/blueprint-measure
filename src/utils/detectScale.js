@@ -1,5 +1,19 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { SCALE_OPTIONS } from './scaleOptions'
+
+// The exact set of values Claude is asked to return.
+// Keys are what appears in Claude's JSON; values provide the data needed to
+// apply the scale via calcPixelsPerFoot.
+const DETECTED_SCALE_MAP = {
+  '1/8':   { label: "1/8\" = 1'",   inchesPerFoot: 0.125       },
+  '3/16':  { label: "3/16\" = 1'",  inchesPerFoot: 0.1875      },
+  '1/4':   { label: "1/4\" = 1'",   inchesPerFoot: 0.25        },
+  '3/8':   { label: "3/8\" = 1'",   inchesPerFoot: 0.375       },
+  '1/2':   { label: "1/2\" = 1'",   inchesPerFoot: 0.5         },
+  '3/4':   { label: "3/4\" = 1'",   inchesPerFoot: 0.75        },
+  '1':     { label: "1\" = 1'",     inchesPerFoot: 1           },
+  '1-1/2': { label: "1-1/2\" = 1'", inchesPerFoot: 1.5         },
+  '3':     { label: "3\" = 1'",     inchesPerFoot: 3           },
+}
 
 // Convert any URL (including cross-origin Supabase storage URLs) to a base64 data URL
 async function toDataUrl(url) {
@@ -14,29 +28,34 @@ async function toDataUrl(url) {
   })
 }
 
-const SCALE_LIST = SCALE_OPTIONS
-  .filter(o => o.value !== 'manual')
-  .map(o => `"${o.value}" → ${o.label}`)
-  .join('\n')
+const PROMPT = `You are reading an architectural blueprint or floor plan image.
 
-const PROMPT = `You are analyzing an architectural blueprint or floor plan image.
+Find the scale notation. It is usually in the title block (bottom-right corner) or near a bar scale graphic. It looks like:
+  • "Scale: 1/4\" = 1'-0\""
+  • "1/4 inch = 1 foot"
+  • A bar scale labeled in feet
 
-Your task: find the drawing scale notation. It usually appears as:
-  • Text like "Scale: 1/4" = 1'-0"" or "1/4" = 1'"
-  • A printed bar scale with labeled distances
-  • A title block entry labeled "Scale"
+Respond with ONLY a valid JSON object, no other text:
+{"scale": "<value>"}
 
-Valid scale keys and what they mean:
-${SCALE_LIST}
+The value must be exactly one of:
+  1/8   (means 1/8 inch = 1 foot)
+  3/16  (means 3/16 inch = 1 foot)
+  1/4   (means 1/4 inch = 1 foot)
+  3/8   (means 3/8 inch = 1 foot)
+  1/2   (means 1/2 inch = 1 foot)
+  3/4   (means 3/4 inch = 1 foot)
+  1     (means 1 inch = 1 foot)
+  1-1/2 (means 1-1/2 inches = 1 foot)
+  3     (means 3 inches = 1 foot)
+  null  (if no scale notation is visible or you are uncertain)
 
-Respond with ONLY a JSON object — no other text, no markdown:
-{"scale": "<key>", "confidence": "high" | "medium" | "low"}
-
-If you cannot find or clearly identify the scale, respond with:
-{"scale": null, "confidence": "none"}`
+Example responses:
+  {"scale": "1/4"}
+  {"scale": null}`
 
 // Analyse the first page of a blueprint and return the detected scale.
-// Returns { scaleValue, label, inchesPerFoot, confidence } or null on failure.
+// Returns { scaleValue, label, inchesPerFoot } or null if not found / on error.
 //
 // imageUrl may be a data URL (from renderPage) or an https:// URL (image blueprint).
 export async function detectScaleFromImage(imageUrl) {
@@ -46,7 +65,7 @@ export async function detectScaleFromImage(imageUrl) {
     return null
   }
 
-  // Ensure we have a base64 data URL (required by the Anthropic API)
+  // Ensure we have a base64 data URL (required by the Anthropic messages API)
   const dataUrl = await toDataUrl(imageUrl)
   const [header, base64Data] = dataUrl.split(',')
   const mediaType = header.match(/data:([^;]+)/)?.[1] ?? 'image/jpeg'
@@ -57,7 +76,7 @@ export async function detectScaleFromImage(imageUrl) {
   try {
     const msg = await client.messages.create({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 120,
+      max_tokens: 60,
       messages: [{
         role: 'user',
         content: [
@@ -77,7 +96,7 @@ export async function detectScaleFromImage(imageUrl) {
 
   let parsed
   try {
-    // Strip any accidental markdown code fences
+    // Strip any accidental markdown code fences before parsing
     const jsonStr = text.replace(/^```json?\n?/i, '').replace(/\n?```$/, '').trim()
     parsed = JSON.parse(jsonStr)
   } catch {
@@ -87,13 +106,12 @@ export async function detectScaleFromImage(imageUrl) {
 
   if (!parsed?.scale) return null
 
-  const option = SCALE_OPTIONS.find(o => o.value === parsed.scale)
-  if (!option?.inchesPerFoot) return null
+  const entry = DETECTED_SCALE_MAP[parsed.scale]
+  if (!entry) return null
 
   return {
-    scaleValue: option.value,
-    label: option.label,
-    inchesPerFoot: option.inchesPerFoot,
-    confidence: parsed.confidence ?? 'unknown',
+    scaleValue: parsed.scale,
+    label:      entry.label,
+    inchesPerFoot: entry.inchesPerFoot,
   }
 }

@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf'
+import { formatSF, formatLF } from './fractions'
 
 // Must match BlueprintCanvas zone color palette exactly
 const ZONE_COLORS = [
@@ -7,7 +8,8 @@ const ZONE_COLORS = [
   '#8b5cf6', '#f43f5e', '#64748b', '#0ea5e9',
 ]
 
-// Fetch a URL and return a base64 data URL (handles cross-origin Supabase storage URLs)
+// Fetch a URL and return a base64 data URL.
+// Handles cross-origin Supabase storage URLs by going through the Fetch API.
 function toDataUrl(url) {
   if (url.startsWith('data:')) return Promise.resolve(url)
   return fetch(url)
@@ -29,10 +31,20 @@ function loadImage(src) {
   })
 }
 
-// Draw one zone onto the offscreen canvas using the same rendering logic as BlueprintCanvas.
-// Points are in the rendered-image coordinate space (no transform needed).
+// Format a zone result for display in the PDF overlay label.
+function formatResult(zone) {
+  const r = zone.result ?? 0
+  if (zone.measurement_type === 'SF')    return formatSF(r)
+  if (zone.measurement_type === 'LF')    return formatLF(r)
+  return `${Math.round(r)} items`
+}
+
+// Draw one zone onto the offscreen canvas using the same rendering logic as
+// BlueprintCanvas. Points are in the rendered-image coordinate space so no
+// transform is needed. Null sentinels in the points array mark the boundaries
+// between disconnected segments (multi-segment LF/count zones).
 function drawZoneOnCanvas(ctx, zone, colorIndex) {
-  const { points, measurement_type: type, result, name } = zone
+  const { points, measurement_type: type, name } = zone
   if (!points || points.length === 0) return
 
   const color = zone.color ?? ZONE_COLORS[colorIndex % ZONE_COLORS.length]
@@ -41,7 +53,7 @@ function drawZoneOnCanvas(ctx, zone, colorIndex) {
 
   ctx.save()
 
-  // Semi-transparent fill for SF (polygon) zones
+  // Semi-transparent fill for SF (closed polygon) zones
   if (type === 'SF') {
     ctx.beginPath()
     let penDown = false
@@ -56,7 +68,7 @@ function drawZoneOnCanvas(ctx, zone, colorIndex) {
     ctx.fill()
   }
 
-  // Stroke — lifts pen at null sentinels (multi-segment LF/count zones)
+  // Stroke — the pen lifts at every null sentinel so segments stay disconnected
   ctx.beginPath()
   let penDown = false
   for (const p of points) {
@@ -69,11 +81,10 @@ function drawZoneOnCanvas(ctx, zone, colorIndex) {
   ctx.globalAlpha = 0.9
   ctx.stroke()
 
-  // Label — centroid of all non-null points
+  // Label — placed at the centroid of all non-null points
   const cx = nonNull.reduce((s, p) => s + p.x, 0) / nonNull.length
   const cy = nonNull.reduce((s, p) => s + p.y, 0) / nonNull.length
-  const unit = type === 'LF' ? ' lf' : type === 'count' ? ' items' : ' sf'
-  const label = `${name}: ${result}${unit}`
+  const label = `${name}: ${formatResult(zone)}`
 
   ctx.globalAlpha = 1
   ctx.font = 'bold 12px sans-serif'
@@ -90,23 +101,24 @@ function drawZoneOnCanvas(ctx, zone, colorIndex) {
   ctx.restore()
 }
 
-// Generate and save a PDF where each page is the blueprint with zone outlines
-// drawn over it. For multi-page PDFs each source page becomes one PDF page.
+// Generate and save a PDF where each page is the blueprint image with zone
+// outlines and labels drawn over it. For multi-page PDFs each source page
+// becomes its own PDF page sized to match the rendered image dimensions.
 //
 // Parameters:
-//   session    — session record (used for the filename)
-//   zones      — all zones across all pages
-//   renderPage — async fn(pageNum, scale) → data URL (from usePdf hook)
-//   pageCount  — total pages in the PDF (1 for image blueprints)
-//   isPdf      — true if the blueprint is a PDF
-//   blueprintUrl — storage URL for image blueprints
+//   session      — session record (project_name used for the filename)
+//   zones        — all zones across all pages
+//   renderPage   — async (pageNum, scale) → data URL  (from usePdf hook)
+//   pageCount    — total number of pages in the PDF (1 for image blueprints)
+//   isPdf        — true when the blueprint is a PDF file
+//   blueprintUrl — storage URL used for image blueprints (non-PDF)
 export async function downloadPdfWithMeasurements({
   session, zones, renderPage, pageCount, isPdf, blueprintUrl,
 }) {
   // ── 1. Render all source pages ───────────────────────────────────────────────
   // PDF pages are rendered at 1.5× — the same scale used in the app — so zone
-  // point coordinates (which are in the rendered image's pixel space) align
-  // correctly with the image data.
+  // point coordinates (stored in the rendered image's pixel space) align
+  // correctly with the canvas image data.
   const pageImages = []
 
   if (isPdf) {
@@ -115,12 +127,12 @@ export async function downloadPdfWithMeasurements({
       const rawUrl = await renderPage(n, 1.5)
       const dataUrl = await toDataUrl(rawUrl)
       const img = await loadImage(dataUrl)
-      pageImages.push({ dataUrl, img, pageNum: n })
+      pageImages.push({ img, pageNum: n })
     }
   } else {
     const dataUrl = await toDataUrl(blueprintUrl)
     const img = await loadImage(dataUrl)
-    pageImages.push({ dataUrl, img, pageNum: 1 })
+    pageImages.push({ img, pageNum: 1 })
   }
 
   // ── 2. Initialise jsPDF from the first page's dimensions ────────────────────
@@ -136,21 +148,18 @@ export async function downloadPdfWithMeasurements({
   for (let i = 0; i < pageImages.length; i++) {
     const { img, pageNum } = pageImages[i]
 
-    // Offscreen canvas at the exact rendered dimensions
     const canvas = document.createElement('canvas')
-    canvas.width = img.width
+    canvas.width  = img.width
     canvas.height = img.height
     const ctx = canvas.getContext('2d')
     ctx.drawImage(img, 0, 0)
 
-    // Get zones scoped to this page
     const pageZones = isPdf
       ? zones.filter(z => (z.page_number ?? 1) === pageNum)
       : zones
     pageZones.forEach((zone, zi) => drawZoneOnCanvas(ctx, zone, zi))
 
     const composite = canvas.toDataURL('image/jpeg', 0.92)
-
     if (i > 0) doc.addPage([img.width, img.height])
     doc.addImage(composite, 'JPEG', 0, 0, img.width, img.height)
   }
