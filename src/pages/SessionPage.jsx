@@ -688,6 +688,27 @@ export default function SessionPage() {
     }
   }
 
+  // ── Manual AI scale detection (triggered by the Detect Scale button) ────────
+  async function handleDetectScale() {
+    if (!blueprintUrl) return
+    const isPdfBlueprint = blueprintType === 'application/pdf'
+    const imageUrl = isPdfBlueprint ? renderedPageUrl : blueprintUrl
+    if (!imageUrl) return
+    try {
+      const result = await detectScaleFromImage(imageUrl)
+      if (result?.inchesPerFoot) {
+        const ppf = calcPixelsPerFoot(result.inchesPerFoot)
+        await handleScaleChange(ppf)
+        setScaleDetectionBanner({ label: result.label })
+      } else {
+        alert('Could not detect a scale on this page. Try a page with a visible title block, or set the scale manually.')
+      }
+    } catch (err) {
+      console.error('Scale detection error:', err)
+      alert('Scale detection failed: ' + err.message)
+    }
+  }
+
   // ── Ceiling SF preview ────────────────────────────────────────────────────────
   // Computed in real-time as the contractor places points while drawing a ceiling
   // zone with a non-flat ceiling type. Passed to ZoneDrawPanel for display.
@@ -888,6 +909,8 @@ export default function SessionPage() {
               onStartCalibration={handleStartCalibration}
               calibrating={calibrating}
               pageKey={currentPage}
+              enabledFeatures={enabledFeatures}
+              onDetectScale={handleDetectScale}
             />
           </div>
         )}

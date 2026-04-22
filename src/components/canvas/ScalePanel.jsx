@@ -6,10 +6,11 @@ import styles from './ScalePanel.module.css'
 // ScalePanel lets the user set the blueprint's scale.
 // Either pick from the standard dropdown, or use manual calibration
 // (draw a line of known length on the blueprint).
-export default function ScalePanel({ pixelsPerFoot, onScaleChange, onStartCalibration, calibrating, pageKey }) {
+export default function ScalePanel({ pixelsPerFoot, onScaleChange, onStartCalibration, calibrating, pageKey, enabledFeatures = {}, onDetectScale }) {
   const [selected, setSelected] = useState('1/4')
   const [knownFeet, setKnownFeet] = useState('')
   const [helpOpen, setHelpOpen] = useState(false)
+  const [detecting, setDetecting] = useState(false)
 
   // When the active page changes (or on first mount), apply the default 1/4" scale
   // only if this page has no saved scale yet. When pixelsPerFoot is already set
@@ -84,6 +85,35 @@ export default function ScalePanel({ pixelsPerFoot, onScaleChange, onStartCalibr
       {pixelsPerFoot && (
         <div className={styles.activeScale}>
           Scale active — 1 ft = {(pixelsPerFoot).toFixed(1)} px
+        </div>
+      )}
+
+      {/* AI scale detection */}
+      {enabledFeatures.ai_scale_detection ? (
+        <div className={styles.aiSection}>
+          <button
+            type="button"
+            className={styles.aiBtn}
+            disabled={detecting}
+            onClick={async () => {
+              if (!onDetectScale) return
+              setDetecting(true)
+              try {
+                await onDetectScale()
+              } finally {
+                setDetecting(false)
+              }
+            }}
+          >
+            {detecting ? 'Detecting…' : 'Detect Scale'}
+          </button>
+          <p className={styles.aiHint}>
+            AI reads your blueprint title block and sets the scale automatically. Works best when the title block is visible on the current page.
+          </p>
+        </div>
+      ) : (
+        <div className={styles.aiLocked}>
+          🔒 AI Scale Detection — available on Plus plan
         </div>
       )}
 
