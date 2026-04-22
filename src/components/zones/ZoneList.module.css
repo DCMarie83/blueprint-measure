@@ -578,6 +578,80 @@
   padding: 6px 8px;
 }
 
+/* ── Test segments ── */
+
+.testSegment {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(245, 158, 11, 0.12);
+  border-radius: var(--radius);
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.testSegHeader {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.testSegLabel {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  padding: 2px 0;
+  font-size: 10px;
+  font-style: italic;
+  color: var(--color-text-muted);
+  outline: none;
+  min-width: 0;
+}
+
+.testSegLabel::placeholder {
+  opacity: 0.4;
+}
+
+.testSegRemove {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  opacity: 0.4;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+
+.testSegRemove:hover {
+  opacity: 1;
+  color: #ef4444;
+}
+
+.testSegSf {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  text-align: right;
+}
+
+.testAddSeg {
+  background: none;
+  border: 1px dashed rgba(245, 158, 11, 0.25);
+  border-radius: var(--radius);
+  padding: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #f59e0b;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+
+.testAddSeg:hover {
+  opacity: 1;
+}
+
 .testLogBtn {
   background: rgba(245, 158, 11, 0.12);
   border: 1px solid rgba(245, 158, 11, 0.3);

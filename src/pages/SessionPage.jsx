@@ -24,7 +24,7 @@ import styles from './SessionPage.module.css'
 // Left sidebar: controls (scale, draw panel, zone list, export)
 // Center: the blueprint canvas
 const ADMIN_EMAIL = 'main@ngautomationhub.com'
-const DEFAULT_TEST_INPUT = { width: '', depth: '', statedValue: '', useDimensions: true, countVerified: null, notes: '' }
+const DEFAULT_TEST_INPUT = { segments: [], countVerified: null, notes: '' }
 
 export default function SessionPage() {
   const { sessionId } = useParams()
@@ -587,18 +587,47 @@ export default function SessionPage() {
     const ev = evaluateZoneTest(zone, input, pixelsPerFoot)
     if (!ev.verdict) return false
 
-    const w = input?.useDimensions !== false ? parseFeetInches(input?.width) : null
-    const d = input?.useDimensions !== false ? parseFeetInches(input?.depth) : null
+    const segs = input?.segments ?? []
+    const hasSegments = segs.length > 0
+    const type = zone.measurement_type
+
+    // For single W×D segment, populate legacy width/depth fields
+    let statedWidth = null, statedDepth = null
+    if (type === 'SF' && segs.length === 1 && segs[0].mode !== 'direct') {
+      statedWidth = parseFeetInches(segs[0].width)
+      statedDepth = parseFeetInches(segs[0].depth)
+    }
+
+    // Build segments payload for jsonb column
+    let segmentsPayload = null
+    if (hasSegments) {
+      segmentsPayload = segs.map(s => {
+        if (type === 'SF') {
+          const w = parseFeetInches(s.width)
+          const d = parseFeetInches(s.depth)
+          return {
+            label: s.label || null,
+            mode: s.mode === 'direct' ? 'direct' : 'wd',
+            width: s.mode !== 'direct' ? w : null,
+            depth: s.mode !== 'direct' ? d : null,
+            sf: s.mode === 'direct' ? (parseFloat(s.sf) || 0) : Math.round((w || 0) * (d || 0) * 100) / 100,
+          }
+        }
+        return { label: s.label || null, lf: parseFeetInches(s.lf) ?? 0 }
+      })
+    }
+
     const payload = {
       session_id: sessionId,
       zone_id: zone.id,
       user_id: user.id,
       zone_name: zone.name,
-      measurement_type: zone.measurement_type,
-      stated_width: zone.measurement_type === 'SF' ? w : null,
-      stated_depth: zone.measurement_type === 'SF' ? d : null,
-      stated_sf: zone.measurement_type === 'SF' ? ev.stated : null,
-      stated_lf: zone.measurement_type === 'LF' ? ev.stated : null,
+      measurement_type: type,
+      stated_width: statedWidth,
+      stated_depth: statedDepth,
+      stated_sf: type === 'SF' ? ev.stated : null,
+      stated_lf: type === 'LF' ? ev.stated : null,
+      stated_segments: segmentsPayload,
       measured_value: zone.result ?? 0,
       variance: ev.variance ?? 0,
       variance_pct: ev.variancePct ?? 0,
@@ -956,6 +985,7 @@ export default function SessionPage() {
               pdfPageInfo={pdfPageInfo}
               currentPage={currentPage}
               pageCount={pageCount}
+              isSuperAdmin={isAdmin}
               onScaleChange={(ppf) => { handleScaleChange(ppf); runScaleSanityCheck(ppf, 'dropdown') }}
               onStartCalibration={handleStartCalibration}
               calibrating={calibrating}

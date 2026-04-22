@@ -1,8 +1,40 @@
 // Pure evaluation function used by both ZoneList (display) and SessionPage (summary).
 // Returns { verdict, errorCode, errorMessage, stated, variance, variancePct }
 // verdict: 'PASS' | 'FAIL' | null (null = incomplete data, not yet testable)
+//
+// The `input` object may contain:
+//   - segments: array of { mode, width, depth, sf, lf } for multi-segment tests
+//   - expectedTotal: pre-computed sum of all segments (set by the UI)
+//   - Legacy single-segment fields (width, depth, statedValue, useDimensions)
+//     are still supported for backward compatibility.
 
 import { parseFeetInches } from './fractions'
+
+// Compute the expected total from segments array.
+// Returns a number or null if any segment is incomplete.
+export function computeExpectedTotal(segments, type) {
+  if (!segments || segments.length === 0) return null
+  let total = 0
+  for (const seg of segments) {
+    if (type === 'SF') {
+      if (seg.mode === 'direct') {
+        const v = parseFloat(seg.sf)
+        if (!v || isNaN(v)) return null
+        total += v
+      } else {
+        const w = parseFeetInches(seg.width)
+        const d = parseFeetInches(seg.depth)
+        if (!w || !d) return null
+        total += w * d
+      }
+    } else if (type === 'LF') {
+      const v = parseFeetInches(seg.lf)
+      if (!v) return null
+      total += v
+    }
+  }
+  return Math.round(total * 100) / 100
+}
 
 export function evaluateZoneTest(zone, input, pixelsPerFoot) {
   if (!input) return { verdict: null }
@@ -20,9 +52,16 @@ export function evaluateZoneTest(zone, input, pixelsPerFoot) {
     return { verdict: null, errorCode: 'ERR-004', errorMessage: 'Mark count as verified or not verified.' }
   }
 
-  // ── SF ─────────────────────────────────────────────────────────────────────
+  // ── Compute stated value ───────────────────────────────────────────────────
+  // Prefer segments-based expectedTotal; fall back to legacy single fields.
   let stated = null
-  if (type === 'SF') {
+
+  if (input.segments && input.segments.length > 0) {
+    stated = computeExpectedTotal(input.segments, type)
+    if (stated == null) {
+      return { verdict: null, errorCode: 'ERR-004', errorMessage: 'Complete all segment dimensions to run the test.' }
+    }
+  } else if (type === 'SF') {
     if (input.useDimensions !== false) {
       const w = parseFeetInches(input.width)
       const d = parseFeetInches(input.depth)
@@ -32,10 +71,7 @@ export function evaluateZoneTest(zone, input, pixelsPerFoot) {
       stated = parseFloat(input.statedValue)
       if (!stated || isNaN(stated)) return { verdict: null, errorCode: 'ERR-004', errorMessage: 'Enter stated SF to run the test.' }
     }
-  }
-
-  // ── LF ─────────────────────────────────────────────────────────────────────
-  if (type === 'LF') {
+  } else if (type === 'LF') {
     stated = parseFeetInches(input.statedValue)
     if (!stated) return { verdict: null, errorCode: 'ERR-004', errorMessage: 'Enter stated LF to run the test.' }
     stated = Math.round(stated * 100) / 100

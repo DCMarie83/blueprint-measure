@@ -4,7 +4,7 @@ import { parseFeetInches } from '../../utils/fractions'
 import styles from './ScalePanel.module.css'
 
 export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, pdfPageInfo, currentPage, pageCount,
-  onScaleChange, onStartCalibration, calibrating, pageKey,
+  isSuperAdmin = false, onScaleChange, onStartCalibration, calibrating, pageKey,
   enabledFeatures = {}, onDetectScale, scaleSanity, scaleDetectionBanner }) {
   const [selected, setSelected] = useState('1/4')
   const [knownFeet, setKnownFeet] = useState('')
@@ -114,8 +114,8 @@ export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, pdfPageI
         </div>
       )}
 
-      {/* ── Always-on scale diagnostic ── */}
-      {pixelsPerFoot && (
+      {/* ── Scale diagnostic (super admin only) ── */}
+      {isSuperAdmin && pixelsPerFoot && (
         <div className={styles.diagnostic}>
           <div><span className={styles.diagLabel}>Source:</span> {pixelsPerInch !== 96 ? 'PDF metadata' : 'Fallback 96 DPI (non-PDF or metadata not loaded)'}</div>
           <div><span className={styles.diagLabel}>Render:</span> {pixelsPerInch.toFixed(1)} px/inch</div>
@@ -156,14 +156,16 @@ export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, pdfPageI
         </div>
       )}
 
-      {/* ── Confirm PDF Scale button (available to everyone) ── */}
-      <button
-        type="button"
-        className={styles.confirmBtn}
-        onClick={() => setConfirmOpen(o => !o)}
-      >
-        {confirmOpen ? 'Close' : 'Confirm PDF Scale'}
-      </button>
+      {/* ── Confirm PDF Scale button (super admin only) ── */}
+      {isSuperAdmin && (
+        <>
+        <button
+          type="button"
+          className={styles.confirmBtn}
+          onClick={() => setConfirmOpen(o => !o)}
+        >
+          {confirmOpen ? 'Close' : 'Confirm PDF Scale'}
+        </button>
 
       {confirmOpen && (
         <div className={styles.confirmPanel}>
@@ -200,6 +202,8 @@ export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, pdfPageI
             </div>
           )}
         </div>
+      )}
+        </>
       )}
 
       {/* AI scale detection — only for Plus+ */}

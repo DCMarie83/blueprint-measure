@@ -2,7 +2,7 @@ import { useState } from 'react'
 import styles from './ZoneList.module.css'
 import { getMaxReach, estimatePaint } from '../../utils/measurements'
 import { parseFeetInches, formatFeetInches, formatSF, formatLF } from '../../utils/fractions'
-import { evaluateZoneTest } from '../../utils/testEvaluation'
+import { evaluateZoneTest, computeExpectedTotal } from '../../utils/testEvaluation'
 
 const PRESET_COLORS = [
   '#2e8bff', '#22c55e', '#f59e0b', '#ef4444', '#a855f7',
@@ -528,61 +528,128 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
 
                 {/* ── Test panel ── */}
                 {isTestMode && testingZoneId === zone.id && (() => {
-                  const input = testData[zone.id] ?? { width: '', depth: '', statedValue: '', useDimensions: true, countVerified: null, notes: '' }
-                  const ev = evaluateZoneTest(zone, input, pixelsPerFoot)
+                  const input = testData[zone.id] ?? { segments: [], countVerified: null, notes: '' }
+                  const type = zone.measurement_type
+
+                  // Ensure segments array exists with at least one entry
+                  const defaultSeg = type === 'SF'
+                    ? { label: '', mode: 'wd', width: '', depth: '', sf: '' }
+                    : { label: '', lf: '' }
+                  const segs = input.segments && input.segments.length > 0 ? input.segments : [defaultSeg]
+
                   const change = (field, val) => onTestDataChange?.(zone.id, { [field]: val })
+                  const setSegs = (newSegs) => change('segments', newSegs)
+                  const updateSeg = (idx, field, val) => {
+                    const next = segs.map((s, i) => i === idx ? { ...s, [field]: val } : s)
+                    setSegs(next)
+                  }
+
+                  // Build input with segments for evaluateZoneTest
+                  const inputWithSegs = { ...input, segments: segs }
+                  const ev = evaluateZoneTest(zone, inputWithSegs, pixelsPerFoot)
+                  const expectedTotal = computeExpectedTotal(segs, type)
+
+                  const sfLabels = ['main area', 'closet', 'bump-out', 'alcove', 'nook']
+                  const lfLabels = ['north wall', 'east run', 'south wall', 'west run', 'hallway']
 
                   return (
                     <div className={styles.testPanel}>
-                      {zone.measurement_type === 'SF' && (
+                      {/* ── SF segments ── */}
+                      {type === 'SF' && (
                         <>
-                          <div className={styles.testToggleRow}>
-                            <button type="button"
-                              className={`${styles.testModeBtn} ${input.useDimensions !== false ? styles.testModeBtnActive : ''}`}
-                              onClick={() => change('useDimensions', true)}>
-                              Use dimensions
-                            </button>
-                            <button type="button"
-                              className={`${styles.testModeBtn} ${input.useDimensions === false ? styles.testModeBtnActive : ''}`}
-                              onClick={() => change('useDimensions', false)}>
-                              Use stated SF
-                            </button>
-                          </div>
-                          {input.useDimensions !== false ? (
-                            <div className={styles.testInputRow}>
-                              <div className={styles.testField}>
-                                <label>Width</label>
-                                <input value={input.width} onChange={e => change('width', e.target.value)}
-                                  placeholder="e.g. 20'" className={styles.testInput} />
+                          {segs.map((seg, idx) => {
+                            const segSf = seg.mode === 'direct'
+                              ? (parseFloat(seg.sf) || 0)
+                              : ((parseFeetInches(seg.width) || 0) * (parseFeetInches(seg.depth) || 0))
+                            return (
+                              <div key={idx} className={styles.testSegment}>
+                                <div className={styles.testSegHeader}>
+                                  <input className={styles.testSegLabel} value={seg.label}
+                                    onChange={e => updateSeg(idx, 'label', e.target.value)}
+                                    placeholder={sfLabels[idx % sfLabels.length]} />
+                                  <div className={styles.testToggleRow}>
+                                    <button type="button"
+                                      className={`${styles.testModeBtn} ${seg.mode !== 'direct' ? styles.testModeBtnActive : ''}`}
+                                      onClick={() => updateSeg(idx, 'mode', 'wd')}>W×D</button>
+                                    <button type="button"
+                                      className={`${styles.testModeBtn} ${seg.mode === 'direct' ? styles.testModeBtnActive : ''}`}
+                                      onClick={() => updateSeg(idx, 'mode', 'direct')}>SF</button>
+                                  </div>
+                                  {segs.length > 1 && (
+                                    <button type="button" className={styles.testSegRemove}
+                                      onClick={() => setSegs(segs.filter((_, i) => i !== idx))}>✕</button>
+                                  )}
+                                </div>
+                                {seg.mode === 'direct' ? (
+                                  <div className={styles.testField}>
+                                    <input value={seg.sf} onChange={e => updateSeg(idx, 'sf', e.target.value)}
+                                      placeholder="e.g. 120" className={styles.testInput} />
+                                  </div>
+                                ) : (
+                                  <div className={styles.testInputRow}>
+                                    <div className={styles.testField}>
+                                      <input value={seg.width} onChange={e => updateSeg(idx, 'width', e.target.value)}
+                                        placeholder="W e.g. 12'" className={styles.testInput} />
+                                    </div>
+                                    <div className={styles.testField}>
+                                      <input value={seg.depth} onChange={e => updateSeg(idx, 'depth', e.target.value)}
+                                        placeholder="D e.g. 10'" className={styles.testInput} />
+                                    </div>
+                                  </div>
+                                )}
+                                {segSf > 0 && <div className={styles.testSegSf}>{segSf.toFixed(1)} sf</div>}
                               </div>
-                              <div className={styles.testField}>
-                                <label>Depth</label>
-                                <input value={input.depth} onChange={e => change('depth', e.target.value)}
-                                  placeholder="e.g. 15'" className={styles.testInput} />
-                              </div>
-                            </div>
-                          ) : (
-                            <div className={styles.testField}>
-                              <label>Stated SF</label>
-                              <input value={input.statedValue} onChange={e => change('statedValue', e.target.value)}
-                                placeholder="e.g. 300" className={styles.testInput} />
-                            </div>
+                            )
+                          })}
+                          {segs.length < 10 && (
+                            <button type="button" className={styles.testAddSeg}
+                              onClick={() => setSegs([...segs, { label: '', mode: 'wd', width: '', depth: '', sf: '' }])}>
+                              + Add Segment
+                            </button>
                           )}
-                          {ev.stated != null && (
-                            <div className={styles.testCalc}>Stated: {ev.stated.toFixed(2)} SF</div>
+                          {expectedTotal != null && (
+                            <div className={styles.testCalc}><strong>Expected Total: {expectedTotal.toFixed(2)} SF</strong></div>
                           )}
                         </>
                       )}
 
-                      {zone.measurement_type === 'LF' && (
-                        <div className={styles.testField}>
-                          <label>Stated LF</label>
-                          <input value={input.statedValue} onChange={e => change('statedValue', e.target.value)}
-                            placeholder="e.g. 12'6&quot;" className={styles.testInput} />
-                        </div>
+                      {/* ── LF segments ── */}
+                      {type === 'LF' && (
+                        <>
+                          {segs.map((seg, idx) => (
+                            <div key={idx} className={styles.testSegment}>
+                              <div className={styles.testSegHeader}>
+                                <input className={styles.testSegLabel} value={seg.label}
+                                  onChange={e => updateSeg(idx, 'label', e.target.value)}
+                                  placeholder={lfLabels[idx % lfLabels.length]} />
+                                {segs.length > 1 && (
+                                  <button type="button" className={styles.testSegRemove}
+                                    onClick={() => setSegs(segs.filter((_, i) => i !== idx))}>✕</button>
+                                )}
+                              </div>
+                              <div className={styles.testField}>
+                                <input value={seg.lf} onChange={e => updateSeg(idx, 'lf', e.target.value)}
+                                  placeholder="e.g. 12'6&quot;" className={styles.testInput} />
+                              </div>
+                              {parseFeetInches(seg.lf) > 0 && (
+                                <div className={styles.testSegSf}>{parseFeetInches(seg.lf).toFixed(2)} lf</div>
+                              )}
+                            </div>
+                          ))}
+                          {segs.length < 10 && (
+                            <button type="button" className={styles.testAddSeg}
+                              onClick={() => setSegs([...segs, { label: '', lf: '' }])}>
+                              + Add Segment
+                            </button>
+                          )}
+                          {expectedTotal != null && (
+                            <div className={styles.testCalc}><strong>Expected Total: {expectedTotal.toFixed(2)} LF</strong></div>
+                          )}
+                        </>
                       )}
 
-                      {zone.measurement_type === 'count' && (
+                      {/* ── Count (unchanged) ── */}
+                      {type === 'count' && (
                         <div className={styles.testCountSection}>
                           <div className={styles.testCalc}>Count verification is manual</div>
                           <div className={styles.testInputRow}>
@@ -601,7 +668,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                       )}
 
                       <div className={styles.testCalc}>
-                        Measured: <strong>{zone.result ?? 0} {zone.measurement_type}</strong>
+                        Measured: <strong>{zone.result ?? 0} {type}</strong>
                       </div>
 
                       {ev.variance != null && (
@@ -610,7 +677,6 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                         </div>
                       )}
 
-                      {/* Verdict */}
                       {ev.verdict && (
                         <div className={`${styles.testVerdict} ${ev.verdict === 'PASS' ? styles.testVerdictPass : styles.testVerdictFail}`}>
                           {ev.verdict}

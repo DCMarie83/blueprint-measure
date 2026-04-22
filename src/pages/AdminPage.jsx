@@ -1358,7 +1358,21 @@ export default function AdminPage() {
                                     <td colSpan={10} className={styles.expandedCell}>
                                       <div className={styles.testLogDetail}>
                                         {log.error_message && <div><strong>Error:</strong> {log.error_message}</div>}
-                                        {log.stated_width && <div>Width: {log.stated_width} ft · Depth: {log.stated_depth} ft</div>}
+                                        {log.stated_segments && Array.isArray(log.stated_segments) ? (
+                                          <div>
+                                            <strong>Segments:</strong>
+                                            {log.stated_segments.map((s, i) => (
+                                              <div key={i} style={{ marginLeft: 8, fontSize: '11px' }}>
+                                                {s.label || `Segment ${i + 1}`}:
+                                                {s.mode === 'direct' || s.lf != null
+                                                  ? ` ${s.sf != null ? s.sf + ' sf' : s.lf + ' lf'}`
+                                                  : ` ${s.width}' × ${s.depth}' = ${s.sf} sf`}
+                                              </div>
+                                            ))}
+                                          </div>
+                                        ) : (
+                                          log.stated_width && <div>Width: {log.stated_width} ft · Depth: {log.stated_depth} ft</div>
+                                        )}
                                         {log.variance_pct != null && <div>Variance: {log.variance_pct}%</div>}
                                         {log.notes && <div><strong>Notes:</strong> {log.notes}</div>}
                                       </div>
