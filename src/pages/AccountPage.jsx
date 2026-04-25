@@ -56,13 +56,24 @@ export default function AccountPage() {
     if (!user) return
     async function load() {
       setProfileLoading(true)
+      // Split into two queries to avoid FK join into companies (RLS blocks the embed)
       const { data: profile, error: profileErr } = await supabase
         .from('user_profiles')
-        .select('full_name, phone, role, sms_consent, sms_consent_at, company_id, companies(name, plan)')
+        .select('full_name, phone, role, sms_consent, sms_consent_at, company_id')
         .eq('user_id', user.id)
         .single()
 
-      console.log('[AccountPage] profile loaded', profile, profileErr)
+      let companyData = null
+      if (profile?.company_id) {
+        const { data: c } = await supabase
+          .from('companies')
+          .select('name, plan')
+          .eq('id', profile.company_id)
+          .single()
+        companyData = c
+      }
+
+      console.log('[AccountPage] profile loaded', profile, profileErr, 'company', companyData)
 
       if (profile) {
         setFullName(profile.full_name ?? '')
@@ -70,9 +81,9 @@ export default function AccountPage() {
         setRole(profile.role ?? '')
         setSmsConsent(profile.sms_consent ?? false)
         setSmsConsentAt(profile.sms_consent_at ?? null)
-        if (profile.companies) {
-          setCompany({ name: profile.companies.name, plan: profile.companies.plan })
-        }
+      }
+      if (companyData) {
+        setCompany({ name: companyData.name, plan: companyData.plan })
       }
 
       // Activity — derive from sessions + zones

@@ -34,12 +34,20 @@ export function useSessions() {
     if (user.email !== 'main@ngautomationhub.com') {
       const { data: profile } = await supabase
         .from('user_profiles')
-        .select('company_id, companies(blueprint_limit)')
+        .select('company_id')
         .eq('user_id', user.id)
         .single()
 
-      const companyId    = profile?.company_id
-      const blueprintLimit = profile?.companies?.blueprint_limit
+      const companyId = profile?.company_id
+      let blueprintLimit = null
+      if (companyId) {
+        const { data: comp } = await supabase
+          .from('companies')
+          .select('blueprint_limit')
+          .eq('id', companyId)
+          .single()
+        blueprintLimit = comp?.blueprint_limit ?? null
+      }
 
       if (companyId && blueprintLimit != null) {
         // Find all users in the same company, then count their sessions this month.

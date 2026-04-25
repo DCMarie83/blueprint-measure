@@ -42,16 +42,26 @@ export default function DashboardPage() {
     if (!user || user.email === ADMIN_EMAIL) return
 
     async function loadDashboardData() {
-      // Get company plan info
+      // Split into two queries to avoid FK join into companies (RLS blocks the embed)
       const { data: profile } = await supabase
         .from('user_profiles')
-        .select('company_id, companies(plan, blueprint_limit, features)')
+        .select('company_id')
         .eq('user_id', user.id)
         .single()
 
-      const plan = profile?.companies?.plan ?? null
+      let plan = null
+      let bpLimit = null
+      if (profile?.company_id) {
+        const { data: c } = await supabase
+          .from('companies')
+          .select('plan, blueprint_limit')
+          .eq('id', profile.company_id)
+          .single()
+        plan = c?.plan ?? null
+        bpLimit = c?.blueprint_limit ?? null
+      }
       setCompanyPlan(plan)
-      setBlueprintLimit(profile?.companies?.blueprint_limit ?? null)
+      setBlueprintLimit(bpLimit)
 
       // Storage usage
       if (profile?.company_id) {

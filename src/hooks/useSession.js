@@ -52,14 +52,22 @@ export function useSession(sessionId) {
         test_mode:          true,
       })
     } else {
-      // Load the tenant's feature flags via user_profiles → companies join.
-      // Silently falls back to an empty object if the user has no company assigned.
+      // Load the tenant's feature flags via two queries (split to avoid FK join blocked by RLS).
       const { data: profile } = await supabase
         .from('user_profiles')
-        .select('company_id, companies(features)')
+        .select('company_id')
         .eq('user_id', user.id)
         .single()
-      setEnabledFeatures(profile?.companies?.features ?? {})
+      if (profile?.company_id) {
+        const { data: company } = await supabase
+          .from('companies')
+          .select('features')
+          .eq('id', profile.company_id)
+          .single()
+        setEnabledFeatures(company?.features ?? {})
+      } else {
+        setEnabledFeatures({})
+      }
     }
 
     setLoading(false)

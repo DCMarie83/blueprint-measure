@@ -1024,11 +1024,16 @@ export default function SessionPage() {
               try {
                 const { data: profile } = await supabase
                   .from('user_profiles')
-                  .select('company_id, companies(plan)')
+                  .select('company_id')
                   .eq('user_id', user.id)
                   .single()
                 if (!profile?.company_id) return true // no company = allow
-                const plan = profile.companies?.plan
+                const { data: comp } = await supabase
+                  .from('companies')
+                  .select('plan')
+                  .eq('id', profile.company_id)
+                  .single()
+                const plan = comp?.plan
                 const PLAN_STORAGE = { basic: 5120, plus: 25600, ultra: 102400, founders: 25600, pilot: null }
                 const limitMb = PLAN_STORAGE[plan] ?? null
                 if (limitMb == null) return true // pilot = unlimited
