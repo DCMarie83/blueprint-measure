@@ -6,6 +6,7 @@ import SessionPage from './pages/SessionPage'
 import AdminPage from './pages/AdminPage'
 import AccuracyTestPage from './pages/AccuracyTestPage'
 import ChangePasswordPage from './pages/ChangePasswordPage'
+import FeedbackButton from './components/feedback/FeedbackButton'
 
 // The only email address that can access /admin.
 const ADMIN_EMAIL = 'main@ngautomationhub.com'
@@ -26,7 +27,7 @@ function ProtectedRoute({ children }) {
 
   if (!user) return <Navigate to="/login" replace />
   if (user.user_metadata?.force_password_change) return <Navigate to="/change-password" replace />
-  return children
+  return <>{children}<FeedbackButton /></>
 }
 
 // AdminRoute wraps /admin. Requires login AND the hardcoded admin email.

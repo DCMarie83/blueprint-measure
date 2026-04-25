@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useSessions } from '../hooks/useSessions'
+import { getCompanyStorageUsage } from '../utils/storageUsage'
 import Modal from '../components/ui/Modal'
 import NewSessionForm from '../components/auth/NewSessionForm'
 import styles from './DashboardPage.module.css'
@@ -16,16 +17,35 @@ export default function DashboardPage() {
   const [companyPlan, setCompanyPlan] = useState(null)
   const navigate = useNavigate()
 
-  // Fetch the user's company plan to show the Founders badge.
+  const [storageDisplay, setStorageDisplay] = useState(null) // { usedGb, limitGb } or null
+
+  // Fetch the user's company plan to show the Founders badge and storage usage.
   // Skipped for the super admin who has no company assignment.
   useEffect(() => {
     if (!user || user.email === 'main@ngautomationhub.com') return
     supabase
       .from('user_profiles')
-      .select('companies(plan)')
+      .select('company_id, companies(plan, features)')
       .eq('user_id', user.id)
       .single()
-      .then(({ data }) => setCompanyPlan(data?.companies?.plan ?? null))
+      .then(async ({ data }) => {
+        const plan = data?.companies?.plan ?? null
+        setCompanyPlan(plan)
+        // Fetch storage usage for the company
+        if (data?.company_id) {
+          try {
+            const PLAN_STORAGE = { basic: 5120, plus: 25600, ultra: 102400, founders: 25600, pilot: null }
+            const limitMb = PLAN_STORAGE[plan] ?? null
+            const usage = await getCompanyStorageUsage(data.company_id)
+            setStorageDisplay({
+              usedGb: (usage.totalBytes / (1024 * 1024 * 1024)).toFixed(1),
+              limitGb: limitMb != null ? (limitMb / 1024).toFixed(0) : null,
+            })
+          } catch {
+            // ignore storage fetch errors
+          }
+        }
+      })
   }, [user])
 
   async function handleCreate(fields) {
@@ -57,7 +77,12 @@ export default function DashboardPage() {
         <div className={styles.userBar}>
           <span className={styles.email}>{user?.email}</span>
           {companyPlan === 'founders' && (
-            <span className={styles.foundersBadge}>⭐ Founders</span>
+            <span className={styles.foundersBadge}>Founders</span>
+          )}
+          {storageDisplay && (
+            <span className={styles.storageIndicator}>
+              {storageDisplay.usedGb} GB{storageDisplay.limitGb ? ` of ${storageDisplay.limitGb} GB` : ''} used
+            </span>
           )}
           {user?.email === 'main@ngautomationhub.com' && (
             <Link to="/admin" className={styles.adminLink}>Admin</Link>

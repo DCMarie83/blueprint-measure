@@ -77,6 +77,15 @@
   letter-spacing: 0.02em;
 }
 
+.storageIndicator {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: rgba(46, 139, 255, 0.08);
+  border: 1px solid rgba(46, 139, 255, 0.2);
+}
+
 .main {
   max-width: 960px;
   margin: 0 auto;

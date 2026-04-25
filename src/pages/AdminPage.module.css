@@ -1144,3 +1144,50 @@
   color: var(--color-text-muted);
   padding: 8px 0;
 }
+
+/* ── Seat badge (D5) ─────────────────────────────────────────────────────── */
+
+.seatBadge {
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+/* ── Mini progress bar for storage (D4) ──────────────────────────────────── */
+
+.miniBarTrack {
+  width: 100%;
+  max-width: 80px;
+  height: 5px;
+  background: var(--color-border);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.miniBarFill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* ── Feedback status badge (D2) ──────────────────────────────────────────── */
+
+.feedbackStatus {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(46, 139, 255, 0.1);
+  color: var(--color-primary);
+}
+
+/* ── Label helper (used in feedback inline form) ─────────────────────────── */
+
+.label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}

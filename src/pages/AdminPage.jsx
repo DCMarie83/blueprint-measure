@@ -24,11 +24,11 @@ const PLANS = [
 // Default feature flags applied when a company is created. Admins can override
 // individual flags at any time using the toggles in the company table.
 const PLAN_FEATURES = {
-  basic:    { multi_page_pdf: false, csv_export: true,  redraw_zones: false, paint_calculator: false, ai_scale_detection: false, wall_calculator: false, test_mode: false },
-  plus:     { multi_page_pdf: true,  csv_export: true,  redraw_zones: true,  paint_calculator: true,  ai_scale_detection: true,  wall_calculator: true,  test_mode: true  },
-  ultra:    { multi_page_pdf: true,  csv_export: true,  redraw_zones: true,  paint_calculator: true,  ai_scale_detection: true,  wall_calculator: true,  test_mode: true  },
-  founders: { multi_page_pdf: true,  csv_export: true,  redraw_zones: true,  paint_calculator: true,  ai_scale_detection: true,  wall_calculator: true,  test_mode: true  },
-  pilot:    { multi_page_pdf: true,  csv_export: true,  redraw_zones: true,  paint_calculator: true,  ai_scale_detection: true,  wall_calculator: true,  test_mode: true  },
+  basic:    { multi_page_pdf: false, csv_export: true,  redraw_zones: false, paint_calculator: false, ai_scale_detection: false, wall_calculator: false, test_mode: false, storage_limit_mb: 5120,   seat_limit: 1,    blueprint_limit: 10  },
+  plus:     { multi_page_pdf: true,  csv_export: true,  redraw_zones: true,  paint_calculator: true,  ai_scale_detection: true,  wall_calculator: true,  test_mode: true,  storage_limit_mb: 25600,  seat_limit: 3,    blueprint_limit: 30  },
+  ultra:    { multi_page_pdf: true,  csv_export: true,  redraw_zones: true,  paint_calculator: true,  ai_scale_detection: true,  wall_calculator: true,  test_mode: true,  storage_limit_mb: 102400, seat_limit: 10,   blueprint_limit: 100 },
+  founders: { multi_page_pdf: true,  csv_export: true,  redraw_zones: true,  paint_calculator: true,  ai_scale_detection: true,  wall_calculator: true,  test_mode: true,  storage_limit_mb: 25600,  seat_limit: 1,    blueprint_limit: 50  },
+  pilot:    { multi_page_pdf: true,  csv_export: true,  redraw_zones: true,  paint_calculator: true,  ai_scale_detection: true,  wall_calculator: true,  test_mode: true,  storage_limit_mb: null,   seat_limit: null, blueprint_limit: null },
 }
 
 // ── tiny helper — show an inline "Sent!" / "Email sent!" for 3 s ─────────────
@@ -116,6 +116,32 @@ export default function AdminPage() {
   const [testVerdictFilter, setTestVerdictFilter] = useState('ALL')
   const [testCompanyFilter, setTestCompanyFilter] = useState('')
   const [expandedLogId, setExpandedLogId]     = useState(null)
+
+  // ── Beta feedback (D2) ────────────────────────────────────────────────────────
+  const [feedbackOpen, setFeedbackOpen]       = useState(false)
+  const [feedbackItems, setFeedbackItems]     = useState([])
+  const [feedbackLoading, setFeedbackLoading] = useState(false)
+  const [feedbackStatusFilter, setFeedbackStatusFilter] = useState('all')
+  const [feedbackTypeFilter, setFeedbackTypeFilter]     = useState('all')
+  const [expandedFeedbackId, setExpandedFeedbackId]     = useState(null)
+  const [feedbackEditNotes, setFeedbackEditNotes]       = useState('')
+  const [feedbackEditStatus, setFeedbackEditStatus]     = useState('')
+
+  // ── Client errors (D3) ────────────────────────────────────────────────────────
+  const [errorsOpen, setErrorsOpen]           = useState(false)
+  const [clientErrors, setClientErrors]       = useState([])
+  const [errorsLoading, setErrorsLoading]     = useState(false)
+  const [errorsDateFilter, setErrorsDateFilter] = useState('7d')
+  const [expandedErrorId, setExpandedErrorId] = useState(null)
+
+  // ── Storage usage (D4) ────────────────────────────────────────────────────────
+  const [companyStorage, setCompanyStorage]   = useState({}) // { [companyId]: { totalBytes, fileCount } }
+  const [storageLoading, setStorageLoading]   = useState({})
+
+  // ── Seat override editing (D5) ─────────────────────────────────────────────────
+  const [editingSeatId, setEditingSeatId]         = useState(null)
+  const [editingSeatValue, setEditingSeatValue]   = useState('')
+  const [savingSeatId, setSavingSeatId]           = useState(null)
 
   // ── Load all data ─────────────────────────────────────────────────────────────
   const loadAll = useCallback(async () => {
@@ -366,13 +392,13 @@ export default function AdminPage() {
   }
 
   async function handleSaveUserCompany(user) {
-    // Seat limit check — warn if company is at capacity
+    // Seat limit check — uses effective seat limit (seat_limit_override ?? plan default)
     if (editCompanyValue) {
       const targetCompany = companies.find(c => c.id === editCompanyValue)
       if (targetCompany) {
         const currentCount = userProfiles.filter(p => p.company_id === editCompanyValue).length
-        const seats = targetCompany.seats_purchased ?? 1
-        if (currentCount >= seats) {
+        const seats = getEffectiveSeatLimit(targetCompany)
+        if (seats != null && currentCount >= seats) {
           const ok = window.confirm(
             `This company has reached its seat limit of ${seats}. Add anyway as super admin override?`
           )
@@ -562,6 +588,158 @@ export default function AdminPage() {
     }
   }
 
+  // ── Load beta feedback (on demand) ─────────────────────────────────────────────
+  async function handleToggleFeedback() {
+    if (feedbackOpen) { setFeedbackOpen(false); return }
+    setFeedbackOpen(true)
+    if (feedbackItems.length > 0) return
+    setFeedbackLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('beta_feedback')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(500)
+      if (error) throw new Error(error.message)
+      setFeedbackItems(data ?? [])
+    } catch (err) {
+      alert('Failed to load feedback: ' + err.message)
+    } finally {
+      setFeedbackLoading(false)
+    }
+  }
+
+  async function handleUpdateFeedback(id) {
+    try {
+      const { error } = await supabase
+        .from('beta_feedback')
+        .update({ status: feedbackEditStatus, admin_notes: feedbackEditNotes })
+        .eq('id', id)
+      if (error) throw new Error(error.message)
+      setFeedbackItems(prev => prev.map(f =>
+        f.id === id ? { ...f, status: feedbackEditStatus, admin_notes: feedbackEditNotes } : f
+      ))
+      setExpandedFeedbackId(null)
+    } catch (err) {
+      alert('Failed to update feedback: ' + err.message)
+    }
+  }
+
+  // ── Load client errors (on demand) ────────────────────────────────────────────
+  async function handleToggleErrors() {
+    if (errorsOpen) { setErrorsOpen(false); return }
+    setErrorsOpen(true)
+    if (clientErrors.length > 0) return
+    setErrorsLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('client_errors')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(500)
+      if (error) throw new Error(error.message)
+      setClientErrors(data ?? [])
+    } catch (err) {
+      alert('Failed to load errors: ' + err.message)
+    } finally {
+      setErrorsLoading(false)
+    }
+  }
+
+  // ── Storage usage per company ─────────────────────────────────────────────────
+  async function fetchCompanyStorage(companyId) {
+    if (storageLoading[companyId] || companyStorage[companyId]) return
+    setStorageLoading(prev => ({ ...prev, [companyId]: true }))
+    try {
+      const companyUserIds = userProfiles.filter(p => p.company_id === companyId).map(p => p.user_id)
+      let totalBytes = 0
+      let fileCount = 0
+      for (const userId of companyUserIds) {
+        const { data: files } = await supabase.storage.from('blueprints').list(userId, { limit: 1000 })
+        if (files) {
+          for (const folder of files) {
+            const { data: innerFiles } = await supabase.storage.from('blueprints').list(`${userId}/${folder.name}`, { limit: 1000 })
+            if (innerFiles) {
+              for (const f of innerFiles) {
+                totalBytes += f.metadata?.size ?? 0
+                fileCount++
+              }
+            }
+          }
+        }
+      }
+      setCompanyStorage(prev => ({ ...prev, [companyId]: { totalBytes, fileCount } }))
+    } catch {
+      // silently fail
+    } finally {
+      setStorageLoading(prev => ({ ...prev, [companyId]: false }))
+    }
+  }
+
+  // ── Seat override (D5) ────────────────────────────────────────────────────────
+  function getEffectiveSeatLimit(company) {
+    if (company.seat_limit_override != null) return company.seat_limit_override
+    return PLAN_FEATURES[company.plan]?.seat_limit ?? 1
+  }
+
+  function handleStartEditSeat(company) {
+    setEditingSeatId(company.id)
+    setEditingSeatValue(company.seat_limit_override != null ? String(company.seat_limit_override) : '')
+  }
+
+  async function handleSaveSeat(companyId) {
+    const val = editingSeatValue.trim()
+    const override = val === '' ? null : parseInt(val, 10)
+    if (val !== '' && (isNaN(override) || override < 1)) {
+      alert('Seat limit must be a positive number or empty for plan default.')
+      return
+    }
+    setSavingSeatId(companyId)
+    try {
+      const { error } = await supabase
+        .from('companies').update({ seat_limit_override: override }).eq('id', companyId)
+      if (error) throw new Error(error.message)
+      setCompanies(prev => prev.map(c =>
+        c.id === companyId ? { ...c, seat_limit_override: override } : c
+      ))
+      setEditingSeatId(null)
+    } catch (err) {
+      alert('Failed to save seat limit: ' + err.message)
+    } finally {
+      setSavingSeatId(null)
+    }
+  }
+
+  // ── Export users CSV (D6) ──────────────────────────────────────────────────────
+  function handleExportUsersCSV() {
+    const rows = [['ID', 'Email', 'Full Name', 'Phone', 'Company Name', 'Plan', 'Role', 'Status', 'Created At', 'Last Sign In At']]
+    users.forEach(u => {
+      const profile = userProfiles.find(p => p.user_id === u.id)
+      const company = profile?.company_id ? companies.find(c => c.id === profile.company_id) : null
+      rows.push([
+        u.id,
+        u.email ?? '',
+        profile?.full_name ?? '',
+        profile?.phone ?? '',
+        company?.name ?? '',
+        company?.plan ?? '',
+        profile?.role ?? 'contractor_user',
+        u.last_sign_in_at ? 'active' : 'pending',
+        u.created_at ?? '',
+        u.last_sign_in_at ?? '',
+      ])
+    })
+    const csv = rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    const dateStr = new Date().toISOString().slice(0, 10)
+    a.download = `blueprintmeasure_users_${dateStr}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   // ── Loading screen ────────────────────────────────────────────────────────────
   if (loading) {
     return (
@@ -686,6 +864,7 @@ export default function AdminPage() {
                     <th className={styles.th}>Company</th>
                     <th className={styles.th}>Plan</th>
                     <th className={styles.th}>Seats</th>
+                    <th className={styles.th}>Storage Used</th>
                     <th className={styles.th}>Usage / Month</th>
                     <th className={styles.th}>Feature Flags</th>
                     <th className={styles.th}></th>
@@ -823,16 +1002,84 @@ export default function AdminPage() {
                           </div>
                         </td>
 
-                        {/* ── Seats ── */}
+                        {/* ── Seats (D5 — inline editable) ── */}
                         <td className={styles.td} data-no-expand>
-                          <div className={styles.usageCell}>
-                            <span className={styles.usageCount}>
-                              {companyUsers.length} / {company.seats_purchased ?? 1}
-                            </span>
-                            {companyUsers.length >= (company.seats_purchased ?? 1) && (
-                              <span className={styles.seatWarning}>At limit</span>
-                            )}
-                          </div>
+                          {editingSeatId === company.id ? (
+                            <div className={styles.inlineEdit}>
+                              <input
+                                type="number"
+                                min="1"
+                                className={styles.inlineInput}
+                                style={{ width: 60 }}
+                                value={editingSeatValue}
+                                onChange={e => setEditingSeatValue(e.target.value)}
+                                placeholder={String(PLAN_FEATURES[company.plan]?.seat_limit ?? 1)}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') handleSaveSeat(company.id)
+                                  if (e.key === 'Escape') setEditingSeatId(null)
+                                }}
+                                autoFocus
+                              />
+                              <button
+                                className={styles.inlineSaveBtn}
+                                onClick={() => handleSaveSeat(company.id)}
+                                disabled={savingSeatId === company.id}
+                              >
+                                {savingSeatId === company.id ? '…' : 'Save'}
+                              </button>
+                              <button
+                                className={styles.inlineCancelBtn}
+                                onClick={() => setEditingSeatId(null)}
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ) : (
+                            <div className={styles.usageCell}>
+                              <span className={styles.usageCount}>
+                                {companyUsers.length} / {getEffectiveSeatLimit(company) ?? '∞'}
+                              </span>
+                              <span className={styles.seatBadge}>
+                                {company.seat_limit_override != null ? '(custom)' : '(plan default)'}
+                              </span>
+                              <button
+                                className={styles.iconBtn}
+                                onClick={() => handleStartEditSeat(company)}
+                                title="Edit seat limit"
+                              >
+                                ✎
+                              </button>
+                              {getEffectiveSeatLimit(company) != null && companyUsers.length >= getEffectiveSeatLimit(company) && (
+                                <span className={styles.seatWarning}>At limit</span>
+                              )}
+                            </div>
+                          )}
+                        </td>
+
+                        {/* ── Storage Used (D4) ── */}
+                        <td className={styles.td}>
+                          {(() => {
+                            const stor = companyStorage[company.id]
+                            const limitMb = PLAN_FEATURES[company.plan]?.storage_limit_mb
+                            if (!stor && !storageLoading[company.id]) {
+                              return <button className={styles.iconBtn} onClick={() => fetchCompanyStorage(company.id)} title="Load storage">Load</button>
+                            }
+                            if (storageLoading[company.id]) return <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Loading…</span>
+                            const usedGb = (stor.totalBytes / (1024 * 1024 * 1024)).toFixed(1)
+                            const limitGb = limitMb != null ? (limitMb / 1024).toFixed(0) : '∞'
+                            const pct = limitMb != null ? (stor.totalBytes / (limitMb * 1024 * 1024)) * 100 : 0
+                            const barColor = pct > 95 ? '#ef4444' : pct > 75 ? '#f59e0b' : 'var(--color-primary)'
+                            return (
+                              <div className={styles.usageCell}>
+                                <span className={styles.usageCount}>{usedGb} GB / {limitGb} GB</span>
+                                {limitMb != null && (
+                                  <div className={styles.miniBarTrack}>
+                                    <div className={styles.miniBarFill} style={{ width: `${Math.min(pct, 100)}%`, background: barColor }} />
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })()}
                         </td>
 
                         {/* ── Usage this month ── */}
@@ -884,7 +1131,7 @@ export default function AdminPage() {
                       {/* ── Expansion panel ── */}
                       {isExpanded && (
                         <tr className={styles.expandedRow}>
-                          <td colSpan={6} className={styles.expandedCell}>
+                          <td colSpan={7} className={styles.expandedCell}>
                             <div className={styles.expandedPanel}>
 
                               {/* Activity stats */}
@@ -986,12 +1233,17 @@ export default function AdminPage() {
               Users
               <span className={styles.pill}>{users.length}</span>
             </h2>
-            <button
-              className={styles.addBtn}
-              onClick={() => { setShowAddUser(v => !v); setUserError('') }}
-            >
-              {showAddUser ? 'Cancel' : '+ Invite User'}
-            </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className={styles.addBtn} onClick={handleExportUsersCSV}>
+                Export Users CSV
+              </button>
+              <button
+                className={styles.addBtn}
+                onClick={() => { setShowAddUser(v => !v); setUserError('') }}
+              >
+                {showAddUser ? 'Cancel' : '+ Invite User'}
+              </button>
+            </div>
           </div>
 
           {showAddUser && (
@@ -1376,6 +1628,222 @@ export default function AdminPage() {
                                         )}
                                         {log.variance_pct != null && <div>Variance: {log.variance_pct}%</div>}
                                         {log.notes && <div><strong>Notes:</strong> {log.notes}</div>}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                              </Fragment>
+                            )
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </>
+          )}
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════
+            SECTION 4 — Beta Feedback (D2 — super admin only)
+        ══════════════════════════════════════════════════════════ */}
+        <section className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>
+              Beta Feedback
+              {feedbackItems.length > 0 && <span className={styles.pill}>{feedbackItems.length}</span>}
+            </h2>
+            <button className={styles.addBtn} onClick={handleToggleFeedback}>
+              {feedbackOpen ? 'Close' : 'View Feedback'}
+            </button>
+          </div>
+
+          {feedbackOpen && (
+            <>
+              {feedbackLoading ? (
+                <p className={styles.empty}>Loading feedback…</p>
+              ) : feedbackItems.length === 0 ? (
+                <p className={styles.empty}>No feedback yet.</p>
+              ) : (
+                <>
+                  <div className={styles.testLogFilters}>
+                    <select className={styles.testLogSelect}
+                      value={feedbackStatusFilter} onChange={e => setFeedbackStatusFilter(e.target.value)}>
+                      <option value="all">All statuses</option>
+                      <option value="new">New</option>
+                      <option value="reviewed">Reviewed</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="resolved">Resolved</option>
+                      <option value="wontfix">Won't Fix</option>
+                    </select>
+                    <select className={styles.testLogSelect}
+                      value={feedbackTypeFilter} onChange={e => setFeedbackTypeFilter(e.target.value)}>
+                      <option value="all">All types</option>
+                      <option value="bug">Bug</option>
+                      <option value="feature">Feature Request</option>
+                      <option value="question">Question</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div className={styles.tableWrap}>
+                    <table className={styles.table}>
+                      <thead>
+                        <tr>
+                          <th className={styles.th}>Created</th>
+                          <th className={styles.th}>Type</th>
+                          <th className={styles.th}>User</th>
+                          <th className={styles.th}>Company</th>
+                          <th className={styles.th}>Description</th>
+                          <th className={styles.th}>Status</th>
+                          <th className={styles.th}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {feedbackItems
+                          .filter(f => feedbackStatusFilter === 'all' || f.status === feedbackStatusFilter)
+                          .filter(f => feedbackTypeFilter === 'all' || f.type === feedbackTypeFilter)
+                          .map(fb => {
+                            const fbUser = users.find(u => u.id === fb.user_id)?.email ?? '—'
+                            const fbCompany = fb.tenant_id ? companies.find(c => c.id === fb.tenant_id)?.name ?? '—' : '—'
+                            const isExpFb = expandedFeedbackId === fb.id
+                            return (
+                              <Fragment key={fb.id}>
+                                <tr className={styles.tr} onClick={() => {
+                                  if (isExpFb) { setExpandedFeedbackId(null) } else {
+                                    setExpandedFeedbackId(fb.id)
+                                    setFeedbackEditStatus(fb.status ?? 'new')
+                                    setFeedbackEditNotes(fb.admin_notes ?? '')
+                                  }
+                                }} style={{ cursor: 'pointer' }}>
+                                  <td className={styles.td}>{new Date(fb.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                                  <td className={styles.td}>{fb.type}</td>
+                                  <td className={styles.td}>{fbUser}</td>
+                                  <td className={styles.td}>{fbCompany}</td>
+                                  <td className={styles.td} title={fb.description}>{fb.description?.length > 60 ? fb.description.slice(0, 60) + '…' : fb.description}</td>
+                                  <td className={styles.td}><span className={styles.feedbackStatus}>{fb.status ?? 'new'}</span></td>
+                                  <td className={styles.td}><button className={styles.iconBtn}>{isExpFb ? '▾' : '▸'}</button></td>
+                                </tr>
+                                {isExpFb && (
+                                  <tr className={styles.expandedRow}>
+                                    <td colSpan={7} className={styles.expandedCell}>
+                                      <div className={styles.expandedPanel}>
+                                        <div><strong>Full description:</strong> {fb.description}</div>
+                                        <div><strong>Page URL:</strong> {fb.page_url}</div>
+                                        {fb.screenshot_url && (
+                                          <div><strong>Screenshot:</strong> <a href={fb.screenshot_url} target="_blank" rel="noopener noreferrer">View</a></div>
+                                        )}
+                                        <div><strong>User Agent:</strong> <span style={{ fontSize: 11 }}>{fb.user_agent}</span></div>
+                                        <div style={{ marginTop: 12, display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
+                                          <label className={styles.label} style={{ flex: '0 0 auto' }}>
+                                            Status
+                                            <select value={feedbackEditStatus} onChange={e => setFeedbackEditStatus(e.target.value)} className={styles.planSelect}>
+                                              <option value="new">New</option>
+                                              <option value="reviewed">Reviewed</option>
+                                              <option value="in_progress">In Progress</option>
+                                              <option value="resolved">Resolved</option>
+                                              <option value="wontfix">Won't Fix</option>
+                                            </select>
+                                          </label>
+                                          <label className={styles.label} style={{ flex: 1 }}>
+                                            Admin Notes
+                                            <input className={styles.formInput} value={feedbackEditNotes} onChange={e => setFeedbackEditNotes(e.target.value)} placeholder="Internal notes…" />
+                                          </label>
+                                          <button className={styles.submitBtn} onClick={() => handleUpdateFeedback(fb.id)} style={{ marginBottom: 2 }}>Save</button>
+                                        </div>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                              </Fragment>
+                            )
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </>
+          )}
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════
+            SECTION 5 — System Errors (D3 — super admin only)
+        ══════════════════════════════════════════════════════════ */}
+        <section className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>
+              System Errors
+              {clientErrors.length > 0 && <span className={styles.pill}>{clientErrors.length}</span>}
+            </h2>
+            <button className={styles.addBtn} onClick={handleToggleErrors}>
+              {errorsOpen ? 'Close' : 'View Errors'}
+            </button>
+          </div>
+
+          {errorsOpen && (
+            <>
+              {errorsLoading ? (
+                <p className={styles.empty}>Loading errors…</p>
+              ) : clientErrors.length === 0 ? (
+                <p className={styles.empty}>No errors recorded.</p>
+              ) : (
+                <>
+                  <div className={styles.testLogFilters}>
+                    <select className={styles.testLogSelect}
+                      value={errorsDateFilter} onChange={e => setErrorsDateFilter(e.target.value)}>
+                      <option value="24h">Last 24 hours</option>
+                      <option value="7d">Last 7 days</option>
+                      <option value="30d">Last 30 days</option>
+                      <option value="all">All time</option>
+                    </select>
+                  </div>
+                  <div className={styles.tableWrap}>
+                    <table className={styles.table}>
+                      <thead>
+                        <tr>
+                          <th className={styles.th}>Created</th>
+                          <th className={styles.th}>User</th>
+                          <th className={styles.th}>Company</th>
+                          <th className={styles.th}>Error Message</th>
+                          <th className={styles.th}>Page URL</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {clientErrors
+                          .filter(ce => {
+                            if (errorsDateFilter === 'all') return true
+                            const ago = { '24h': 1, '7d': 7, '30d': 30 }[errorsDateFilter] ?? 7
+                            return new Date(ce.created_at) > new Date(Date.now() - ago * 86400000)
+                          })
+                          .map(ce => {
+                            const ceUser = users.find(u => u.id === ce.user_id)?.email ?? '—'
+                            const ceCompany = ce.tenant_id ? companies.find(c => c.id === ce.tenant_id)?.name ?? '—' : '—'
+                            const isExpErr = expandedErrorId === ce.id
+                            return (
+                              <Fragment key={ce.id}>
+                                <tr className={styles.tr} onClick={() => setExpandedErrorId(isExpErr ? null : ce.id)} style={{ cursor: 'pointer' }}>
+                                  <td className={styles.td}>{new Date(ce.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                                  <td className={styles.td}>{ceUser}</td>
+                                  <td className={styles.td}>{ceCompany}</td>
+                                  <td className={styles.td} title={ce.error_message}>{ce.error_message?.length > 60 ? ce.error_message.slice(0, 60) + '…' : ce.error_message}</td>
+                                  <td className={styles.td} style={{ fontSize: 11 }}>{ce.page_url}</td>
+                                </tr>
+                                {isExpErr && (
+                                  <tr className={styles.expandedRow}>
+                                    <td colSpan={5} className={styles.expandedCell}>
+                                      <div className={styles.expandedPanel}>
+                                        <div><strong>Error:</strong> {ce.error_message}</div>
+                                        {ce.stack_trace && (
+                                          <pre style={{ fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-all', background: 'rgba(0,0,0,0.2)', padding: 12, borderRadius: 6, maxHeight: 300, overflow: 'auto' }}>
+                                            {ce.stack_trace}
+                                          </pre>
+                                        )}
+                                        {ce.component_stack && (
+                                          <div>
+                                            <strong>Component stack:</strong>
+                                            <pre style={{ fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{ce.component_stack}</pre>
+                                          </div>
+                                        )}
                                       </div>
                                     </td>
                                   </tr>
