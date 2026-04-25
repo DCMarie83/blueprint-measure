@@ -34,6 +34,7 @@ export default function DashboardPage() {
   const [zoneCounts, setZoneCounts] = useState({}) // { [sessionId]: number }
   const [totalZones, setTotalZones] = useState(null)
   const [activity, setActivity] = useState([])
+  const [activityOpen, setActivityOpen] = useState(true)
   const navigate = useNavigate()
 
   // Fetch company plan, storage, zone counts, and activity
@@ -87,9 +88,9 @@ export default function DashboardPage() {
       const activityItems = []
       const { data: recentSessions } = await supabase.from('sessions').select('id, project_name, created_at, blueprint_url').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20)
       recentSessions?.forEach(s => {
-        activityItems.push({ type: 'session', text: `Created session "${s.project_name}"`, time: s.created_at })
+        activityItems.push({ type: 'session', text: `Created session "${s.project_name}"`, time: s.created_at, sessionId: s.id })
         if (s.blueprint_url) {
-          activityItems.push({ type: 'upload', text: `Uploaded blueprint for "${s.project_name}"`, time: s.created_at })
+          activityItems.push({ type: 'upload', text: `Uploaded blueprint for "${s.project_name}"`, time: s.created_at, sessionId: s.id })
         }
       })
 
@@ -97,7 +98,7 @@ export default function DashboardPage() {
       if (allSessionIds.length) {
         const { data: recentZones } = await supabase.from('zones').select('name, created_at, session_id').in('session_id', allSessionIds).order('created_at', { ascending: false }).limit(20)
         recentZones?.forEach(z => {
-          activityItems.push({ type: 'zone', text: `Measured ${z.name}`, time: z.created_at })
+          activityItems.push({ type: 'zone', text: `Measured ${z.name}`, time: z.created_at, sessionId: z.session_id })
         })
       }
 
@@ -250,16 +251,36 @@ export default function DashboardPage() {
             {/* ROW 4 — Activity Feed */}
             {activity.length > 0 && (
               <section className={styles.dashSection}>
-                <h2 className={styles.dashSectionTitle}>Recent Activity</h2>
-                <div className={styles.activityList}>
-                  {activity.map((item, i) => (
-                    <div key={i} className={styles.activityItem}>
-                      <span className={styles.activityIcon}>{ACTIVITY_ICONS[item.type] ?? '·'}</span>
-                      <span className={styles.activityText}>{item.text}</span>
-                      <span className={styles.activityTime}>{timeAgo(item.time)}</span>
-                    </div>
-                  ))}
+                <div className={styles.dashSectionHeader}>
+                  <h2
+                    className={styles.dashSectionTitle}
+                    onClick={() => setActivityOpen(v => !v)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <span className={styles.chevron}>{activityOpen ? '▾' : '▸'}</span>
+                    {' '}Recent Activity
+                  </h2>
                 </div>
+                {activityOpen && (
+                  <>
+                    <div className={styles.activityList}>
+                      {activity.slice(0, 5).map((item, i) => (
+                        <div
+                          key={i}
+                          className={styles.activityItemClickable}
+                          onClick={() => item.sessionId && navigate(`/session/${item.sessionId}`)}
+                        >
+                          <span className={styles.activityIcon}>{ACTIVITY_ICONS[item.type] ?? '·'}</span>
+                          <span className={styles.activityText}>{item.text}</span>
+                          <span className={styles.activityTime}>{timeAgo(item.time)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <Link to="/account" className={styles.viewAllActivityLink}>
+                      View All Activity
+                    </Link>
+                  </>
+                )}
               </section>
             )}
 

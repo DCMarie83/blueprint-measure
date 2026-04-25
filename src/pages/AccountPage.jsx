@@ -4,17 +4,18 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import styles from './AccountPage.module.css'
 
-const ADMIN_EMAIL = 'main@ngautomationhub.com'
+const PLAN_LABELS = {
+  basic: 'Basic',
+  plus: 'Plus',
+  ultra: 'Ultra',
+  founders: 'Founders',
+  pilot: 'Pilot',
+}
 
-function timeAgo(dateStr) {
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  const days = Math.floor(hrs / 24)
-  return `${days}d ago`
+const ROLE_LABELS = {
+  contractor_user: 'Member',
+  contractor_admin: 'Admin',
+  super_admin: 'Super Admin',
 }
 
 export default function AccountPage() {
@@ -40,9 +41,13 @@ export default function AccountPage() {
 
   // Activity
   const [activity, setActivity] = useState([])
+  const [activityFilter, setActivityFilter] = useState('all')
 
   // Danger zone
   const [dangerOpen, setDangerOpen] = useState(false)
+  const [cancelConfirm, setCancelConfirm] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
+  const [cancelToast, setCancelToast] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
@@ -51,16 +56,18 @@ export default function AccountPage() {
     if (!user) return
     async function load() {
       setProfileLoading(true)
-      const { data: profile } = await supabase
+      const { data: profile, error: profileErr } = await supabase
         .from('user_profiles')
         .select('full_name, phone, role, sms_consent, sms_consent_at, company_id, companies(name, plan)')
         .eq('user_id', user.id)
         .single()
 
+      console.log('[AccountPage] profile loaded', profile, profileErr)
+
       if (profile) {
         setFullName(profile.full_name ?? '')
         setPhone(profile.phone ?? '')
-        setRole(profile.role ?? 'contractor_user')
+        setRole(profile.role ?? '')
         setSmsConsent(profile.sms_consent ?? false)
         setSmsConsentAt(profile.sms_consent_at ?? null)
         if (profile.companies) {
@@ -78,9 +85,9 @@ export default function AccountPage() {
         .limit(30)
 
       sessions?.forEach(s => {
-        activityItems.push({ text: `Created session "${s.project_name}"`, time: s.created_at })
+        activityItems.push({ type: 'session', text: `Created session "${s.project_name}"`, time: s.created_at, sessionId: s.id })
         if (s.blueprint_url) {
-          activityItems.push({ text: `Uploaded blueprint for "${s.project_name}"`, time: s.created_at })
+          activityItems.push({ type: 'upload', text: `Uploaded blueprint for "${s.project_name}"`, time: s.created_at, sessionId: s.id })
         }
       })
 
@@ -88,12 +95,12 @@ export default function AccountPage() {
       if (sessionIds.length) {
         const { data: zones } = await supabase
           .from('zones')
-          .select('name, created_at')
+          .select('name, created_at, session_id')
           .in('session_id', sessionIds)
           .order('created_at', { ascending: false })
           .limit(30)
         zones?.forEach(z => {
-          activityItems.push({ text: `Measured ${z.name}`, time: z.created_at })
+          activityItems.push({ type: 'zone', text: `Measured ${z.name}`, time: z.created_at, sessionId: z.session_id })
         })
       }
 
@@ -128,7 +135,6 @@ export default function AccountPage() {
     setSmsSaving(true)
     try {
       const update = { sms_consent: newValue }
-      // Only set sms_consent_at when opting in (preserves original opt-in timestamp on opt-out)
       if (newValue) update.sms_consent_at = new Date().toISOString()
       const { error } = await supabase
         .from('user_profiles')
@@ -141,6 +147,25 @@ export default function AccountPage() {
       alert('Failed to update SMS preference: ' + err.message)
     } finally {
       setSmsSaving(false)
+    }
+  }
+
+  // Requires: alter table user_profiles add column if not exists subscription_cancel_requested_at timestamptz;
+  async function handleCancelSubscription() {
+    setCancelling(true)
+    try {
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({ subscription_cancel_requested_at: new Date().toISOString() })
+        .eq('user_id', user.id)
+      if (error) throw new Error(error.message)
+      setCancelConfirm(false)
+      setCancelToast('Cancellation requested — we\'ll be in touch shortly')
+      setTimeout(() => setCancelToast(''), 5000)
+    } catch (err) {
+      alert('Failed to request cancellation: ' + err.message)
+    } finally {
+      setCancelling(false)
     }
   }
 
@@ -161,11 +186,14 @@ export default function AccountPage() {
     }
   }
 
-  const ROLE_LABELS = {
-    contractor_user: 'User',
-    contractor_admin: 'Admin',
-    super_admin: 'Super Admin',
-  }
+  const filteredActivity = activityFilter === 'all'
+    ? activity
+    : activity.filter(a => {
+        if (activityFilter === 'sessions') return a.type === 'session'
+        if (activityFilter === 'zones') return a.type === 'zone'
+        if (activityFilter === 'blueprints') return a.type === 'upload'
+        return true
+      })
 
   if (profileLoading) {
     return (
@@ -224,15 +252,15 @@ export default function AccountPage() {
           <h2 className={styles.cardTitle}>Company</h2>
           <div className={styles.infoRow}>
             <span className={styles.infoLabel}>Company</span>
-            <span className={styles.infoValue}>{company?.name ?? '—'}</span>
+            <span className={styles.infoValue}>{company?.name ?? 'Not assigned'}</span>
           </div>
           <div className={styles.infoRow}>
             <span className={styles.infoLabel}>Plan</span>
-            <span className={styles.planBadge}>{company?.plan ?? '—'}</span>
+            <span className={styles.planBadge}>{company?.plan ? (PLAN_LABELS[company.plan] ?? company.plan) : '—'}</span>
           </div>
           <div className={styles.infoRow}>
             <span className={styles.infoLabel}>Role</span>
-            <span className={styles.infoValue}>{ROLE_LABELS[role] ?? role}</span>
+            <span className={styles.infoValue}>{role ? (ROLE_LABELS[role] ?? role) : 'Member'}</span>
           </div>
           <p className={styles.hint}>Contact your admin to change company details.</p>
         </section>
@@ -274,10 +302,26 @@ export default function AccountPage() {
         {/* 5. My Activity */}
         {activity.length > 0 && (
           <section className={styles.card}>
-            <h2 className={styles.cardTitle}>My Activity</h2>
+            <div className={styles.activityHeader}>
+              <h2 className={styles.cardTitle} style={{ margin: 0 }}>My Activity</h2>
+              <select
+                className={styles.activityFilterSelect}
+                value={activityFilter}
+                onChange={e => setActivityFilter(e.target.value)}
+              >
+                <option value="all">All</option>
+                <option value="sessions">Sessions</option>
+                <option value="zones">Zones</option>
+                <option value="blueprints">Blueprints</option>
+              </select>
+            </div>
             <div className={styles.activityList}>
-              {activity.map((item, i) => (
-                <div key={i} className={styles.activityItem}>
+              {filteredActivity.map((item, i) => (
+                <div
+                  key={i}
+                  className={styles.activityItemClickable}
+                  onClick={() => item.sessionId && navigate(`/session/${item.sessionId}`)}
+                >
                   <span className={styles.activityText}>{item.text}</span>
                   <span className={styles.activityTime}>
                     {new Date(item.time).toLocaleString('en-US', {
@@ -287,37 +331,73 @@ export default function AccountPage() {
                   </span>
                 </div>
               ))}
+              {filteredActivity.length === 0 && (
+                <p className={styles.hint} style={{ padding: '12px 0' }}>No activity for this filter.</p>
+              )}
             </div>
           </section>
         )}
 
-        {/* 6. Danger Zone */}
+        {/* 6. Subscription & Account */}
         <section className={styles.card}>
           <button className={styles.dangerToggle} onClick={() => setDangerOpen(v => !v)}>
-            {dangerOpen ? '▾' : '▸'} Danger Zone
+            {dangerOpen ? '▾' : '▸'} Subscription & Account
           </button>
           {dangerOpen && (
             <div className={styles.dangerContent}>
+              {/* Primary: Cancel Subscription */}
+              {cancelToast ? (
+                <div className={styles.cancelToast}>{cancelToast}</div>
+              ) : !cancelConfirm ? (
+                <button className={styles.cancelSubBtn} onClick={() => setCancelConfirm(true)}>
+                  Cancel My Subscription
+                </button>
+              ) : (
+                <div className={styles.deleteConfirm}>
+                  <p className={styles.cancelWarning}>
+                    Cancel your subscription? Your account stays active until the end of your current
+                    billing period. After that, your account becomes read-only — you can still view
+                    your data but cannot create new sessions or measurements. You can resubscribe anytime.
+                  </p>
+                  <div className={styles.deleteActions}>
+                    <button className={styles.cancelBtn} onClick={() => setCancelConfirm(false)}>
+                      Keep Subscription
+                    </button>
+                    <button className={styles.confirmCancelBtn} onClick={handleCancelSubscription} disabled={cancelling}>
+                      {cancelling ? 'Processing…' : 'Confirm Cancellation'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Secondary: Delete Account */}
+              <div className={styles.deleteSectionSeparator} />
               {!deleteConfirm ? (
-                <button className={styles.deleteAccountBtn} onClick={() => setDeleteConfirm(true)}>
-                  Delete My Account
+                <button className={styles.deleteLink} onClick={() => setDeleteConfirm(true)}>
+                  Request Permanent Account Deletion
                 </button>
               ) : (
                 <div className={styles.deleteConfirm}>
                   <p className={styles.deleteWarning}>
-                    This will permanently delete your account and all your sessions, zones, and uploads.
-                    Your company data will be transferred to your admin. This action cannot be undone.
+                    Permanently delete your account? This will remove all your sessions, zones, and uploads.
+                    Your company data will be transferred to your admin. This action cannot be undone and is
+                    processed within 30 days per our retention policy.
                   </p>
                   <div className={styles.deleteActions}>
                     <button className={styles.cancelBtn} onClick={() => setDeleteConfirm(false)}>
                       Cancel
                     </button>
                     <button className={styles.confirmDeleteBtn} onClick={handleDeleteAccount} disabled={deleting}>
-                      {deleting ? 'Deleting…' : 'Confirm Delete'}
+                      {deleting ? 'Deleting…' : 'Delete My Account'}
                     </button>
                   </div>
                 </div>
               )}
+
+              <p className={styles.dangerFootnote}>
+                Subscription billing will be wired to Stripe in a future update.
+                For now, cancel requests are queued for manual review.
+              </p>
             </div>
           )}
         </section>
