@@ -86,6 +86,20 @@
   flex-shrink: 0;
 }
 
+.collapsedResult {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.expandChevron {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-left: 4px;
+}
+
 .zoneDescription {
   font-size: 12px;
   color: var(--color-text-muted);

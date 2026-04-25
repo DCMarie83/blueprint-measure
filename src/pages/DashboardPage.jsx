@@ -8,45 +8,115 @@ import Modal from '../components/ui/Modal'
 import NewSessionForm from '../components/auth/NewSessionForm'
 import styles from './DashboardPage.module.css'
 
-// The dashboard shows all past sessions and lets the user create new ones.
+const ADMIN_EMAIL = 'main@ngautomationhub.com'
+const PLAN_STORAGE = { basic: 5120, plus: 25600, ultra: 102400, founders: 25600, pilot: null }
+
+function timeAgo(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  if (days < 7) return `${days}d ago`
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
 export default function DashboardPage() {
   const { user } = useAuth()
   const { sessions, loading, createSession, deleteSession } = useSessions()
   const [showNewSession, setShowNewSession] = useState(false)
-  const [deleteConfirm, setDeleteConfirm] = useState(null) // session id to confirm delete
+  const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [companyPlan, setCompanyPlan] = useState(null)
+  const [blueprintLimit, setBlueprintLimit] = useState(null)
+  const [storageDisplay, setStorageDisplay] = useState(null)
+  const [zoneCounts, setZoneCounts] = useState({}) // { [sessionId]: number }
+  const [totalZones, setTotalZones] = useState(null)
+  const [activity, setActivity] = useState([])
   const navigate = useNavigate()
 
-  const [storageDisplay, setStorageDisplay] = useState(null) // { usedGb, limitGb } or null
-
-  // Fetch the user's company plan to show the Founders badge and storage usage.
-  // Skipped for the super admin who has no company assignment.
+  // Fetch company plan, storage, zone counts, and activity
   useEffect(() => {
-    if (!user || user.email === 'main@ngautomationhub.com') return
-    supabase
-      .from('user_profiles')
-      .select('company_id, companies(plan, features)')
-      .eq('user_id', user.id)
-      .single()
-      .then(async ({ data }) => {
-        const plan = data?.companies?.plan ?? null
-        setCompanyPlan(plan)
-        // Fetch storage usage for the company
-        if (data?.company_id) {
-          try {
-            const PLAN_STORAGE = { basic: 5120, plus: 25600, ultra: 102400, founders: 25600, pilot: null }
-            const limitMb = PLAN_STORAGE[plan] ?? null
-            const usage = await getCompanyStorageUsage(data.company_id)
-            setStorageDisplay({
-              usedGb: (usage.totalBytes / (1024 * 1024 * 1024)).toFixed(1),
-              limitGb: limitMb != null ? (limitMb / 1024).toFixed(0) : null,
-            })
-          } catch {
-            // ignore storage fetch errors
-          }
+    if (!user || user.email === ADMIN_EMAIL) return
+
+    async function loadDashboardData() {
+      // Get company plan info
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('company_id, companies(plan, blueprint_limit, features)')
+        .eq('user_id', user.id)
+        .single()
+
+      const plan = profile?.companies?.plan ?? null
+      setCompanyPlan(plan)
+      setBlueprintLimit(profile?.companies?.blueprint_limit ?? null)
+
+      // Storage usage
+      if (profile?.company_id) {
+        try {
+          const limitMb = PLAN_STORAGE[plan] ?? null
+          const usage = await getCompanyStorageUsage(profile.company_id)
+          setStorageDisplay({
+            usedGb: (usage.totalBytes / (1024 * 1024 * 1024)).toFixed(1),
+            limitGb: limitMb != null ? (limitMb / 1024).toFixed(0) : null,
+          })
+        } catch { /* ignore */ }
+      }
+
+      // Total zone count for this user
+      const { count: zoneCount } = await supabase
+        .from('zones')
+        .select('id', { count: 'exact', head: true })
+        .in('session_id', (await supabase.from('sessions').select('id').eq('user_id', user.id)).data?.map(s => s.id) ?? [])
+      setTotalZones(zoneCount ?? 0)
+
+      // Per-session zone counts (for recent 6)
+      const { data: sessionIds } = await supabase.from('sessions').select('id').eq('user_id', user.id).order('created_at', { ascending: false }).limit(6)
+      if (sessionIds?.length) {
+        const { data: zoneRows } = await supabase
+          .from('zones')
+          .select('session_id')
+          .in('session_id', sessionIds.map(s => s.id))
+        const counts = {}
+        zoneRows?.forEach(z => { counts[z.session_id] = (counts[z.session_id] ?? 0) + 1 })
+        setZoneCounts(counts)
+      }
+
+      // Activity feed — derive from sessions + zones
+      const activityItems = []
+      const { data: recentSessions } = await supabase.from('sessions').select('id, project_name, created_at, blueprint_url').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20)
+      recentSessions?.forEach(s => {
+        activityItems.push({ type: 'session', text: `Created session "${s.project_name}"`, time: s.created_at })
+        if (s.blueprint_url) {
+          activityItems.push({ type: 'upload', text: `Uploaded blueprint for "${s.project_name}"`, time: s.created_at })
         }
       })
+
+      const allSessionIds = recentSessions?.map(s => s.id) ?? []
+      if (allSessionIds.length) {
+        const { data: recentZones } = await supabase.from('zones').select('name, created_at, session_id').in('session_id', allSessionIds).order('created_at', { ascending: false }).limit(20)
+        recentZones?.forEach(z => {
+          activityItems.push({ type: 'zone', text: `Measured ${z.name}`, time: z.created_at })
+        })
+      }
+
+      activityItems.sort((a, b) => new Date(b.time) - new Date(a.time))
+      setActivity(activityItems.slice(0, 10))
+    }
+
+    loadDashboardData()
   }, [user])
+
+  const now = new Date()
+  const sessionsThisMonth = sessions.filter(s => {
+    const d = new Date(s.created_at)
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+  }).length
+
+  const activeSessions = sessions.filter(s => (zoneCounts[s.id] ?? 0) > 0 || s.blueprint_url).length
+
+  const recentSessions = sessions.slice(0, 6)
 
   async function handleCreate(fields) {
     const session = await createSession(fields)
@@ -62,6 +132,8 @@ export default function DashboardPage() {
   async function handleLogout() {
     await supabase.auth.signOut()
   }
+
+  const ACTIVITY_ICONS = { session: '+', upload: 'U', zone: 'Z', scale: 'S', test: 'T' }
 
   return (
     <div className={styles.page}>
@@ -84,7 +156,8 @@ export default function DashboardPage() {
               {storageDisplay.usedGb} GB{storageDisplay.limitGb ? ` of ${storageDisplay.limitGb} GB` : ''} used
             </span>
           )}
-          {user?.email === 'main@ngautomationhub.com' && (
+          <Link to="/account" className={styles.accountLink}>Account</Link>
+          {user?.email === ADMIN_EMAIL && (
             <Link to="/admin" className={styles.adminLink}>Admin</Link>
           )}
           <button className={styles.logout} onClick={handleLogout}>Sign out</button>
@@ -92,57 +165,134 @@ export default function DashboardPage() {
       </header>
 
       <main className={styles.main}>
-        <div className={styles.topRow}>
-          <div>
-            <h1 className={styles.heading}>Sessions</h1>
-            <p className={styles.sub}>Each session is one blueprint upload with its measurements.</p>
-          </div>
-          <button className={styles.newBtn} onClick={() => setShowNewSession(true)}>
-            + New Session
-          </button>
-        </div>
-
         {loading ? (
-          <div className={styles.empty}>Loading sessions…</div>
-        ) : sessions.length === 0 ? (
-          <div className={styles.emptyState}>
-            <div className={styles.emptyIcon}>📐</div>
-            <h2>No sessions yet</h2>
-            <p>Create your first session to upload a blueprint and start measuring.</p>
-            <button className={styles.newBtn} onClick={() => setShowNewSession(true)}>
-              + New Session
-            </button>
-          </div>
+          <div className={styles.empty}>Loading…</div>
         ) : (
-          <div className={styles.grid}>
-            {sessions.map(session => (
-              <div key={session.id} className={styles.card}>
-                <div className={styles.cardMain} onClick={() => navigate(`/session/${session.id}`)}>
-                  <div className={styles.cardTitle}>{session.project_name}</div>
-                  <div className={styles.cardClient}>{session.client_name}</div>
-                  <div className={styles.cardDate}>
-                    {new Date(session.created_at).toLocaleDateString('en-US', {
-                      month: 'short', day: 'numeric', year: 'numeric'
-                    })}
-                  </div>
-                </div>
-                <div className={styles.cardActions}>
-                  <button
-                    className={styles.openBtn}
-                    onClick={() => navigate(`/session/${session.id}`)}
-                  >
-                    Open
-                  </button>
-                  <button
-                    className={styles.deleteBtn}
-                    onClick={() => setDeleteConfirm(session.id)}
-                  >
-                    Delete
-                  </button>
+          <>
+            {/* ROW 1 — Metric Cards */}
+            <div className={styles.metrics}>
+              <div className={styles.metricCard}>
+                <div className={styles.metricLabel}>Active Sessions</div>
+                <div className={styles.metricValue}>{activeSessions}</div>
+              </div>
+              <div className={styles.metricCard}>
+                <div className={styles.metricLabel}>Blueprints This Month</div>
+                <div className={styles.metricValue}>
+                  {sessionsThisMonth}{blueprintLimit != null ? ` of ${blueprintLimit}` : ''}
                 </div>
               </div>
-            ))}
-          </div>
+              <div className={styles.metricCard}>
+                <div className={styles.metricLabel}>Total Zones Measured</div>
+                <div className={styles.metricValue}>{totalZones ?? '—'}</div>
+              </div>
+              <div className={styles.metricCard}>
+                <div className={styles.metricLabel}>Storage Used</div>
+                <div className={styles.metricValue}>
+                  {storageDisplay
+                    ? `${storageDisplay.usedGb} GB${storageDisplay.limitGb ? ` / ${storageDisplay.limitGb} GB` : ''}`
+                    : '—'}
+                </div>
+              </div>
+            </div>
+
+            {/* ROW 2 — Recent Sessions */}
+            <section className={styles.dashSection}>
+              <div className={styles.dashSectionHeader}>
+                <h2 className={styles.dashSectionTitle}>Recent Sessions</h2>
+                {sessions.length > 6 && (
+                  <button className={styles.viewAllBtn} onClick={() => {
+                    document.getElementById('all-sessions')?.scrollIntoView({ behavior: 'smooth' })
+                  }}>View All</button>
+                )}
+              </div>
+              {sessions.length === 0 ? (
+                <div className={styles.emptyState}>
+                  <h2>No sessions yet</h2>
+                  <p>Create your first session to upload a blueprint and start measuring.</p>
+                  <button className={styles.newBtn} onClick={() => setShowNewSession(true)}>
+                    + New Session
+                  </button>
+                </div>
+              ) : (
+                <div className={styles.grid}>
+                  {recentSessions.map(session => (
+                    <div key={session.id} className={styles.card} onClick={() => navigate(`/session/${session.id}`)}>
+                      <div className={styles.cardMain}>
+                        <div className={styles.cardTitle}>{session.project_name}</div>
+                        <div className={styles.cardClient}>{session.client_name}</div>
+                        <div className={styles.cardMeta}>
+                          <span>{timeAgo(session.updated_at ?? session.created_at)}</span>
+                          {zoneCounts[session.id] != null && (
+                            <span>{zoneCounts[session.id]} zone{zoneCounts[session.id] !== 1 ? 's' : ''}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* ROW 3 — Quick Actions */}
+            <div className={styles.quickActions}>
+              <button className={styles.quickBtn} onClick={() => setShowNewSession(true)}>
+                + New Session
+              </button>
+              {sessions.length > 0 && (
+                <button className={styles.quickBtnSecondary} onClick={() => {
+                  document.getElementById('all-sessions')?.scrollIntoView({ behavior: 'smooth' })
+                }}>
+                  View All Sessions
+                </button>
+              )}
+            </div>
+
+            {/* ROW 4 — Activity Feed */}
+            {activity.length > 0 && (
+              <section className={styles.dashSection}>
+                <h2 className={styles.dashSectionTitle}>Recent Activity</h2>
+                <div className={styles.activityList}>
+                  {activity.map((item, i) => (
+                    <div key={i} className={styles.activityItem}>
+                      <span className={styles.activityIcon}>{ACTIVITY_ICONS[item.type] ?? '·'}</span>
+                      <span className={styles.activityText}>{item.text}</span>
+                      <span className={styles.activityTime}>{timeAgo(item.time)}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* All Sessions (scroll target) */}
+            {sessions.length > 6 && (
+              <section className={styles.dashSection} id="all-sessions">
+                <h2 className={styles.dashSectionTitle}>All Sessions ({sessions.length})</h2>
+                <div className={styles.grid}>
+                  {sessions.map(session => (
+                    <div key={session.id} className={styles.card}>
+                      <div className={styles.cardMain} onClick={() => navigate(`/session/${session.id}`)}>
+                        <div className={styles.cardTitle}>{session.project_name}</div>
+                        <div className={styles.cardClient}>{session.client_name}</div>
+                        <div className={styles.cardDate}>
+                          {new Date(session.created_at).toLocaleDateString('en-US', {
+                            month: 'short', day: 'numeric', year: 'numeric'
+                          })}
+                        </div>
+                      </div>
+                      <div className={styles.cardActions}>
+                        <button className={styles.openBtn} onClick={() => navigate(`/session/${session.id}`)}>
+                          Open
+                        </button>
+                        <button className={styles.deleteBtn} onClick={() => setDeleteConfirm(session.id)}>
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
         )}
       </main>
 

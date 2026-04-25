@@ -33,7 +33,8 @@
   color: var(--color-text-muted);
 }
 
-.adminLink {
+.adminLink,
+.accountLink {
   font-size: 12px;
   color: var(--color-text-muted);
   text-decoration: none;
@@ -41,10 +42,10 @@
   transition: opacity 0.15s, color 0.15s;
 }
 
-.adminLink:hover {
+.adminLink:hover,
+.accountLink:hover {
   color: var(--color-text);
   opacity: 1;
-  text-decoration: none;
 }
 
 .logout {
@@ -54,6 +55,7 @@
   padding: 6px 14px;
   font-size: 13px;
   color: var(--color-text-muted);
+  cursor: pointer;
   transition: color 0.15s, border-color 0.15s;
 }
 
@@ -62,7 +64,6 @@
   border-color: var(--color-text-muted);
 }
 
-/* ── Founders plan badge ─────────────────────────────────────────────────── */
 .foundersBadge {
   display: inline-flex;
   align-items: center;
@@ -89,75 +90,84 @@
 .main {
   max-width: 960px;
   margin: 0 auto;
-  padding: 40px 32px;
+  padding: 32px 32px 60px;
 }
 
-.topRow {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+/* ── Metric Cards ─────────────────────────────────────────────────────────── */
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
   margin-bottom: 32px;
-  gap: 16px;
 }
 
-.heading {
-  font-size: 26px;
-  font-weight: 700;
-  margin-bottom: 4px;
+@media (max-width: 700px) {
+  .metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
-.sub {
-  font-size: 14px;
-  color: var(--color-text-muted);
+.metricCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
 }
 
-.newBtn {
-  background: var(--color-primary);
-  border: none;
-  border-radius: var(--radius);
-  padding: 10px 20px;
-  font-size: 14px;
+.metricLabel {
+  font-size: 11px;
   font-weight: 600;
-  color: white;
-  white-space: nowrap;
-  transition: background 0.15s;
-}
-
-.newBtn:hover {
-  background: var(--color-primary-hover);
-}
-
-.empty {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--color-text-muted);
-  padding: 40px 0;
+  margin-bottom: 6px;
 }
 
-.emptyState {
-  text-align: center;
-  padding: 80px 20px;
-  color: var(--color-text-muted);
-}
-
-.emptyIcon {
-  font-size: 48px;
-  margin-bottom: 16px;
-}
-
-.emptyState h2 {
-  font-size: 20px;
+.metricValue {
+  font-size: 22px;
+  font-weight: 700;
   color: var(--color-text);
-  margin-bottom: 8px;
 }
 
-.emptyState p {
-  margin-bottom: 24px;
-  font-size: 14px;
+/* ── Dashboard sections ───────────────────────────────────────────────────── */
+
+.dashSection {
+  margin-bottom: 32px;
 }
+
+.dashSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.dashSectionTitle {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.viewAllBtn {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.viewAllBtn:hover {
+  text-decoration: underline;
+}
+
+/* ── Session cards ────────────────────────────────────────────────────────── */
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 14px;
 }
 
 .card {
@@ -166,6 +176,7 @@
   border-radius: var(--radius-lg);
   overflow: hidden;
   transition: border-color 0.15s;
+  cursor: pointer;
 }
 
 .card:hover {
@@ -173,21 +184,28 @@
 }
 
 .cardMain {
-  padding: 20px;
-  cursor: pointer;
+  padding: 18px 20px 16px;
 }
 
 .cardTitle {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   color: var(--color-text);
 }
 
 .cardClient {
   font-size: 13px;
   color: var(--color-text-muted);
-  margin-bottom: 12px;
+  margin-bottom: 10px;
+}
+
+.cardMeta {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  opacity: 0.7;
 }
 
 .cardDate {
@@ -208,6 +226,7 @@
   font-weight: 500;
   border: none;
   background: none;
+  cursor: pointer;
   transition: background 0.15s;
 }
 
@@ -226,4 +245,128 @@
 
 .deleteBtn:hover {
   background: rgba(239, 68, 68, 0.08);
+}
+
+/* ── Quick Actions ────────────────────────────────────────────────────────── */
+
+.quickActions {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.quickBtn {
+  padding: 12px 24px;
+  background: var(--color-primary);
+  border: none;
+  border-radius: var(--radius);
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.quickBtn:hover {
+  opacity: 0.9;
+}
+
+.quickBtnSecondary {
+  padding: 12px 24px;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text-muted);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.quickBtnSecondary:hover {
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
+
+/* ── Activity Feed ────────────────────────────────────────────────────────── */
+
+.activityList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.activityItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 13px;
+}
+
+.activityItem:last-child {
+  border-bottom: none;
+}
+
+.activityIcon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(46, 139, 255, 0.1);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.activityText {
+  flex: 1;
+  color: var(--color-text);
+}
+
+.activityTime {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* ── Empty states ─────────────────────────────────────────────────────────── */
+
+.empty {
+  color: var(--color-text-muted);
+  padding: 40px 0;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--color-text-muted);
+}
+
+.emptyState h2 {
+  font-size: 20px;
+  color: var(--color-text);
+  margin-bottom: 8px;
+}
+
+.emptyState p {
+  margin-bottom: 24px;
+  font-size: 14px;
+}
+
+.newBtn {
+  background: var(--color-primary);
+  border: none;
+  border-radius: var(--radius);
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+}
+
+.newBtn:hover {
+  opacity: 0.9;
 }

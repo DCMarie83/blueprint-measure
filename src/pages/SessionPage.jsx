@@ -19,6 +19,7 @@ import ZoneDrawPanel from '../components/zones/ZoneDrawPanel'
 import ZoneList from '../components/zones/ZoneList'
 import SessionSummary from '../components/zones/SessionSummary'
 import PdfPageSelector from '../components/pdf/PdfPageSelector'
+import PdfPageManager from '../components/pdf/PdfPageManager'
 import styles from './SessionPage.module.css'
 
 // SessionPage is the main working environment.
@@ -96,6 +97,11 @@ export default function SessionPage() {
   const [consecutiveFailCount, setConsecutiveFailCount] = useState(0)
   const [calibBannerInput, setCalibBannerInput] = useState('')
 
+  // ── Page metadata (naming + soft-delete) ─────────────────────────────────────
+  const [pageMetadata, setPageMetadata] = useState({})
+  const [showPageManager, setShowPageManager] = useState(false)
+  const [pendingPageManager, setPendingPageManager] = useState(false)
+
   // ── Save status ─────────────────────────────────────────────────────────────
   const [lastSavedAt, setLastSavedAt] = useState(null)
   const [manualSaving, setManualSaving] = useState(false)
@@ -125,6 +131,10 @@ export default function SessionPage() {
       if (session.page_scales && Object.keys(session.page_scales).length > 0) {
         setPageScales(session.page_scales)
       }
+      // Restore page metadata (names + hidden flags)
+      if (session.page_metadata && Object.keys(session.page_metadata).length > 0) {
+        setPageMetadata(session.page_metadata)
+      }
     }
   }, [session])
 
@@ -151,6 +161,21 @@ export default function SessionPage() {
     }
   }, [isPdf, pageCount, renderPage])
 
+  // ── Auto-open page manager after fresh PDF upload ────────────────────────────
+  useEffect(() => {
+    if (pendingPageManager && pageCount > 0) {
+      setShowPageManager(true)
+      setPendingPageManager(false)
+    }
+  }, [pendingPageManager, pageCount])
+
+  // Helper: get count of visible (non-hidden) pages
+  const visiblePageCount = isPdf && pageCount > 0
+    ? Array.from({ length: pageCount }, (_, i) => i + 1).filter(
+        p => !pageMetadata[String(p)]?.hidden
+      ).length
+    : pageCount
+
   // ── Derived: zones for current page ─────────────────────────────────────────
   // For PDFs filter to the active page. For image blueprints use all zones
   // (they all have page_number = 1 which is the only page).
@@ -167,10 +192,37 @@ export default function SessionPage() {
     setCurrentPage(1)
     setRenderedPageUrl(null)
     setThumbnails({})
+    setPageMetadata({})
+    // For PDFs, open the page manager after thumbnails load so user can name/hide pages
+    if (type === 'application/pdf') {
+      // We'll show the manager once pageCount is available (useEffect below)
+      setPendingPageManager(true)
+    }
     // Trigger AI scale detection for eligible plans
     if (enabledFeatures?.ai_scale_detection) {
       setPendingScaleDetection(true)
       setScaleDetectionBanner(null)
+    }
+  }
+
+  // Save page metadata (names + hidden flags) to the session record
+  async function handleSavePageMetadata(metadata) {
+    setPageMetadata(metadata)
+    setShowPageManager(false)
+    try {
+      await updateSession({ page_metadata: metadata })
+      setLastSavedAt(new Date())
+      // If current page is now hidden, jump to the first visible page
+      if (metadata[String(currentPage)]?.hidden) {
+        for (let i = 1; i <= pageCount; i++) {
+          if (!metadata[String(i)]?.hidden) {
+            setCurrentPage(i)
+            break
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to save page metadata:', err)
     }
   }
 
@@ -1012,8 +1064,13 @@ export default function SessionPage() {
         {/* PDF page selector — only shown for multi-page PDFs */}
         {blueprintUrl && isPdf && pageCount > 1 && (
           <div className={styles.section}>
-            <div className={styles.sectionTitle}>
-              Pages ({pageCount})
+            <div className={styles.sectionTitleRow}>
+              <span className={styles.sectionTitle}>
+                Pages ({visiblePageCount}{visiblePageCount < pageCount ? ` of ${pageCount}` : ''})
+              </span>
+              <button className={styles.editPagesBtn} onClick={() => setShowPageManager(true)}>
+                Edit Pages
+              </button>
             </div>
             <PdfPageSelector
               pageCount={pageCount}
@@ -1021,6 +1078,7 @@ export default function SessionPage() {
               thumbnails={thumbnails}
               onPageSelect={handlePageSwitch}
               pageScales={pageScales}
+              pageMetadata={pageMetadata}
             />
           </div>
         )}
@@ -1053,7 +1111,7 @@ export default function SessionPage() {
         {blueprintUrl && pageZones.length > 0 && (
           <div className={styles.section}>
             <div className={styles.sectionTitle}>
-              {isPdf && pageCount > 1 ? `Page ${currentPage} Summary` : 'Summary'}
+              {isPdf && visiblePageCount > 1 ? `Page ${currentPage} Summary` : 'Summary'}
             </div>
             <SessionSummary zones={pageZones} />
           </div>
@@ -1299,6 +1357,17 @@ export default function SessionPage() {
           </div>
         )}
       </main>
+
+      {/* Page Manager modal */}
+      {showPageManager && isPdf && pageCount > 0 && (
+        <PdfPageManager
+          pageCount={pageCount}
+          thumbnails={thumbnails}
+          initialMetadata={pageMetadata}
+          onSave={handleSavePageMetadata}
+          onCancel={() => setShowPageManager(false)}
+        />
+      )}
     </div>
   )
 }

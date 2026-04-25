@@ -94,6 +94,31 @@
   padding: 0 14px 8px;
 }
 
+.sectionTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px 8px;
+}
+
+.sectionTitleRow .sectionTitle {
+  padding: 0;
+}
+
+.editPagesBtn {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+
+.editPagesBtn:hover {
+  text-decoration: underline;
+}
+
 .zoneListSection {
   flex: 1;
 }

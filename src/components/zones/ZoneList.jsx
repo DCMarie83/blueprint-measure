@@ -74,6 +74,17 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
   const [testingZoneId, setTestingZoneId] = useState(null)
   const [loggingTestId, setLoggingTestId] = useState(null)
 
+  // Collapse state — all zones start collapsed. Editing forces expand.
+  const [expandedZoneIds, setExpandedZoneIds] = useState(new Set())
+  function toggleExpand(zoneId) {
+    setExpandedZoneIds(prev => {
+      const next = new Set(prev)
+      if (next.has(zoneId)) next.delete(zoneId)
+      else next.add(zoneId)
+      return next
+    })
+  }
+
   function startEdit(zone) {
     setEditingId(zone.id)
     setEditName(zone.name)
@@ -141,6 +152,8 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
     <div className={styles.list}>
       {zones.map(zone => {
         const isRedrawing = zone.id === redrawingZoneId
+
+        const isExpanded = expandedZoneIds.has(zone.id) || editingId === zone.id
 
         return (
           <div key={zone.id} className={`${styles.zone} ${isRedrawing ? styles.zoneRedrawing : ''} ${hiddenZoneIds?.has(zone.id) ? styles.zoneHidden : ''}`}>
@@ -399,11 +412,11 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
               </div>
             ) : (
               <>
-                <div className={styles.zoneTop}>
+                <div className={styles.zoneTop} onClick={() => toggleExpand(zone.id)} style={{ cursor: 'pointer' }}>
                   {/* Visibility toggle eye icon */}
                   <button
                     className={`${styles.visBtn} ${hiddenZoneIds?.has(zone.id) ? styles.visBtnHidden : ''}`}
-                    onClick={() => onToggleVisibility?.(zone.id)}
+                    onClick={e => { e.stopPropagation(); onToggleVisibility?.(zone.id) }}
                     title={hiddenZoneIds?.has(zone.id) ? 'Show on canvas' : 'Hide on canvas'}
                   >
                     {hiddenZoneIds?.has(zone.id) ? <EyeOffIcon /> : <EyeIcon />}
@@ -423,11 +436,22 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                   >
                     {zone.measurement_type}
                   </span>
+                  {/* Collapsed result + chevron */}
+                  {!isExpanded && (
+                    <span className={styles.collapsedResult}>
+                      {zone.measurement_type === 'SF'
+                        ? formatSF(zone.result ?? 0)
+                        : zone.measurement_type === 'LF'
+                        ? formatLF(zone.result ?? 0)
+                        : `${Math.round(zone.result ?? 0)}`}
+                    </span>
+                  )}
+                  <span className={styles.expandChevron}>{isExpanded ? '▾' : '▸'}</span>
                 </div>
-                {zone.description && (
+                {isExpanded && zone.description && (
                   <div className={styles.zoneDescription}>{zone.description}</div>
                 )}
-                {(zone.surface_type || (zone.coat_count && zone.coat_count > 1)) && (
+                {isExpanded && (zone.surface_type || (zone.coat_count && zone.coat_count > 1)) && (
                   <div className={styles.zoneMeta}>
                     {[
                       // Show "Ceiling · Vaulted" style label when ceiling type is not flat
@@ -438,6 +462,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                     ].filter(Boolean).join(' · ')}
                   </div>
                 )}
+                {isExpanded && (<>
                 <div className={styles.zoneResult}>
                   {zone.measurement_type === 'SF'
                     ? formatSF(zone.result ?? 0)
@@ -525,9 +550,10 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                     </button>
                   )}
                 </div>
+                </>)}
 
                 {/* ── Test panel ── */}
-                {isTestMode && testingZoneId === zone.id && (() => {
+                {isExpanded && isTestMode && testingZoneId === zone.id && (() => {
                   const input = testData[zone.id] ?? { segments: [], countVerified: null, notes: '' }
                   const type = zone.measurement_type
 

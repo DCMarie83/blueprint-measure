@@ -6,6 +6,7 @@ import SessionPage from './pages/SessionPage'
 import AdminPage from './pages/AdminPage'
 import AccuracyTestPage from './pages/AccuracyTestPage'
 import ChangePasswordPage from './pages/ChangePasswordPage'
+import AccountPage from './pages/AccountPage'
 import FeedbackButton from './components/feedback/FeedbackButton'
 
 // The only email address that can access /admin.
@@ -69,6 +70,10 @@ export default function App() {
       <Route
         path="/session/:sessionId"
         element={<ProtectedRoute><SessionPage /></ProtectedRoute>}
+      />
+      <Route
+        path="/account"
+        element={<ProtectedRoute><AccountPage /></ProtectedRoute>}
       />
 
       {/* Password change — shown when force_password_change flag is set */}
