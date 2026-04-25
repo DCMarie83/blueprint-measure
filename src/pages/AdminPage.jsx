@@ -597,7 +597,7 @@ export default function AdminPage() {
     try {
       const { data, error } = await supabase
         .from('beta_feedback')
-        .select('*')
+        .select('id, tenant_id, user_id, session_id, type, description, screenshot_url, page_url, user_agent, status, admin_notes, created_at')
         .order('created_at', { ascending: false })
         .limit(500)
       if (error) throw new Error(error.message)
@@ -634,7 +634,7 @@ export default function AdminPage() {
     try {
       const { data, error } = await supabase
         .from('client_errors')
-        .select('*')
+        .select('id, tenant_id, user_id, error_message, stack_trace, component_stack, page_url, created_at')
         .order('created_at', { ascending: false })
         .limit(500)
       if (error) throw new Error(error.message)
