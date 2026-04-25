@@ -43,7 +43,7 @@ export default function PlansSection() {
     setExpandedKey(plan.key)
     setEditState({
       display_name: plan.display_name ?? '',
-      monthly_price_cents: plan.monthly_price_cents ?? 0,
+      monthly_price_dollars: ((plan.monthly_price_cents ?? 0) / 100).toFixed(2),
       is_active: plan.is_active ?? true,
       sort_order: plan.sort_order ?? 0,
       storage_limit_mb: plan.storage_limit_mb ?? '',
@@ -69,7 +69,7 @@ export default function PlansSection() {
     try {
       const update = {
         display_name: editState.display_name,
-        monthly_price_cents: parseInt(editState.monthly_price_cents) || 0,
+        monthly_price_cents: Math.round(parseFloat(editState.monthly_price_dollars) * 100) || 0,
         is_active: editState.is_active,
         sort_order: parseInt(editState.sort_order) || 0,
         storage_limit_mb: editState.storage_limit_mb === '' ? null : parseInt(editState.storage_limit_mb),
@@ -177,8 +177,11 @@ export default function PlansSection() {
                     <input className={styles.planFieldInput} value={plan.key} disabled />
                   </div>
                   <div className={styles.planField}>
-                    <span className={styles.planFieldLabel}>Monthly Price (cents)</span>
-                    <input className={styles.planFieldInput} type="number" value={editState.monthly_price_cents} onChange={e => updateField('monthly_price_cents', e.target.value)} />
+                    <span className={styles.planFieldLabel}>Monthly Price ($)</span>
+                    <input className={styles.planFieldInput} type="number" step="0.01" min="0" value={editState.monthly_price_dollars} onChange={e => updateField('monthly_price_dollars', e.target.value)} />
+                    {(parseFloat(editState.monthly_price_dollars) < 0 || isNaN(parseFloat(editState.monthly_price_dollars))) && editState.monthly_price_dollars !== '' && (
+                      <span className={styles.fieldError}>Price must be a positive number</span>
+                    )}
                   </div>
                 </div>
 
@@ -223,7 +226,7 @@ export default function PlansSection() {
                 </div>
 
                 <div className={styles.planActions}>
-                  <button className={styles.submitBtn} onClick={() => handleSave(plan.key)} disabled={saving === plan.key}>
+                  <button className={styles.submitBtn} onClick={() => handleSave(plan.key)} disabled={saving === plan.key || parseFloat(editState.monthly_price_dollars) < 0 || (editState.monthly_price_dollars !== '' && isNaN(parseFloat(editState.monthly_price_dollars)))}>
                     {saving === plan.key ? 'Saving…' : 'Save Plan'}
                   </button>
                   <button className={styles.dangerBtn} onClick={() => handleDelete(plan.key)} disabled={count > 0} title={count > 0 ? `${count} companies on this plan` : 'Delete plan'}>
