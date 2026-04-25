@@ -3,18 +3,26 @@ import { useAuth } from './context/AuthContext'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import SessionPage from './pages/SessionPage'
-import AdminPage from './pages/AdminPage'
 import AccuracyTestPage from './pages/AccuracyTestPage'
 import ChangePasswordPage from './pages/ChangePasswordPage'
 import AccountPage from './pages/AccountPage'
 import FeedbackButton from './components/feedback/FeedbackButton'
 
+// Admin layout + sections
+import AdminLayout from './pages/admin/AdminLayout'
+import OverviewSection from './pages/admin/OverviewSection'
+import CompaniesSection from './pages/admin/CompaniesSection'
+import UsersSection from './pages/admin/UsersSection'
+import PlansSection from './pages/admin/PlansSection'
+import TestLogsSection from './pages/admin/TestLogsSection'
+import FeedbackSection from './pages/admin/FeedbackSection'
+import ErrorsSection from './pages/admin/ErrorsSection'
+import SystemSection from './pages/admin/SystemSection'
+
 // The only email address that can access /admin.
 const ADMIN_EMAIL = 'main@ngautomationhub.com'
 
 // ProtectedRoute wraps pages that require a login.
-// If the user isn't logged in, they get sent to /login.
-// If the user must change their password first, they get sent to /change-password.
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
 
@@ -32,7 +40,6 @@ function ProtectedRoute({ children }) {
 }
 
 // AdminRoute wraps /admin. Requires login AND the hardcoded admin email.
-// Any other logged-in user gets silently redirected to /dashboard.
 function AdminRoute({ children }) {
   const { user, loading } = useAuth()
 
@@ -76,20 +83,30 @@ export default function App() {
         element={<ProtectedRoute><AccountPage /></ProtectedRoute>}
       />
 
-      {/* Password change — shown when force_password_change flag is set */}
+      {/* Password change */}
       <Route path="/change-password" element={<ChangePasswordPage />} />
 
-      {/* Admin routes — only accessible to ADMIN_EMAIL */}
+      {/* Admin routes — sidebar-navigated layout with nested routes */}
       <Route
         path="/admin"
-        element={<AdminRoute><AdminPage /></AdminRoute>}
-      />
+        element={<AdminRoute><AdminLayout /></AdminRoute>}
+      >
+        <Route index element={<Navigate to="/admin/overview" replace />} />
+        <Route path="overview" element={<OverviewSection />} />
+        <Route path="companies" element={<CompaniesSection />} />
+        <Route path="users" element={<UsersSection />} />
+        <Route path="plans" element={<PlansSection />} />
+        <Route path="test-logs" element={<TestLogsSection />} />
+        <Route path="feedback" element={<FeedbackSection />} />
+        <Route path="errors" element={<ErrorsSection />} />
+        <Route path="system" element={<SystemSection />} />
+      </Route>
       <Route
         path="/accuracy-test"
         element={<AdminRoute><AccuracyTestPage /></AdminRoute>}
       />
 
-      {/* Default: redirect to dashboard (or login if not authed) */}
+      {/* Default: redirect to dashboard */}
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   )
