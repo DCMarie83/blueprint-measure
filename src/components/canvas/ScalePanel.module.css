@@ -90,6 +90,23 @@
   padding: 6px 10px;
 }
 
+.rescaleBtn {
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: rgba(46, 139, 255, 0.08);
+  border: 1px solid rgba(46, 139, 255, 0.2);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.rescaleBtn:hover {
+  background: rgba(46, 139, 255, 0.15);
+}
+
 /* ── Scale notice pill (standard users) ── */
 
 .scalePill {

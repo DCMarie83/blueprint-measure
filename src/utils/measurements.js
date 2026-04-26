@@ -213,3 +213,47 @@ export function calculate(measurementType, points, pixelsPerFoot) {
     default:      return 0
   }
 }
+
+// Recalculate a zone's result (and dependent fields) using a new pixelsPerFoot.
+// Returns a new zone object with updated numeric fields. Does NOT mutate input.
+export function rescaleZone(zone, newPPF) {
+  if (!zone.points || zone.points.length === 0 || !newPPF) return zone
+  if (zone.measurement_type === 'count') return zone
+
+  const updates = { ...zone }
+
+  if (zone.measurement_type === 'LF') {
+    updates.result = calculateLF(zone.points, newPPF)
+    return updates
+  }
+
+  // SF zone — base footprint
+  let result = calculateSF(zone.points, newPPF)
+
+  // Ceiling adjustment (pitch or height-based)
+  if (zone.surface_type === 'Ceiling' && zone.ceiling_type && zone.ceiling_type !== 'flat') {
+    const { adjustedSF } = calculateCeilingSF(result, zone.ceiling_type, {
+      pitchRise:     zone.ceiling_pitch_rise ?? 0,
+      peakHeight:    zone.ceiling_peak_height ?? 0,
+      wallHeight:    zone.ceiling_wall_height ?? 0,
+      trayPerimeter: zone.ceiling_tray_perimeter ?? 0,
+      dropDepth:     zone.ceiling_drop_depth ?? 0,
+      lowWallHeight:  zone.ceiling_low_wall_height ?? 0,
+      highWallHeight: zone.ceiling_high_wall_height ?? 0,
+    }, zone.points, newPPF)
+    result = adjustedSF
+  }
+
+  // Wall adjustment
+  if (zone.wall_height && zone.surface_type === 'Wall') {
+    const { grossWallSF, netWallSF } = calculateWallSF(
+      zone.points, newPPF, zone.wall_height, zone.opening_deductions
+    )
+    updates.gross_wall_sf = grossWallSF
+    updates.net_wall_sf = netWallSF
+    result = netWallSF
+  }
+
+  updates.result = result
+  return updates
+}

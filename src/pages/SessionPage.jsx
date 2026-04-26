@@ -4,9 +4,9 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useSession } from '../hooks/useSession'
 import { usePdf } from '../hooks/usePdf'
-import { calcPixelsPerFoot } from '../utils/scaleOptions'
+import { SCALE_OPTIONS, calcPixelsPerFoot } from '../utils/scaleOptions'
 import { parseFeetInches, formatSF, formatLF } from '../utils/fractions'
-import { calculate, calculateSF, calculateCeilingSF, calculateWallSF } from '../utils/measurements'
+import { calculate, calculateSF, calculateCeilingSF, calculateWallSF, rescaleZone } from '../utils/measurements'
 import { exportCSV } from '../utils/csvExport'
 import { downloadPdfWithMeasurements } from '../utils/pdfExport'
 import { detectScaleFromImage } from '../utils/detectScale'
@@ -15,6 +15,7 @@ import { getCompanyStorageUsage } from '../utils/storageUsage'
 import BlueprintCanvas from '../components/canvas/BlueprintCanvas'
 import BlueprintUploader from '../components/canvas/BlueprintUploader'
 import ScalePanel from '../components/canvas/ScalePanel'
+import ScaleChangeDialog from '../components/canvas/ScaleChangeDialog'
 import ZoneDrawPanel from '../components/zones/ZoneDrawPanel'
 import ZoneList from '../components/zones/ZoneList'
 import SessionSummary from '../components/zones/SessionSummary'
@@ -34,7 +35,7 @@ export default function SessionPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const isAdmin = user?.email === ADMIN_EMAIL
-  const { session, zones, enabledFeatures, loading, error, saveZone, updateZone, updateZoneLabelOffset, redrawZone, deleteZone, updateSession } = useSession(sessionId)
+  const { session, zones, enabledFeatures, loading, error, saveZone, updateZone, updateZoneLabelOffset, redrawZone, deleteZone, updateSession, refetch } = useSession(sessionId)
 
   // ── Blueprint state ──────────────────────────────────────────────────────────
   const [blueprintUrl, setBlueprintUrl] = useState(null)
@@ -105,6 +106,10 @@ export default function SessionPage() {
   // ── Save status ─────────────────────────────────────────────────────────────
   const [lastSavedAt, setLastSavedAt] = useState(null)
   const [manualSaving, setManualSaving] = useState(false)
+
+  // ── Scale change rescale prompt ───────────────────────────────────────────────
+  const [pendingScaleChange, setPendingScaleChange] = useState(null) // { oldPPF, newPPF }
+  const [rescaleToast, setRescaleToast] = useState('')
 
   // ── Summary collapsed state (persists via localStorage) ─────────────────────
   const [summaryCollapsed, setSummaryCollapsed] = useState(() => localStorage.getItem('bm_summary_collapsed') === 'true')
@@ -251,17 +256,66 @@ export default function SessionPage() {
     }
   }
 
-  // Save a new scale for the current page and persist it to the database so it
-  // survives a session reload. Each page stores its own independent scale value.
-  async function handleScaleChange(ppf) {
+  // Save a new scale for the current page and persist it to the database.
+  async function applyScaleChange(ppf) {
     const newScales = { ...pageScales, [currentPage]: ppf }
     setPageScales(newScales)
+    runScaleSanityCheck(ppf, 'dropdown')
     try {
       await updateSession({ page_scales: newScales })
       setLastSavedAt(new Date())
     } catch (err) {
       console.error('Failed to save page scale:', err)
     }
+  }
+
+  function findScaleLabel(ppf) {
+    if (!ppf) return 'Custom scale'
+    const match = SCALE_OPTIONS.find(o =>
+      o.inchesPerFoot &&
+      Math.abs(calcPixelsPerFoot(o.inchesPerFoot, pixelsPerInch) - ppf) < 0.5
+    )
+    return match?.label ?? 'Custom scale'
+  }
+
+  // Rescale all zones on the current page using the given pixelsPerFoot
+  async function rescaleZonesOnCurrentPage(newPPF) {
+    const zonesOnPage = zones.filter(z => (z.page_number ?? 1) === currentPage)
+    if (zonesOnPage.length === 0) return 0
+    let count = 0
+    const updates = zonesOnPage
+      .filter(z => z.measurement_type !== 'count')
+      .map(z => {
+        const rescaled = rescaleZone(z, newPPF)
+        if (rescaled.result === z.result) return null
+        count++
+        return { id: z.id, result: rescaled.result, gross_wall_sf: rescaled.gross_wall_sf, net_wall_sf: rescaled.net_wall_sf }
+      })
+      .filter(Boolean)
+
+    await Promise.all(updates.map(u =>
+      supabase.from('zones').update({ result: u.result, gross_wall_sf: u.gross_wall_sf ?? null, net_wall_sf: u.net_wall_sf ?? null }).eq('id', u.id)
+    ))
+
+    // Refresh zones from DB to get accurate state
+    await refetch()
+    setLastSavedAt(new Date())
+    return count
+  }
+
+  // Intercept scale changes to prompt for zone rescale when zones exist
+  function handleScaleChange(ppf) {
+    const oldPPF = pageScales[currentPage]
+    const zonesOnPage = zones.filter(z => (z.page_number ?? 1) === currentPage)
+
+    // First scale set or no zones — apply immediately
+    if (!oldPPF || zonesOnPage.length === 0 || Math.abs(oldPPF - ppf) < 0.01) {
+      applyScaleChange(ppf)
+      return
+    }
+
+    // Zones exist and scale is changing — show prompt
+    setPendingScaleChange({ oldPPF, newPPF: ppf, zoneCount: zonesOnPage.length })
   }
 
   // Pixel sanity check — pure math, no API calls.
@@ -1135,7 +1189,7 @@ export default function SessionPage() {
               pageCount={pageCount}
               isSuperAdmin={isAdmin}
               isPdf={isPdf}
-              onScaleChange={(ppf) => { handleScaleChange(ppf); runScaleSanityCheck(ppf, 'dropdown') }}
+              onScaleChange={(ppf) => { handleScaleChange(ppf) }}
               onStartCalibration={handleStartCalibration}
               calibrating={calibrating}
               pageKey={currentPage}
@@ -1143,6 +1197,13 @@ export default function SessionPage() {
               onDetectScale={handleDetectScale}
               scaleSanity={scaleSanity}
               scaleDetectionBanner={scaleDetectionBanner}
+              hasZonesOnPage={pageZones.length > 0}
+              onRescaleZones={async () => {
+                if (!pixelsPerFoot) return
+                const count = await rescaleZonesOnCurrentPage(pixelsPerFoot)
+                setRescaleToast(`${count} zone${count === 1 ? '' : 's'} rescaled`)
+                setTimeout(() => setRescaleToast(''), 3000)
+              }}
             />
           </div>
         )}
@@ -1430,6 +1491,43 @@ export default function SessionPage() {
           onSave={handleSavePageMetadata}
           onCancel={() => setShowPageManager(false)}
         />
+      )}
+
+      {/* Scale change rescale dialog */}
+      <ScaleChangeDialog
+        open={!!pendingScaleChange}
+        zoneCount={pendingScaleChange?.zoneCount ?? 0}
+        oldScaleLabel={findScaleLabel(pendingScaleChange?.oldPPF)}
+        newScaleLabel={findScaleLabel(pendingScaleChange?.newPPF)}
+        onRecalculate={async () => {
+          const { newPPF } = pendingScaleChange
+          await applyScaleChange(newPPF)
+          runScaleSanityCheck(newPPF, 'dropdown')
+          const count = await rescaleZonesOnCurrentPage(newPPF)
+          setRescaleToast(`${count} zone${count === 1 ? '' : 's'} rescaled`)
+          setTimeout(() => setRescaleToast(''), 3000)
+          setPendingScaleChange(null)
+        }}
+        onKeepAsIs={async () => {
+          const { newPPF } = pendingScaleChange
+          await applyScaleChange(newPPF)
+          runScaleSanityCheck(newPPF, 'dropdown')
+          setRescaleToast('Scale updated. Existing zones kept at previous scale.')
+          setTimeout(() => setRescaleToast(''), 3000)
+          setPendingScaleChange(null)
+        }}
+        onCancel={() => setPendingScaleChange(null)}
+      />
+
+      {/* Rescale toast */}
+      {rescaleToast && (
+        <div style={{
+          position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)',
+          background: 'rgba(15,25,35,0.9)', color: '#86efac', padding: '10px 20px',
+          borderRadius: 8, fontSize: 13, fontWeight: 600, zIndex: 200,
+        }}>
+          {rescaleToast}
+        </div>
       )}
     </div>
   )

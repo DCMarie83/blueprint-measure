@@ -5,7 +5,8 @@ import styles from './ScalePanel.module.css'
 
 export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, pdfPageInfo, currentPage, pageCount,
   isSuperAdmin = false, isPdf = false, onScaleChange, onStartCalibration, calibrating, pageKey,
-  enabledFeatures = {}, onDetectScale, scaleSanity, scaleDetectionBanner }) {
+  enabledFeatures = {}, onDetectScale, scaleSanity, scaleDetectionBanner,
+  hasZonesOnPage = false, onRescaleZones }) {
   const [selected, setSelected] = useState('1/4')
   const [knownFeet, setKnownFeet] = useState('')
   const [helpOpen, setHelpOpen] = useState(false)
@@ -26,6 +27,18 @@ export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, pdfPageI
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageKey, pixelsPerInch])
+
+  // ── Sync dropdown to actual pixelsPerFoot (e.g. after Cancel reverts scale) ─
+  useEffect(() => {
+    if (!pixelsPerFoot) return
+    const match = SCALE_OPTIONS.find(o => {
+      if (!o.inchesPerFoot) return false
+      return Math.abs(calcPixelsPerFoot(o.inchesPerFoot, pixelsPerInch) - pixelsPerFoot) < 0.5
+    })
+    if (match) setSelected(match.value)
+    else if (selected !== 'manual') setSelected('manual')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pixelsPerFoot, pixelsPerInch])
 
   // ── Recalculate when pixelsPerInch changes from fallback to real ────────────
   // On PDF load the sequence is: mount → default fires with pixelsPerInch=96 →
@@ -112,6 +125,12 @@ export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, pdfPageI
         <div className={styles.activeScale}>
           Scale active — 1 ft = {(pixelsPerFoot).toFixed(1)} px
         </div>
+      )}
+
+      {pixelsPerFoot && hasZonesOnPage && onRescaleZones && (
+        <button type="button" className={styles.rescaleBtn} onClick={onRescaleZones}>
+          Rescale existing zones to this scale
+        </button>
       )}
 
       {/* ── Scale notice pill (standard users only) ── */}
