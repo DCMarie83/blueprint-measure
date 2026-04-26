@@ -1426,9 +1426,9 @@ export default function SessionPage() {
             <button
               className={`${styles.orthoBtn} ${orthoMode ? styles.orthoBtnActive : ''}`}
               onClick={toggleOrtho}
-              title="Ortho mode — snap to horizontal/vertical (O)"
+              title="Straight lines — snap to horizontal/vertical (O)"
             >
-              Ortho {orthoMode ? 'ON' : 'OFF'}
+              Straight Lines {orthoMode ? 'ON' : 'OFF'}
             </button>
           </div>
         )}
