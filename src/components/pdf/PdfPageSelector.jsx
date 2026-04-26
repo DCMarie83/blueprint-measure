@@ -2,17 +2,8 @@ import styles from './PdfPageSelector.module.css'
 
 // Renders a horizontal strip of page thumbnails for a multi-page PDF.
 // Hidden pages (via page_metadata) are filtered out entirely.
-// Custom page names from page_metadata are displayed instead of "Page N".
-//
-// Props:
-//   pageCount    — total number of pages
-//   currentPage  — the currently selected page number
-//   thumbnails   — object map { [pageNum]: dataUrl } populated async
-//   onPageSelect — (pageNum: number) => void
-//   pageScales   — { [pageNum]: pixelsPerFoot } from session state
-//   pageMetadata — { [pageNum]: { name, hidden } } from session state
-export default function PdfPageSelector({ pageCount, currentPage, thumbnails, onPageSelect, pageScales = {}, pageMetadata = {} }) {
-  // Build list of visible pages
+// Shows zone count badge instead of the old green dot.
+export default function PdfPageSelector({ pageCount, currentPage, thumbnails, onPageSelect, pageScales = {}, pageMetadata = {}, zones = [] }) {
   const visiblePages = []
   for (let i = 1; i <= pageCount; i++) {
     const meta = pageMetadata[String(i)]
@@ -23,27 +14,27 @@ export default function PdfPageSelector({ pageCount, currentPage, thumbnails, on
   return (
     <div className={styles.strip}>
       {visiblePages.map(pageNum => {
-        const hasScale = pageScales[pageNum] != null
         const meta = pageMetadata[String(pageNum)]
         const displayName = meta?.name || `Page ${pageNum}`
+        const zoneCount = zones.filter(z => (z.page_number ?? 1) === pageNum).length
         return (
           <button
             key={pageNum}
             className={`${styles.thumb} ${pageNum === currentPage ? styles.active : ''}`}
             onClick={() => onPageSelect(pageNum)}
-            title={`${displayName}${hasScale ? ' (scale set)' : ''}`}
+            title={`${displayName}${zoneCount > 0 ? ` (${zoneCount} zones)` : ''}`}
           >
             <div className={styles.preview}>
               {thumbnails[pageNum] ? (
-                <img
-                  src={thumbnails[pageNum]}
-                  alt={displayName}
-                  className={styles.thumbImg}
-                />
+                <img src={thumbnails[pageNum]} alt={displayName} className={styles.thumbImg} />
               ) : (
                 <div className={styles.thumbPlaceholder} />
               )}
-              {hasScale && <span className={styles.savedDot} />}
+              {zoneCount > 0 && (
+                <span className={styles.zoneBadge}>
+                  {zoneCount >= 100 ? '99+' : zoneCount}
+                </span>
+              )}
             </div>
             <span className={styles.pageLabel}>{displayName}</span>
           </button>

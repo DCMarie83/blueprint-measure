@@ -1,6 +1,6 @@
 // Generates and triggers a CSV download for all zones in a session.
 import { getMaxReach, estimatePaint } from './measurements'
-import { formatSF, formatLF } from './fractions'
+import { formatSFPrecise, formatLF } from './fractions'
 
 export function exportCSV(session, zones) {
   const rows = []
@@ -11,7 +11,7 @@ export function exportCSV(session, zones) {
   // One row per zone
   zones.forEach(zone => {
     const result = zone.measurement_type === 'SF'
-      ? formatSF(zone.result ?? 0)
+      ? formatSFPrecise(zone.result ?? 0)
       : zone.measurement_type === 'LF'
       ? formatLF(zone.result ?? 0)
       : `${Math.round(zone.result ?? 0)} items`
@@ -48,7 +48,7 @@ export function exportCSV(session, zones) {
 
   rows.push([]) // blank separator
   rows.push(['SUMMARY', '', '', '', '', '', '', '', '', '', ''])
-  rows.push(['Total SF', '', '', '', '', 'SF', formatSF(totalSF), 'sq ft', '', '', ''])
+  rows.push(['Total SF', '', '', '', '', 'SF', formatSFPrecise(totalSF), 'sq ft', '', '', ''])
   rows.push(['Total LF', '', '', '', '', 'LF', formatLF(totalLF), 'lin ft', '', '', ''])
   rows.push(['Total Count', '', '', '', '', 'count', Math.round(totalCount) + ' items', 'each', '', '', ''])
 

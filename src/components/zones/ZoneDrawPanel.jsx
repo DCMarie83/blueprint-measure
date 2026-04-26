@@ -1,8 +1,14 @@
 import { useState } from 'react'
 import { parseFeetInches } from '../../utils/fractions'
+import InfoTooltip from '../ui/InfoTooltip'
 import styles from './ZoneDrawPanel.module.css'
 
 const SURFACE_TYPES = ['Wall', 'Ceiling', 'Trim', 'Door', 'Window', 'Cabinet', 'Floor', 'Exterior', 'Other']
+
+const PITCH_OPTIONS = [1,2,3,4,5,6,7,8,9,10,12,14,16,18].map(rise => ({
+  value: rise,
+  label: `${rise}/12 (${Math.round(Math.atan(rise / 12) * (180 / Math.PI))}°)`,
+}))
 
 // Preset color swatches for zone colors. null = use the auto-cycling palette.
 const PRESET_COLORS = [
@@ -42,6 +48,8 @@ export default function ZoneDrawPanel({
   const [ceilingDropDepth, setCeilingDropDepth] = useState('')
   const [ceilingLowWallHeight, setCeilingLowWallHeight] = useState('')
   const [ceilingHighWallHeight, setCeilingHighWallHeight] = useState('')
+  const [ceilingPitchMode, setCeilingPitchMode] = useState(false) // false = heights, true = pitch
+  const [ceilingPitchRise, setCeilingPitchRise] = useState(6)
 
   // Wall-specific fields — only used when surfaceType === 'Wall' && type === 'SF'
   const [wallHeight, setWallHeight] = useState('')
@@ -70,12 +78,13 @@ export default function ZoneDrawPanel({
       type,
       color: color ?? null,
       ceiling_type: isCeiling ? ceilingType : null,
-      ceiling_peak_height:      isCeiling && ceilingType === 'vaulted' ? parseFeetInches(ceilingPeakHeight)    : null,
-      ceiling_wall_height:      isCeiling && ceilingType === 'vaulted' ? parseFeetInches(ceilingWallHeight)    : null,
+      ceiling_pitch_rise: isCeiling && ceilingPitchMode && (ceilingType === 'vaulted' || ceilingType === 'shed') ? ceilingPitchRise : null,
+      ceiling_peak_height:      isCeiling && !ceilingPitchMode && ceilingType === 'vaulted' ? parseFeetInches(ceilingPeakHeight)    : null,
+      ceiling_wall_height:      isCeiling && !ceilingPitchMode && ceilingType === 'vaulted' ? parseFeetInches(ceilingWallHeight)    : null,
       ceiling_tray_perimeter:   isCeiling && ceilingType === 'tray'    ? parseFeetInches(ceilingTrayPerimeter) : null,
       ceiling_drop_depth:       isCeiling && ceilingType === 'tray'    ? parseFeetInches(ceilingDropDepth)     : null,
-      ceiling_low_wall_height:  isCeiling && ceilingType === 'shed'    ? parseFeetInches(ceilingLowWallHeight)  : null,
-      ceiling_high_wall_height: isCeiling && ceilingType === 'shed'    ? parseFeetInches(ceilingHighWallHeight) : null,
+      ceiling_low_wall_height:  isCeiling && !ceilingPitchMode && ceilingType === 'shed'    ? parseFeetInches(ceilingLowWallHeight)  : null,
+      ceiling_high_wall_height: isCeiling && !ceilingPitchMode && ceilingType === 'shed'    ? parseFeetInches(ceilingHighWallHeight) : null,
       wall_height: isWall ? parseFeetInches(wallHeight) : null,
       opening_deductions: isWall && openings.length > 0
         ? openings.map(o => ({ name: o.name, sf: o.sf }))
@@ -256,7 +265,7 @@ export default function ZoneDrawPanel({
       {/* Ceiling type selector — only shown when surface type is Ceiling */}
       {surfaceType === 'Ceiling' && (
         <div className={styles.field}>
-          <label>Ceiling Type</label>
+          <label>Ceiling Type <InfoTooltip>Vaulted = symmetric slopes meeting at a center peak. Tray = recessed center with vertical edges. Shed = single low-to-high slope. Pick the type that matches the room.</InfoTooltip></label>
           <select
             className={styles.select}
             value={ceilingType}
@@ -270,30 +279,30 @@ export default function ZoneDrawPanel({
         </div>
       )}
 
-      {/* Vaulted fields — peak height and wall (eave) height */}
+      {/* Vaulted fields — heights OR pitch */}
       {surfaceType === 'Ceiling' && ceilingType === 'vaulted' && (
         <div className={styles.field}>
-          <label>Vault Heights</label>
-          <div className={styles.heightRow}>
-            <div className={styles.heightField}>
-              <label>Peak height</label>
-              <input
-                type="text"
-                value={ceilingPeakHeight}
-                onChange={e => setCeilingPeakHeight(e.target.value)}
-                placeholder="e.g. 14' or 13'6&quot;"
-              />
-            </div>
-            <div className={styles.heightField}>
-              <label>Wall height</label>
-              <input
-                type="text"
-                value={ceilingWallHeight}
-                onChange={e => setCeilingWallHeight(e.target.value)}
-                placeholder="e.g. 8' or 7'6&quot;"
-              />
-            </div>
+          <label>Vault Slope Input <InfoTooltip>Roof pitch is rise/run. 6/12 means 6 inches of rise for every 12 inches of horizontal run. Standard residential roofs are 4/12 to 9/12. Cathedral ceilings often match the roof pitch above.</InfoTooltip></label>
+          <div className={styles.heightRow} style={{ marginBottom: 8 }}>
+            <button type="button" className={`${styles.typeBtn} ${!ceilingPitchMode ? styles.typeBtnActive : ''}`} onClick={() => setCeilingPitchMode(false)}>Use heights</button>
+            <button type="button" className={`${styles.typeBtn} ${ceilingPitchMode ? styles.typeBtnActive : ''}`} onClick={() => setCeilingPitchMode(true)}>Use pitch (X/12)</button>
           </div>
+          {ceilingPitchMode ? (
+            <select className={styles.select} value={ceilingPitchRise} onChange={e => setCeilingPitchRise(parseInt(e.target.value))}>
+              {PITCH_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          ) : (
+            <div className={styles.heightRow}>
+              <div className={styles.heightField}>
+                <label>Peak height</label>
+                <input type="text" value={ceilingPeakHeight} onChange={e => setCeilingPeakHeight(e.target.value)} placeholder="e.g. 14' or 13'6&quot;" />
+              </div>
+              <div className={styles.heightField}>
+                <label>Wall height</label>
+                <input type="text" value={ceilingWallHeight} onChange={e => setCeilingWallHeight(e.target.value)} placeholder="e.g. 8' or 7'6&quot;" />
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -324,30 +333,30 @@ export default function ZoneDrawPanel({
         </div>
       )}
 
-      {/* Shed / Single slope fields — low and high wall heights */}
+      {/* Shed / Single slope fields — heights OR pitch */}
       {surfaceType === 'Ceiling' && ceilingType === 'shed' && (
         <div className={styles.field}>
-          <label>Shed Heights</label>
-          <div className={styles.heightRow}>
-            <div className={styles.heightField}>
-              <label>Low wall</label>
-              <input
-                type="text"
-                value={ceilingLowWallHeight}
-                onChange={e => setCeilingLowWallHeight(e.target.value)}
-                placeholder="e.g. 8' or 7'6&quot;"
-              />
-            </div>
-            <div className={styles.heightField}>
-              <label>High wall</label>
-              <input
-                type="text"
-                value={ceilingHighWallHeight}
-                onChange={e => setCeilingHighWallHeight(e.target.value)}
-                placeholder="e.g. 12' or 11'6&quot;"
-              />
-            </div>
+          <label>Shed Slope Input <InfoTooltip>Roof pitch is rise/run. 6/12 means 6 inches of rise for every 12 inches of horizontal run. Standard residential roofs are 4/12 to 9/12.</InfoTooltip></label>
+          <div className={styles.heightRow} style={{ marginBottom: 8 }}>
+            <button type="button" className={`${styles.typeBtn} ${!ceilingPitchMode ? styles.typeBtnActive : ''}`} onClick={() => setCeilingPitchMode(false)}>Use heights</button>
+            <button type="button" className={`${styles.typeBtn} ${ceilingPitchMode ? styles.typeBtnActive : ''}`} onClick={() => setCeilingPitchMode(true)}>Use pitch (X/12)</button>
           </div>
+          {ceilingPitchMode ? (
+            <select className={styles.select} value={ceilingPitchRise} onChange={e => setCeilingPitchRise(parseInt(e.target.value))}>
+              {PITCH_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          ) : (
+            <div className={styles.heightRow}>
+              <div className={styles.heightField}>
+                <label>Low wall</label>
+                <input type="text" value={ceilingLowWallHeight} onChange={e => setCeilingLowWallHeight(e.target.value)} placeholder="e.g. 8' or 7'6&quot;" />
+              </div>
+              <div className={styles.heightField}>
+                <label>High wall</label>
+                <input type="text" value={ceilingHighWallHeight} onChange={e => setCeilingHighWallHeight(e.target.value)} placeholder="e.g. 12' or 11'6&quot;" />
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -358,7 +367,7 @@ export default function ZoneDrawPanel({
             <label>Wall Height &amp; Openings <span className={styles.optional}>(optional)</span></label>
 
             <div className={styles.heightField}>
-              <label>Wall height</label>
+              <label>Wall Height (ft) <InfoTooltip>The actual height of the wall from floor to ceiling, in feet. Standard residential is 8-9 ft. Commercial spaces are typically 10-12 ft.</InfoTooltip></label>
               <input
                 type="text"
                 value={wallHeight}
@@ -393,11 +402,11 @@ export default function ZoneDrawPanel({
                 ))}
                 <div className={styles.openingBtns}>
                   <button type="button" className={styles.openingAddBtn}
-                    onClick={() => addOpening('Door', 21)}>+ Door (21sf)</button>
+                    onClick={() => addOpening('Door', 21)}>+ Door (21sf) <InfoTooltip>Subtracts standard door area (21 SF) from wall surface. Standard door = 7' tall x 3' wide.</InfoTooltip></button>
                   <button type="button" className={styles.openingAddBtn}
-                    onClick={() => addOpening('Window', 15)}>+ Window (15sf)</button>
+                    onClick={() => addOpening('Window', 15)}>+ Window (15sf) <InfoTooltip>Subtracts standard window area (15 SF) from wall surface. Click + Custom for exact dimensions.</InfoTooltip></button>
                   <button type="button" className={styles.openingAddBtn}
-                    onClick={() => addOpening('Opening', 0)}>+ Custom</button>
+                    onClick={() => addOpening('Opening', 0)}>+ Custom <InfoTooltip>Add a custom opening (large window, archway, fireplace) by entering exact width and height.</InfoTooltip></button>
                 </div>
               </>
             )}
@@ -410,7 +419,7 @@ export default function ZoneDrawPanel({
       )}
 
       <div className={styles.field}>
-        <label>Number of Coats</label>
+        <label>Number of Coats <InfoTooltip>How many coats of paint will be applied. Most jobs require 2 coats. Affects paint calculator estimates.</InfoTooltip></label>
         <div className={styles.coatGroup}>
           {[1, 2].map(n => (
             <button

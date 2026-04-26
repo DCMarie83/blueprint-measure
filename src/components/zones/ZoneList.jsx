@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import InfoTooltip from '../ui/InfoTooltip'
 import styles from './ZoneList.module.css'
 import { getMaxReach, estimatePaint } from '../../utils/measurements'
 import { parseFeetInches, formatFeetInches, formatSF, formatLF } from '../../utils/fractions'
@@ -39,6 +40,11 @@ const TYPE_COLORS = {
 
 const SURFACE_TYPES = ['Wall', 'Ceiling', 'Trim', 'Door', 'Window', 'Cabinet', 'Floor', 'Exterior', 'Other']
 
+const PITCH_OPTIONS = [1,2,3,4,5,6,7,8,9,10,12,14,16,18].map(rise => ({
+  value: rise,
+  label: `${rise}/12 (${Math.round(Math.atan(rise / 12) * (180 / Math.PI))}°)`,
+}))
+
 const CEILING_TYPE_LABELS = {
   flat: 'Flat',
   vaulted: 'Vaulted',
@@ -65,6 +71,8 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
   const [editCeilingLowWallHeight, setEditCeilingLowWallHeight] = useState('')
   const [editCeilingHighWallHeight, setEditCeilingHighWallHeight] = useState('')
   const [editColor, setEditColor] = useState(null)
+  const [editPitchMode, setEditPitchMode] = useState(false)
+  const [editPitchRise, setEditPitchRise] = useState(6)
 
   // Wall edit fields
   const [editWallHeight, setEditWallHeight] = useState('')
@@ -101,6 +109,8 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
     setEditCeilingLowWallHeight(zone.ceiling_low_wall_height  ? formatFeetInches(zone.ceiling_low_wall_height)  : '')
     setEditCeilingHighWallHeight(zone.ceiling_high_wall_height ? formatFeetInches(zone.ceiling_high_wall_height) : '')
     setEditColor(zone.color ?? null)
+    setEditPitchMode(!!zone.ceiling_pitch_rise)
+    setEditPitchRise(zone.ceiling_pitch_rise ?? 6)
     setEditWallHeight(zone.wall_height ? formatFeetInches(zone.wall_height) : '')
     setEditOpenings((zone.opening_deductions ?? []).map((o, i) => ({ id: i + 1, ...o })))
   }
@@ -122,12 +132,13 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
         surface_finish: editSurfaceFinish,
         notes: editNotes.trim() || null,
         ceiling_type: isCeiling ? editCeilingType : null,
-        ceiling_peak_height:      isCeiling && editCeilingType === 'vaulted' ? parseFeetInches(editCeilingPeakHeight)    : null,
-        ceiling_wall_height:      isCeiling && editCeilingType === 'vaulted' ? parseFeetInches(editCeilingWallHeight)    : null,
+        ceiling_pitch_rise: isCeiling && editPitchMode && (editCeilingType === 'vaulted' || editCeilingType === 'shed') ? editPitchRise : null,
+        ceiling_peak_height:      isCeiling && !editPitchMode && editCeilingType === 'vaulted' ? parseFeetInches(editCeilingPeakHeight)    : null,
+        ceiling_wall_height:      isCeiling && !editPitchMode && editCeilingType === 'vaulted' ? parseFeetInches(editCeilingWallHeight)    : null,
         ceiling_tray_perimeter:   isCeiling && editCeilingType === 'tray'    ? parseFeetInches(editCeilingTrayPerimeter) : null,
         ceiling_drop_depth:       isCeiling && editCeilingType === 'tray'    ? parseFeetInches(editCeilingDropDepth)     : null,
-        ceiling_low_wall_height:  isCeiling && editCeilingType === 'shed'    ? parseFeetInches(editCeilingLowWallHeight)  : null,
-        ceiling_high_wall_height: isCeiling && editCeilingType === 'shed'    ? parseFeetInches(editCeilingHighWallHeight) : null,
+        ceiling_low_wall_height:  isCeiling && !editPitchMode && editCeilingType === 'shed'    ? parseFeetInches(editCeilingLowWallHeight)  : null,
+        ceiling_high_wall_height: isCeiling && !editPitchMode && editCeilingType === 'shed'    ? parseFeetInches(editCeilingHighWallHeight) : null,
         color: editColor ?? null,
         wall_height: editSurfaceType === 'Wall' ? parseFeetInches(editWallHeight) : null,
         opening_deductions: editSurfaceType === 'Wall' && editOpenings.length > 0
@@ -196,30 +207,30 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                   </select>
                 )}
 
-                {/* Vaulted height inputs */}
+                {/* Vaulted — heights OR pitch */}
                 {editSurfaceType === 'Ceiling' && editCeilingType === 'vaulted' && (
-                  <div className={styles.editHeightRow}>
-                    <div className={styles.editHeightField}>
-                      <span className={styles.editHeightLabel}>Peak height</span>
-                      <input
-                        className={styles.editInput}
-                        type="text"
-                        value={editCeilingPeakHeight}
-                        onChange={e => setEditCeilingPeakHeight(e.target.value)}
-                        placeholder="e.g. 14' or 13'6&quot;"
-                      />
+                  <>
+                    <div className={styles.editHeightRow}>
+                      <button type="button" className={`${styles.editCoatBtn} ${!editPitchMode ? styles.editCoatActive : ''}`} onClick={() => setEditPitchMode(false)}>Use heights</button>
+                      <button type="button" className={`${styles.editCoatBtn} ${editPitchMode ? styles.editCoatActive : ''}`} onClick={() => setEditPitchMode(true)}>Use pitch</button>
                     </div>
-                    <div className={styles.editHeightField}>
-                      <span className={styles.editHeightLabel}>Wall height</span>
-                      <input
-                        className={styles.editInput}
-                        type="text"
-                        value={editCeilingWallHeight}
-                        onChange={e => setEditCeilingWallHeight(e.target.value)}
-                        placeholder="e.g. 8' or 7'6&quot;"
-                      />
-                    </div>
-                  </div>
+                    {editPitchMode ? (
+                      <select className={styles.editSelect} value={editPitchRise} onChange={e => setEditPitchRise(parseInt(e.target.value))}>
+                        {PITCH_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
+                    ) : (
+                      <div className={styles.editHeightRow}>
+                        <div className={styles.editHeightField}>
+                          <span className={styles.editHeightLabel}>Peak height</span>
+                          <input className={styles.editInput} type="text" value={editCeilingPeakHeight} onChange={e => setEditCeilingPeakHeight(e.target.value)} placeholder="e.g. 14' or 13'6&quot;" />
+                        </div>
+                        <div className={styles.editHeightField}>
+                          <span className={styles.editHeightLabel}>Wall height</span>
+                          <input className={styles.editInput} type="text" value={editCeilingWallHeight} onChange={e => setEditCeilingWallHeight(e.target.value)} placeholder="e.g. 8' or 7'6&quot;" />
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {/* Tray inputs */}
@@ -248,30 +259,30 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                   </div>
                 )}
 
-                {/* Shed height inputs */}
+                {/* Shed — heights OR pitch */}
                 {editSurfaceType === 'Ceiling' && editCeilingType === 'shed' && (
-                  <div className={styles.editHeightRow}>
-                    <div className={styles.editHeightField}>
-                      <span className={styles.editHeightLabel}>Low wall</span>
-                      <input
-                        className={styles.editInput}
-                        type="text"
-                        value={editCeilingLowWallHeight}
-                        onChange={e => setEditCeilingLowWallHeight(e.target.value)}
-                        placeholder="e.g. 8' or 7'6&quot;"
-                      />
+                  <>
+                    <div className={styles.editHeightRow}>
+                      <button type="button" className={`${styles.editCoatBtn} ${!editPitchMode ? styles.editCoatActive : ''}`} onClick={() => setEditPitchMode(false)}>Use heights</button>
+                      <button type="button" className={`${styles.editCoatBtn} ${editPitchMode ? styles.editCoatActive : ''}`} onClick={() => setEditPitchMode(true)}>Use pitch</button>
                     </div>
-                    <div className={styles.editHeightField}>
-                      <span className={styles.editHeightLabel}>High wall</span>
-                      <input
-                        className={styles.editInput}
-                        type="text"
-                        value={editCeilingHighWallHeight}
-                        onChange={e => setEditCeilingHighWallHeight(e.target.value)}
-                        placeholder="e.g. 12' or 11'6&quot;"
-                      />
-                    </div>
-                  </div>
+                    {editPitchMode ? (
+                      <select className={styles.editSelect} value={editPitchRise} onChange={e => setEditPitchRise(parseInt(e.target.value))}>
+                        {PITCH_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
+                    ) : (
+                      <div className={styles.editHeightRow}>
+                        <div className={styles.editHeightField}>
+                          <span className={styles.editHeightLabel}>Low wall</span>
+                          <input className={styles.editInput} type="text" value={editCeilingLowWallHeight} onChange={e => setEditCeilingLowWallHeight(e.target.value)} placeholder="e.g. 8' or 7'6&quot;" />
+                        </div>
+                        <div className={styles.editHeightField}>
+                          <span className={styles.editHeightLabel}>High wall</span>
+                          <input className={styles.editInput} type="text" value={editCeilingHighWallHeight} onChange={e => setEditCeilingHighWallHeight(e.target.value)} placeholder="e.g. 12' or 11'6&quot;" />
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {/* Wall height & openings — shown when editing a Wall/SF zone */}
@@ -334,6 +345,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                 )}
 
                 <div className={styles.editCoatGroup}>
+                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Coats <InfoTooltip>How many coats of paint. Most jobs require 2 coats. Affects paint calculator.</InfoTooltip></span>
                   {[1, 2].map(n => (
                     <button
                       key={n}
@@ -348,7 +360,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
 
                 {enabledFeatures.paint_calculator && (
                   <div className={styles.editFinishGroup}>
-                    <span className={styles.editFinishLabel}>Surface finish</span>
+                    <span className={styles.editFinishLabel}>Surface finish <InfoTooltip>Coverage rate per gallon. Smooth surfaces (drywall, trim) cover ~350 SF/gal. Textured (popcorn, stucco) cover ~275 SF/gal.</InfoTooltip></span>
                     <div className={styles.editFinishBtns}>
                       {[
                         { value: 'smooth',   label: 'Smooth (350 SF/gal)' },
@@ -470,6 +482,11 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                     ? formatLF(zone.result ?? 0)
                     : `${Math.round(zone.result ?? 0)} items`}
                 </div>
+                {zone.ceiling_pitch_rise && zone.measurement_type === 'SF' && (
+                  <div className={styles.zoneMeta}>
+                    {zone.ceiling_pitch_rise}/12 pitch — result is sloped surface area
+                  </div>
+                )}
 
                 {/* Soft warnings — visible to ALL users, always on */}
                 {zone.measurement_type === 'SF' && (zone.result ?? 0) > 0 && (zone.result ?? 0) < 10 && (

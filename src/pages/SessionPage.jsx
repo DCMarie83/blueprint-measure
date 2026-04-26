@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useSession } from '../hooks/useSession'
 import { usePdf } from '../hooks/usePdf'
 import { calcPixelsPerFoot } from '../utils/scaleOptions'
-import { parseFeetInches } from '../utils/fractions'
+import { parseFeetInches, formatSF, formatLF } from '../utils/fractions'
 import { calculate, calculateSF, calculateCeilingSF, calculateWallSF } from '../utils/measurements'
 import { exportCSV } from '../utils/csvExport'
 import { downloadPdfWithMeasurements } from '../utils/pdfExport'
@@ -105,6 +105,31 @@ export default function SessionPage() {
   // ── Save status ─────────────────────────────────────────────────────────────
   const [lastSavedAt, setLastSavedAt] = useState(null)
   const [manualSaving, setManualSaving] = useState(false)
+
+  // ── Summary collapsed state (persists via localStorage) ─────────────────────
+  const [summaryCollapsed, setSummaryCollapsed] = useState(() => localStorage.getItem('bm_summary_collapsed') === 'true')
+  function toggleSummaryCollapsed() {
+    setSummaryCollapsed(v => { const next = !v; localStorage.setItem('bm_summary_collapsed', String(next)); return next })
+  }
+
+  // ── Ortho mode (persists via localStorage) ───────────────────────────────────
+  const [orthoMode, setOrthoMode] = useState(() => localStorage.getItem('bm_ortho_mode') === 'true')
+  function toggleOrtho() {
+    setOrthoMode(v => { const next = !v; localStorage.setItem('bm_ortho_mode', String(next)); return next })
+  }
+
+  // Keyboard shortcut "O" for ortho toggle (only when not in an input)
+  useEffect(() => {
+    function onKey(e) {
+      if (e.key === 'o' || e.key === 'O') {
+        const tag = document.activeElement?.tagName
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+        toggleOrtho()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   // ── Pixel sanity check (all users, all tiers) ────────────────────────────────
   // After any scale change, checks if the drawing dimensions are reasonable.
@@ -398,6 +423,7 @@ export default function SessionPage() {
     if (activeZoneMeta.surface_type === 'Ceiling' &&
         activeZoneMeta.ceiling_type && activeZoneMeta.ceiling_type !== 'flat') {
       const { adjustedSF } = calculateCeilingSF(result, activeZoneMeta.ceiling_type, {
+        pitchRise:     parseInt(activeZoneMeta.ceiling_pitch_rise)       || 0,
         peakHeight:    parseFloat(activeZoneMeta.ceiling_peak_height)    || 0,
         wallHeight:    parseFloat(activeZoneMeta.ceiling_wall_height)    || 0,
         trayPerimeter: parseFloat(activeZoneMeta.ceiling_tray_perimeter) || 0,
@@ -433,6 +459,7 @@ export default function SessionPage() {
           ceiling_drop_depth:     activeZoneMeta.ceiling_drop_depth     ?? null,
           ceiling_low_wall_height:  activeZoneMeta.ceiling_low_wall_height  ?? null,
           ceiling_high_wall_height: activeZoneMeta.ceiling_high_wall_height ?? null,
+          ceiling_pitch_rise:       activeZoneMeta.ceiling_pitch_rise       ?? null,
           color: activeZoneMeta.color ?? null,
           wall_height: activeZoneMeta.wall_height ?? null,
           opening_deductions: activeZoneMeta.opening_deductions ?? null,
@@ -500,6 +527,7 @@ export default function SessionPage() {
           ceiling_drop_depth:     activeZoneMeta.ceiling_drop_depth     ?? null,
           ceiling_low_wall_height:  activeZoneMeta.ceiling_low_wall_height  ?? null,
           ceiling_high_wall_height: activeZoneMeta.ceiling_high_wall_height ?? null,
+          ceiling_pitch_rise:       activeZoneMeta.ceiling_pitch_rise       ?? null,
           color: activeZoneMeta.color ?? null,
           measurement_type: activeZoneMeta.type,
           points: combinedPoints,
@@ -555,12 +583,14 @@ export default function SessionPage() {
           updates.ceiling_tray_perimeter !== zone.ceiling_tray_perimeter ||
           updates.ceiling_drop_depth     !== zone.ceiling_drop_depth ||
           updates.ceiling_low_wall_height  !== zone.ceiling_low_wall_height ||
-          updates.ceiling_high_wall_height !== zone.ceiling_high_wall_height
+          updates.ceiling_high_wall_height !== zone.ceiling_high_wall_height ||
+          updates.ceiling_pitch_rise       !== zone.ceiling_pitch_rise
 
         if (ceilingParamsChanged) {
           if (updates.surface_type === 'Ceiling' && updates.ceiling_type && updates.ceiling_type !== 'flat') {
             const baseSF = calculateSF(zone.points, pixelsPerFoot)
             const { adjustedSF } = calculateCeilingSF(baseSF, updates.ceiling_type, {
+              pitchRise:     parseInt(updates.ceiling_pitch_rise)       || 0,
               peakHeight:    parseFloat(updates.ceiling_peak_height)    || 0,
               wallHeight:    parseFloat(updates.ceiling_wall_height)    || 0,
               trayPerimeter: parseFloat(updates.ceiling_tray_perimeter) || 0,
@@ -868,6 +898,7 @@ export default function SessionPage() {
     }
     const flat = calculateSF(drawnPoints, pixelsPerFoot)
     const { adjustedSF, adjustment } = calculateCeilingSF(flat, activeZoneMeta.ceiling_type, {
+      pitchRise:     parseInt(activeZoneMeta.ceiling_pitch_rise)       || 0,
       peakHeight:    parseFloat(activeZoneMeta.ceiling_peak_height)    || 0,
       wallHeight:    parseFloat(activeZoneMeta.ceiling_wall_height)    || 0,
       trayPerimeter: parseFloat(activeZoneMeta.ceiling_tray_perimeter) || 0,
@@ -1086,6 +1117,7 @@ export default function SessionPage() {
               thumbnails={thumbnails}
               onPageSelect={handlePageSwitch}
               pageScales={pageScales}
+              zones={zones}
               pageMetadata={pageMetadata}
             />
           </div>
@@ -1115,15 +1147,7 @@ export default function SessionPage() {
           </div>
         )}
 
-        {/* Summary totals — scoped to current page for PDFs */}
-        {blueprintUrl && pageZones.length > 0 && (
-          <div className={styles.section}>
-            <div className={styles.sectionTitle}>
-              {isPdf && visiblePageCount > 1 ? `Page ${currentPage} Summary` : 'Summary'}
-            </div>
-            <SessionSummary zones={pageZones} />
-          </div>
-        )}
+        {/* Summary moved to sidebar footer (Step 7) */}
 
         {/* Add Zone */}
         {blueprintUrl && pixelsPerFoot && (
@@ -1244,6 +1268,27 @@ export default function SessionPage() {
           </div>
         )}
 
+        {/* Page Total footer */}
+        {blueprintUrl && pageZones.length > 0 && (() => {
+          const totalSF = pageZones.filter(z => z.measurement_type === 'SF').reduce((s, z) => s + (z.result ?? 0), 0)
+          const totalLF = pageZones.filter(z => z.measurement_type === 'LF').reduce((s, z) => s + (z.result ?? 0), 0)
+          const totalCount = pageZones.filter(z => z.measurement_type === 'count').reduce((s, z) => s + (z.result ?? 0), 0)
+          return (
+            <div className={styles.summaryFooter}>
+              <button className={styles.summaryToggle} onClick={toggleSummaryCollapsed}>
+                <span>{summaryCollapsed ? '▸' : '▾'}</span> Page Total
+              </button>
+              {!summaryCollapsed && (
+                <div className={styles.summaryBody}>
+                  {totalSF > 0 && <div className={styles.summaryLine}>{formatSF(totalSF)}</div>}
+                  {totalLF > 0 && <div className={styles.summaryLine}>{formatLF(totalLF)}</div>}
+                  {totalCount > 0 && <div className={styles.summaryLine}>{Math.round(totalCount)} items</div>}
+                </div>
+              )}
+            </div>
+          )
+        })()}
+
         {/* Download original file and annotated PDF */}
         {blueprintUrl && (
           <div className={styles.section}>
@@ -1297,6 +1342,7 @@ export default function SessionPage() {
             redrawingZoneId={redrawingZoneId}
             hiddenZoneIds={hiddenZoneIds}
             onLabelOffsetChange={handleLabelOffsetChange}
+            orthoMode={orthoMode}
           />
         ) : (
           <div className={styles.emptyCanvas}>
@@ -1307,9 +1353,18 @@ export default function SessionPage() {
 
         {/* Reset view button — always visible when a blueprint is loaded */}
         {blueprintUrl && (
-          <button className={styles.resetViewBtn} onClick={handleResetView}>
-            ⊡ Reset view
-          </button>
+          <div className={styles.canvasToolbar}>
+            <button className={styles.resetViewBtn} onClick={handleResetView}>
+              Reset view
+            </button>
+            <button
+              className={`${styles.orthoBtn} ${orthoMode ? styles.orthoBtnActive : ''}`}
+              onClick={toggleOrtho}
+              title="Ortho mode — snap to horizontal/vertical (O)"
+            >
+              Ortho {orthoMode ? 'ON' : 'OFF'}
+            </button>
+          </div>
         )}
 
         {/* AI scale detection banner */}

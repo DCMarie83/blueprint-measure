@@ -156,10 +156,17 @@ export function formatFeetInches(decimalFeet) {
 }
 
 // ── formatSF ──────────────────────────────────────────────────────────────────
-// Square footage stays in decimal form — contractors work with whole and half
-// square feet, so two decimal places is appropriate here.
-// Example: 245.50 sq ft
+// Industry-standard display: whole numbers for SF >= 10, one decimal for small values.
+// CSV/PDF exports should use formatSFPrecise() for exact decimal values.
 export function formatSF(decimalSF) {
+  if (decimalSF == null || isNaN(decimalSF)) return '—'
+  if (decimalSF >= 10) return `${Math.round(decimalSF)} sq ft`
+  if (decimalSF >= 1) return `${decimalSF.toFixed(1)} sq ft`
+  return `${decimalSF.toFixed(1)} sq ft`
+}
+
+// Precise decimal SF for exports (CSV, PDF) — preserves 2 decimal places
+export function formatSFPrecise(decimalSF) {
   if (decimalSF == null || isNaN(decimalSF)) return '—'
   return `${decimalSF.toFixed(2)} sq ft`
 }

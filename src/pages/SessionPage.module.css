@@ -174,6 +174,41 @@
   background: var(--color-border);
 }
 
+/* ─── Summary footer ─── */
+.summaryFooter {
+  border-top: 1px solid var(--color-border);
+  padding: 10px 14px;
+  background: var(--color-surface);
+}
+
+.summaryToggle {
+  background: none;
+  border: none;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.summaryBody {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.summaryLine {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
 /* ─── Canvas area ─── */
 .canvasArea {
   flex: 1;
@@ -215,10 +250,16 @@
   white-space: nowrap;
 }
 
-.resetViewBtn {
+.canvasToolbar {
   position: absolute;
   top: 14px;
   right: 14px;
+  display: flex;
+  gap: 6px;
+}
+
+.resetViewBtn,
+.orthoBtn {
   background: rgba(15, 25, 35, 0.78);
   border: 1px solid var(--color-border);
   border-radius: 8px;
@@ -227,13 +268,20 @@
   font-weight: 600;
   color: var(--color-text-muted);
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
   white-space: nowrap;
 }
 
-.resetViewBtn:hover {
+.resetViewBtn:hover,
+.orthoBtn:hover {
   color: var(--color-text);
   border-color: var(--color-text-muted);
+}
+
+.orthoBtnActive {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+  background: rgba(46, 139, 255, 0.15);
 }
 
 /* ─── Loading / error ─── */

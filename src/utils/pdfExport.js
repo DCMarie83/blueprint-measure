@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf'
-import { formatSF, formatLF } from './fractions'
+import { formatSFPrecise, formatLF } from './fractions'
 
 // Must match BlueprintCanvas zone color palette exactly
 const ZONE_COLORS = [
@@ -34,7 +34,7 @@ function loadImage(src) {
 // Format a zone result for display in the PDF overlay label.
 function formatResult(zone) {
   const r = zone.result ?? 0
-  if (zone.measurement_type === 'SF')    return formatSF(r)
+  if (zone.measurement_type === 'SF')    return formatSFPrecise(r)
   if (zone.measurement_type === 'LF')    return formatLF(r)
   return `${Math.round(r)} items`
 }

@@ -98,6 +98,14 @@ function bboxFeet(points, pixelsPerFoot) {
   }
 }
 
+// Calculate sloped surface area from a flat footprint + pitch rise (X/12).
+// Formula: slopedSF = footprintSF * sqrt(rise^2 + 12^2) / 12
+export function calculateSlopedSF(footprintSF, pitchRise) {
+  if (!pitchRise || pitchRise <= 0) return footprintSF
+  const multiplier = Math.sqrt(pitchRise * pitchRise + 144) / 12
+  return Math.round(footprintSF * multiplier * 100) / 100
+}
+
 // Adjust ceiling SF based on ceiling type.
 // Returns { adjustedSF, adjustment } where:
 //   adjustedSF = the final result to store on the zone
@@ -111,13 +119,19 @@ export function calculateCeilingSF(baseSF, ceilingType, params, points, pixelsPe
     return { adjustedSF: baseSF, adjustment: 0 }
   }
 
+  // Pitch-based calculation takes priority over height-based for vaulted/shed
+  const { pitchRise } = params
+  if (pitchRise && pitchRise > 0 && (ceilingType === 'vaulted' || ceilingType === 'shed')) {
+    const adjustedSF = calculateSlopedSF(baseSF, pitchRise)
+    return { adjustedSF, adjustment: Math.round((adjustedSF - baseSF) * 100) / 100 }
+  }
+
   const { width, length } = bboxFeet(points, pixelsPerFoot)
 
   if (ceilingType === 'vaulted') {
     const { peakHeight = 0, wallHeight = 0 } = params
     const rise = peakHeight - wallHeight
     if (rise <= 0 || width <= 0 || length <= 0) return { adjustedSF: baseSF, adjustment: 0 }
-    // Slope length is one side (eave to ridge); two sides × room length = total area
     const slopeLength = Math.sqrt((width / 2) ** 2 + rise ** 2)
     const adjustedSF  = Math.round(2 * slopeLength * length * 100) / 100
     return { adjustedSF, adjustment: Math.round((adjustedSF - baseSF) * 100) / 100 }

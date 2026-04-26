@@ -33,6 +33,7 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
   redrawingZoneId,
   hiddenZoneIds,
   onLabelOffsetChange,
+  orthoMode = false,
 }, ref) {
   const canvasRef = useRef(null)
   const imageRef = useRef(null)
@@ -50,6 +51,7 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
   const lastRightPan = useRef({ x: 0, y: 0 })
 
   const [isDragging, setIsDragging] = useState(false)
+  const cursorImgPos = useRef(null) // { x, y } in image space, for rubber-band line
 
   const calibPoints = useRef([])
 
@@ -67,6 +69,19 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
   // user clicks on the label where it actually appears, not where it would be
   // before overlap resolution.
   const resolvedLabelsRef = useRef([]) // [{ zoneId, x, y }]
+
+  // Snap a point to horizontal/vertical if within 5° of axis from lastPt
+  function applyOrthoSnap(lastPt, pt) {
+    if (!lastPt) return pt
+    const dx = pt.x - lastPt.x
+    const dy = pt.y - lastPt.y
+    const angle = Math.abs(Math.atan2(dy, dx) * 180 / Math.PI)
+    // Within 5° of horizontal (0° or 180°)
+    if (angle < 5 || angle > 175) return { x: pt.x, y: lastPt.y }
+    // Within 5° of vertical (90°)
+    if (Math.abs(angle - 90) < 5) return { x: lastPt.x, y: pt.y }
+    return pt
+  }
 
   // ── redraw ───────────────────────────────────────────────────────────────────
   const redraw = useCallback(() => {
@@ -147,6 +162,28 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
         null, null, null, null, null, null, null, null)
     }
 
+    // Rubber-band line from last placed point to cursor position
+    if (isDrawing && cursorImgPos.current && activeZone?.points?.length > 0) {
+      const pts = activeZone.points.filter(p => p !== null && p !== undefined)
+      if (pts.length > 0 && activeZone.measurement_type !== 'count') {
+        const lastPt = pts[pts.length - 1]
+        let target = cursorImgPos.current
+        if (orthoMode) target = applyOrthoSnap(lastPt, target)
+        const colorIdx = (activeZone.colorIndex ?? zones.length) % ZONE_COLORS.length
+        const color = activeZone.color ?? ZONE_COLORS[colorIdx]
+        ctx.strokeStyle = color
+        ctx.globalAlpha = 0.5
+        ctx.lineWidth = 2 / scale
+        ctx.setLineDash([4 / scale, 4 / scale])
+        ctx.beginPath()
+        ctx.moveTo(lastPt.x, lastPt.y)
+        ctx.lineTo(target.x, target.y)
+        ctx.stroke()
+        ctx.setLineDash([])
+        ctx.globalAlpha = 1
+      }
+    }
+
     // Draw calibration points
     if (calibrating && calibPoints.current.length > 0) {
       ctx.strokeStyle = '#f59e0b'
@@ -167,7 +204,7 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
     }
 
     ctx.restore()
-  }, [zones, activeZone, calibrating, redrawingZoneId, hiddenZoneIds])
+  }, [zones, activeZone, calibrating, redrawingZoneId, hiddenZoneIds, isDrawing, orthoMode])
 
   // Stable ref so effects and event listeners always call the latest redraw
   const redrawRef = useRef(redraw)
@@ -356,7 +393,6 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
         }
       }
 
-      const unitLabel = type === 'count' ? 'each' : type
       const labelParts = [name]
       if (description) labelParts.push(description)
       const surfaceLabel = (surfaceType === 'Ceiling' && ceilingType && CEILING_TYPE_LABELS[ceilingType])
@@ -367,7 +403,15 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
         coatCount > 1 ? `${coatCount} coats` : null,
       ].filter(Boolean)
       if (metaParts.length > 0) labelParts.push(metaParts.join(' · '))
-      if (result != null) labelParts.push(`${result} ${unitLabel}`)
+      if (result != null) {
+        if (type === 'SF') {
+          labelParts.push(`${result >= 10 ? Math.round(result) : result.toFixed(1)} SF`)
+        } else if (type === 'count') {
+          labelParts.push(`${Math.round(result)} each`)
+        } else {
+          labelParts.push(`${result} ${type}`)
+        }
+      }
       const lines = labelParts
       const fs = 13 / s
       ctx.font = `bold ${fs}px Inter, sans-serif`
@@ -475,6 +519,12 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
   }
 
   function handleMouseMove(e) {
+    // Track cursor for rubber-band line during drawing
+    if (isDrawing) {
+      cursorImgPos.current = toImageSpace(e)
+      redrawRef.current()
+    }
+
     // Right-click pan has priority and works during drawing
     if (isRightPanning.current) {
       const dx = e.clientX - lastRightPan.current.x
@@ -550,6 +600,7 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
   }
 
   function handleMouseLeave() {
+    cursorImgPos.current = null
     // Save and stop any label drag in progress
     if (draggingLabelRef.current) {
       if (didDragLabel.current) {
@@ -593,6 +644,15 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
     }
 
     if (isDrawing) {
+      // Apply ortho snap unless Shift is held
+      if (orthoMode && !e.shiftKey && activeZone?.measurement_type !== 'count') {
+        const activePts = activeZone?.points?.filter(p => p !== null && p !== undefined) ?? []
+        if (activePts.length > 0) {
+          const snapped = applyOrthoSnap(activePts[activePts.length - 1], pt)
+          onPointAdd(snapped)
+          return
+        }
+      }
       onPointAdd(pt)
     }
   }
