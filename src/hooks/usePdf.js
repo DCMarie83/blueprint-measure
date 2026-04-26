@@ -80,11 +80,6 @@ export function usePdf(url) {
       // scale-to-pixelsPerFoot conversion.
       const pixelsPerInch = viewport.width / widthInches
 
-      console.log('[usePdf] renderPage', { pageNum, scale, widthPts, widthInches, viewportWidth: viewport.width, pixelsPerInch })
-      if (scale !== 1.5) {
-        console.log('[usePdf] pdfPageInfo NOT updated because scale !== 1.5 (was', scale, ')')
-      }
-
       const canvas = document.createElement('canvas')
       canvas.width = viewport.width
       canvas.height = viewport.height

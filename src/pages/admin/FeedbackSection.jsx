@@ -3,6 +3,31 @@ import { supabase } from '../../lib/supabase'
 import { useAdminData } from '../../context/AdminDataContext'
 import styles from './sections.module.css'
 
+const STATUS_COLORS = {
+  new:         { bg: 'rgba(30,58,138,0.2)',  color: '#93c5fd' },
+  reviewed:    { bg: 'rgba(88,28,135,0.2)',  color: '#c4b5fd' },
+  in_progress: { bg: 'rgba(146,64,14,0.2)', color: '#fcd34d' },
+  resolved:    { bg: 'rgba(20,83,45,0.2)',   color: '#86efac' },
+  wontfix:     { bg: 'rgba(153,27,27,0.2)',  color: '#fca5a5' },
+}
+
+const TYPE_COLORS = {
+  bug:      { bg: 'rgba(153,27,27,0.2)',  color: '#fca5a5' },
+  feature:  { bg: 'rgba(30,58,138,0.2)',  color: '#93c5fd' },
+  question: { bg: 'rgba(133,77,14,0.2)',  color: '#fde047' },
+  other:    { bg: 'rgba(55,65,81,0.2)',   color: '#d1d5db' },
+}
+
+function StatusPill({ value }) {
+  const c = STATUS_COLORS[value] ?? STATUS_COLORS.new
+  return <span style={{ background: c.bg, color: c.color, borderRadius: 9999, padding: '2px 8px', fontSize: 11, fontWeight: 500 }}>{value ?? 'new'}</span>
+}
+
+function TypePill({ value }) {
+  const c = TYPE_COLORS[value] ?? TYPE_COLORS.other
+  return <span style={{ background: c.bg, color: c.color, borderRadius: 9999, padding: '2px 8px', fontSize: 11, fontWeight: 500 }}>{value ?? 'other'}</span>
+}
+
 export default function FeedbackSection() {
   const { companies, users } = useAdminData()
   const [items, setItems] = useState([])
@@ -89,11 +114,11 @@ export default function FeedbackSection() {
                       if (isExp) { setExpandedId(null) } else { setExpandedId(fb.id); setEditStatus(fb.status ?? 'new'); setEditNotes(fb.admin_notes ?? '') }
                     }} style={{ cursor: 'pointer' }}>
                       <td className={styles.td}>{new Date(fb.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
-                      <td className={styles.td}>{fb.type}</td>
+                      <td className={styles.td}><TypePill value={fb.type} /></td>
                       <td className={styles.td}>{fbUser}</td>
                       <td className={styles.td}>{fbCompany}</td>
                       <td className={styles.td} title={fb.description}>{fb.description?.length > 60 ? fb.description.slice(0, 60) + '…' : fb.description}</td>
-                      <td className={styles.td}><span className={styles.feedbackStatus}>{fb.status ?? 'new'}</span></td>
+                      <td className={styles.td}><StatusPill value={fb.status ?? 'new'} /></td>
                     </tr>
                     {isExp && (
                       <tr className={styles.expandedRow}>

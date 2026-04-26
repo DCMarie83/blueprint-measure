@@ -6,6 +6,7 @@ import { useSessions } from '../hooks/useSessions'
 import { getCompanyStorageUsage } from '../utils/storageUsage'
 import Modal from '../components/ui/Modal'
 import NewSessionForm from '../components/auth/NewSessionForm'
+import UserMenu from '../components/UserMenu'
 import styles from './DashboardPage.module.css'
 
 const ADMIN_EMAIL = 'main@ngautomationhub.com'
@@ -167,11 +168,10 @@ export default function DashboardPage() {
               {storageDisplay.usedGb} GB{storageDisplay.limitGb ? ` of ${storageDisplay.limitGb} GB` : ''} used
             </span>
           )}
-          <Link to="/account" className={styles.accountLink}>Account</Link>
           {user?.email === ADMIN_EMAIL && (
             <Link to="/admin" className={styles.adminLink}>Admin</Link>
           )}
-          <button className={styles.logout} onClick={handleLogout}>Sign out</button>
+          <UserMenu />
         </div>
       </header>
 

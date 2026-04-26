@@ -243,6 +243,5 @@ export async function detectScaleFromImage(imageUrl) {
   if (result) return result
 
   // Second attempt with a retry prompt focused on graphical scale bars
-  console.log('Scale detection: first pass returned null, retrying with focused prompt…')
   return await callApi(client, base64Data, mediaType, RETRY_PROMPT)
 }

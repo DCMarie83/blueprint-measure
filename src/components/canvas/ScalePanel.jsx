@@ -39,7 +39,6 @@ export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, pdfPageI
     if (!option?.inchesPerFoot) return // manual calibration — don't override
     const correct = calcPixelsPerFoot(option.inchesPerFoot, pixelsPerInch)
     if (Math.abs(pixelsPerFoot - correct) > 0.01) {
-      console.log('[ScalePanel] pixelsPerInch changed, recalculating', { selected, old: pixelsPerFoot, correct, pixelsPerInch })
       onScaleChange(correct)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -51,7 +50,6 @@ export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, pdfPageI
       const option = SCALE_OPTIONS.find(o => o.value === value)
       if (option) {
         const ppf = calcPixelsPerFoot(option.inchesPerFoot, pixelsPerInch)
-        console.log('[ScalePanel] scale selected', { value, inchesPerFoot: option.inchesPerFoot, pixelsPerInch, calculatedPpf: ppf })
         onScaleChange(ppf)
       }
     }

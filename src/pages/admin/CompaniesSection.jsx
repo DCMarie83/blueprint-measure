@@ -16,6 +16,12 @@ const FEATURES = [
 
 const PAGE_SIZE = 25
 
+function formatStorageMb(mb) {
+  if (mb < 1) return `${(mb).toFixed(1)} MB`
+  if (mb < 1024) return mb % 1 === 0 ? `${Math.round(mb)} MB` : `${mb.toFixed(1)} MB`
+  return `${(mb / 1024).toFixed(1)} GB`
+}
+
 export default function CompaniesSection() {
   const {
     companies, setCompanies, users, userProfiles, setUserProfiles,
@@ -322,13 +328,13 @@ export default function CompaniesSection() {
                           const limitMb = PLAN_FEATURES[company.plan]?.storage_limit_mb
                           if (!stor && !storageLoading[company.id]) return <button className={styles.iconBtn} onClick={() => fetchStorage(company.id)}>Load</button>
                           if (storageLoading[company.id]) return <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>…</span>
-                          const usedGb = (stor.totalBytes / (1024**3)).toFixed(1)
-                          const limitGb = limitMb != null ? (limitMb / 1024).toFixed(0) : '∞'
+                          const usedDisplay = formatStorageMb(stor.totalBytes / (1024 * 1024))
+                          const limitDisplay = limitMb != null ? formatStorageMb(limitMb) : '∞'
                           const pct = limitMb != null ? (stor.totalBytes / (limitMb * 1024 * 1024)) * 100 : 0
                           const barColor = pct > 95 ? '#ef4444' : pct > 75 ? '#f59e0b' : 'var(--color-primary)'
                           return (
                             <div className={styles.usageCell}>
-                              <span className={styles.usageCount}>{usedGb} / {limitGb} GB</span>
+                              <span className={styles.usageCount}>{usedDisplay} / {limitDisplay}</span>
                               {limitMb != null && <div className={styles.miniBarTrack}><div className={styles.miniBarFill} style={{ width: `${Math.min(pct, 100)}%`, background: barColor }} /></div>}
                             </div>
                           )

@@ -41,6 +41,12 @@ export default function FeedbackButton({ prefillDescription = '' }) {
     setType('bug')
     setDescription(prefillDescription || '')
     setScreenshot(null)
+    setToast(null)
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  function handleRemoveScreenshot() {
+    setScreenshot(null)
     if (fileRef.current) fileRef.current.value = ''
   }
 
@@ -180,7 +186,10 @@ export default function FeedbackButton({ prefillDescription = '' }) {
                   className={styles.fileInput}
                 />
                 {screenshot && (
-                  <span className={styles.fileName}>{screenshot.name}</span>
+                  <span className={styles.fileName}>
+                    {screenshot.name}
+                    <button type="button" className={styles.removeFileBtn} onClick={handleRemoveScreenshot}>✕</button>
+                  </span>
                 )}
               </label>
 

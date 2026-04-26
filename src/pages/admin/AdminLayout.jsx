@@ -1,16 +1,20 @@
-import { NavLink, Outlet, Link } from 'react-router-dom'
+import { NavLink, Outlet, Link, useNavigate } from 'react-router-dom'
+import { LayoutDashboard, Building2, Users, Package, FlaskConical,
+         MessageSquare, AlertTriangle, Settings } from 'lucide-react'
+import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../context/AuthContext'
 import { AdminDataProvider, useAdminData } from '../../context/AdminDataContext'
 import styles from './AdminLayout.module.css'
 
 const NAV_ITEMS = [
-  { to: '/admin/overview',   label: 'Overview',        icon: 'O' },
-  { to: '/admin/companies',  label: 'Companies',       icon: 'C' },
-  { to: '/admin/users',      label: 'Users',           icon: 'U' },
-  { to: '/admin/plans',      label: 'Plans',           icon: 'P' },
-  { to: '/admin/test-logs',  label: 'Test Logs',       icon: 'T' },
-  { to: '/admin/feedback',   label: 'Beta Feedback',   icon: 'F' },
-  { to: '/admin/errors',     label: 'System Errors',   icon: 'E' },
-  { to: '/admin/system',     label: 'System',          icon: 'S' },
+  { to: '/admin/overview',   label: 'Overview',        icon: LayoutDashboard },
+  { to: '/admin/companies',  label: 'Companies',       icon: Building2 },
+  { to: '/admin/users',      label: 'Users',           icon: Users },
+  { to: '/admin/plans',      label: 'Plans',           icon: Package },
+  { to: '/admin/test-logs',  label: 'Test Logs',       icon: FlaskConical },
+  { to: '/admin/feedback',   label: 'Beta Feedback',   icon: MessageSquare },
+  { to: '/admin/errors',     label: 'System Errors',   icon: AlertTriangle },
+  { to: '/admin/system',     label: 'System',          icon: Settings },
 ]
 
 function AdminShell() {
@@ -42,6 +46,14 @@ function AdminShell() {
 }
 
 function SidebarContent() {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+
+  async function handleSignOut() {
+    await supabase.auth.signOut()
+    navigate('/login')
+  }
+
   return (
     <>
       <div className={styles.sidebarHeader}>
@@ -49,20 +61,25 @@ function SidebarContent() {
         <span className={styles.adminBadge}>Admin</span>
       </div>
       <nav className={styles.nav}>
-        {NAV_ITEMS.map(item => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) => `${styles.navItem} ${isActive ? styles.navItemActive : ''}`}
-          >
-            <span className={styles.navIcon}>{item.icon}</span>
-            <span className={styles.navLabel}>{item.label}</span>
-          </NavLink>
-        ))}
+        {NAV_ITEMS.map(item => {
+          const Icon = item.icon
+          return (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) => `${styles.navItem} ${isActive ? styles.navItemActive : ''}`}
+            >
+              <span className={styles.navIcon}><Icon size={16} /></span>
+              <span className={styles.navLabel}>{item.label}</span>
+            </NavLink>
+          )
+        })}
       </nav>
       <div className={styles.sidebarFooter}>
+        <span className={styles.footerEmail}>{user?.email}</span>
         <Link to="/accuracy-test" className={styles.footerLink}>Accuracy Test</Link>
         <Link to="/dashboard" className={styles.footerLink}>Back to Dashboard</Link>
+        <button className={styles.signOutBtn} onClick={handleSignOut}>Sign Out</button>
       </div>
     </>
   )

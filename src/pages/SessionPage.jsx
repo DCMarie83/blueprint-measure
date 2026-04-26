@@ -20,6 +20,7 @@ import ZoneList from '../components/zones/ZoneList'
 import SessionSummary from '../components/zones/SessionSummary'
 import PdfPageSelector from '../components/pdf/PdfPageSelector'
 import PdfPageManager from '../components/pdf/PdfPageManager'
+import UserMenu from '../components/UserMenu'
 import styles from './SessionPage.module.css'
 
 // SessionPage is the main working environment.
@@ -45,7 +46,6 @@ export default function SessionPage() {
   // Actual render resolution from PDF metadata. Falls back to 96 for non-PDF images.
   const pixelsPerInch = (isPdf && pdfPageInfo?.pixelsPerInch) ? pdfPageInfo.pixelsPerInch : 96
 
-  console.log('[SessionPage] scale resolution', { isPdf, pdfPageInfo, pixelsPerInch })
   const [currentPage, setCurrentPage] = useState(1)
   const [renderedPageUrl, setRenderedPageUrl] = useState(null)
   const [thumbnails, setThumbnails] = useState({}) // { [pageNum]: dataUrl }
@@ -992,7 +992,10 @@ export default function SessionPage() {
 
         {/* Header */}
         <div className={styles.sidebarHeader}>
-          <Link to="/dashboard" className={styles.backLink}>← Dashboard</Link>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Link to="/dashboard" className={styles.backLink}>← Dashboard</Link>
+            <UserMenu />
+          </div>
           <div className={styles.sessionInfo}>
             <div className={styles.sessionProject}>{session?.project_name}</div>
             <div className={styles.sessionClient}>{session?.client_name}</div>

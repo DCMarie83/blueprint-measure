@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import UserMenu from '../components/UserMenu'
 import styles from './AccountPage.module.css'
 
 const PLAN_LABELS = {
@@ -72,8 +73,6 @@ export default function AccountPage() {
           .single()
         companyData = c
       }
-
-      console.log('[AccountPage] profile loaded', profile, profileErr, 'company', companyData)
 
       if (profile) {
         setFullName(profile.full_name ?? '')
@@ -217,8 +216,11 @@ export default function AccountPage() {
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <Link to="/dashboard" className={styles.backLink}>← Back to Dashboard</Link>
-        <h1 className={styles.pageTitle}>My Account</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20, flex: 1 }}>
+          <Link to="/dashboard" className={styles.backLink}>← Back to Dashboard</Link>
+          <h1 className={styles.pageTitle} style={{ margin: 0 }}>My Account</h1>
+        </div>
+        <UserMenu />
       </header>
 
       <main className={styles.main}>
