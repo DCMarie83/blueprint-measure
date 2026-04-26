@@ -1,4 +1,5 @@
 import { useRef, useEffect, useCallback, useState, forwardRef, useImperativeHandle } from 'react'
+import { formatLF } from '../../utils/fractions'
 import styles from './BlueprintCanvas.module.css'
 
 // Human-readable ceiling type names shown in the canvas label
@@ -409,6 +410,8 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
           labelParts.push(`${result >= 10 ? Math.round(result) : result.toFixed(1)} SF`)
         } else if (type === 'count') {
           labelParts.push(`${Math.round(result)} each`)
+        } else if (type === 'LF') {
+          labelParts.push(formatLF(result))
         } else {
           labelParts.push(`${result} ${type}`)
         }
