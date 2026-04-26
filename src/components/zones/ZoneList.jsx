@@ -42,8 +42,10 @@ const SURFACE_TYPES = ['Wall', 'Ceiling', 'Trim', 'Door', 'Window', 'Cabinet', '
 
 const PITCH_OPTIONS = [1,2,3,4,5,6,7,8,9,10,12,14,16,18].map(rise => ({
   value: rise,
-  label: `${rise}/12 (${Math.round(Math.atan(rise / 12) * (180 / Math.PI))}°)`,
+  label: `${rise}/12 (${(Math.atan(rise / 12) * (180 / Math.PI)).toFixed(1)}°)`,
 }))
+
+const PITCH_PRESETS = [4, 6, 8, 10, 12]
 
 const CEILING_TYPE_LABELS = {
   flat: 'Flat',
@@ -212,12 +214,23 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                   <>
                     <div className={styles.editHeightRow}>
                       <button type="button" className={`${styles.editCoatBtn} ${!editPitchMode ? styles.editCoatActive : ''}`} onClick={() => setEditPitchMode(false)}>Use heights</button>
-                      <button type="button" className={`${styles.editCoatBtn} ${editPitchMode ? styles.editCoatActive : ''}`} onClick={() => setEditPitchMode(true)}>Use pitch</button>
+                      <button type="button" className={`${styles.editCoatBtn} ${editPitchMode ? styles.editCoatActive : ''}`} onClick={() => setEditPitchMode(true)}>Use pitch <InfoTooltip>Roof pitch describes the steepness as rise over run. A pitch of 8/12 means the roof rises 8 inches for every 12 inches of horizontal distance. Common residential pitches: 4/12 (low slope), 6/12 (medium), 8/12 (medium-steep), 10/12 (steep — most common for vaulted ceilings), 12/12 (very steep, 45°).</InfoTooltip></button>
                     </div>
                     {editPitchMode ? (
-                      <select className={styles.editSelect} value={editPitchRise} onChange={e => setEditPitchRise(parseInt(e.target.value))}>
-                        {PITCH_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                      </select>
+                      <>
+                        <div className={styles.editPitchPresets}>
+                          {PITCH_PRESETS.map(p => (
+                            <button key={p} type="button"
+                              className={`${styles.editPitchPresetBtn} ${editPitchRise === p ? styles.editPitchPresetActive : ''}`}
+                              onClick={() => setEditPitchRise(p)}>
+                              {p}/12{p === 10 ? <span className={styles.editPitchCommonTag}>Common</span> : null}
+                            </button>
+                          ))}
+                        </div>
+                        <select className={styles.editSelect} value={editPitchRise} onChange={e => setEditPitchRise(parseInt(e.target.value))}>
+                          {PITCH_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
+                      </>
                     ) : (
                       <div className={styles.editHeightRow}>
                         <div className={styles.editHeightField}>
@@ -264,12 +277,23 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                   <>
                     <div className={styles.editHeightRow}>
                       <button type="button" className={`${styles.editCoatBtn} ${!editPitchMode ? styles.editCoatActive : ''}`} onClick={() => setEditPitchMode(false)}>Use heights</button>
-                      <button type="button" className={`${styles.editCoatBtn} ${editPitchMode ? styles.editCoatActive : ''}`} onClick={() => setEditPitchMode(true)}>Use pitch</button>
+                      <button type="button" className={`${styles.editCoatBtn} ${editPitchMode ? styles.editCoatActive : ''}`} onClick={() => setEditPitchMode(true)}>Use pitch <InfoTooltip>Roof pitch describes the steepness as rise over run. Common pitches: 4/12 (low), 6/12 (medium), 10/12 (steep, most common), 12/12 (45°).</InfoTooltip></button>
                     </div>
                     {editPitchMode ? (
-                      <select className={styles.editSelect} value={editPitchRise} onChange={e => setEditPitchRise(parseInt(e.target.value))}>
-                        {PITCH_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                      </select>
+                      <>
+                        <div className={styles.editPitchPresets}>
+                          {PITCH_PRESETS.map(p => (
+                            <button key={p} type="button"
+                              className={`${styles.editPitchPresetBtn} ${editPitchRise === p ? styles.editPitchPresetActive : ''}`}
+                              onClick={() => setEditPitchRise(p)}>
+                              {p}/12{p === 10 ? <span className={styles.editPitchCommonTag}>Common</span> : null}
+                            </button>
+                          ))}
+                        </div>
+                        <select className={styles.editSelect} value={editPitchRise} onChange={e => setEditPitchRise(parseInt(e.target.value))}>
+                          {PITCH_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
+                      </>
                     ) : (
                       <div className={styles.editHeightRow}>
                         <div className={styles.editHeightField}>

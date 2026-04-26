@@ -7,8 +7,10 @@ const SURFACE_TYPES = ['Wall', 'Ceiling', 'Trim', 'Door', 'Window', 'Cabinet', '
 
 const PITCH_OPTIONS = [1,2,3,4,5,6,7,8,9,10,12,14,16,18].map(rise => ({
   value: rise,
-  label: `${rise}/12 (${Math.round(Math.atan(rise / 12) * (180 / Math.PI))}°)`,
+  label: `${rise}/12 (${(Math.atan(rise / 12) * (180 / Math.PI)).toFixed(1)}°)`,
 }))
+
+const PITCH_PRESETS = [4, 6, 8, 10, 12]
 
 // Preset color swatches for zone colors. null = use the auto-cycling palette.
 const PRESET_COLORS = [
@@ -282,15 +284,26 @@ export default function ZoneDrawPanel({
       {/* Vaulted fields — heights OR pitch */}
       {surfaceType === 'Ceiling' && ceilingType === 'vaulted' && (
         <div className={styles.field}>
-          <label>Vault Slope Input <InfoTooltip>Roof pitch is rise/run. 6/12 means 6 inches of rise for every 12 inches of horizontal run. Standard residential roofs are 4/12 to 9/12. Cathedral ceilings often match the roof pitch above.</InfoTooltip></label>
+          <label>Vault Slope Input <InfoTooltip>Roof pitch describes the steepness as rise over run. A pitch of 8/12 means the roof rises 8 inches for every 12 inches of horizontal distance. Common residential pitches: 4/12 (low slope), 6/12 (medium), 8/12 (medium-steep), 10/12 (steep — most common for vaulted ceilings), 12/12 (very steep, 45°).</InfoTooltip></label>
           <div className={styles.heightRow} style={{ marginBottom: 8 }}>
             <button type="button" className={`${styles.typeBtn} ${!ceilingPitchMode ? styles.typeBtnActive : ''}`} onClick={() => setCeilingPitchMode(false)}>Use heights</button>
             <button type="button" className={`${styles.typeBtn} ${ceilingPitchMode ? styles.typeBtnActive : ''}`} onClick={() => setCeilingPitchMode(true)}>Use pitch (X/12)</button>
           </div>
           {ceilingPitchMode ? (
-            <select className={styles.select} value={ceilingPitchRise} onChange={e => setCeilingPitchRise(parseInt(e.target.value))}>
-              {PITCH_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
+            <>
+              <div className={styles.pitchPresets}>
+                {PITCH_PRESETS.map(p => (
+                  <button key={p} type="button"
+                    className={`${styles.pitchPresetBtn} ${ceilingPitchRise === p ? styles.pitchPresetActive : ''}`}
+                    onClick={() => setCeilingPitchRise(p)}>
+                    {p}/12{p === 10 ? <span className={styles.pitchCommonTag}>Common</span> : null}
+                  </button>
+                ))}
+              </div>
+              <select className={styles.select} value={ceilingPitchRise} onChange={e => setCeilingPitchRise(parseInt(e.target.value))}>
+                {PITCH_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </>
           ) : (
             <div className={styles.heightRow}>
               <div className={styles.heightField}>
@@ -336,15 +349,26 @@ export default function ZoneDrawPanel({
       {/* Shed / Single slope fields — heights OR pitch */}
       {surfaceType === 'Ceiling' && ceilingType === 'shed' && (
         <div className={styles.field}>
-          <label>Shed Slope Input <InfoTooltip>Roof pitch is rise/run. 6/12 means 6 inches of rise for every 12 inches of horizontal run. Standard residential roofs are 4/12 to 9/12.</InfoTooltip></label>
+          <label>Shed Slope Input <InfoTooltip>Roof pitch describes the steepness as rise over run. A pitch of 8/12 means the roof rises 8 inches for every 12 inches of horizontal distance. Common residential pitches: 4/12 (low slope), 6/12 (medium), 8/12 (medium-steep), 10/12 (steep — most common for vaulted ceilings), 12/12 (very steep, 45°).</InfoTooltip></label>
           <div className={styles.heightRow} style={{ marginBottom: 8 }}>
             <button type="button" className={`${styles.typeBtn} ${!ceilingPitchMode ? styles.typeBtnActive : ''}`} onClick={() => setCeilingPitchMode(false)}>Use heights</button>
             <button type="button" className={`${styles.typeBtn} ${ceilingPitchMode ? styles.typeBtnActive : ''}`} onClick={() => setCeilingPitchMode(true)}>Use pitch (X/12)</button>
           </div>
           {ceilingPitchMode ? (
-            <select className={styles.select} value={ceilingPitchRise} onChange={e => setCeilingPitchRise(parseInt(e.target.value))}>
-              {PITCH_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
+            <>
+              <div className={styles.pitchPresets}>
+                {PITCH_PRESETS.map(p => (
+                  <button key={p} type="button"
+                    className={`${styles.pitchPresetBtn} ${ceilingPitchRise === p ? styles.pitchPresetActive : ''}`}
+                    onClick={() => setCeilingPitchRise(p)}>
+                    {p}/12{p === 10 ? <span className={styles.pitchCommonTag}>Common</span> : null}
+                  </button>
+                ))}
+              </div>
+              <select className={styles.select} value={ceilingPitchRise} onChange={e => setCeilingPitchRise(parseInt(e.target.value))}>
+                {PITCH_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </>
           ) : (
             <div className={styles.heightRow}>
               <div className={styles.heightField}>

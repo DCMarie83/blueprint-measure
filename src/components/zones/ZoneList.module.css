@@ -282,6 +282,49 @@
   border-color: var(--color-primary);
 }
 
+.editPitchPresets {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.editPitchPresetBtn {
+  flex: 1;
+  padding: 5px 2px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.editPitchPresetBtn:hover:not(.editPitchPresetActive) {
+  border-color: var(--color-text-muted);
+  color: var(--color-text);
+}
+
+.editPitchPresetActive {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: rgba(46, 139, 255, 0.08);
+}
+
+.editPitchCommonTag {
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-primary);
+  opacity: 0.8;
+}
+
 .editCoatGroup {
   display: flex;
   gap: 6px;
