@@ -10,16 +10,20 @@
 }
 
 .avatar {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  background: rgba(46, 139, 255, 0.15);
-  color: var(--color-primary);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
-  font-weight: 700;
+  transition: background 0.15s, color 0.15s;
+}
+
+.trigger:hover .avatar {
+  background: rgba(255, 255, 255, 0.10);
+  color: var(--color-text);
 }
 
 .dropdown {
@@ -27,28 +31,79 @@
   top: 100%;
   right: 0;
   margin-top: 6px;
-  min-width: 200px;
+  width: 260px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   z-index: 50;
-  padding: 6px 0;
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--color-border);
+  gap: 8px;
+}
+
+.headerInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.displayName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .email {
-  padding: 8px 14px;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--color-text-muted);
-  border-bottom: 1px solid var(--color-border);
-  margin-bottom: 4px;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.roleBadge {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text-muted);
   white-space: nowrap;
+  margin-top: 1px;
+}
+
+.roleBadgeAccent {
+  background: rgba(46, 139, 255, 0.12);
+  color: var(--color-primary);
+}
+
+.menuSection {
+  padding: 4px 0;
+}
+
+.menuDivider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 0;
 }
 
 .menuItem {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   width: 100%;
   text-align: left;
   padding: 8px 14px;
@@ -62,4 +117,12 @@
 
 .menuItem:hover {
   background: rgba(255, 255, 255, 0.04);
+}
+
+.menuItemDanger {
+  color: #ef4444;
+}
+
+.menuItemDanger:hover {
+  background: rgba(239, 68, 68, 0.06);
 }

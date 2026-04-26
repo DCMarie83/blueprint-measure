@@ -168,9 +168,6 @@ export default function DashboardPage() {
               {storageDisplay.usedGb} GB{storageDisplay.limitGb ? ` of ${storageDisplay.limitGb} GB` : ''} used
             </span>
           )}
-          {user?.email === ADMIN_EMAIL && (
-            <Link to="/admin" className={styles.adminLink}>Admin</Link>
-          )}
           <UserMenu />
         </div>
       </header>
