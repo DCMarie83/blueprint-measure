@@ -34,6 +34,7 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
   hiddenZoneIds,
   onLabelOffsetChange,
   orthoMode = false,
+  enabledFeatures = {},
 }, ref) {
   const canvasRef = useRef(null)
   const imageRef = useRef(null)
@@ -400,7 +401,7 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
         : surfaceType || null
       const metaParts = [
         surfaceLabel,
-        coatCount > 1 ? `${coatCount} coats` : null,
+        enabledFeatures.paint_calculator && coatCount > 1 ? `${coatCount} coats` : null,
       ].filter(Boolean)
       if (metaParts.length > 0) labelParts.push(metaParts.join(' · '))
       if (result != null) {

@@ -2,11 +2,17 @@
 import { getMaxReach, estimatePaint } from './measurements'
 import { formatSFPrecise, formatLF } from './fractions'
 
-export function exportCSV(session, zones) {
+export function exportCSV(session, zones, enabledFeatures = {}) {
   const rows = []
+  const hasPaint = !!enabledFeatures.paint_calculator
 
   // Header row
-  rows.push(['Zone Name', 'Description', 'Surface Type', 'Coats', 'Surface Finish', 'Type', 'Result', 'Unit', 'Max Reach (ft)', 'Est. Paint (gal)', 'Notes'])
+  const header = ['Zone Name', 'Description', 'Surface Type']
+  if (hasPaint) header.push('Coats', 'Surface Finish')
+  header.push('Type', 'Result', 'Unit', 'Max Reach (ft)')
+  if (hasPaint) header.push('Est. Paint (gal)')
+  header.push('Notes')
+  rows.push(header)
 
   // One row per zone
   zones.forEach(zone => {
@@ -19,20 +25,23 @@ export function exportCSV(session, zones) {
                 : zone.measurement_type === 'LF' ? 'lin ft'
                 : 'each'
     const maxReach = getMaxReach(zone)
-    const paintGal = estimatePaint(zone)
-    rows.push([
+    const row = [
       zone.name,
       zone.description ?? '',
       zone.surface_type ?? '',
-      zone.coat_count ?? 1,
-      zone.surface_finish ?? 'smooth',
-      zone.measurement_type,
-      result,
-      unit,
-      maxReach !== null ? maxReach : '',
-      paintGal !== null ? paintGal : '',
-      zone.notes ?? '',
-    ])
+    ]
+    if (hasPaint) {
+      row.push(zone.coat_count ?? 1)
+      row.push(zone.surface_finish ?? 'smooth')
+    }
+    row.push(zone.measurement_type, result, unit)
+    row.push(maxReach !== null ? maxReach : '')
+    if (hasPaint) {
+      const paintGal = estimatePaint(zone)
+      row.push(paintGal !== null ? paintGal : '')
+    }
+    row.push(zone.notes ?? '')
+    rows.push(row)
   })
 
   // Summary row — totals broken out by type
@@ -46,11 +55,28 @@ export function exportCSV(session, zones) {
     .filter(z => z.measurement_type === 'count')
     .reduce((sum, z) => sum + (z.result ?? 0), 0)
 
-  rows.push([]) // blank separator
-  rows.push(['SUMMARY', '', '', '', '', '', '', '', '', '', ''])
-  rows.push(['Total SF', '', '', '', '', 'SF', formatSFPrecise(totalSF), 'sq ft', '', '', ''])
-  rows.push(['Total LF', '', '', '', '', 'LF', formatLF(totalLF), 'lin ft', '', '', ''])
-  rows.push(['Total Count', '', '', '', '', 'count', Math.round(totalCount) + ' items', 'each', '', '', ''])
+  const colCount = header.length
+  const emptyRow = Array(colCount).fill('')
+  rows.push(emptyRow)
+  const summaryRow = Array(colCount).fill('')
+  summaryRow[0] = 'SUMMARY'
+  rows.push(summaryRow)
+
+  const sfRow = Array(colCount).fill('')
+  sfRow[0] = 'Total SF'
+  const typeIdx = header.indexOf('Type')
+  sfRow[typeIdx] = 'SF'; sfRow[typeIdx + 1] = formatSFPrecise(totalSF); sfRow[typeIdx + 2] = 'sq ft'
+  rows.push(sfRow)
+
+  const lfRow = Array(colCount).fill('')
+  lfRow[0] = 'Total LF'
+  lfRow[typeIdx] = 'LF'; lfRow[typeIdx + 1] = formatLF(totalLF); lfRow[typeIdx + 2] = 'lin ft'
+  rows.push(lfRow)
+
+  const countRow = Array(colCount).fill('')
+  countRow[0] = 'Total Count'
+  countRow[typeIdx] = 'count'; countRow[typeIdx + 1] = Math.round(totalCount) + ' items'; countRow[typeIdx + 2] = 'each'
+  rows.push(countRow)
 
   // Build CSV string
   const csv = rows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n')

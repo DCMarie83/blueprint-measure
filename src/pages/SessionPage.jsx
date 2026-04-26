@@ -716,7 +716,7 @@ export default function SessionPage() {
       alert('No zones to export yet.')
       return
     }
-    exportCSV(session, zones)
+    exportCSV(session, zones, enabledFeatures)
   }
 
   async function handleManualSave() {
@@ -1408,6 +1408,7 @@ export default function SessionPage() {
             hiddenZoneIds={hiddenZoneIds}
             onLabelOffsetChange={handleLabelOffsetChange}
             orthoMode={orthoMode}
+            enabledFeatures={enabledFeatures}
           />
         ) : (
           <div className={styles.emptyCanvas}>

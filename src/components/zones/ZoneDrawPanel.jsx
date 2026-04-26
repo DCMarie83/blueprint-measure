@@ -418,21 +418,23 @@ export default function ZoneDrawPanel({
         )
       )}
 
-      <div className={styles.field}>
-        <label>Number of Coats <InfoTooltip>How many coats of paint will be applied. Most jobs require 2 coats. Affects paint calculator estimates.</InfoTooltip></label>
-        <div className={styles.coatGroup}>
-          {[1, 2].map(n => (
-            <button
-              key={n}
-              type="button"
-              className={`${styles.coatBtn} ${coatCount === n ? styles.active : ''}`}
-              onClick={() => setCoatCount(n)}
-            >
-              {n} {n === 1 ? 'coat' : 'coats'}
-            </button>
-          ))}
+      {enabledFeatures?.paint_calculator && (
+        <div className={styles.field}>
+          <label>Number of Coats <InfoTooltip>How many coats of paint will be applied. Most jobs require 2 coats. Affects paint calculator estimates.</InfoTooltip></label>
+          <div className={styles.coatGroup}>
+            {[1, 2].map(n => (
+              <button
+                key={n}
+                type="button"
+                className={`${styles.coatBtn} ${coatCount === n ? styles.active : ''}`}
+                onClick={() => setCoatCount(n)}
+              >
+                {n} {n === 1 ? 'coat' : 'coats'}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className={styles.field}>
         <label>Measurement Type</label>
