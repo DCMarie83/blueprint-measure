@@ -186,6 +186,7 @@
 
 .tr { transition: background 0.1s; }
 .tr:hover { background: rgba(255,255,255,0.02); }
+.trPending { background: rgba(245, 158, 11, 0.04); border-left: 2px solid #f59e0b; }
 
 /* ── Error box ───────────────────────────────────────────────────────────── */
 

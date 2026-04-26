@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
+import { MessageSquare } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
+import { logError } from '../../lib/logError'
 import styles from './FeedbackButton.module.css'
 
 const FEEDBACK_TYPES = [
@@ -17,7 +19,8 @@ export default function FeedbackButton({ prefillDescription = '' }) {
   const [description, setDescription] = useState(prefillDescription)
   const [screenshot, setScreenshot] = useState(null)
   const [submitting, setSubmitting] = useState(false)
-  const [toast, setToast] = useState(null) // { type: 'success' | 'error', message }
+  const [toast, setToast] = useState(null)
+  const [pulsed, setPulsed] = useState(false)
   const fileRef = useRef(null)
 
   // Listen for open-feedback events from ErrorBoundary
@@ -29,6 +32,16 @@ export default function FeedbackButton({ prefillDescription = '' }) {
     }
     window.addEventListener('open-feedback', onOpenFeedback)
     return () => window.removeEventListener('open-feedback', onOpenFeedback)
+  }, [])
+
+  // First-load attention pulse (once per session)
+  useEffect(() => {
+    if (!sessionStorage.getItem('bm_feedback_pulsed')) {
+      setPulsed(true)
+      sessionStorage.setItem('bm_feedback_pulsed', '1')
+      const t = setTimeout(() => setPulsed(false), 1000)
+      return () => clearTimeout(t)
+    }
   }, [])
 
   function handleOpen() {
@@ -79,28 +92,28 @@ export default function FeedbackButton({ prefillDescription = '' }) {
     try {
       let screenshotUrl = null
 
-      // Upload screenshot if provided
       if (screenshot) {
         const ext = screenshot.name.split('.').pop()
         const path = `${user.id}/${Date.now()}.${ext}`
         const { error: uploadErr } = await supabase.storage
           .from('feedback-screenshots')
           .upload(path, screenshot)
-        if (uploadErr) throw new Error('Screenshot upload failed: ' + uploadErr.message)
+        if (uploadErr) {
+          logError(uploadErr, { source: 'feedback-screenshot-upload', severity: 'error' })
+          throw new Error('Screenshot upload failed: ' + uploadErr.message)
+        }
         const { data: { publicUrl } } = supabase.storage
           .from('feedback-screenshots')
           .getPublicUrl(path)
         screenshotUrl = publicUrl
       }
 
-      // Get tenant_id from user profile
       const { data: profile } = await supabase
         .from('user_profiles')
         .select('company_id')
         .eq('user_id', user.id)
         .single()
 
-      // Try to extract session_id from current URL
       const urlMatch = window.location.pathname.match(/\/session\/([a-f0-9-]+)/)
       const sessionId = urlMatch ? urlMatch[1] : null
 
@@ -116,7 +129,10 @@ export default function FeedbackButton({ prefillDescription = '' }) {
           page_url: window.location.href,
           user_agent: navigator.userAgent,
         })
-      if (insertErr) throw new Error(insertErr.message)
+      if (insertErr) {
+        logError(insertErr, { source: 'feedback-submit', severity: 'error' })
+        throw new Error(insertErr.message)
+      }
 
       setToast({ type: 'success', message: 'Feedback received — thank you!' })
       setTimeout(() => { handleClose(); setToast(null) }, 1500)
@@ -131,16 +147,16 @@ export default function FeedbackButton({ prefillDescription = '' }) {
 
   return (
     <>
-      {/* Floating button */}
+      {/* Floating pill button */}
       <button
-        className={styles.fab}
+        className={`${styles.fab} ${pulsed ? styles.fabPulse : ''}`}
         onClick={handleOpen}
         title="Send feedback"
         aria-label="Send feedback"
       >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-        </svg>
+        <MessageSquare size={16} />
+        <span className={styles.fabText}>Send Feedback</span>
+        <span className={styles.betaBadge}>BETA</span>
       </button>
 
       {/* Modal */}
@@ -148,7 +164,10 @@ export default function FeedbackButton({ prefillDescription = '' }) {
         <div className={styles.backdrop} onClick={handleClose}>
           <div className={styles.modal} onClick={e => e.stopPropagation()}>
             <div className={styles.header}>
-              <h3 className={styles.title}>Send Feedback</h3>
+              <div>
+                <h3 className={styles.title}>Help us improve BlueprintMeasure</h3>
+                <p className={styles.subtitle}>Found a bug or have an idea? Tell us about it.</p>
+              </div>
               <button className={styles.closeBtn} onClick={handleClose}>✕</button>
             </div>
             <form onSubmit={handleSubmit} className={styles.form}>
