@@ -43,15 +43,17 @@
 
 .calibRow {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
 .calibInput {
+  flex: 1 1 80px;
+  min-width: 0;
   background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
-  padding: 8px 12px;
+  padding: 8px 10px;
   font-size: 14px;
   color: var(--color-text);
   outline: none;
@@ -62,11 +64,15 @@
 }
 
 .calibBtn {
+  flex: 1 1 100%;
   background: var(--color-accent);
   border: none;
   border-radius: var(--radius);
-  padding: 9px;
+  padding: 6px 8px;
   font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-weight: 600;
   color: #0f1923;
   transition: opacity 0.15s;

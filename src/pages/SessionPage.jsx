@@ -315,7 +315,11 @@ export default function SessionPage() {
     }
 
     // Zones exist and scale is changing — show prompt
-    setPendingScaleChange({ oldPPF, newPPF: ppf, zoneCount: zonesOnPage.length })
+    setPendingScaleChange({
+      oldPPF, newPPF: ppf, zoneCount: zonesOnPage.length,
+      oldLabel: findScaleLabel(oldPPF),
+      newLabel: findScaleLabel(ppf),
+    })
   }
 
   // Pixel sanity check — pure math, no API calls.
@@ -1497,8 +1501,8 @@ export default function SessionPage() {
       <ScaleChangeDialog
         open={!!pendingScaleChange}
         zoneCount={pendingScaleChange?.zoneCount ?? 0}
-        oldScaleLabel={findScaleLabel(pendingScaleChange?.oldPPF)}
-        newScaleLabel={findScaleLabel(pendingScaleChange?.newPPF)}
+        oldScaleLabel={pendingScaleChange?.oldLabel ?? 'Custom scale'}
+        newScaleLabel={pendingScaleChange?.newLabel ?? 'Custom scale'}
         onRecalculate={async () => {
           const { newPPF } = pendingScaleChange
           await applyScaleChange(newPPF)
