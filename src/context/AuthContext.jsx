@@ -1,37 +1,58 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-// AuthContext holds the currently logged-in user so any component in the app
-// can access it without passing it down through props manually.
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [setupComplete, setSetupComplete] = useState(null) // null = unknown, true/false
 
   useEffect(() => {
-    // On first load, check if there's already a logged-in session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      const u = session?.user ?? null
+      setUser(u)
+      if (u) {
+        const completed = await checkSetupComplete(u.id)
+        setSetupComplete(completed)
+      }
       setLoading(false)
     })
 
-    // Listen for future login/logout events
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const u = session?.user ?? null
+      setUser(u)
+      if (u) {
+        const completed = await checkSetupComplete(u.id)
+        setSetupComplete(completed)
+      } else {
+        setSetupComplete(null)
+      }
     })
 
     return () => subscription.unsubscribe()
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, loading }}>
+    <AuthContext.Provider value={{ user, loading, setupComplete, setSetupComplete }}>
       {children}
     </AuthContext.Provider>
   )
 }
 
-// useAuth() is a shortcut hook — any component can call useAuth() to get the user
+async function checkSetupComplete(userId) {
+  try {
+    const { data } = await supabase
+      .from('user_profiles')
+      .select('setup_completed_at')
+      .eq('user_id', userId)
+      .single()
+    return !!data?.setup_completed_at
+  } catch {
+    return true // fail open — don't block users if query fails
+  }
+}
+
 export function useAuth() {
   return useContext(AuthContext)
 }

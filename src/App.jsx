@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
 import DashboardPage from './pages/DashboardPage'
 import SessionPage from './pages/SessionPage'
 import AccuracyTestPage from './pages/AccuracyTestPage'
@@ -19,12 +20,11 @@ import FeedbackSection from './pages/admin/FeedbackSection'
 import ErrorsSection from './pages/admin/ErrorsSection'
 import SystemSection from './pages/admin/SystemSection'
 
-// The only email address that can access /admin.
 const ADMIN_EMAIL = 'main@ngautomationhub.com'
 
-// ProtectedRoute wraps pages that require a login.
+// ProtectedRoute wraps pages that require login + completed setup.
 function ProtectedRoute({ children }) {
-  const { user, loading } = useAuth()
+  const { user, loading, setupComplete } = useAuth()
 
   if (loading) {
     return (
@@ -36,12 +36,13 @@ function ProtectedRoute({ children }) {
 
   if (!user) return <Navigate to="/login" replace />
   if (user.user_metadata?.force_password_change) return <Navigate to="/change-password" replace />
+  if (setupComplete === false) return <Navigate to="/register" replace />
   return <>{children}<FeedbackButton /></>
 }
 
 // AdminRoute wraps /admin. Requires login AND the hardcoded admin email.
 function AdminRoute({ children }) {
-  const { user, loading } = useAuth()
+  const { user, loading, setupComplete } = useAuth()
 
   if (loading) {
     return (
@@ -52,7 +53,25 @@ function AdminRoute({ children }) {
   }
 
   if (!user) return <Navigate to="/login" replace />
+  if (setupComplete === false) return <Navigate to="/register" replace />
   if (user.email !== ADMIN_EMAIL) return <Navigate to="/dashboard" replace />
+  return children
+}
+
+// RegisterRoute — only accessible if setup is NOT complete.
+function RegisterRoute({ children }) {
+  const { user, loading, setupComplete } = useAuth()
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+        <div className="spinner" />
+      </div>
+    )
+  }
+
+  if (!user) return <Navigate to="/login" replace />
+  if (setupComplete === true) return <Navigate to="/dashboard" replace />
   return children
 }
 
@@ -69,7 +88,13 @@ export default function App() {
         element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />}
       />
 
-      {/* Protected routes — require login */}
+      {/* Registration / setup — only for users who haven't completed setup */}
+      <Route
+        path="/register"
+        element={<RegisterRoute><RegisterPage /></RegisterRoute>}
+      />
+
+      {/* Protected routes — require login + completed setup */}
       <Route
         path="/dashboard"
         element={<ProtectedRoute><DashboardPage /></ProtectedRoute>}
@@ -86,7 +111,7 @@ export default function App() {
       {/* Password change */}
       <Route path="/change-password" element={<ChangePasswordPage />} />
 
-      {/* Admin routes — sidebar-navigated layout with nested routes */}
+      {/* Admin routes */}
       <Route
         path="/admin"
         element={<AdminRoute><AdminLayout /></AdminRoute>}
