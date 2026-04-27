@@ -38,12 +38,14 @@ export default function RegisterPage() {
     if (!canSubmit) return
     setSubmitting(true)
     try {
-      // Set the user's password
-      const { error: pwErr } = await supabase.auth.updateUser({ password })
-      if (pwErr) throw new Error(pwErr.message)
-
-      // Clear force_password_change if set
-      await supabase.auth.updateUser({ data: { force_password_change: false } })
+      // Set password and clear force_password_change in a single call
+      // to avoid back-to-back token refreshes that cause auth-token
+      // lock contention with the subsequent profile UPDATE.
+      const { error: authErr } = await supabase.auth.updateUser({
+        password,
+        data: { force_password_change: false },
+      })
+      if (authErr) throw new Error(authErr.message)
 
       // Update user_profiles with setup data
       const { error: profileErr } = await supabase
@@ -60,7 +62,10 @@ export default function RegisterPage() {
         .eq('user_id', user.id)
       if (profileErr) throw new Error(profileErr.message)
 
-      navigate('/dashboard', { replace: true })
+      // Hard redirect forces AuthContext to re-run checkSetupComplete
+      // with the freshly-set setup_completed_at value, avoiding stale
+      // state bouncing the user back to /register.
+      window.location.href = '/dashboard'
     } catch (err) {
       setError(err.message)
     } finally {
