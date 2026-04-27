@@ -308,8 +308,8 @@ export default function SessionPage() {
     const oldPPF = pageScales[currentPage]
     const zonesOnPage = zones.filter(z => (z.page_number ?? 1) === currentPage)
 
-    // First scale set or no zones — apply immediately
-    if (!oldPPF || zonesOnPage.length === 0 || Math.abs(oldPPF - ppf) < 0.01) {
+    // First scale set, no zones, or negligible change — apply immediately
+    if (!oldPPF || zonesOnPage.length === 0 || Math.abs(oldPPF - ppf) < 0.5) {
       applyScaleChange(ppf)
       return
     }

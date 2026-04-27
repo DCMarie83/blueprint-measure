@@ -15,34 +15,35 @@ export default function ScaleChangeDialog({
   if (!open) return null
 
   const s = zoneCount === 1 ? '' : 's'
+  const verb = zoneCount === 1 ? 'stays' : 'stay'
 
   return (
     <div className={styles.backdrop} onClick={onCancel}>
       <div className={styles.card} onClick={e => e.stopPropagation()}>
-        <h2 className={styles.title}>Scale changed</h2>
+        <h2 className={styles.title}>Scale changed — what about your existing zones?</h2>
         <p className={styles.body}>
-          This page has {zoneCount} zone{s} drawn at the previous scale ({oldScaleLabel}).
-          What would you like to do?
+          This page has {zoneCount} zone{s} drawn at {oldScaleLabel}.
+          You changed the scale to {newScaleLabel}. What about your existing zone{s}?
         </p>
 
         <div className={styles.options}>
           <button className={styles.primaryBtn} onClick={onRecalculate} autoFocus>
-            Recalculate zones at new scale
+            Update zones to new scale
             <span className={styles.subtext}>
-              Updates all {zoneCount} zone{s} using {newScaleLabel}
+              Your {zoneCount} zone{s} will be recalculated at {newScaleLabel}
             </span>
           </button>
 
           <button className={styles.secondaryBtn} onClick={onKeepAsIs}>
-            Keep zones as-is
+            Keep existing zones unchanged
             <span className={styles.subtext}>
-              Existing zones stay at their current values. New zones use {newScaleLabel}
+              Your {zoneCount} zone{s} {verb} at {oldScaleLabel}. New zones use {newScaleLabel}
             </span>
           </button>
 
           <button className={styles.cancelBtn} onClick={onCancel}>
-            Cancel
-            <span className={styles.subtext}>Keeps {oldScaleLabel}</span>
+            Cancel scale change
+            <span className={styles.subtext}>Stay at {oldScaleLabel}</span>
           </button>
         </div>
       </div>
