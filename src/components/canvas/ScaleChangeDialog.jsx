@@ -42,8 +42,8 @@ export default function ScaleChangeDialog({
           </button>
 
           <button className={styles.cancelBtn} onClick={onCancel}>
-            Cancel scale change
-            <span className={styles.subtext}>Stay at {oldScaleLabel}</span>
+            Don't change scale
+            <span className={styles.subtext}>Stay at {oldScaleLabel}. No zones change.</span>
           </button>
         </div>
       </div>
