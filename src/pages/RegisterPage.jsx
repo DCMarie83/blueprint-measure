@@ -38,17 +38,19 @@ export default function RegisterPage() {
     if (!canSubmit) return
     setSubmitting(true)
     try {
-      // Set password and clear force_password_change in a single call
-      // to avoid back-to-back token refreshes that cause auth-token
-      // lock contention with the subsequent profile UPDATE.
+      console.log('[register] submit started, user:', user)
+      console.log('[register] user.id:', user?.id)
+
+      console.log('[register] calling auth.updateUser')
       const { error: authErr } = await supabase.auth.updateUser({
         password,
         data: { force_password_change: false },
       })
+      console.log('[register] auth.updateUser returned, authErr:', authErr)
       if (authErr) throw new Error(authErr.message)
 
-      // Update user_profiles with setup data
-      const { error: profileErr } = await supabase
+      console.log('[register] starting profile update with user.id:', user?.id)
+      const { error: profileErr, data: profileData } = await supabase
         .from('user_profiles')
         .update({
           full_name: fullName.trim(),
@@ -60,15 +62,17 @@ export default function RegisterPage() {
           setup_completed_at: new Date().toISOString(),
         })
         .eq('user_id', user.id)
+        .select()
+      console.log('[register] profile update returned, profileErr:', profileErr, 'data:', profileData)
       if (profileErr) throw new Error(profileErr.message)
 
-      // Hard redirect forces AuthContext to re-run checkSetupComplete
-      // with the freshly-set setup_completed_at value, avoiding stale
-      // state bouncing the user back to /register.
+      console.log('[register] redirecting to /dashboard')
       window.location.href = '/dashboard'
     } catch (err) {
+      console.error('[register] caught error:', err)
       setError(err.message)
     } finally {
+      console.log('[register] submit handler finally block')
       setSubmitting(false)
     }
   }
