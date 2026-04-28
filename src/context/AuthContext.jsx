@@ -19,9 +19,18 @@ export function AuthProvider({ children }) {
       setLoading(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       const u = session?.user ?? null
       setUser(u)
+
+      // Skip profile re-check on USER_UPDATED — fired by
+      // auth.updateUser() during registration. The profile query
+      // inside this listener was stealing the auth-token lock from
+      // RegisterPage's user_profiles UPDATE, causing setup_completed_at
+      // to never be written. Setup status doesn't change on password
+      // updates, so there's nothing to re-check.
+      if (event === 'USER_UPDATED') return
+
       if (u) {
         const completed = await checkSetupComplete(u.id)
         setSetupComplete(completed)
