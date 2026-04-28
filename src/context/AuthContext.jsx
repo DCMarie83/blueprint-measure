@@ -19,15 +19,16 @@ export function AuthProvider({ children }) {
       setLoading(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Listener stays synchronous — no Supabase queries here.
+      // checkSetupComplete is called once on mount via getSession()
+      // above. Calling it inside the listener was stealing the
+      // auth-token lock from in-flight auth.updateUser() calls
+      // during registration, throwing "Lock was released because
+      // another request stole it" and breaking signup completely.
       const u = session?.user ?? null
       setUser(u)
-      if (u) {
-        const completed = await checkSetupComplete(u.id)
-        setSetupComplete(completed)
-      } else {
-        setSetupComplete(null)
-      }
+      if (!u) setSetupComplete(null)
     })
 
     return () => subscription.unsubscribe()
