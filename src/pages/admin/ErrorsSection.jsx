@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, Fragment } from 'react'
+import { useState, useEffect, useCallback, useContext, Fragment } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
-import { useAdminData } from '../../context/AdminDataContext'
+import { AdminDataContext } from '../../context/AdminDataContext'
 import { logError } from '../../lib/logError'
 import styles from './sections.module.css'
 
@@ -20,8 +21,35 @@ function SeverityBadge({ severity }) {
   )
 }
 
+// Hook that returns { companies, users, loading } from AdminDataContext when available,
+// or fetches directly via RLS-safe queries when mounted outside AdminDataProvider.
+function useErrorsContextData() {
+  const ctx = useContext(AdminDataContext)
+  const [fallbackCompanies, setFallbackCompanies] = useState([])
+  const [fallbackUsers, setFallbackUsers] = useState([])
+  const [fallbackLoading, setFallbackLoading] = useState(!ctx)
+
+  useEffect(() => {
+    if (ctx) return
+    async function load() {
+      const [{ data: cos }, { data: profs }] = await Promise.all([
+        supabase.from('companies').select('id, name'),
+        supabase.from('user_profiles').select('user_id, email, full_name'),
+      ])
+      setFallbackCompanies(cos ?? [])
+      // Shape to match AdminDataContext.users (which has .id and .email)
+      setFallbackUsers((profs ?? []).map(p => ({ id: p.user_id, email: p.email })))
+      setFallbackLoading(false)
+    }
+    load()
+  }, [ctx])
+
+  if (ctx) return { companies: ctx.companies, users: ctx.users, loading: ctx.loading }
+  return { companies: fallbackCompanies, users: fallbackUsers, loading: fallbackLoading }
+}
+
 // Test error thrower component — throws in useEffect to trigger ErrorBoundary
-function BoundaryTestThrower({ onReset }) {
+function BoundaryTestThrower() {
   useEffect(() => {
     throw new Error('Boundary test — triggered manually from admin')
   }, [])
@@ -29,7 +57,10 @@ function BoundaryTestThrower({ onReset }) {
 }
 
 export default function ErrorsSection() {
-  const { companies, users } = useAdminData()
+  const { companies, users, loading: contextLoading } = useErrorsContextData()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialUserIdFilter = searchParams.get('user_id') || 'all'
+
   const [errors, setErrors] = useState([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState(null)
@@ -43,6 +74,7 @@ export default function ErrorsSection() {
   const [tenantFilter, setTenantFilter] = useState('all')
   const [searchText, setSearchText] = useState('')
   const [groupByFingerprint, setGroupByFingerprint] = useState(false)
+  const [userIdFilter, setUserIdFilter] = useState(initialUserIdFilter)
 
   // Metrics
   const [unresolvedCount, setUnresolvedCount] = useState(0)
@@ -83,8 +115,6 @@ export default function ErrorsSection() {
         setLast24h(c => c + 1)
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'client_errors' }, (payload) => {
-        setErrors(prev => prev.map(e => e.id === payload.new.id ? payload.new : e))
-        // Recalculate metrics
         setErrors(prev => {
           const all = prev.map(e => e.id === payload.new.id ? payload.new : e)
           setUnresolvedCount(all.filter(e => !e.resolved).length)
@@ -118,7 +148,7 @@ export default function ErrorsSection() {
   const triggerTestError = (severity) => {
     const testError = new Error(`Test error fired manually at ${new Date().toISOString()}`)
     logError(testError, severity, { source: 'manual_test', triggeredBy: 'super_admin' })
-    showToast(`Test error logged with severity: ${severity}. Check /admin/errors to verify.`)
+    showToast(`Test error logged with severity: ${severity}. Check errors page to verify.`)
   }
 
   const showToast = (msg) => {
@@ -126,8 +156,15 @@ export default function ErrorsSection() {
     setTimeout(() => setToast(null), 4000)
   }
 
+  const clearUserFilter = () => {
+    setUserIdFilter('all')
+    setSearchParams({})
+  }
+
   // Apply filters
   const filtered = errors.filter(ce => {
+    // User ID filter
+    if (userIdFilter !== 'all' && ce.user_id !== userIdFilter) return false
     // Date filter
     if (dateFilter !== 'all') {
       const ago = { '24h': 1, '7d': 7, '30d': 30 }[dateFilter] ?? 7
@@ -163,15 +200,40 @@ export default function ErrorsSection() {
     displayRows = Object.values(groups)
   }
 
-  if (loading) return <div className={styles.empty}>Loading errors...</div>
+  if (loading || contextLoading) return <div className={styles.empty}>Loading errors...</div>
 
   if (throwBoundaryError) {
-    return <BoundaryTestThrower onReset={() => setThrowBoundaryError(false)} />
+    return <BoundaryTestThrower />
   }
+
+  const userFilterEmail = userIdFilter !== 'all'
+    ? users.find(u => u.id === userIdFilter)?.email || userIdFilter.slice(0, 8) + '...'
+    : null
 
   return (
     <div>
       <h1 className={styles.pageTitle}>System Errors</h1>
+
+      {/* User filter chip */}
+      {userIdFilter !== 'all' && (
+        <div style={{ marginBottom: 12 }}>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            fontSize: 12, padding: '4px 10px', borderRadius: 12,
+            background: 'var(--color-surface, #1e1e2e)', border: '1px solid var(--color-border)',
+            color: 'var(--color-text)',
+          }}>
+            Filtering by user: <strong>{userFilterEmail}</strong>
+            <button
+              onClick={clearUserFilter}
+              style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: 14, padding: '0 2px', lineHeight: 1 }}
+              title="Clear user filter"
+            >
+              &times;
+            </button>
+          </span>
+        </div>
+      )}
 
       {/* Metrics bar */}
       <div className={styles.metricsBar}>

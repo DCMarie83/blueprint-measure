@@ -40,6 +40,7 @@ export default function UserDetailPage() {
   const navigate = useNavigate()
   const { user: currentUser } = useAuth()
   const isSuperAdmin = currentUser?.email === ADMIN_EMAIL
+  const [currentUserRole, setCurrentUserRole] = useState(null)
 
   const [profile, setProfile] = useState(null)
   const [companies, setCompanies] = useState([])
@@ -79,6 +80,21 @@ export default function UserDetailPage() {
     setProfile(data)
     setLoading(false)
   }, [userId])
+
+  // Determine current user's role for link routing
+  useEffect(() => {
+    if (!currentUser) return
+    if (currentUser.email === ADMIN_EMAIL) { setCurrentUserRole('super_admin'); return }
+    async function loadRole() {
+      const { data } = await supabase
+        .from('user_profiles')
+        .select('role')
+        .eq('user_id', currentUser.id)
+        .maybeSingle()
+      setCurrentUserRole(data?.role || 'contractor_user')
+    }
+    loadRole()
+  }, [currentUser])
 
   useEffect(() => {
     async function load() {
@@ -406,9 +422,9 @@ export default function UserDetailPage() {
                 })}
               </div>
             )}
-            {isSuperAdmin && (
+            {currentUserRole && currentUserRole !== 'contractor_user' && (
               <Link
-                to={`/admin/errors?user_id=${userId}`}
+                to={`${currentUserRole === 'super_admin' ? '/admin/errors' : '/dashboard/errors'}?user_id=${userId}`}
                 style={{ display: 'block', marginTop: 12, fontSize: 12, color: 'var(--color-primary)', textDecoration: 'none' }}
               >
                 View all errors for this user &rarr;

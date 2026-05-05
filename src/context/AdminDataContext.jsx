@@ -93,6 +93,8 @@ export function AdminDataProvider({ children }) {
   )
 }
 
+export { AdminDataContext }
+
 export function useAdminData() {
   const ctx = useContext(AdminDataContext)
   if (!ctx) throw new Error('useAdminData must be used within AdminDataProvider')

@@ -167,6 +167,10 @@ export default function App() {
         path="/dashboard/team/:userId"
         element={<ContractorAdminRoute><UserDetailPage /></ContractorAdminRoute>}
       />
+      <Route
+        path="/dashboard/errors"
+        element={<ContractorAdminRoute><ErrorsSection /></ContractorAdminRoute>}
+      />
 
       {/* Password change */}
       <Route path="/change-password" element={<ChangePasswordPage />} />
