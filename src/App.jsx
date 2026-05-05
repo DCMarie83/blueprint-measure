@@ -24,6 +24,7 @@ import ErrorsSection from './pages/admin/ErrorsSection'
 import SystemSection from './pages/admin/SystemSection'
 import UserDetailPage from './pages/admin/UserDetailPage'
 import TeamPage from './pages/TeamPage'
+import PasswordRecoveryHandler from './components/PasswordRecoveryHandler'
 
 const ADMIN_EMAIL = 'main@ngautomationhub.com'
 
@@ -131,6 +132,7 @@ export default function App() {
   return (
     <>
     <RouteBreadcrumbs />
+    <PasswordRecoveryHandler />
     <Routes>
       {/* Public route — login page */}
       <Route

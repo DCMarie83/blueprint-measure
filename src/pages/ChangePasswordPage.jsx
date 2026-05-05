@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import styles from './LoginPage.module.css'
@@ -9,6 +9,17 @@ export default function ChangePasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error,           setError]           = useState('')
   const [loading,         setLoading]         = useState(false)
+  const [headingText, setHeadingText] = useState('Change your password')
+  const [helperText, setHelperText] = useState('Your account requires a new password before you can continue. Choose something only you know.')
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user && !user.user_metadata?.force_password_change) {
+        setHeadingText('Reset your password')
+        setHelperText('Enter a new password for your account.')
+      }
+    })
+  }, [])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -51,9 +62,9 @@ export default function ChangePasswordPage() {
           <span>BlueprintMeasure</span>
         </div>
 
-        <h1 className={styles.title}>Change your password</h1>
+        <h1 className={styles.title}>{headingText}</h1>
         <p style={{ fontSize: 14, color: 'var(--color-text-muted)', marginBottom: 24, lineHeight: 1.5 }}>
-          Your account requires a new password before you can continue. Choose something only you know.
+          {helperText}
         </p>
 
         <form className={styles.form} onSubmit={handleSubmit}>
