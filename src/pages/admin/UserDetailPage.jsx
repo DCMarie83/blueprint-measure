@@ -160,10 +160,10 @@ export default function UserDetailPage() {
         showToast('Password reset email sent')
       } else if (action === 'suspend') {
         setAuthInfo(prev => ({ ...prev, banned_until: 'suspended' }))
-        showToast('Account suspended')
+        showToast('Account deactivated')
       } else if (action === 'unsuspend') {
         setAuthInfo(prev => ({ ...prev, banned_until: null }))
-        showToast('Account unsuspended')
+        showToast('Account reactivated')
       } else if (action === 'soft_delete') {
         setProfile(prev => ({ ...prev, deleted_at: new Date().toISOString() }))
         setConfirmDelete(false)
@@ -204,7 +204,7 @@ export default function UserDetailPage() {
         <h1 className={styles.pageTitle} style={{ margin: 0 }}>
           {profile?.full_name || profile?.email}
           {profile?.deleted_at && <span style={{ fontSize: 12, color: '#ef4444', marginLeft: 8 }}>DELETED</span>}
-          {isBanned && <span style={{ fontSize: 12, color: '#f59e0b', marginLeft: 8 }}>SUSPENDED</span>}
+          {isBanned && <span style={{ fontSize: 12, color: '#f59e0b', marginLeft: 8 }}>DEACTIVATED</span>}
         </h1>
       </div>
 
@@ -298,7 +298,7 @@ export default function UserDetailPage() {
               <ProfileField label="Setup Completed" value={profile?.setup_completed_at ? new Date(profile.setup_completed_at).toLocaleString() : 'Setup incomplete'} />
               <ProfileField label="Last Login" value={authInfo?.last_sign_in_at ? new Date(authInfo.last_sign_in_at).toLocaleString() : '-'} />
               {profile?.deleted_at && (
-                <ProfileField label="Deleted" value={`Suspended on ${new Date(profile.deleted_at).toLocaleString()}`} valueStyle={{ color: '#ef4444' }} />
+                <ProfileField label="Deleted" value={`Deactivated on ${new Date(profile.deleted_at).toLocaleString()}`} valueStyle={{ color: '#ef4444' }} />
               )}
             </div>
           </div>
@@ -323,7 +323,7 @@ export default function UserDetailPage() {
                     disabled={actionLoading === 'suspend'}
                     onClick={() => handleAction('suspend')}
                   >
-                    {actionLoading === 'suspend' ? 'Suspending...' : 'Suspend account'}
+                    {actionLoading === 'suspend' ? 'Deactivating...' : 'Deactivate account'}
                   </button>
                 ) : (
                   <button
@@ -332,7 +332,7 @@ export default function UserDetailPage() {
                     disabled={actionLoading === 'unsuspend'}
                     onClick={() => handleAction('unsuspend')}
                   >
-                    {actionLoading === 'unsuspend' ? 'Unsuspending...' : 'Unsuspend account'}
+                    {actionLoading === 'unsuspend' ? 'Reactivating...' : 'Reactivate account'}
                   </button>
                 )}
 

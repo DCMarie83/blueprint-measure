@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { formatAuthError } from '../lib/authErrors'
 import styles from './LoginPage.module.css'
 
 export default function LoginPage() {
@@ -20,7 +21,7 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) setError(error.message)
+    if (error) setError(formatAuthError(error))
     // On success, AuthContext updates automatically and App.jsx redirects to /dashboard
     setLoading(false)
   }
