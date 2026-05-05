@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { User, Settings, LogOut } from 'lucide-react'
+import { User, Settings, Users, LogOut } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import styles from './UserMenu.module.css'
@@ -81,6 +81,12 @@ export default function UserMenu() {
               <User size={15} />
               <span>Account</span>
             </button>
+            {role === 'contractor_admin' && (
+              <button className={styles.menuItem} onClick={() => { navigate('/dashboard/team'); setOpen(false) }}>
+                <Users size={15} />
+                <span>Manage Team</span>
+              </button>
+            )}
             {isSuperAdmin && (
               <button className={styles.menuItem} onClick={() => { navigate('/admin'); setOpen(false) }}>
                 <Settings size={15} />

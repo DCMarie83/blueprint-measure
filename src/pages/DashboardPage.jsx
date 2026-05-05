@@ -36,7 +36,6 @@ export default function DashboardPage() {
   const [totalZones, setTotalZones] = useState(null)
   const [activity, setActivity] = useState([])
   const [activityOpen, setActivityOpen] = useState(true)
-  const [userRole, setUserRole] = useState(null)
   const navigate = useNavigate()
 
   // Fetch company plan, storage, zone counts, and activity
@@ -47,11 +46,9 @@ export default function DashboardPage() {
       // Split into two queries to avoid FK join into companies (RLS blocks the embed)
       const { data: profile } = await supabase
         .from('user_profiles')
-        .select('company_id, role')
+        .select('company_id')
         .eq('user_id', user.id)
         .single()
-
-      setUserRole(profile?.role || 'contractor_user')
 
       let plan = null
       let bpLimit = null
@@ -255,11 +252,6 @@ export default function DashboardPage() {
                   document.getElementById('all-sessions')?.scrollIntoView({ behavior: 'smooth' })
                 }}>
                   View All Sessions
-                </button>
-              )}
-              {(userRole === 'contractor_admin' || user?.email === ADMIN_EMAIL) && (
-                <button className={styles.quickBtnSecondary} onClick={() => navigate('/dashboard/team')}>
-                  Manage Team
                 </button>
               )}
             </div>
