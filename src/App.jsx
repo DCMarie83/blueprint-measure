@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
-import { useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from './context/AuthContext'
+import { supabase } from './lib/supabase'
 import { addBreadcrumb } from './lib/breadcrumbs'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
@@ -21,6 +22,8 @@ import TestLogsSection from './pages/admin/TestLogsSection'
 import FeedbackSection from './pages/admin/FeedbackSection'
 import ErrorsSection from './pages/admin/ErrorsSection'
 import SystemSection from './pages/admin/SystemSection'
+import UserDetailPage from './pages/admin/UserDetailPage'
+import TeamPage from './pages/TeamPage'
 
 const ADMIN_EMAIL = 'main@ngautomationhub.com'
 
@@ -77,6 +80,37 @@ function RegisterRoute({ children }) {
   return children
 }
 
+// ContractorAdminRoute — requires login + completed setup + contractor_admin or super_admin role.
+// Role check is soft — RLS enforces real access. This just prevents non-admins from seeing the page.
+function ContractorAdminRoute({ children }) {
+  const { user, loading, setupComplete } = useAuth()
+  const [allowed, setAllowed] = useState(null)
+
+  useEffect(() => {
+    if (!user || loading) return
+    async function check() {
+      // Super admin always allowed
+      if (user.email === ADMIN_EMAIL) { setAllowed(true); return }
+      const { data } = await supabase.from('user_profiles').select('role').eq('user_id', user.id).maybeSingle()
+      setAllowed(data?.role === 'contractor_admin')
+    }
+    check()
+  }, [user, loading])
+
+  if (loading || allowed === null) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+        <div className="spinner" />
+      </div>
+    )
+  }
+
+  if (!user) return <Navigate to="/login" replace />
+  if (setupComplete === false) return <Navigate to="/register" replace />
+  if (!allowed) return <Navigate to="/dashboard" replace />
+  return <>{children}<FeedbackButton /></>
+}
+
 function RouteBreadcrumbs() {
   const location = useLocation()
   useEffect(() => {
@@ -124,6 +158,16 @@ export default function App() {
         element={<ProtectedRoute><AccountPage /></ProtectedRoute>}
       />
 
+      {/* Contractor admin team management */}
+      <Route
+        path="/dashboard/team"
+        element={<ContractorAdminRoute><TeamPage /></ContractorAdminRoute>}
+      />
+      <Route
+        path="/dashboard/team/:userId"
+        element={<ContractorAdminRoute><UserDetailPage /></ContractorAdminRoute>}
+      />
+
       {/* Password change */}
       <Route path="/change-password" element={<ChangePasswordPage />} />
 
@@ -136,6 +180,7 @@ export default function App() {
         <Route path="overview" element={<OverviewSection />} />
         <Route path="companies" element={<CompaniesSection />} />
         <Route path="users" element={<UsersSection />} />
+        <Route path="users/:userId" element={<UserDetailPage />} />
         <Route path="plans" element={<PlansSection />} />
         <Route path="test-logs" element={<TestLogsSection />} />
         <Route path="feedback" element={<FeedbackSection />} />

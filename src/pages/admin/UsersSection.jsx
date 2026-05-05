@@ -1,4 +1,5 @@
 import { useState, useRef, Fragment } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAdminData } from '../../context/AdminDataContext'
 import styles from './sections.module.css'
@@ -17,6 +18,7 @@ function useTempId() {
 }
 
 export default function UsersSection() {
+  const navigate = useNavigate()
   const { companies, users, setUsers, userProfiles, setUserProfiles, companyNameFor, profileCompanyIdFor, roleFor, loadAll } = useAdminData()
 
   const [search, setSearch] = useState('')
@@ -46,6 +48,7 @@ export default function UsersSection() {
   const [setPasswordValue, setSetPasswordValue] = useState('')
   const [setPasswordSaving, setSetPasswordSaving] = useState(false)
   const [setPasswordDoneId, flashSetPasswordDone] = useTempId()
+  const [showDeleted, setShowDeleted] = useState(false)
 
   // Filter, sort, paginate
   let filtered = users
@@ -60,6 +63,10 @@ export default function UsersSection() {
   if (statusFilter === 'active') filtered = filtered.filter(u => !!u.last_sign_in_at)
   else if (statusFilter === 'pending') filtered = filtered.filter(u => !u.last_sign_in_at)
   if (companyFilter !== 'all') filtered = filtered.filter(u => profileCompanyIdFor(u.id) === companyFilter)
+  if (!showDeleted) filtered = filtered.filter(u => {
+    const profile = userProfiles.find(p => p.user_id === u.id)
+    return !profile?.deleted_at
+  })
 
   if (sortBy === 'email') filtered = [...filtered].sort((a, b) => (a.email ?? '').localeCompare(b.email ?? ''))
   else if (sortBy === 'last_sign_in') filtered = [...filtered].sort((a, b) => new Date(b.last_sign_in_at ?? 0) - new Date(a.last_sign_in_at ?? 0))
@@ -187,6 +194,10 @@ export default function UsersSection() {
           <option value="last_sign_in">Last Sign-In</option>
           <option value="email">Email A-Z</option>
         </select>
+        <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', whiteSpace: 'nowrap', color: 'var(--color-text-muted)' }}>
+          <input type="checkbox" checked={showDeleted} onChange={e => setShowDeleted(e.target.checked)} />
+          Show deleted
+        </label>
         <button className={styles.secondaryBtn} onClick={handleExportCSV}>Export CSV</button>
         <button className={styles.addBtn} onClick={() => { setShowAdd(v => !v); setUserError('') }}>
           {showAdd ? 'Cancel' : '+ Invite User'}
@@ -232,19 +243,23 @@ export default function UsersSection() {
               <th className={styles.th}>Email</th>
               <th className={styles.th}>Company</th>
               <th className={styles.th}>Role</th>
+              <th className={styles.th}>Last Login</th>
               <th className={styles.th}>Created</th>
               <th className={styles.th}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {paged.map(u => (
+            {paged.map(u => {
+              const profile = userProfiles.find(p => p.user_id === u.id)
+              return (
               <Fragment key={u.id}>
-                <tr className={styles.tr}>
+                <tr className={styles.tr} onClick={() => navigate(`/admin/users/${u.id}`)} style={{ cursor: 'pointer' }}>
                   <td className={styles.td}>
                     {u.email}
                     {!u.last_sign_in_at && <span className={styles.pendingBadge}>Pending</span>}
+                    {profile?.deleted_at && <span style={{ fontSize: 10, color: '#ef4444', marginLeft: 6 }}>Deleted</span>}
                   </td>
-                  <td className={styles.td}>
+                  <td className={styles.td} onClick={e => e.stopPropagation()}>
                     {editingCoUserId === u.id ? (
                       <div className={styles.inlineEdit}>
                         <select className={styles.formSelect} value={editCoValue} onChange={e => setEditCoValue(e.target.value)} autoFocus>
@@ -261,15 +276,16 @@ export default function UsersSection() {
                       </div>
                     )}
                   </td>
-                  <td className={styles.td}>
+                  <td className={styles.td} onClick={e => e.stopPropagation()}>
                     <select className={styles.roleSelect} value={roleFor(u.id)} onChange={e => handleChangeRole(u.id, e.target.value)}>
                       <option value="contractor_user">User</option>
                       <option value="contractor_admin">Admin</option>
                       <option value="super_admin">Super Admin</option>
                     </select>
                   </td>
+                  <td className={styles.td} style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}</td>
                   <td className={styles.td}>{new Date(u.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
-                  <td className={styles.td}>
+                  <td className={styles.td} onClick={e => e.stopPropagation()}>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       {!u.last_sign_in_at && <button className={styles.secondaryBtn} onClick={() => handleResend(u)} disabled={resendSentId === u.id}>{resendSentId === u.id ? 'Sent!' : 'Resend'}</button>}
                       <button className={styles.secondaryBtn} onClick={() => { setSetPasswordUserId(setPasswordUserId === u.id ? null : u.id); setSetPasswordValue('') }}>{setPasswordUserId === u.id ? 'Cancel' : 'Set Pwd'}</button>
@@ -280,7 +296,7 @@ export default function UsersSection() {
                   </td>
                 </tr>
                 {setPasswordUserId === u.id && (
-                  <tr><td colSpan={5} className={styles.td}>
+                  <tr><td colSpan={6} className={styles.td}>
                     <div className={styles.inlineEdit}>
                       <input type="password" className={styles.inlineInput} value={setPasswordValue} onChange={e => setSetPasswordValue(e.target.value)} placeholder="New password" autoFocus
                         onKeyDown={e => { if (e.key === 'Enter') handleSetPassword(u.id); if (e.key === 'Escape') setSetPasswordUserId(null) }} />
@@ -289,7 +305,7 @@ export default function UsersSection() {
                   </td></tr>
                 )}
               </Fragment>
-            ))}
+            )})}
           </tbody>
         </table>
       </div>
