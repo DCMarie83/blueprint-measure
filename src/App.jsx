@@ -1,5 +1,7 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
 import { useAuth } from './context/AuthContext'
+import { addBreadcrumb } from './lib/breadcrumbs'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import DashboardPage from './pages/DashboardPage'
@@ -75,12 +77,26 @@ function RegisterRoute({ children }) {
   return children
 }
 
+function RouteBreadcrumbs() {
+  const location = useLocation()
+  useEffect(() => {
+    addBreadcrumb({
+      category: 'navigation',
+      message: `Navigated to ${location.pathname}`,
+      data: { pathname: location.pathname, search: location.search },
+    })
+  }, [location.pathname, location.search])
+  return null
+}
+
 export default function App() {
   const { user, loading } = useAuth()
 
   if (loading) return null
 
   return (
+    <>
+    <RouteBreadcrumbs />
     <Routes>
       {/* Public route — login page */}
       <Route
@@ -134,5 +150,6 @@ export default function App() {
       {/* Default: redirect to dashboard */}
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
+    </>
   )
 }
