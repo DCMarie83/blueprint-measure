@@ -175,7 +175,7 @@ export default function TeamPage() {
                   >
                     <td className={styles.td}>
                       {m.full_name || '-'}
-                      {m.deleted_at && <span style={{ fontSize: 10, color: '#ef4444', marginLeft: 6 }}>Deleted</span>}
+                      {m.deleted_at && <span style={{ fontSize: 10, fontWeight: 600, color: '#ef4444', marginLeft: 6, padding: '2px 6px', background: 'rgba(239,68,68,0.1)', borderRadius: 4 }}>DELETED</span>}
                     </td>
                     <td className={styles.td}>{m.email}</td>
                     <td className={styles.td}>

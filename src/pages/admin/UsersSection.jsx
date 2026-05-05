@@ -41,7 +41,6 @@ export default function UsersSection() {
   const [editingCoUserId, setEditingCoUserId] = useState(null)
   const [editCoValue, setEditCoValue] = useState('')
   const [savingCoUserId, setSavingCoUserId] = useState(null)
-  const [deletingUserId, setDeletingUserId] = useState(null)
   const [resetSentId, flashResetSent] = useTempId()
   const [resendSentId, flashResendSent] = useTempId()
   const [setPasswordUserId, setSetPasswordUserId] = useState(null)
@@ -117,18 +116,6 @@ export default function UsersSection() {
     const { error } = await supabase.auth.resetPasswordForEmail(user.email)
     if (error) { alert('Failed: ' + error.message); return }
     flashResetSent(user.id)
-  }
-
-  async function handleDelete(user) {
-    if (!window.confirm(`Delete ${user.email}? This cannot be undone.`)) return
-    setDeletingUserId(user.id)
-    try {
-      const { data, error } = await supabase.functions.invoke('admin-users', { body: { action: 'delete', user_id: user.id } })
-      if (error) throw new Error(error.message)
-      if (data?.error) throw new Error(data.error)
-      setUsers(prev => prev.filter(u => u.id !== user.id))
-      setUserProfiles(prev => prev.filter(p => p.user_id !== user.id))
-    } catch (err) { alert('Failed: ' + err.message) } finally { setDeletingUserId(null) }
   }
 
   async function handleChangeRole(userId, newRole) {
@@ -257,7 +244,7 @@ export default function UsersSection() {
                   <td className={styles.td}>
                     {u.email}
                     {!u.last_sign_in_at && <span className={styles.pendingBadge}>Pending</span>}
-                    {profile?.deleted_at && <span style={{ fontSize: 10, color: '#ef4444', marginLeft: 6 }}>Deleted</span>}
+                    {profile?.deleted_at && <span style={{ fontSize: 10, fontWeight: 600, color: '#ef4444', marginLeft: 6, padding: '2px 6px', background: 'rgba(239,68,68,0.1)', borderRadius: 4 }}>DELETED</span>}
                   </td>
                   <td className={styles.td} onClick={e => e.stopPropagation()}>
                     {editingCoUserId === u.id ? (
@@ -291,7 +278,6 @@ export default function UsersSection() {
                       <button className={styles.secondaryBtn} onClick={() => { setSetPasswordUserId(setPasswordUserId === u.id ? null : u.id); setSetPasswordValue('') }}>{setPasswordUserId === u.id ? 'Cancel' : 'Set Pwd'}</button>
                       {setPasswordDoneId === u.id && <span style={{ fontSize: 11, color: '#22c55e' }}>Updated!</span>}
                       <button className={styles.secondaryBtn} onClick={() => handleResetPassword(u)} disabled={resetSentId === u.id}>{resetSentId === u.id ? 'Sent!' : 'Reset'}</button>
-                      <button className={styles.dangerBtn} onClick={() => handleDelete(u)} disabled={deletingUserId === u.id}>{deletingUserId === u.id ? '…' : 'Delete'}</button>
                     </div>
                   </td>
                 </tr>
