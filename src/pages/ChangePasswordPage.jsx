@@ -46,7 +46,8 @@ export default function ChangePasswordPage() {
       })
       if (metaErr) throw metaErr
 
-      // 3. Send them to the dashboard
+      // 3. Clear recovery flag and send them to the dashboard
+      sessionStorage.removeItem('bpm_password_recovery_pending')
       navigate('/dashboard', { replace: true })
     } catch (err) {
       setError(err.message)

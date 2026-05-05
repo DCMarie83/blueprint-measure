@@ -188,6 +188,7 @@ export default function AccountPage() {
         .update({ deleted_at: new Date().toISOString() })
         .eq('user_id', user.id)
       if (error) throw new Error(error.message)
+      sessionStorage.removeItem('bpm_password_recovery_pending')
       await supabase.auth.signOut()
       navigate('/login')
     } catch (err) {

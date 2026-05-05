@@ -47,6 +47,7 @@ export default function UserMenu() {
   if (!user) return null
 
   async function handleSignOut() {
+    sessionStorage.removeItem('bpm_password_recovery_pending')
     await supabase.auth.signOut()
     navigate('/login')
   }

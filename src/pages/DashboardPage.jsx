@@ -145,6 +145,7 @@ export default function DashboardPage() {
   }
 
   async function handleLogout() {
+    sessionStorage.removeItem('bpm_password_recovery_pending')
     await supabase.auth.signOut()
   }
 

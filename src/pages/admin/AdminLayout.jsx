@@ -50,6 +50,7 @@ function SidebarContent() {
   const navigate = useNavigate()
 
   async function handleSignOut() {
+    sessionStorage.removeItem('bpm_password_recovery_pending')
     await supabase.auth.signOut()
     navigate('/login')
   }
