@@ -168,6 +168,9 @@ export default function UserDetailPage() {
         setProfile(prev => ({ ...prev, deleted_at: new Date().toISOString() }))
         setConfirmDelete(false)
         showToast('User deleted (soft)')
+      } else if (action === 'restore') {
+        setProfile(prev => ({ ...prev, deleted_at: null }))
+        showToast('User restored')
       }
     } catch (err) {
       showToast(`Action failed: ${err.message}`)
@@ -228,7 +231,7 @@ export default function UserDetailPage() {
               <ProfileField
                 label="Full Name"
                 value={profile?.full_name}
-                editable
+                editable={!profile?.deleted_at}
                 editField={editField}
                 fieldName="full_name"
                 editValue={editValue}
@@ -242,7 +245,7 @@ export default function UserDetailPage() {
               <ProfileField
                 label="Phone"
                 value={profile?.phone ? `${profile.phone_country || ''} ${profile.phone}` : null}
-                editable
+                editable={!profile?.deleted_at}
                 editField={editField}
                 fieldName="phone"
                 editValue={editValue}
@@ -308,57 +311,71 @@ export default function UserDetailPage() {
             <div className={styles.sectionCard} style={{ marginTop: 16 }}>
               <div className={styles.sectionCardTitle}>Admin Actions</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <button
-                  className={styles.secondaryBtn}
-                  disabled={actionLoading === 'reset_password'}
-                  onClick={() => handleAction('reset_password')}
-                >
-                  {actionLoading === 'reset_password' ? 'Sending...' : 'Send password reset email'}
-                </button>
-
-                {!isBanned ? (
+                {profile?.deleted_at ? (
+                  /* Deleted user — only show Restore */
                   <button
-                    className={styles.secondaryBtn}
-                    style={{ color: '#f59e0b', borderColor: 'rgba(245,158,11,0.3)' }}
-                    disabled={actionLoading === 'suspend'}
-                    onClick={() => handleAction('suspend')}
+                    className={styles.addBtn}
+                    disabled={actionLoading === 'restore'}
+                    onClick={() => handleAction('restore')}
                   >
-                    {actionLoading === 'suspend' ? 'Deactivating...' : 'Deactivate account'}
+                    {actionLoading === 'restore' ? 'Restoring...' : 'Restore user'}
                   </button>
                 ) : (
-                  <button
-                    className={styles.secondaryBtn}
-                    style={{ color: '#22c55e', borderColor: 'rgba(34,197,94,0.3)' }}
-                    disabled={actionLoading === 'unsuspend'}
-                    onClick={() => handleAction('unsuspend')}
-                  >
-                    {actionLoading === 'unsuspend' ? 'Reactivating...' : 'Reactivate account'}
-                  </button>
-                )}
+                  /* Active user — show all actions */
+                  <>
+                    <button
+                      className={styles.secondaryBtn}
+                      disabled={actionLoading === 'reset_password'}
+                      onClick={() => handleAction('reset_password')}
+                    >
+                      {actionLoading === 'reset_password' ? 'Sending...' : 'Send password reset email'}
+                    </button>
 
-                {!confirmDelete ? (
-                  <button
-                    className={styles.dangerBtn}
-                    onClick={() => setConfirmDelete(true)}
-                  >
-                    Delete user
-                  </button>
-                ) : (
-                  <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 6, padding: 12 }}>
-                    <p style={{ fontSize: 13, marginBottom: 10, color: '#fca5a5' }}>
-                      This will soft-delete the user and revoke all sessions. Are you sure?
-                    </p>
-                    <div style={{ display: 'flex', gap: 8 }}>
+                    {!isBanned ? (
+                      <button
+                        className={styles.secondaryBtn}
+                        style={{ color: '#f59e0b', borderColor: 'rgba(245,158,11,0.3)' }}
+                        disabled={actionLoading === 'suspend'}
+                        onClick={() => handleAction('suspend')}
+                      >
+                        {actionLoading === 'suspend' ? 'Deactivating...' : 'Deactivate account'}
+                      </button>
+                    ) : (
+                      <button
+                        className={styles.secondaryBtn}
+                        style={{ color: '#22c55e', borderColor: 'rgba(34,197,94,0.3)' }}
+                        disabled={actionLoading === 'unsuspend'}
+                        onClick={() => handleAction('unsuspend')}
+                      >
+                        {actionLoading === 'unsuspend' ? 'Reactivating...' : 'Reactivate account'}
+                      </button>
+                    )}
+
+                    {!confirmDelete ? (
                       <button
                         className={styles.dangerBtn}
-                        disabled={actionLoading === 'soft_delete'}
-                        onClick={() => handleAction('soft_delete')}
+                        onClick={() => setConfirmDelete(true)}
                       >
-                        {actionLoading === 'soft_delete' ? 'Deleting...' : 'Confirm delete'}
+                        Delete user
                       </button>
-                      <button className={styles.secondaryBtn} onClick={() => setConfirmDelete(false)}>Cancel</button>
+                    ) : (
+                      <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 6, padding: 12 }}>
+                        <p style={{ fontSize: 13, marginBottom: 10, color: '#fca5a5' }}>
+                          This will soft-delete the user and revoke all sessions. Are you sure?
+                        </p>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button
+                            className={styles.dangerBtn}
+                            disabled={actionLoading === 'soft_delete'}
+                            onClick={() => handleAction('soft_delete')}
+                          >
+                            {actionLoading === 'soft_delete' ? 'Deleting...' : 'Confirm delete'}
+                          </button>
+                          <button className={styles.secondaryBtn} onClick={() => setConfirmDelete(false)}>Cancel</button>
                     </div>
                   </div>
+                )}
+                  </>
                 )}
               </div>
             </div>

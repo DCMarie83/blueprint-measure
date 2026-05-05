@@ -136,6 +136,15 @@ Deno.serve(async (req) => {
       return json({ ok: true })
     }
 
+    if (action === 'restore') {
+      const { error: updErr } = await supabase
+        .from('user_profiles')
+        .update({ deleted_at: null })
+        .eq('user_id', target_user_id)
+      if (updErr) return json({ error: updErr.message }, 500)
+      return json({ ok: true })
+    }
+
     if (action === 'soft_delete') {
       // Soft-delete profile
       const { error: updErr } = await supabase
