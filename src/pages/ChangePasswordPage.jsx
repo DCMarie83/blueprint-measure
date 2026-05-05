@@ -7,10 +7,20 @@ export default function ChangePasswordPage() {
   const navigate = useNavigate()
   const [newPassword,     setNewPassword]     = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [error,           setError]           = useState('')
+  const [error,           setError]           = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    return params.get('error') || ''
+  })
   const [loading,         setLoading]         = useState(false)
   const [headingText, setHeadingText] = useState('Change your password')
   const [helperText, setHelperText] = useState('Your account requires a new password before you can continue. Choose something only you know.')
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('error')) {
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
