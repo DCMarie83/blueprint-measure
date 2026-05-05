@@ -108,9 +108,13 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'reset_password') {
-      const { error } = await supabase.auth.admin.generateLink({
-        type: 'recovery',
-        email: targetProfile.email,
+      // Use anon client — admin.generateLink only returns a link, doesn't send email
+      const anonClient = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!
+      )
+      const { error } = await anonClient.auth.resetPasswordForEmail(targetProfile.email, {
+        redirectTo: 'https://app.blueprintmeasure.com/change-password',
       })
       if (error) return json({ error: error.message }, 500)
       return json({ ok: true, message: 'Recovery email sent' })
