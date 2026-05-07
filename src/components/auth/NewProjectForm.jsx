@@ -1,11 +1,10 @@
 import { useState } from 'react'
 import styles from './NewSessionForm.module.css'
 
-// Form shown inside a modal when the user clicks "New Session" or "Add Blueprint".
-// When projectId is supplied, the project_name field is hidden (session is scoped to the project).
-export default function NewSessionForm({ onCreate, onCancel, projectId }) {
+export default function NewProjectForm({ onCreate, onCancel }) {
+  const [name, setName] = useState('')
   const [clientName, setClientName] = useState('')
-  const [projectName, setProjectName] = useState('')
+  const [address, setAddress] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -14,7 +13,7 @@ export default function NewSessionForm({ onCreate, onCancel, projectId }) {
     setError('')
     setLoading(true)
     try {
-      await onCreate({ clientName, projectName, projectId })
+      await onCreate({ name, clientName, address })
     } catch (err) {
       setError(err.message)
       setLoading(false)
@@ -24,35 +23,43 @@ export default function NewSessionForm({ onCreate, onCancel, projectId }) {
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
       <div className={styles.field}>
-        <label htmlFor="clientName">Client Name</label>
+        <label htmlFor="projectName">Project Name</label>
+        <input
+          id="projectName"
+          value={name}
+          onChange={e => setName(e.target.value)}
+          placeholder="e.g. Lot 90 HG"
+          required
+          autoFocus
+        />
+      </div>
+
+      <div className={styles.field}>
+        <label htmlFor="clientName">Client Name (optional)</label>
         <input
           id="clientName"
           value={clientName}
           onChange={e => setClientName(e.target.value)}
           placeholder="e.g. Smith Residence"
-          required
         />
       </div>
 
-      {!projectId && (
-        <div className={styles.field}>
-          <label htmlFor="projectName">Project Name</label>
-          <input
-            id="projectName"
-            value={projectName}
-            onChange={e => setProjectName(e.target.value)}
-            placeholder="e.g. Interior Repaint 2024"
-            required
-          />
-        </div>
-      )}
+      <div className={styles.field}>
+        <label htmlFor="address">Address (optional)</label>
+        <input
+          id="address"
+          value={address}
+          onChange={e => setAddress(e.target.value)}
+          placeholder="e.g. 123 Main St"
+        />
+      </div>
 
       {error && <div className={styles.error}>{error}</div>}
 
       <div className={styles.actions}>
         <button type="button" className={styles.cancel} onClick={onCancel}>Cancel</button>
         <button type="submit" className={styles.submit} disabled={loading}>
-          {loading ? 'Creating…' : 'Create Session'}
+          {loading ? 'Creating…' : 'Create Project'}
         </button>
       </div>
     </form>

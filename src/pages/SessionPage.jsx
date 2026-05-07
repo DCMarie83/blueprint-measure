@@ -1087,7 +1087,15 @@ export default function SessionPage() {
         {/* Header */}
         <div className={styles.sidebarHeader}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Link to="/dashboard" className={styles.backLink}>← Dashboard</Link>
+            <div className={styles.backLink} style={{ display: 'flex', gap: 4, alignItems: 'center', fontSize: 12 }}>
+              <Link to="/dashboard" style={{ color: 'var(--color-text-muted)', textDecoration: 'none' }}>Dashboard</Link>
+              {session?.project_id && (
+                <>
+                  <span style={{ color: 'var(--color-text-muted)', opacity: 0.5 }}>/</span>
+                  <Link to={`/project/${session.project_id}`} style={{ color: 'var(--color-text-muted)', textDecoration: 'none' }}>{session?.project_name}</Link>
+                </>
+              )}
+            </div>
             <UserMenu />
           </div>
           <div className={styles.sessionInfo}>

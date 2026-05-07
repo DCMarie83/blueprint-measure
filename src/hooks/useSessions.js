@@ -29,7 +29,7 @@ export function useSessions() {
     fetchSessions()
   }, [fetchSessions])
 
-  async function createSession({ clientName, projectName }) {
+  async function createSession({ clientName, projectName, projectId }) {
     // Check blueprint limit before creating — skipped for super admin.
     if (user.email !== 'main@ngautomationhub.com') {
       const { data: profile } = await supabase
@@ -75,26 +75,30 @@ export function useSessions() {
       }
     }
 
-    // Create a project first (sessions.project_id is NOT NULL after P6 migration)
-    const { data: project, error: projectError } = await supabase
-      .from('projects')
-      .insert({
-        user_id: user.id,
-        name: projectName,
-        client_name: clientName,
-      })
-      .select()
-      .single()
+    // If no projectId supplied, auto-create a project (legacy 1:1 flow)
+    let resolvedProjectId = projectId
+    if (!resolvedProjectId) {
+      const { data: project, error: projectError } = await supabase
+        .from('projects')
+        .insert({
+          user_id: user.id,
+          name: projectName,
+          client_name: clientName,
+        })
+        .select()
+        .single()
 
-    if (projectError) throw new Error(projectError.message)
+      if (projectError) throw new Error(projectError.message)
+      resolvedProjectId = project.id
+    }
 
     const { data, error } = await supabase
       .from('sessions')
       .insert({
         user_id: user.id,
-        project_id: project.id,
+        project_id: resolvedProjectId,
         client_name: clientName,
-        project_name: projectName,
+        project_name: projectName || 'Blueprint',
       })
       .select()
       .single()

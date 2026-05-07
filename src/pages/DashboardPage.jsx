@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useProjects } from '../hooks/useProjects'
 import { useSessions } from '../hooks/useSessions'
 import { getCompanyStorageUsage } from '../utils/storageUsage'
 import Modal from '../components/ui/Modal'
+import NewProjectForm from '../components/auth/NewProjectForm'
 import NewSessionForm from '../components/auth/NewSessionForm'
 import UserMenu from '../components/UserMenu'
 import styles from './DashboardPage.module.css'
@@ -26,24 +28,26 @@ function timeAgo(dateStr) {
 
 export default function DashboardPage() {
   const { user } = useAuth()
-  const { sessions, loading, createSession, deleteSession } = useSessions()
+  const { projects, loading: projectsLoading, createProject, softDeleteProject, refetch: refetchProjects } = useProjects()
+  const { sessions, loading: sessionsLoading, createSession } = useSessions()
+  const [showNewProject, setShowNewProject] = useState(false)
   const [showNewSession, setShowNewSession] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [companyPlan, setCompanyPlan] = useState(null)
   const [blueprintLimit, setBlueprintLimit] = useState(null)
   const [storageDisplay, setStorageDisplay] = useState(null)
-  const [zoneCounts, setZoneCounts] = useState({}) // { [sessionId]: number }
   const [totalZones, setTotalZones] = useState(null)
   const [activity, setActivity] = useState([])
   const [activityOpen, setActivityOpen] = useState(true)
   const navigate = useNavigate()
+
+  const loading = projectsLoading || sessionsLoading
 
   // Fetch company plan, storage, zone counts, and activity
   useEffect(() => {
     if (!user || user.email === ADMIN_EMAIL) return
 
     async function loadDashboardData() {
-      // Split into two queries to avoid FK join into companies (RLS blocks the embed)
       const { data: profile } = await supabase
         .from('user_profiles')
         .select('company_id')
@@ -64,7 +68,6 @@ export default function DashboardPage() {
       setCompanyPlan(plan)
       setBlueprintLimit(bpLimit)
 
-      // Storage usage
       if (profile?.company_id) {
         try {
           const limitMb = PLAN_STORAGE[plan] ?? null
@@ -76,32 +79,19 @@ export default function DashboardPage() {
         } catch { /* ignore */ }
       }
 
-      // Total zone count for this user
       const { count: zoneCount } = await supabase
         .from('zones')
         .select('id', { count: 'exact', head: true })
         .in('session_id', (await supabase.from('sessions').select('id').eq('user_id', user.id)).data?.map(s => s.id) ?? [])
       setTotalZones(zoneCount ?? 0)
 
-      // Per-session zone counts (for recent 6)
-      const { data: sessionIds } = await supabase.from('sessions').select('id').eq('user_id', user.id).order('created_at', { ascending: false }).limit(6)
-      if (sessionIds?.length) {
-        const { data: zoneRows } = await supabase
-          .from('zones')
-          .select('session_id')
-          .in('session_id', sessionIds.map(s => s.id))
-        const counts = {}
-        zoneRows?.forEach(z => { counts[z.session_id] = (counts[z.session_id] ?? 0) + 1 })
-        setZoneCounts(counts)
-      }
-
-      // Activity feed — derive from sessions + zones
+      // Activity feed
       const activityItems = []
       const { data: recentSessions } = await supabase.from('sessions').select('id, project_name, created_at, blueprint_url').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20)
       recentSessions?.forEach(s => {
-        activityItems.push({ type: 'session', text: `Created session "${s.project_name}"`, time: s.created_at, sessionId: s.id })
+        activityItems.push({ type: 'session', text: `Created blueprint "${s.project_name}"`, time: s.created_at, sessionId: s.id })
         if (s.blueprint_url) {
-          activityItems.push({ type: 'upload', text: `Uploaded blueprint for "${s.project_name}"`, time: s.created_at, sessionId: s.id })
+          activityItems.push({ type: 'upload', text: `Uploaded file for "${s.project_name}"`, time: s.created_at, sessionId: s.id })
         }
       })
 
@@ -126,24 +116,22 @@ export default function DashboardPage() {
     return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
   }).length
 
-  const activeSessions = sessions.filter(s => (zoneCounts[s.id] ?? 0) > 0 || s.blueprint_url).length
+  async function handleCreateProject(fields) {
+    const project = await createProject(fields)
+    setShowNewProject(false)
+    navigate(`/project/${project.id}`)
+  }
 
-  const recentSessions = sessions.slice(0, 6)
-
-  async function handleCreate(fields) {
+  // Legacy flow: create session from dashboard (auto-creates project)
+  async function handleCreateSession(fields) {
     const session = await createSession(fields)
     setShowNewSession(false)
     navigate(`/session/${session.id}`)
   }
 
-  async function handleDelete(sessionId) {
-    await deleteSession(sessionId)
+  async function handleDeleteProject(projectId) {
+    await softDeleteProject(projectId)
     setDeleteConfirm(null)
-  }
-
-  async function handleLogout() {
-    sessionStorage.removeItem('bpm_password_recovery_pending')
-    await supabase.auth.signOut()
   }
 
   const ACTIVITY_ICONS = { session: '+', upload: 'U', zone: 'Z', scale: 'S', test: 'T' }
@@ -175,14 +163,14 @@ export default function DashboardPage() {
 
       <main className={styles.main}>
         {loading ? (
-          <div className={styles.empty}>Loading…</div>
+          <div className={styles.empty}>Loading...</div>
         ) : (
           <>
-            {/* ROW 1 — Metric Cards */}
+            {/* Metrics */}
             <div className={styles.metrics}>
               <div className={styles.metricCard}>
-                <div className={styles.metricLabel}>Active Sessions</div>
-                <div className={styles.metricValue}>{activeSessions}</div>
+                <div className={styles.metricLabel}>Active Projects</div>
+                <div className={styles.metricValue}>{projects.length}</div>
               </div>
               <div className={styles.metricCard}>
                 <div className={styles.metricLabel}>Blueprints This Month</div>
@@ -204,43 +192,38 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* ROW 2 — Recent Sessions */}
+            {/* Projects */}
             <section className={styles.dashSection}>
               <div className={styles.dashSectionHeader}>
-                <h2 className={styles.dashSectionTitle}>Recent Sessions</h2>
-                {sessions.length > 6 && (
-                  <button className={styles.viewAllBtn} onClick={() => {
-                    document.getElementById('all-sessions')?.scrollIntoView({ behavior: 'smooth' })
-                  }}>View All</button>
-                )}
+                <h2 className={styles.dashSectionTitle}>Projects</h2>
               </div>
-              {sessions.length === 0 ? (
+              {projects.length === 0 ? (
                 <div className={styles.emptyState}>
-                  <h2>No sessions yet</h2>
-                  <p>Create your first session to upload a blueprint and start measuring.</p>
-                  <button className={styles.newBtn} onClick={() => setShowNewSession(true)}>
-                    + New Session
+                  <h2>No projects yet</h2>
+                  <p>Create your first project to upload blueprints and start measuring.</p>
+                  <button className={styles.newBtn} onClick={() => setShowNewProject(true)}>
+                    + New Project
                   </button>
                 </div>
               ) : (
                 <div className={styles.grid}>
-                  {recentSessions.map(session => (
-                    <div key={session.id} className={styles.card}>
-                      <div className={styles.cardMain} onClick={() => navigate(`/session/${session.id}`)}>
-                        <div className={styles.cardTitle}>{session.project_name}</div>
-                        <div className={styles.cardClient}>{session.client_name}</div>
+                  {projects.map(project => (
+                    <div key={project.id} className={styles.card}>
+                      <div className={styles.cardMain} onClick={() => navigate(`/project/${project.id}`)}>
+                        <div className={styles.cardTitle}>{project.name}</div>
+                        {project.client_name && (
+                          <div className={styles.cardClient}>{project.client_name}</div>
+                        )}
                         <div className={styles.cardMeta}>
-                          <span>{timeAgo(session.updated_at ?? session.created_at)}</span>
-                          {zoneCounts[session.id] != null && (
-                            <span>{zoneCounts[session.id]} zone{zoneCounts[session.id] !== 1 ? 's' : ''}</span>
-                          )}
+                          <span>{project.session_count} blueprint{project.session_count !== 1 ? 's' : ''}</span>
+                          <span>{timeAgo(project.last_activity)}</span>
                         </div>
                       </div>
                       <div className={styles.cardActions}>
-                        <button className={styles.openBtn} onClick={() => navigate(`/session/${session.id}`)}>
+                        <button className={styles.openBtn} onClick={() => navigate(`/project/${project.id}`)}>
                           Open
                         </button>
-                        <button className={styles.deleteBtn} onClick={() => setDeleteConfirm(session.id)}>
+                        <button className={styles.deleteBtn} onClick={() => setDeleteConfirm(project.id)}>
                           Delete
                         </button>
                       </div>
@@ -250,21 +233,14 @@ export default function DashboardPage() {
               )}
             </section>
 
-            {/* ROW 3 — Quick Actions */}
+            {/* Quick Actions */}
             <div className={styles.quickActions}>
-              <button className={styles.quickBtn} onClick={() => setShowNewSession(true)}>
-                + New Session
+              <button className={styles.quickBtn} onClick={() => setShowNewProject(true)}>
+                + New Project
               </button>
-              {sessions.length > 0 && (
-                <button className={styles.quickBtnSecondary} onClick={() => {
-                  document.getElementById('all-sessions')?.scrollIntoView({ behavior: 'smooth' })
-                }}>
-                  View All Sessions
-                </button>
-              )}
             </div>
 
-            {/* ROW 4 — Activity Feed */}
+            {/* Recent Activity */}
             {activity.length > 0 && (
               <section className={styles.dashSection}>
                 <div className={styles.dashSectionHeader}>
@@ -299,53 +275,35 @@ export default function DashboardPage() {
                 )}
               </section>
             )}
-
-            {/* All Sessions (scroll target) */}
-            {sessions.length > 6 && (
-              <section className={styles.dashSection} id="all-sessions">
-                <h2 className={styles.dashSectionTitle}>All Sessions ({sessions.length})</h2>
-                <div className={styles.grid}>
-                  {sessions.map(session => (
-                    <div key={session.id} className={styles.card}>
-                      <div className={styles.cardMain} onClick={() => navigate(`/session/${session.id}`)}>
-                        <div className={styles.cardTitle}>{session.project_name}</div>
-                        <div className={styles.cardClient}>{session.client_name}</div>
-                        <div className={styles.cardDate}>
-                          {new Date(session.created_at).toLocaleDateString('en-US', {
-                            month: 'short', day: 'numeric', year: 'numeric'
-                          })}
-                        </div>
-                      </div>
-                      <div className={styles.cardActions}>
-                        <button className={styles.openBtn} onClick={() => navigate(`/session/${session.id}`)}>
-                          Open
-                        </button>
-                        <button className={styles.deleteBtn} onClick={() => setDeleteConfirm(session.id)}>
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
           </>
         )}
       </main>
 
+      {/* New Project modal */}
+      {showNewProject && (
+        <Modal title="New Project" onClose={() => setShowNewProject(false)}>
+          <NewProjectForm
+            onCreate={handleCreateProject}
+            onCancel={() => setShowNewProject(false)}
+          />
+        </Modal>
+      )}
+
+      {/* Legacy: New Session modal (kept for backward compat) */}
       {showNewSession && (
         <Modal title="New Session" onClose={() => setShowNewSession(false)}>
           <NewSessionForm
-            onCreate={handleCreate}
+            onCreate={handleCreateSession}
             onCancel={() => setShowNewSession(false)}
           />
         </Modal>
       )}
 
+      {/* Delete project confirmation */}
       {deleteConfirm && (
-        <Modal title="Delete Session?" onClose={() => setDeleteConfirm(null)}>
+        <Modal title="Delete Project?" onClose={() => setDeleteConfirm(null)}>
           <p style={{ color: 'var(--color-text-muted)', marginBottom: 20 }}>
-            This will permanently delete the session and all its measurements. This cannot be undone.
+            This will archive the project and hide it from your dashboard. You can contact support to recover it if needed.
           </p>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
             <button
@@ -356,7 +314,7 @@ export default function DashboardPage() {
             </button>
             <button
               style={{ background: 'var(--color-danger)', border: 'none', borderRadius: 'var(--radius)', padding: '9px 18px', color: 'white', fontWeight: 600, cursor: 'pointer' }}
-              onClick={() => handleDelete(deleteConfirm)}
+              onClick={() => handleDeleteProject(deleteConfirm)}
             >
               Delete
             </button>

@@ -24,6 +24,7 @@ import ErrorsSection from './pages/admin/ErrorsSection'
 import SystemSection from './pages/admin/SystemSection'
 import UserDetailPage from './pages/admin/UserDetailPage'
 import TeamPage from './pages/TeamPage'
+import ProjectDetailPage from './pages/ProjectDetailPage'
 import PasswordRecoveryHandler from './components/PasswordRecoveryHandler'
 
 const ADMIN_EMAIL = 'main@ngautomationhub.com'
@@ -150,6 +151,10 @@ export default function App() {
       <Route
         path="/dashboard"
         element={<ProtectedRoute><DashboardPage /></ProtectedRoute>}
+      />
+      <Route
+        path="/project/:projectId"
+        element={<ProtectedRoute><ProjectDetailPage /></ProtectedRoute>}
       />
       <Route
         path="/session/:sessionId"
