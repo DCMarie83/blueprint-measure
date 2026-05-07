@@ -75,10 +75,24 @@ export function useSessions() {
       }
     }
 
+    // Create a project first (sessions.project_id is NOT NULL after P6 migration)
+    const { data: project, error: projectError } = await supabase
+      .from('projects')
+      .insert({
+        user_id: user.id,
+        name: projectName,
+        client_name: clientName,
+      })
+      .select()
+      .single()
+
+    if (projectError) throw new Error(projectError.message)
+
     const { data, error } = await supabase
       .from('sessions')
       .insert({
         user_id: user.id,
+        project_id: project.id,
         client_name: clientName,
         project_name: projectName,
       })
