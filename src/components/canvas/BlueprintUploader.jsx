@@ -4,14 +4,14 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import styles from './BlueprintUploader.module.css'
 
-// Bucket-side limit must also be set to 150MB in Supabase Storage settings → blueprints bucket → File size limit. Already configured.
-const MAX_FILE_SIZE_MB = 150
-const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
+// Bucket-side limit must also be set to 1GB in Supabase Storage settings → blueprints bucket → File size limit. Already configured.
+const MAX_FILE_SIZE_GB = 1
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_GB * 1024 * 1024 * 1024
 
 // Handles uploading a blueprint image (JPG, PNG, or PDF) to Supabase Storage
 // using tus resumable uploads so large files survive flaky connections.
 // Requires tus-js-client (added for resumable upload support).
-export default function BlueprintUploader({ sessionId, onUploaded, onStorageCheck }) {
+export default function BlueprintUploader({ sessionId, onUploaded, onStorageCheck, oldBlueprintType }) {
   const { user } = useAuth()
   const inputRef = useRef(null)
   const uploadRef = useRef(null) // tus Upload instance for retry
@@ -40,7 +40,7 @@ export default function BlueprintUploader({ sessionId, onUploaded, onStorageChec
     }
 
     if (file.size > MAX_FILE_SIZE_BYTES) {
-      setError(`File too large. Maximum is ${MAX_FILE_SIZE_MB}MB.`)
+      setError(`File too large. Maximum is ${MAX_FILE_SIZE_GB}GB.`)
       return
     }
 
@@ -67,6 +67,20 @@ export default function BlueprintUploader({ sessionId, onUploaded, onStorageChec
       setError('Not authenticated. Please sign in again.')
       setUploading(false)
       return
+    }
+
+    // If replacing and the file extension changed, remove the old file to avoid orphans
+    if (oldBlueprintType) {
+      const mimeToExt = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'application/pdf': 'pdf' }
+      const oldExt = mimeToExt[oldBlueprintType]
+      if (oldExt && oldExt !== ext) {
+        const oldPath = `${user.id}/${sessionId}/blueprint.${oldExt}`
+        try {
+          await supabase.storage.from(bucketName).remove([oldPath])
+        } catch (e) {
+          console.warn('[BlueprintUploader] Failed to remove old file:', e)
+        }
+      }
     }
 
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
@@ -100,17 +114,19 @@ export default function BlueprintUploader({ sessionId, onUploaded, onStorageChec
       },
       async onSuccess() {
         try {
-          // Get the public URL
+          // Get the public URL and append cache-bust param to avoid stale CDN content on replace
           const { data: { publicUrl } } = supabase.storage
             .from(bucketName)
             .getPublicUrl(path)
 
-          onUploaded({ url: publicUrl, type: file.type, originalName: file.name })
+          const cacheBustedUrl = publicUrl + (publicUrl.includes('?') ? '&' : '?') + 'v=' + Date.now()
+
+          onUploaded({ url: cacheBustedUrl, type: file.type, originalName: file.name })
 
           // Save blueprint_url to the session record
           const { error: updateError } = await supabase
             .from('sessions')
-            .update({ blueprint_url: publicUrl, blueprint_type: file.type })
+            .update({ blueprint_url: cacheBustedUrl, blueprint_type: file.type })
             .eq('id', sessionId)
 
           if (updateError) throw new Error(updateError.message)
@@ -187,7 +203,7 @@ export default function BlueprintUploader({ sessionId, onUploaded, onStorageChec
           <div className={styles.text}>
             <strong>Drop blueprint here</strong> or click to browse
           </div>
-          <div className={styles.sub}>JPG, PNG, or PDF — up to {MAX_FILE_SIZE_MB}MB</div>
+          <div className={styles.sub}>JPG, PNG, or PDF — up to {MAX_FILE_SIZE_GB}GB</div>
           {error && (
             <div className={styles.error}>
               {error}

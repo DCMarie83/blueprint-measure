@@ -225,8 +225,8 @@ export default function DashboardPage() {
               ) : (
                 <div className={styles.grid}>
                   {recentSessions.map(session => (
-                    <div key={session.id} className={styles.card} onClick={() => navigate(`/session/${session.id}`)}>
-                      <div className={styles.cardMain}>
+                    <div key={session.id} className={styles.card}>
+                      <div className={styles.cardMain} onClick={() => navigate(`/session/${session.id}`)}>
                         <div className={styles.cardTitle}>{session.project_name}</div>
                         <div className={styles.cardClient}>{session.client_name}</div>
                         <div className={styles.cardMeta}>
@@ -235,6 +235,14 @@ export default function DashboardPage() {
                             <span>{zoneCounts[session.id]} zone{zoneCounts[session.id] !== 1 ? 's' : ''}</span>
                           )}
                         </div>
+                      </div>
+                      <div className={styles.cardActions}>
+                        <button className={styles.openBtn} onClick={() => navigate(`/session/${session.id}`)}>
+                          Open
+                        </button>
+                        <button className={styles.deleteBtn} onClick={() => setDeleteConfirm(session.id)}>
+                          Delete
+                        </button>
                       </div>
                     </div>
                   ))}

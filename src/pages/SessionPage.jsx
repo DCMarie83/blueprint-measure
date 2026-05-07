@@ -14,6 +14,7 @@ import { evaluateZoneTest } from '../utils/testEvaluation'
 import { getCompanyStorageUsage } from '../utils/storageUsage'
 import BlueprintCanvas from '../components/canvas/BlueprintCanvas'
 import BlueprintUploader from '../components/canvas/BlueprintUploader'
+import Modal from '../components/ui/Modal'
 import ScalePanel from '../components/canvas/ScalePanel'
 import ScaleChangeDialog from '../components/canvas/ScaleChangeDialog'
 import ZoneDrawPanel from '../components/zones/ZoneDrawPanel'
@@ -40,6 +41,9 @@ export default function SessionPage() {
   // ── Blueprint state ──────────────────────────────────────────────────────────
   const [blueprintUrl, setBlueprintUrl] = useState(null)
   const [blueprintType, setBlueprintType] = useState(null)
+  const [replacingBlueprintType, setReplacingBlueprintType] = useState(null)
+  const [showReplaceConfirm, setShowReplaceConfirm] = useState(false)
+  const [replaceError, setReplaceError] = useState('')
 
   // ── PDF state ────────────────────────────────────────────────────────────────
   const isPdf = blueprintType === 'application/pdf'
@@ -218,6 +222,7 @@ export default function SessionPage() {
   function handleUploaded({ url, type }) {
     setBlueprintUrl(url)
     setBlueprintType(type)
+    setReplacingBlueprintType(null)
     // Reset PDF state for the newly uploaded file
     setCurrentPage(1)
     setRenderedPageUrl(null)
@@ -1111,7 +1116,7 @@ export default function SessionPage() {
         <div className={styles.section}>
           <div className={styles.sectionTitle}>Blueprint</div>
           {!blueprintUrl ? (
-            <BlueprintUploader sessionId={sessionId} onUploaded={handleUploaded} onStorageCheck={async (fileSize) => {
+            <BlueprintUploader sessionId={sessionId} onUploaded={handleUploaded} oldBlueprintType={replacingBlueprintType} onStorageCheck={async (fileSize) => {
               // Check company storage limit before upload
               try {
                 const { data: profile } = await supabase
@@ -1146,10 +1151,8 @@ export default function SessionPage() {
               <button
                 className={styles.replaceBtn}
                 onClick={() => {
-                  setBlueprintUrl(null)
-                  setRenderedPageUrl(null)
-                  setThumbnails({})
-                  setCurrentPage(1)
+                  setReplaceError('')
+                  setShowReplaceConfirm(true)
                 }}
               >
                 Replace
@@ -1523,6 +1526,59 @@ export default function SessionPage() {
         }}
         onCancel={() => setPendingScaleChange(null)}
       />
+
+      {/* Replace blueprint confirmation */}
+      {showReplaceConfirm && (
+        <Modal title="Replace Blueprint?" onClose={() => setShowReplaceConfirm(false)}>
+          <p style={{ color: 'var(--color-text-muted)', marginBottom: 20 }}>
+            Replacing this blueprint will permanently delete all zones and measurements on this session. This action cannot be undone.
+          </p>
+          {replaceError && (
+            <p style={{ fontSize: 13, color: 'var(--color-danger, #dc2626)', marginBottom: 12 }}>
+              {replaceError}
+            </p>
+          )}
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <button
+              style={{ background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', padding: '9px 18px', color: 'var(--color-text-muted)', cursor: 'pointer' }}
+              onClick={() => setShowReplaceConfirm(false)}
+            >
+              Cancel
+            </button>
+            <button
+              style={{ background: 'var(--color-danger)', border: 'none', borderRadius: 'var(--radius)', padding: '9px 18px', color: 'white', fontWeight: 600, cursor: 'pointer' }}
+              onClick={async () => {
+                try {
+                  const { error: delErr } = await supabase
+                    .from('zones')
+                    .delete()
+                    .eq('session_id', sessionId)
+                  if (delErr) throw new Error(delErr.message)
+
+                  const { error: updErr } = await supabase
+                    .from('sessions')
+                    .update({ blueprint_url: null, blueprint_type: null })
+                    .eq('id', sessionId)
+                  if (updErr) throw new Error(updErr.message)
+                } catch (err) {
+                  setReplaceError('Failed to clear blueprint: ' + err.message)
+                  return
+                }
+                setReplacingBlueprintType(blueprintType)
+                setBlueprintUrl(null)
+                setRenderedPageUrl(null)
+                setThumbnails({})
+                setCurrentPage(1)
+                setShowReplaceConfirm(false)
+                setReplaceError('')
+                refetch()
+              }}
+            >
+              Replace and Start Over
+            </button>
+          </div>
+        </Modal>
+      )}
 
       {/* Rescale toast */}
       {rescaleToast && (

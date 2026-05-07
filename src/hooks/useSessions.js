@@ -91,6 +91,18 @@ export function useSessions() {
   }
 
   async function deleteSession(sessionId) {
+    // Clean up blueprint files from storage before deleting the DB row
+    try {
+      const prefix = `${user.id}/${sessionId}/`
+      const { data: files } = await supabase.storage.from('blueprints').list(prefix)
+      if (files && files.length > 0) {
+        const paths = files.map(f => `${prefix}${f.name}`)
+        await supabase.storage.from('blueprints').remove(paths)
+      }
+    } catch (e) {
+      console.warn('[deleteSession] Storage cleanup failed, proceeding with delete:', e)
+    }
+
     const { error } = await supabase
       .from('sessions')
       .delete()
