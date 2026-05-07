@@ -161,9 +161,16 @@ export default function SessionPage() {
       setBlueprintUrl(session.blueprint_url)
       setBlueprintType(type)
       setCurrentPage(session.page_number ?? 1)
-      // Restore per-page scales saved in a previous session
+      // Restore per-page scales saved in a previous session, or apply 1/4" default
       if (session.page_scales && Object.keys(session.page_scales).length > 0) {
         setPageScales(session.page_scales)
+      } else {
+        const defaultOption = SCALE_OPTIONS.find(o => o.value === '1/4')
+        if (defaultOption?.inchesPerFoot) {
+          const page = session.page_number ?? 1
+          const ppf = calcPixelsPerFoot(defaultOption.inchesPerFoot, pixelsPerInch)
+          setPageScales({ [page]: ppf })
+        }
       }
       // Restore page metadata (names + hidden flags)
       if (session.page_metadata && Object.keys(session.page_metadata).length > 0) {

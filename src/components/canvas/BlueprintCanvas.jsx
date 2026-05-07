@@ -556,6 +556,13 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
       return
     }
 
+    // Hard-block left-click panning during draw or calibration — prevents race
+    // conditions where isPanning.current got set from a prior interaction
+    if (isDrawing || calibrating) {
+      isPanning.current = false
+      return
+    }
+
     if (!isPanning.current) return
 
     const dx = e.clientX - lastPan.current.x

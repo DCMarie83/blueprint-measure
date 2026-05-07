@@ -15,19 +15,6 @@ export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, pdfPageI
   const [infoOpen, setInfoOpen] = useState(false)
   const infoRef = useRef(null)
 
-  // ── Default scale on page mount ────────────────────────────────────────────
-  // Apply 1/4" default only when NO scale is set for this page.
-  useEffect(() => {
-    if (!pixelsPerFoot) {
-      const defaultOption = SCALE_OPTIONS.find(o => o.value === '1/4')
-      if (defaultOption?.inchesPerFoot) {
-        setSelected('1/4')
-        onScaleChange(calcPixelsPerFoot(defaultOption.inchesPerFoot, pixelsPerInch))
-      }
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageKey, pixelsPerInch])
-
   // ── Sync dropdown to actual pixelsPerFoot (e.g. after Cancel reverts scale) ─
   useEffect(() => {
     if (!pixelsPerFoot) return
