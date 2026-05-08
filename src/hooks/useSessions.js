@@ -108,6 +108,31 @@ export function useSessions() {
     return data
   }
 
+  async function createSessionsBatch({ files, projectId, clientName }) {
+    const results = []
+    for (const file of files) {
+      const name = file.name.replace(/\.[^.]+$/, '').replace(/_/g, ' ')
+      try {
+        const { data, error } = await supabase
+          .from('sessions')
+          .insert({
+            user_id: user.id,
+            project_id: projectId,
+            client_name: clientName || null,
+            project_name: name || 'Blueprint',
+          })
+          .select()
+          .single()
+        if (error) throw new Error(error.message)
+        results.push({ sessionId: data.id, file, name, error: null })
+      } catch (err) {
+        results.push({ sessionId: null, file, name, error: err.message })
+      }
+    }
+    await fetchSessions()
+    return results
+  }
+
   async function deleteSession(sessionId) {
     // Clean up blueprint files from storage before deleting the DB row
     try {
@@ -131,5 +156,5 @@ export function useSessions() {
     setSessions(prev => prev.filter(s => s.id !== sessionId))
   }
 
-  return { sessions, loading, error, createSession, deleteSession, refetch: fetchSessions }
+  return { sessions, loading, error, createSession, createSessionsBatch, deleteSession, refetch: fetchSessions }
 }

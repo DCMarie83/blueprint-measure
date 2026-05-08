@@ -52,7 +52,7 @@ export default function NewSessionForm({ onCreate, onCancel, projectId }) {
       <div className={styles.actions}>
         <button type="button" className={styles.cancel} onClick={onCancel}>Cancel</button>
         <button type="submit" className={styles.submit} disabled={loading}>
-          {loading ? 'Creating…' : 'Create Session'}
+          {loading ? 'Creating…' : (projectId ? 'Add Blueprint' : 'Create Session')}
         </button>
       </div>
     </form>

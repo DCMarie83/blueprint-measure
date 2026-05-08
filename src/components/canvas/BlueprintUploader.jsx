@@ -1,26 +1,21 @@
 import { useRef, useState, useCallback } from 'react'
-import * as tus from 'tus-js-client'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
+import { uploadBlueprint, validateFile, MAX_FILE_SIZE_BYTES } from '../../lib/uploadBlueprint'
 import styles from './BlueprintUploader.module.css'
 
-// Bucket-side limit must also be set to 1GB in Supabase Storage settings → blueprints bucket → File size limit. Already configured.
 const MAX_FILE_SIZE_GB = 1
-const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_GB * 1024 * 1024 * 1024
 
-// Handles uploading a blueprint image (JPG, PNG, or PDF) to Supabase Storage
-// using tus resumable uploads so large files survive flaky connections.
-// Requires tus-js-client (added for resumable upload support).
 export default function BlueprintUploader({ sessionId, onUploaded, onStorageCheck, oldBlueprintType }) {
   const { user } = useAuth()
   const inputRef = useRef(null)
-  const uploadRef = useRef(null) // tus Upload instance for retry
+  const uploadRef = useRef(null)
   const [uploading, setUploading] = useState(false)
-  const [progress, setProgress] = useState(0) // 0–100
+  const [progress, setProgress] = useState(0)
   const [bytesUploaded, setBytesUploaded] = useState(0)
   const [bytesTotal, setBytesTotal] = useState(0)
   const [error, setError] = useState('')
-  const [failedFile, setFailedFile] = useState(null) // stash file for retry
+  const [failedFile, setFailedFile] = useState(null)
 
   const formatBytes = useCallback((bytes) => {
     if (bytes < 1024) return `${bytes} B`
@@ -33,21 +28,15 @@ export default function BlueprintUploader({ sessionId, onUploaded, onStorageChec
     setError('')
     setFailedFile(null)
 
-    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
-    if (!allowed.includes(file.type)) {
-      setError('Please upload a JPG, PNG, or PDF file.')
+    const validationError = validateFile(file)
+    if (validationError) {
+      setError(validationError)
       return
     }
 
-    if (file.size > MAX_FILE_SIZE_BYTES) {
-      setError(`File too large. Maximum is ${MAX_FILE_SIZE_GB}GB.`)
-      return
-    }
-
-    // If a storage check callback is provided, verify we're within limits before uploading
     if (onStorageCheck) {
       const allowed = await onStorageCheck(file.size)
-      if (!allowed) return // onStorageCheck will set its own error message
+      if (!allowed) return
     }
 
     setUploading(true)
@@ -55,11 +44,6 @@ export default function BlueprintUploader({ sessionId, onUploaded, onStorageChec
     setBytesUploaded(0)
     setBytesTotal(file.size)
 
-    const ext = file.name.split('.').pop()
-    const path = `${user.id}/${sessionId}/blueprint.${ext}`
-    const bucketName = 'blueprints'
-
-    // Get an auth token for the tus upload
     const { data: { session: authSession } } = await supabase.auth.getSession()
     const accessToken = authSession?.access_token
 
@@ -71,85 +55,44 @@ export default function BlueprintUploader({ sessionId, onUploaded, onStorageChec
 
     // If replacing and the file extension changed, remove the old file to avoid orphans
     if (oldBlueprintType) {
+      const ext = file.name.split('.').pop()
       const mimeToExt = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'application/pdf': 'pdf' }
       const oldExt = mimeToExt[oldBlueprintType]
       if (oldExt && oldExt !== ext) {
         const oldPath = `${user.id}/${sessionId}/blueprint.${oldExt}`
         try {
-          await supabase.storage.from(bucketName).remove([oldPath])
+          await supabase.storage.from('blueprints').remove([oldPath])
         } catch (e) {
           console.warn('[BlueprintUploader] Failed to remove old file:', e)
         }
       }
     }
 
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-
-    const upload = new tus.Upload(file, {
-      endpoint: `${supabaseUrl}/storage/v1/upload/resumable`,
-      retryDelays: [0, 1000, 3000, 5000],
-      headers: {
-        authorization: `Bearer ${accessToken}`,
-        'x-upsert': 'true',
-      },
-      uploadDataDuringCreation: true,
-      removeFingerprintOnSuccess: true,
-      metadata: {
-        bucketName,
-        objectName: path,
-        contentType: file.type,
-        cacheControl: '3600',
-      },
-      chunkSize: 6 * 1024 * 1024, // 6MB chunks
-      onError(err) {
-        setError(`Upload failed: ${err.message ?? 'Network error'}. You can retry without re-selecting the file.`)
-        setFailedFile(file)
-        setUploading(false)
-      },
-      onProgress(uploaded, total) {
-        const pct = Math.round((uploaded / total) * 100)
+    const { upload } = uploadBlueprint({
+      file,
+      sessionId,
+      userId: user.id,
+      accessToken,
+      onProgress(pct, uploaded, total) {
         setProgress(pct)
         setBytesUploaded(uploaded)
         setBytesTotal(total)
       },
-      async onSuccess() {
-        try {
-          // Get the public URL and append cache-bust param to avoid stale CDN content on replace
-          const { data: { publicUrl } } = supabase.storage
-            .from(bucketName)
-            .getPublicUrl(path)
-
-          const cacheBustedUrl = publicUrl + (publicUrl.includes('?') ? '&' : '?') + 'v=' + Date.now()
-
-          onUploaded({ url: cacheBustedUrl, type: file.type, originalName: file.name })
-
-          // Save blueprint_url to the session record
-          const { error: updateError } = await supabase
-            .from('sessions')
-            .update({ blueprint_url: cacheBustedUrl, blueprint_type: file.type })
-            .eq('id', sessionId)
-
-          if (updateError) throw new Error(updateError.message)
-        } catch (err) {
-          setError(err.message)
-        } finally {
-          setUploading(false)
-          setProgress(0)
-          setFailedFile(null)
-          uploadRef.current = null
-        }
+      onError(msg) {
+        setError(`Upload failed: ${msg}. You can retry without re-selecting the file.`)
+        setFailedFile(file)
+        setUploading(false)
+      },
+      onSuccess(cacheBustedUrl) {
+        onUploaded({ url: cacheBustedUrl, type: file.type, originalName: file.name })
+        setUploading(false)
+        setProgress(0)
+        setFailedFile(null)
+        uploadRef.current = null
       },
     })
 
     uploadRef.current = upload
-
-    // Check for previous uploads to resume
-    upload.findPreviousUploads().then(previousUploads => {
-      if (previousUploads.length > 0) {
-        upload.resumeUpload(previousUploads[0])
-      }
-      upload.start()
-    })
   }
 
   function handleRetry() {

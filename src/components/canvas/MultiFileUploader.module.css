@@ -1,0 +1,126 @@
+.wrapper {
+  margin-bottom: 24px;
+}
+
+.dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 32px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  background: var(--color-surface);
+}
+
+.dropzone:hover,
+.dropzoneActive {
+  border-color: var(--color-primary);
+  background: rgba(46, 139, 255, 0.04);
+}
+
+.dropzoneIcon {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.dropzoneText {
+  font-size: 14px;
+  color: var(--color-text);
+  margin-bottom: 4px;
+}
+
+.dropzoneSub {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.hidden {
+  display: none;
+}
+
+.fileList {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fileItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 13px;
+}
+
+.fileName {
+  flex: 1;
+  font-weight: 500;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fileSize {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.fileStatus {
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.statusQueued { color: var(--color-text-muted); }
+.statusUploading { color: var(--color-primary); }
+.statusDone { color: #22c55e; }
+.statusError { color: #ef4444; }
+
+.fileProgress {
+  width: 80px;
+  height: 6px;
+  background: var(--color-border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.fileProgressFill {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 3px;
+  transition: width 0.2s ease;
+}
+
+.retryBtn {
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+  background: var(--color-primary);
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.retryBtn:hover { opacity: 0.9; }
+
+.batchError {
+  margin-top: 12px;
+  font-size: 13px;
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+}
+
+.summary {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}

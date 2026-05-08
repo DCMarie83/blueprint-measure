@@ -179,6 +179,18 @@ export default function SessionPage() {
     }
   }, [session])
 
+  // Auto-apply default 1/4" scale to any page that has no scale entry yet.
+  // Covers both first visit to a new page and fresh sessions with empty page_scales.
+  useEffect(() => {
+    if (!pixelsPerInch) return
+    if (currentPage in pageScales) return
+    const defaultOption = SCALE_OPTIONS.find(o => o.value === '1/4')
+    if (defaultOption?.inchesPerFoot) {
+      const ppf = calcPixelsPerFoot(defaultOption.inchesPerFoot, pixelsPerInch)
+      setPageScales(prev => ({ ...prev, [currentPage]: ppf }))
+    }
+  }, [currentPage, pixelsPerInch])
+
   // ── PDF page rendering ───────────────────────────────────────────────────────
   // Render the active page at full quality whenever the PDF loads or page changes.
   useEffect(() => {
