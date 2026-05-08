@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useSession } from '../hooks/useSession'
+import { useSessions } from '../hooks/useSessions'
 import { usePdf } from '../hooks/usePdf'
 import { SCALE_OPTIONS, calcPixelsPerFoot } from '../utils/scaleOptions'
 import { parseFeetInches, formatSF, formatLF } from '../utils/fractions'
@@ -15,6 +16,7 @@ import { getCompanyStorageUsage } from '../utils/storageUsage'
 import BlueprintCanvas from '../components/canvas/BlueprintCanvas'
 import BlueprintUploader from '../components/canvas/BlueprintUploader'
 import Modal from '../components/ui/Modal'
+import NewSessionForm from '../components/auth/NewSessionForm'
 import ScalePanel from '../components/canvas/ScalePanel'
 import ScaleChangeDialog from '../components/canvas/ScaleChangeDialog'
 import ZoneDrawPanel from '../components/zones/ZoneDrawPanel'
@@ -37,6 +39,10 @@ export default function SessionPage() {
   const { user } = useAuth()
   const isAdmin = user?.email === ADMIN_EMAIL
   const { session, zones, enabledFeatures, loading, error, saveZone, updateZone, updateZoneLabelOffset, redrawZone, deleteZone, updateSession, refetch } = useSession(sessionId)
+  const { createSession } = useSessions()
+
+  // ── Add-blueprint modal state ───────────────────────────────────────────────
+  const [showAddBlueprint, setShowAddBlueprint] = useState(false)
 
   // ── Blueprint state ──────────────────────────────────────────────────────────
   const [blueprintUrl, setBlueprintUrl] = useState(null)
@@ -110,6 +116,10 @@ export default function SessionPage() {
   // ── Save status ─────────────────────────────────────────────────────────────
   const [lastSavedAt, setLastSavedAt] = useState(null)
   const [manualSaving, setManualSaving] = useState(false)
+
+  // ── Sibling session count + project name (for breadcrumb + add-blueprint button)
+  const [siblingCount, setSiblingCount] = useState(1)
+  const [projectName, setProjectName] = useState(null)
 
   // ── Scale change rescale prompt ───────────────────────────────────────────────
   const [pendingScaleChange, setPendingScaleChange] = useState(null) // { oldPPF, newPPF }
@@ -190,6 +200,26 @@ export default function SessionPage() {
       setPageScales(prev => ({ ...prev, [currentPage]: ppf }))
     }
   }, [currentPage, pixelsPerInch])
+
+  // ── Fetch sibling session count + project name for breadcrumb logic ──────────
+  useEffect(() => {
+    if (!session?.project_id) return
+    supabase
+      .from('sessions')
+      .select('id', { count: 'exact', head: true })
+      .eq('project_id', session.project_id)
+      .then(({ count }) => {
+        setSiblingCount(count ?? 1)
+      })
+    supabase
+      .from('projects')
+      .select('name')
+      .eq('id', session.project_id)
+      .single()
+      .then(({ data }) => {
+        if (data?.name) setProjectName(data.name)
+      })
+  }, [session?.project_id])
 
   // ── PDF page rendering ───────────────────────────────────────────────────────
   // Render the active page at full quality whenever the PDF loads or page changes.
@@ -1106,17 +1136,31 @@ export default function SessionPage() {
         {/* Header */}
         <div className={styles.sidebarHeader}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div className={styles.backLink} style={{ display: 'flex', gap: 4, alignItems: 'center', fontSize: 12 }}>
+            <div className={styles.backLink} style={{ display: 'flex', gap: 4, alignItems: 'center', fontSize: 12, flexWrap: 'wrap' }}>
               <Link to="/dashboard" style={{ color: 'var(--color-text-muted)', textDecoration: 'none' }}>Dashboard</Link>
               {session?.project_id && (
                 <>
                   <span style={{ color: 'var(--color-text-muted)', opacity: 0.5 }}>/</span>
-                  <Link to={`/project/${session.project_id}`} style={{ color: 'var(--color-text-muted)', textDecoration: 'none' }}>{session?.project_name}</Link>
+                  <Link to={`/project/${session.project_id}`} style={{ color: 'var(--color-text-muted)', textDecoration: 'none' }}>{projectName ?? session?.project_name}</Link>
+                  {siblingCount > 1 && (
+                    <>
+                      <span style={{ color: 'var(--color-text-muted)', opacity: 0.5 }}>/</span>
+                      <span style={{ color: 'var(--color-text)' }}>{session?.project_name}</span>
+                    </>
+                  )}
                 </>
               )}
             </div>
             <UserMenu />
           </div>
+          {session?.project_id && (
+            <button
+              onClick={() => setShowAddBlueprint(true)}
+              style={{ fontSize: 12, padding: '4px 10px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 4, color: 'var(--color-text-muted)', cursor: 'pointer', marginTop: 4, alignSelf: 'flex-start' }}
+            >
+              + Add another blueprint
+            </button>
+          )}
           <div className={styles.sessionInfo}>
             <div className={styles.sessionProject}>{session?.project_name}</div>
             <div className={styles.sessionClient}>{session?.client_name}</div>
@@ -1616,6 +1660,21 @@ export default function SessionPage() {
         }}>
           {rescaleToast}
         </div>
+      )}
+
+      {/* Add another blueprint modal */}
+      {showAddBlueprint && (
+        <Modal title="Add Blueprint" onClose={() => setShowAddBlueprint(false)}>
+          <NewSessionForm
+            projectId={session.project_id}
+            onCreate={async (fields) => {
+              const newSession = await createSession({ ...fields, projectId: session.project_id })
+              setShowAddBlueprint(false)
+              navigate(`/session/${newSession.id}`)
+            }}
+            onCancel={() => setShowAddBlueprint(false)}
+          />
+        </Modal>
       )}
     </div>
   )

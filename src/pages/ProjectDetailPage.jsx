@@ -115,7 +115,7 @@ export default function ProjectDetailPage() {
           <UserMenu />
         </header>
         <main className={styles.main}>
-          <p className={styles.empty}>Project not found.</p>
+          <p className={styles.empty}>Job not found.</p>
           <Link to="/dashboard" style={{ color: 'var(--color-primary)', fontSize: 14 }}>← Back to Dashboard</Link>
         </main>
       </div>
@@ -147,7 +147,7 @@ export default function ProjectDetailPage() {
         <div style={{ marginBottom: 32 }}>
           <InlineField
             value={project.name}
-            placeholder="Project name"
+            placeholder="Job name"
             editField={editField}
             fieldName="name"
             editValue={editValue}

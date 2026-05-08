@@ -59,7 +59,7 @@ export default function NewProjectForm({ onCreate, onCancel }) {
       <div className={styles.actions}>
         <button type="button" className={styles.cancel} onClick={onCancel}>Cancel</button>
         <button type="submit" className={styles.submit} disabled={loading}>
-          {loading ? 'Creating…' : 'Create Project'}
+          {loading ? 'Creating…' : 'Create Job'}
         </button>
       </div>
     </form>

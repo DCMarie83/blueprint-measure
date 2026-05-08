@@ -119,7 +119,17 @@ export default function DashboardPage() {
   async function handleCreateProject(fields) {
     const project = await createProject(fields)
     setShowNewProject(false)
-    navigate(`/project/${project.id}`)
+    try {
+      const session = await createSession({
+        projectName: project.name,
+        projectId: project.id,
+        clientName: fields.clientName || null,
+      })
+      navigate(`/session/${session.id}`)
+    } catch {
+      // Session creation failed — land on Job Overview so user can add blueprint manually
+      navigate(`/project/${project.id}`)
+    }
   }
 
   // Legacy flow: create session from dashboard (auto-creates project)
@@ -169,7 +179,7 @@ export default function DashboardPage() {
             {/* Metrics */}
             <div className={styles.metrics}>
               <div className={styles.metricCard}>
-                <div className={styles.metricLabel}>Active Projects</div>
+                <div className={styles.metricLabel}>Active Jobs</div>
                 <div className={styles.metricValue}>{projects.length}</div>
               </div>
               <div className={styles.metricCard}>
@@ -195,21 +205,27 @@ export default function DashboardPage() {
             {/* Projects */}
             <section className={styles.dashSection}>
               <div className={styles.dashSectionHeader}>
-                <h2 className={styles.dashSectionTitle}>Projects</h2>
+                <h2 className={styles.dashSectionTitle}>Jobs</h2>
               </div>
               {projects.length === 0 ? (
                 <div className={styles.emptyState}>
-                  <h2>No projects yet</h2>
-                  <p>Create your first project to upload blueprints and start measuring.</p>
+                  <h2>No jobs yet</h2>
+                  <p>Create your first job to upload blueprints and start measuring.</p>
                   <button className={styles.newBtn} onClick={() => setShowNewProject(true)}>
-                    + New Project
+                    + New Job
                   </button>
                 </div>
               ) : (
                 <div className={styles.grid}>
                   {projects.map(project => (
                     <div key={project.id} className={styles.card}>
-                      <div className={styles.cardMain} onClick={() => navigate(`/project/${project.id}`)}>
+                      <div className={styles.cardMain} onClick={() => {
+                        if (project.session_count === 1 && project.first_session_id) {
+                          navigate(`/session/${project.first_session_id}`)
+                        } else {
+                          navigate(`/project/${project.id}`)
+                        }
+                      }}>
                         <div className={styles.cardTitle}>{project.name}</div>
                         {project.client_name && (
                           <div className={styles.cardClient}>{project.client_name}</div>
@@ -220,7 +236,13 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       <div className={styles.cardActions}>
-                        <button className={styles.openBtn} onClick={() => navigate(`/project/${project.id}`)}>
+                        <button className={styles.openBtn} onClick={() => {
+                          if (project.session_count === 1 && project.first_session_id) {
+                            navigate(`/session/${project.first_session_id}`)
+                          } else {
+                            navigate(`/project/${project.id}`)
+                          }
+                        }}>
                           Open
                         </button>
                         <button className={styles.deleteBtn} onClick={() => setDeleteConfirm(project.id)}>
@@ -236,7 +258,7 @@ export default function DashboardPage() {
             {/* Quick Actions */}
             <div className={styles.quickActions}>
               <button className={styles.quickBtn} onClick={() => setShowNewProject(true)}>
-                + New Project
+                + New Job
               </button>
             </div>
 
@@ -281,7 +303,7 @@ export default function DashboardPage() {
 
       {/* New Project modal */}
       {showNewProject && (
-        <Modal title="New Project" onClose={() => setShowNewProject(false)}>
+        <Modal title="New Job" onClose={() => setShowNewProject(false)}>
           <NewProjectForm
             onCreate={handleCreateProject}
             onCancel={() => setShowNewProject(false)}
@@ -301,9 +323,9 @@ export default function DashboardPage() {
 
       {/* Delete project confirmation */}
       {deleteConfirm && (
-        <Modal title="Delete Project?" onClose={() => setDeleteConfirm(null)}>
+        <Modal title="Delete Job?" onClose={() => setDeleteConfirm(null)}>
           <p style={{ color: 'var(--color-text-muted)', marginBottom: 20 }}>
-            This will archive the project and hide it from your dashboard. You can contact support to recover it if needed.
+            This will archive the job and hide it from your dashboard. You can contact support to recover it if needed.
           </p>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
             <button

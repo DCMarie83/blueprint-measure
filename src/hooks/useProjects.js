@@ -15,7 +15,7 @@ export function useProjects() {
     // Fetch projects with session count
     const { data, error: fetchError } = await supabase
       .from('projects')
-      .select('*, sessions(id, updated_at)')
+      .select('*, sessions(id, updated_at, created_at)')
       .eq('user_id', user.id)
       .is('deleted_at', null)
       .order('updated_at', { ascending: false })
@@ -28,9 +28,14 @@ export function useProjects() {
         const lastSessionUpdate = sessions.length > 0
           ? sessions.reduce((max, s) => s.updated_at > max ? s.updated_at : max, '')
           : null
+        // Find the first session by created_at for smart-route (single-blueprint jobs skip Job Overview)
+        const firstSession = sessions.length > 0
+          ? sessions.reduce((earliest, s) => s.created_at < earliest.created_at ? s : earliest, sessions[0])
+          : null
         return {
           ...p,
           session_count: sessions.length,
+          first_session_id: firstSession?.id ?? null,
           last_activity: lastSessionUpdate && lastSessionUpdate > p.updated_at
             ? lastSessionUpdate
             : p.updated_at,
