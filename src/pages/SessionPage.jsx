@@ -39,7 +39,7 @@ export default function SessionPage() {
   const { user } = useAuth()
   const isAdmin = user?.email === ADMIN_EMAIL
   const { session, zones, enabledFeatures, loading, error, saveZone, updateZone, updateZoneLabelOffset, redrawZone, deleteZone, updateSession, refetch } = useSession(sessionId)
-  const { createSession } = useSessions()
+  const { createSession, deleteSession } = useSessions()
 
   // ── Add-blueprint modal state ───────────────────────────────────────────────
   const [showAddBlueprint, setShowAddBlueprint] = useState(false)
@@ -60,6 +60,8 @@ export default function SessionPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [renderedPageUrl, setRenderedPageUrl] = useState(null)
   const [thumbnails, setThumbnails] = useState({}) // { [pageNum]: dataUrl }
+  const [pdfError, setPdfError] = useState(null) // critical error string (e.g., too many pages)
+  const [pdfWarningToast, setPdfWarningToast] = useState(null) // non-blocking warning string
 
   // ── Scale state ──────────────────────────────────────────────────────────────
   // pageScales: { [pageNumber]: pixelsPerFoot } — each PDF page has its own scale.
@@ -230,6 +232,16 @@ export default function SessionPage() {
       if (url) setRenderedPageUrl(url)
     })
   }, [isPdf, pageCount, currentPage, renderPage])
+
+  // ── PDF page count guardrails ───────────────────────────────────────────────
+  useEffect(() => {
+    if (!isPdf || !pageCount) return
+    if (pageCount > 100) {
+      setPdfError(`This PDF has ${pageCount} pages. Browser-based rendering is limited to ~100 pages. Please extract just the drawing sheets you need (typically 10-30 pages) using Adobe Acrobat or smallpdf.com, then re-upload as a new blueprint.`)
+    } else if (pageCount > 50) {
+      setPdfWarningToast(`Large PDF (${pageCount} pages) — rendering may be slow.`)
+    }
+  }, [isPdf, pageCount])
 
   // Generate thumbnails for every page at low resolution (0.2 scale).
   // Runs once per PDF load. Updates thumbnails state incrementally as each finishes.
@@ -1466,7 +1478,35 @@ export default function SessionPage() {
 
       {/* ── Canvas ── */}
       <main className={styles.canvasArea}>
-        {blueprintUrl ? (
+        {!blueprintUrl ? (
+          /* State A — No blueprint */
+          <div className={styles.emptyCanvas}>
+            <div className={styles.emptyCanvasIcon}>📐</div>
+            <p>Upload a blueprint to start measuring</p>
+          </div>
+        ) : pdfError ? (
+          /* State C — Critical PDF error (too many pages) */
+          <div className={styles.emptyCanvas}>
+            <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 12, color: 'var(--color-danger, #ef4444)' }}>PDF too large to render</div>
+            <p style={{ maxWidth: 480, lineHeight: 1.6, color: 'var(--color-text-muted)' }}>{pdfError}</p>
+            <button
+              style={{ marginTop: 16, padding: '10px 20px', background: 'var(--color-danger, #ef4444)', color: 'white', border: 'none', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}
+              onClick={async () => {
+                await deleteSession(sessionId)
+                navigate('/dashboard')
+              }}
+            >
+              Delete this blueprint
+            </button>
+          </div>
+        ) : (isPdf && (pdfLoading || !renderedPageUrl)) ? (
+          /* State B — Loading PDF / rendering first page */
+          <div className={styles.emptyCanvas}>
+            <div className="spinner" />
+            <p style={{ marginTop: 12, color: 'var(--color-text-muted)' }}>Loading PDF…</p>
+          </div>
+        ) : (
+          /* State D — Loaded successfully */
           <BlueprintCanvas
             ref={blueprintCanvasRef}
             imageUrl={canvasImageUrl}
@@ -1484,15 +1524,10 @@ export default function SessionPage() {
             orthoMode={orthoMode}
             enabledFeatures={enabledFeatures}
           />
-        ) : (
-          <div className={styles.emptyCanvas}>
-            <div className={styles.emptyCanvasIcon}>📐</div>
-            <p>Upload a blueprint to start measuring</p>
-          </div>
         )}
 
-        {/* Reset view button — always visible when a blueprint is loaded */}
-        {blueprintUrl && (
+        {/* Reset view button — always visible when a blueprint is loaded and rendered */}
+        {blueprintUrl && !pdfError && !(isPdf && (pdfLoading || !renderedPageUrl)) && (
           <div className={styles.canvasToolbar}>
             <button className={styles.resetViewBtn} onClick={handleResetView}>
               Reset view
@@ -1527,10 +1562,15 @@ export default function SessionPage() {
           </div>
         )}
 
-        {/* PDF loading indicator */}
-        {isPdf && pdfLoading && (
-          <div className={styles.hint}>
-            Loading PDF…
+        {/* Large PDF warning toast */}
+        {pdfWarningToast && (
+          <div style={{
+            position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
+            background: 'rgba(245,158,11,0.95)', color: '#1a1a1a', padding: '8px 16px',
+            borderRadius: 6, fontSize: 13, fontWeight: 600, zIndex: 200,
+          }}>
+            {pdfWarningToast}
+            <button onClick={() => setPdfWarningToast(null)} style={{ marginLeft: 10, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}>✕</button>
           </div>
         )}
 

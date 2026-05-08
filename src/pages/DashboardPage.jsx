@@ -227,9 +227,9 @@ export default function DashboardPage() {
                         }
                       }}>
                         <div className={styles.cardTitle}>{project.name}</div>
-                        {project.client_name && (
-                          <div className={styles.cardClient}>{project.client_name}</div>
-                        )}
+                        <div className={styles.cardClient} style={!project.client_name ? { visibility: 'hidden' } : undefined}>
+                          {project.client_name || '\u00A0'}
+                        </div>
                         <div className={styles.cardMeta}>
                           <span>{project.session_count} blueprint{project.session_count !== 1 ? 's' : ''}</span>
                           <span>{timeAgo(project.last_activity)}</span>

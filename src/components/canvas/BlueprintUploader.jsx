@@ -15,6 +15,7 @@ export default function BlueprintUploader({ sessionId, onUploaded, onStorageChec
   const [bytesUploaded, setBytesUploaded] = useState(0)
   const [bytesTotal, setBytesTotal] = useState(0)
   const [error, setError] = useState('')
+  const [warning, setWarning] = useState('')
   const [failedFile, setFailedFile] = useState(null)
 
   const formatBytes = useCallback((bytes) => {
@@ -28,11 +29,12 @@ export default function BlueprintUploader({ sessionId, onUploaded, onStorageChec
     setError('')
     setFailedFile(null)
 
-    const validationError = validateFile(file)
-    if (validationError) {
-      setError(validationError)
+    const validation = validateFile(file)
+    if (!validation.valid) {
+      setError(validation.error)
       return
     }
+    setWarning(validation.warning || '')
 
     if (onStorageCheck) {
       const allowed = await onStorageCheck(file.size)
@@ -147,6 +149,11 @@ export default function BlueprintUploader({ sessionId, onUploaded, onStorageChec
             <strong>Drop blueprint here</strong> or click to browse
           </div>
           <div className={styles.sub}>JPG, PNG, or PDF — up to {MAX_FILE_SIZE_GB}GB</div>
+          {warning && (
+            <div style={{ color: '#f59e0b', fontSize: 12, marginTop: 6, padding: '6px 10px', background: 'rgba(245,158,11,0.08)', borderRadius: 4 }}>
+              {warning}
+            </div>
+          )}
           {error && (
             <div className={styles.error}>
               {error}

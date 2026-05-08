@@ -144,6 +144,7 @@ export default function ProjectDetailPage() {
         </div>
 
         {/* Inline-editable project header */}
+        <div style={{ color: 'var(--color-text-muted)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>Job Overview</div>
         <div style={{ marginBottom: 32 }}>
           <InlineField
             value={project.name}

@@ -23,6 +23,7 @@ export default function MultiFileUploader({ projectId, project, existingEmptySes
   const [fileStates, setFileStates] = useState([])
   // status: 'queued' | 'uploading' | 'done' | 'error' | 'creating'
   const [batchError, setBatchError] = useState('')
+  const [batchWarning, setBatchWarning] = useState('')
   const [showResumePrompt, setShowResumePrompt] = useState(null) // { files, emptyCount }
   const activeUploads = useRef(0)
   const fileQueue = useRef([])
@@ -86,14 +87,17 @@ export default function MultiFileUploader({ projectId, project, existingEmptySes
 
     // Validate all files first
     const errors = []
+    const warnings = []
     for (const file of files) {
-      const err = validateFile(file)
-      if (err) errors.push(`${file.name}: ${err}`)
+      const result = validateFile(file)
+      if (!result.valid) errors.push(`${file.name}: ${result.error}`)
+      else if (result.warning) warnings.push(`${file.name}: ${result.warning}`)
     }
     if (errors.length > 0) {
       setBatchError(errors.join('\n'))
       return
     }
+    setBatchWarning(warnings.length > 0 ? warnings.join('\n') : '')
 
     // E2: Storage quota check
     if (storageLimitMb != null) {
@@ -211,6 +215,11 @@ export default function MultiFileUploader({ projectId, project, existingEmptySes
       {/* Batch error */}
       {batchError && (
         <div className={styles.batchError}>{batchError}</div>
+      )}
+      {batchWarning && !batchError && (
+        <div style={{ color: '#f59e0b', fontSize: 12, padding: '8px 12px', marginTop: 8, background: 'rgba(245,158,11,0.08)', borderRadius: 4, whiteSpace: 'pre-line' }}>
+          {batchWarning}
+        </div>
       )}
 
       {/* Per-file progress list */}

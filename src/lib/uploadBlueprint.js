@@ -3,16 +3,25 @@ import { supabase } from './supabase'
 
 const MAX_FILE_SIZE_GB = 1
 export const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_GB * 1024 * 1024 * 1024
+export const HARD_LIMIT_FILE_SIZE_BYTES = 200 * 1024 * 1024
+export const WARN_FILE_SIZE_BYTES = 50 * 1024 * 1024
 export const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
 
 export function validateFile(file) {
   if (!ALLOWED_TYPES.includes(file.type)) {
-    return 'Please upload a JPG, PNG, or PDF file.'
+    return { valid: false, error: 'Please upload a JPG, PNG, or PDF file.' }
   }
   if (file.size > MAX_FILE_SIZE_BYTES) {
-    return `File too large. Maximum is ${MAX_FILE_SIZE_GB}GB.`
+    return { valid: false, error: `File too large. Maximum is ${MAX_FILE_SIZE_GB}GB.` }
   }
-  return null
+  const sizeMb = Math.round(file.size / 1024 / 1024)
+  if (file.type === 'application/pdf' && file.size > HARD_LIMIT_FILE_SIZE_BYTES) {
+    return { valid: false, error: `PDF is too large (${sizeMb} MB). Browser-based PDF rendering is limited to ~200 MB. Use Adobe Acrobat or smallpdf.com to extract just the drawing sheets you need (typically 10-30 pages), then upload those as separate blueprints under this Job.` }
+  }
+  if (file.size > WARN_FILE_SIZE_BYTES) {
+    return { valid: true, warning: `Large file (${sizeMb} MB) — may take a while to upload and render.` }
+  }
+  return { valid: true }
 }
 
 export function deriveSessionName(filename) {
