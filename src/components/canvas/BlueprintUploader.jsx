@@ -1,4 +1,5 @@
 import { useRef, useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { uploadBlueprint, validateFile, MAX_FILE_SIZE_BYTES } from '../../lib/uploadBlueprint'
@@ -6,8 +7,9 @@ import styles from './BlueprintUploader.module.css'
 
 const MAX_FILE_SIZE_GB = 1
 
-export default function BlueprintUploader({ sessionId, onUploaded, onStorageCheck, oldBlueprintType }) {
+export default function BlueprintUploader({ sessionId, projectId, onUploaded, onStorageCheck, oldBlueprintType }) {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const inputRef = useRef(null)
   const uploadRef = useRef(null)
   const [uploading, setUploading] = useState(false)
@@ -15,6 +17,7 @@ export default function BlueprintUploader({ sessionId, onUploaded, onStorageChec
   const [bytesUploaded, setBytesUploaded] = useState(0)
   const [bytesTotal, setBytesTotal] = useState(0)
   const [error, setError] = useState('')
+  const [isSplittableError, setIsSplittableError] = useState(false)
   const [warning, setWarning] = useState('')
   const [failedFile, setFailedFile] = useState(null)
 
@@ -27,12 +30,14 @@ export default function BlueprintUploader({ sessionId, onUploaded, onStorageChec
   async function startUpload(file) {
     if (!file) return
     setError('')
+    setIsSplittableError(false)
     setFailedFile(null)
 
     const validation = validateFile(file)
     if (!validation.valid) {
       if (validation.splittable) {
         setError('PDF is too large for direct upload. Use the multi-file drop zone on Job Overview to split a large PDF into multiple blueprints.')
+        setIsSplittableError(true)
       } else {
         setError(validation.error)
       }
@@ -164,6 +169,18 @@ export default function BlueprintUploader({ sessionId, onUploaded, onStorageChec
               {failedFile && (
                 <button className={styles.retryBtn} onClick={e => { e.stopPropagation(); handleRetry() }}>
                   Retry Upload
+                </button>
+              )}
+              {isSplittableError && projectId && (
+                <button
+                  onClick={e => { e.stopPropagation(); navigate(`/project/${projectId}`) }}
+                  style={{
+                    marginTop: 8, padding: '8px 16px', background: 'var(--color-primary)',
+                    color: 'white', border: 'none', borderRadius: 6, fontWeight: 600,
+                    cursor: 'pointer', fontSize: 13,
+                  }}
+                >
+                  Go to Job Overview
                 </button>
               )}
             </div>

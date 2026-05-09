@@ -280,6 +280,12 @@ export default function SessionPage() {
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
 
+  async function handleSplitFlowRedirect() {
+    if (!session?.project_id) return
+    try { await deleteSession(sessionId) } catch (err) { console.error('Cleanup failed:', err) }
+    navigate(`/project/${session.project_id}`)
+  }
+
   function handleUploaded({ url, type }) {
     setBlueprintUrl(url)
     setBlueprintType(type)
@@ -1199,7 +1205,7 @@ export default function SessionPage() {
         <div className={styles.section}>
           <div className={styles.sectionTitle}>Blueprint</div>
           {!blueprintUrl ? (
-            <BlueprintUploader sessionId={sessionId} onUploaded={handleUploaded} oldBlueprintType={replacingBlueprintType} onStorageCheck={async (fileSize) => {
+            <BlueprintUploader sessionId={sessionId} projectId={session?.project_id} onSplitFlowRedirect={handleSplitFlowRedirect} onUploaded={handleUploaded} oldBlueprintType={replacingBlueprintType} onStorageCheck={async (fileSize) => {
               // Check company storage limit before upload
               try {
                 const { data: profile } = await supabase
