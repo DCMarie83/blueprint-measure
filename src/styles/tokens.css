@@ -88,7 +88,7 @@
   --color-border: var(--border-default);
   --color-text: var(--text-primary);
   --color-text-muted: var(--text-secondary);
-  --radius: var(--radius-md);
+  --radius: var(--radius-lg);
   --radius-lg: var(--radius-lg);
   --shadow: var(--shadow-lg);
 
