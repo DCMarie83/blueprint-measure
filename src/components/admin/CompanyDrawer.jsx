@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useDateFormat } from '../../hooks/useDateFormat'
 import styles from './CompanyDrawer.module.css'
 
 const FEATURES = [
@@ -15,6 +16,8 @@ export default function CompanyDrawer({
   company, companyUsers, sessionsThisMonth, sessionsAllTime,
   zonesThisMonth, zonesLoading, onClose,
 }) {
+  const { formatDate } = useDateFormat()
+
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', onKey)
@@ -75,7 +78,7 @@ export default function CompanyDrawer({
                       <td className={styles.td}>{u.email}</td>
                       <td className={styles.td}>
                         {u.last_sign_in_at
-                          ? new Date(u.last_sign_in_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                          ? formatDate(u.last_sign_in_at)
                           : <span className={styles.muted}>Never</span>
                         }
                       </td>

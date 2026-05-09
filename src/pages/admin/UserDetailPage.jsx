@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, Fragment } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
+import { useDateFormat } from '../../hooks/useDateFormat'
 import styles from './sections.module.css'
 
 const ADMIN_EMAIL = 'main@ngautomationhub.com'
@@ -39,6 +40,7 @@ export default function UserDetailPage() {
   const { userId } = useParams()
   const navigate = useNavigate()
   const { user: currentUser } = useAuth()
+  const { formatDate, formatDateTime, formatTime } = useDateFormat()
   const isSuperAdmin = currentUser?.email === ADMIN_EMAIL
   const [currentUserRole, setCurrentUserRole] = useState(null)
 
@@ -295,13 +297,13 @@ export default function UserDetailPage() {
               </div>
               {/* Read-only fields */}
               <ProfileField label="Email Consent" value={profile?.email_consent ? 'Yes' : 'No'} />
-              <ProfileField label="SMS Consent" value={profile?.sms_consent ? `Yes (${profile.sms_consent_at ? new Date(profile.sms_consent_at).toLocaleDateString() : '-'})` : 'No'} />
-              <ProfileField label="Cancel Requested" value={profile?.subscription_cancel_requested_at ? new Date(profile.subscription_cancel_requested_at).toLocaleString() : '-'} />
-              <ProfileField label="Created" value={profile?.created_at ? new Date(profile.created_at).toLocaleString() : '-'} />
-              <ProfileField label="Setup Completed" value={profile?.setup_completed_at ? new Date(profile.setup_completed_at).toLocaleString() : 'Setup incomplete'} />
-              <ProfileField label="Last Login" value={authInfo?.last_sign_in_at ? new Date(authInfo.last_sign_in_at).toLocaleString() : '-'} />
+              <ProfileField label="SMS Consent" value={profile?.sms_consent ? `Yes (${profile.sms_consent_at ? formatDate(profile.sms_consent_at) : '-'})` : 'No'} />
+              <ProfileField label="Cancel Requested" value={profile?.subscription_cancel_requested_at ? formatDateTime(profile.subscription_cancel_requested_at) : '-'} />
+              <ProfileField label="Created" value={profile?.created_at ? formatDateTime(profile.created_at) : '-'} />
+              <ProfileField label="Setup Completed" value={profile?.setup_completed_at ? formatDateTime(profile.setup_completed_at) : 'Setup incomplete'} />
+              <ProfileField label="Last Login" value={authInfo?.last_sign_in_at ? formatDateTime(authInfo.last_sign_in_at) : '-'} />
               {profile?.deleted_at && (
-                <ProfileField label="Deleted" value={`Deactivated on ${new Date(profile.deleted_at).toLocaleString()}`} valueStyle={{ color: '#ef4444' }} />
+                <ProfileField label="Deleted" value={`Deactivated on ${formatDateTime(profile.deleted_at)}`} valueStyle={{ color: '#ef4444' }} />
               )}
             </div>
           </div>
@@ -426,7 +428,7 @@ export default function UserDetailPage() {
                               <div style={{ maxHeight: 150, overflow: 'auto', marginTop: 4 }}>
                                 {ce.breadcrumbs.map((b, i) => (
                                   <div key={i} style={{ padding: '2px 0', color: 'var(--color-text-muted)' }}>
-                                    {new Date(b.timestamp).toLocaleTimeString()} [{b.category}] {b.message}
+                                    {formatTime(b.timestamp)} [{b.category}] {b.message}
                                   </div>
                                 ))}
                               </div>

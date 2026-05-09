@@ -4,6 +4,8 @@ import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input'
 import 'react-phone-number-input/style.css'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { BRAND } from '../lib/config'
+import Logo from '../components/brand/Logo'
 import styles from './RegisterPage.module.css'
 
 const PW_RULES = [
@@ -80,7 +82,7 @@ export default function RegisterPage() {
   return (
     <div className={styles.page}>
       <div className={styles.card}>
-        <div className={styles.logo}>BlueprintMeasure</div>
+        <div className={styles.logo}><Logo variant="full" /></div>
         <h1 className={styles.title}>Welcome! Let's set up your account.</h1>
 
         {error && <div className={styles.error}>{error}</div>}
@@ -157,11 +159,11 @@ export default function RegisterPage() {
           <div className={styles.consentGroup}>
             <label className={styles.checkbox}>
               <input type="checkbox" checked={emailConsent} onChange={e => setEmailConsent(e.target.checked)} />
-              <span>I agree to receive product updates and account-related emails from BlueprintMeasure</span>
+              <span>I agree to receive product updates and account-related emails from {BRAND.name}</span>
             </label>
             <label className={styles.checkbox}>
               <input type="checkbox" checked={smsConsent} onChange={e => setSmsConsent(e.target.checked)} />
-              <span>I agree to receive text messages about my account from BlueprintMeasure</span>
+              <span>I agree to receive text messages about my account from {BRAND.name}</span>
             </label>
           </div>
 

@@ -1,24 +1,17 @@
+@import './tokens.css';
+
 /* ============================================================
-   BlueprintMeasure — Global Styles
+   RivetDog — Global Styles
    A clean, professional dark-blue construction aesthetic
    ============================================================ */
 
 :root {
-  --color-bg: #0f1923;
-  --color-surface: #162030;
-  --color-surface-2: #1e2d3d;
-  --color-border: #2a3f55;
+  /* These accent/status colors are intentionally NOT aliased to tokens yet.
+     They stay hardcoded until the full color migration is done. */
   --color-primary: #2e8bff;
   --color-primary-hover: #1a75e8;
   --color-accent: #f59e0b;
-  --color-text: #e8edf2;
-  --color-text-muted: #7a9ab5;
-  --color-success: #22c55e;
-  --color-danger: #ef4444;
   --color-danger-hover: #dc2626;
-  --radius: 8px;
-  --radius-lg: 12px;
-  --shadow: 0 4px 24px rgba(0,0,0,0.4);
   --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 

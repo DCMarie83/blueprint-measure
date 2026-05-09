@@ -3,6 +3,8 @@ import { LayoutDashboard, Building2, Users, Package, FlaskConical,
          MessageSquare, AlertTriangle, Settings } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
+import { BRAND } from '../../lib/config'
+import Logo from '../../components/brand/Logo'
 import { AdminDataProvider, useAdminData } from '../../context/AdminDataContext'
 import styles from './AdminLayout.module.css'
 
@@ -58,7 +60,7 @@ function SidebarContent() {
   return (
     <>
       <div className={styles.sidebarHeader}>
-        <span className={styles.logo}>BlueprintMeasure</span>
+        <span className={styles.logo}><Logo variant="mark" style={{ marginRight: 8 }} />{BRAND.name}</span>
         <span className={styles.adminBadge}>Admin</span>
       </div>
       <nav className={styles.nav}>

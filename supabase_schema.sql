@@ -1,5 +1,5 @@
 -- ============================================================
--- BlueprintMeasure — Supabase SQL Schema
+-- RivetDog — Supabase SQL Schema
 -- Run this entire file in the Supabase SQL Editor
 -- ============================================================
 

@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { AdminDataContext } from '../../context/AdminDataContext'
 import { logError } from '../../lib/logError'
+import { useDateFormat } from '../../hooks/useDateFormat'
 import styles from './sections.module.css'
 
 const SEVERITY_COLORS = {
@@ -58,6 +59,7 @@ function BoundaryTestThrower() {
 
 export default function ErrorsSection() {
   const { companies, users, loading: contextLoading } = useErrorsContextData()
+  const { formatDateTime, formatTime } = useDateFormat()
   const [searchParams, setSearchParams] = useSearchParams()
   const initialUserIdFilter = searchParams.get('user_id') || 'all'
 
@@ -341,7 +343,7 @@ export default function ErrorsSection() {
                       <td className={styles.td} style={{ fontSize: 11 }}>{ceUser}</td>
                       <td className={styles.td} style={{ fontSize: 11, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ce.page_url}</td>
                       <td className={styles.td} style={{ whiteSpace: 'nowrap' }}>
-                        {new Date(ce.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        {formatDateTime(ce.created_at)}
                       </td>
                       <td className={styles.td}>
                         {!ce.resolved && (
@@ -359,7 +361,7 @@ export default function ErrorsSection() {
                     {isExp && (
                       <tr className={styles.expandedRow}>
                         <td colSpan={groupByFingerprint ? 9 : 8} className={styles.expandedCell}>
-                          <ErrorDetail error={ce} users={users} />
+                          <ErrorDetail error={ce} users={users} formatDateTime={formatDateTime} formatTime={formatTime} />
                         </td>
                       </tr>
                     )}
@@ -374,7 +376,7 @@ export default function ErrorsSection() {
   )
 }
 
-function ErrorDetail({ error: ce, users }) {
+function ErrorDetail({ error: ce, users, formatDateTime, formatTime }) {
   const resolvedByUser = ce.resolved_by ? users.find(u => u.id === ce.resolved_by)?.email : null
 
   return (
@@ -407,7 +409,7 @@ function ErrorDetail({ error: ce, users }) {
           <strong>Breadcrumbs ({ce.breadcrumbs.length}):</strong>
           <div style={{ marginTop: 6, maxHeight: 300, overflow: 'auto', background: 'rgba(0,0,0,0.15)', borderRadius: 6, padding: 8 }}>
             {ce.breadcrumbs.map((b, i) => (
-              <BreadcrumbRow key={i} breadcrumb={b} />
+              <BreadcrumbRow key={i} breadcrumb={b} formatTime={formatTime} />
             ))}
           </div>
         </div>
@@ -415,14 +417,14 @@ function ErrorDetail({ error: ce, users }) {
 
       {ce.resolved && (
         <div style={{ fontSize: 12, color: '#22c55e' }}>
-          Resolved at {new Date(ce.resolved_at).toLocaleString()} {resolvedByUser ? `by ${resolvedByUser}` : ''}
+          Resolved at {formatDateTime(ce.resolved_at)} {resolvedByUser ? `by ${resolvedByUser}` : ''}
         </div>
       )}
     </div>
   )
 }
 
-function BreadcrumbRow({ breadcrumb: b }) {
+function BreadcrumbRow({ breadcrumb: b, formatTime }) {
   const [expanded, setExpanded] = useState(false)
   const catColors = {
     navigation: '#3b82f6',
@@ -437,7 +439,7 @@ function BreadcrumbRow({ breadcrumb: b }) {
   return (
     <div style={{ fontSize: 11, padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
       <span style={{ color: 'var(--color-text-muted)', whiteSpace: 'nowrap', minWidth: 70 }}>
-        {new Date(b.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+        {formatTime(b.timestamp)}
       </span>
       <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: `${catColors[b.category] || '#666'}22`, color: catColors[b.category] || '#666', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
         {b.category}

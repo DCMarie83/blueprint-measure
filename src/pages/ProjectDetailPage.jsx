@@ -10,6 +10,9 @@ import Modal from '../components/ui/Modal'
 import NewSessionForm from '../components/auth/NewSessionForm'
 import MultiFileUploader from '../components/canvas/MultiFileUploader'
 import UserMenu from '../components/UserMenu'
+import { useDateFormat } from '../hooks/useDateFormat'
+import { BRAND } from '../lib/config'
+import Logo from '../components/brand/Logo'
 import styles from './DashboardPage.module.css'
 
 function timeAgo(dateStr) {
@@ -32,6 +35,7 @@ export default function ProjectDetailPage() {
   const { project, sessions, loading, error, refetch } = useProject(projectId)
   const { updateProject } = useProjects()
   const { createSession, deleteSession } = useSessions()
+  const { formatDate, formatDateTime } = useDateFormat()
 
   const [showAddBlueprint, setShowAddBlueprint] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
@@ -104,12 +108,7 @@ export default function ProjectDetailPage() {
       <div className={styles.page}>
         <header className={styles.header}>
           <div className={styles.logo}>
-            <svg width="28" height="28" viewBox="0 0 36 36" fill="none">
-              <rect width="36" height="36" rx="8" fill="#2e8bff"/>
-              <path d="M8 28V10h4v14h12V10h4v18H8z" fill="white" opacity="0.9"/>
-              <path d="M14 10h8v8h-8z" fill="white"/>
-            </svg>
-            <span>BlueprintMeasure</span>
+            <Logo variant="mark" />
           </div>
           <UserMenu />
         </header>
@@ -127,12 +126,7 @@ export default function ProjectDetailPage() {
     <div className={styles.page}>
       <header className={styles.header}>
         <div className={styles.logo}>
-          <svg width="28" height="28" viewBox="0 0 36 36" fill="none">
-            <rect width="36" height="36" rx="8" fill="#2e8bff"/>
-            <path d="M8 28V10h4v14h12V10h4v18H8z" fill="white" opacity="0.9"/>
-            <path d="M14 10h8v8h-8z" fill="white"/>
-          </svg>
-          <span>BlueprintMeasure</span>
+          <Logo variant="mark" />
         </div>
         <UserMenu />
       </header>

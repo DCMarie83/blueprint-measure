@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { useAdminData } from '../../context/AdminDataContext'
 import { logError } from '../../lib/logError'
+import { useDateFormat } from '../../hooks/useDateFormat'
 import styles from './sections.module.css'
 
 const STATUS_COLORS = {
@@ -34,6 +35,7 @@ function TypePill({ value }) {
 export default function FeedbackSection() {
   const { user } = useAuth()
   const { companies, users } = useAdminData()
+  const { formatDateTime } = useDateFormat()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('all')
@@ -200,7 +202,7 @@ export default function FeedbackSection() {
                 return (
                   <Fragment key={fb.id}>
                     <tr className={styles.tr} onClick={() => handleExpand(fb)} style={{ cursor: 'pointer' }}>
-                      <td className={styles.td}>{new Date(fb.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                      <td className={styles.td}>{formatDateTime(fb.created_at)}</td>
                       <td className={styles.td}><TypePill value={fb.type} /></td>
                       <td className={styles.td}>{fbUser}</td>
                       <td className={styles.td}>{fbCompany}</td>
@@ -252,7 +254,7 @@ export default function FeedbackSection() {
                                             {r.is_internal && <span style={{ color: '#f59e0b', marginLeft: 6, fontWeight: 500 }}>(internal)</span>}
                                           </span>
                                           <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
-                                            {new Date(r.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                            {formatDateTime(r.created_at)}
                                           </span>
                                         </div>
                                         <div style={{ whiteSpace: 'pre-wrap' }}>{r.body}</div>

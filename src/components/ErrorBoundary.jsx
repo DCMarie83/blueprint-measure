@@ -1,5 +1,6 @@
 import { Component } from 'react';
 import { logError } from '../lib/logError';
+import { SUPPORT } from '../lib/config';
 
 export default class ErrorBoundary extends Component {
   constructor(props) {
@@ -42,8 +43,8 @@ export default class ErrorBoundary extends Component {
             <h1 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Something went wrong</h1>
             <p style={{ color: 'var(--color-text-muted, #999)', fontSize: 14, marginBottom: '1.5rem' }}>
               We've been notified and are looking into it. Please try again, or contact{' '}
-              <a href="mailto:hello@blueprintmeasure.com" style={{ color: 'var(--color-primary, #2e8bff)' }}>
-                hello@blueprintmeasure.com
+              <a href={"mailto:" + SUPPORT.email} style={{ color: 'var(--color-primary, #2e8bff)' }}>
+                {SUPPORT.email}
               </a>{' '}
               if it persists.
             </p>

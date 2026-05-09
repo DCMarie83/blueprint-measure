@@ -1,0 +1,33 @@
+.page { min-height: 100vh; background: var(--color-bg); }
+.appHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  height: 60px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+.logoLink { display: flex; align-items: center; text-decoration: none; }
+.content { max-width: 880px; margin: 0 auto; padding: 32px 24px; }
+.settingsHeader { margin-bottom: 24px; }
+.title { font-size: 28px; font-weight: 700; color: var(--color-text); margin: 0; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--color-border); margin-bottom: 24px; }
+.tab { padding: 12px 16px; background: transparent; border: 0; border-bottom: 2px solid transparent; color: var(--color-text-muted); font-size: 14px; font-weight: 500; cursor: pointer; transition: color 0.15s, border-color 0.15s; }
+.tab:hover { color: var(--color-text); }
+.tabActive { color: var(--color-text); border-bottom-color: var(--color-primary); }
+.body { display: flex; flex-direction: column; gap: 24px; }
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.backLink:hover {
+  color: var(--color-text);
+}

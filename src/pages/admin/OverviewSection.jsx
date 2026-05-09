@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAdminData } from '../../context/AdminDataContext'
+import { useDateFormat } from '../../hooks/useDateFormat'
 import styles from './sections.module.css'
 
 export default function OverviewSection() {
   const { companies, users, sessions, loadError } = useAdminData()
+  const { formatDateTime } = useDateFormat()
   const [newFeedbackCount, setNewFeedbackCount] = useState(0)
   const [recentErrorCount, setRecentErrorCount] = useState(0)
 
@@ -89,7 +91,7 @@ export default function OverviewSection() {
               <div key={i} className={styles.activityItem}>
                 <span className={styles.activityText}>{item.text}</span>
                 <span className={styles.activityTime}>
-                  {new Date(item.time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  {formatDateTime(item.time)}
                 </span>
               </div>
             ))}

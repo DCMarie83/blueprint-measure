@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { BRAND } from '../lib/config'
+import Logo from '../components/brand/Logo'
 import styles from './LoginPage.module.css'
 
 export default function ChangePasswordPage() {
@@ -70,7 +72,7 @@ export default function ChangePasswordPage() {
     <div className={styles.page}>
       <div className={styles.card}>
         <div className={styles.logo}>
-          <span>BlueprintMeasure</span>
+          <Logo variant="full" />
         </div>
 
         <h1 className={styles.title}>{headingText}</h1>

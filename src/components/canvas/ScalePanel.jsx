@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { SCALE_OPTIONS, calcPixelsPerFoot } from '../../utils/scaleOptions'
 import { parseFeetInches } from '../../utils/fractions'
+import { BRAND } from '../../lib/config'
 import styles from './ScalePanel.module.css'
 
 export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, pdfPageInfo, currentPage, pageCount,
@@ -147,7 +148,7 @@ export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, pdfPageI
               <div className={styles.scalePillPopover} ref={infoRef}>
                 <div className={styles.scalePillPopTitle}>How the scale works</div>
                 <p className={styles.scalePillPopBody}>
-                  BlueprintMeasure reads the rendered resolution of your PDF automatically. You only need to pick the architectural scale that matches what's printed on the blueprint's title block (usually bottom right corner, e.g. 1/4" = 1').
+                  {BRAND.name} reads the rendered resolution of your PDF automatically. You only need to pick the architectural scale that matches what's printed on the blueprint's title block (usually bottom right corner, e.g. 1/4" = 1').
                   If your scale is non-standard, or the drawing was scanned and resized, use Manual Calibration: click Manual from the dropdown, draw a line along a dimension you know (like a wall labeled 10'-0"), and enter the actual length.
                 </p>
               </div>

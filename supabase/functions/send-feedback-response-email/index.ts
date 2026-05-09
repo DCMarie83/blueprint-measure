@@ -59,9 +59,9 @@ Deno.serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'BlueprintMeasure <feedback@blueprintmeasure.com>',
+        from: 'RivetDog <feedback@blueprintmeasure.com>',
         to: user.email,
-        subject: 'Re: Your BlueprintMeasure feedback',
+        subject: 'Re: Your RivetDog feedback',
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
             <h2 style="color: #1e3a5f;">We replied to your feedback</h2>
@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
               You can submit additional feedback anytime by clicking the orange "Send Feedback" button at blueprintmeasure.com.
             </p>
             <p style="color: #9ca3af; font-size: 11px; margin-top: 32px;">
-              BlueprintMeasure | NG Automation Hub
+              RivetDog | NG Automation Hub
             </p>
           </div>
         `,

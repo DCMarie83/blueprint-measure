@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import UserMenu from '../components/UserMenu'
+import { useDateFormat } from '../hooks/useDateFormat'
+import { BRAND } from '../lib/config'
 import styles from './AccountPage.module.css'
 
 const PLAN_LABELS = {
@@ -22,6 +24,7 @@ const ROLE_LABELS = {
 export default function AccountPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const { formatDate, formatDateTime } = useDateFormat()
 
   // Profile
   const [fullName, setFullName] = useState('')
@@ -302,12 +305,12 @@ export default function AccountPage() {
             </label>
             {smsConsentAt && smsConsent && (
               <span className={styles.hint}>
-                Opted in {new Date(smsConsentAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                Opted in {formatDate(smsConsentAt)}
               </span>
             )}
           </div>
           <p className={styles.smsDisclosure}>
-            I agree to receive automated text messages from BlueprintMeasure (NG Automation Hub)
+            I agree to receive automated text messages from {BRAND.name} ({BRAND.legalEntity})
             at the phone number provided, including product updates, support communications, and
             occasional marketing. Message and data rates may apply. Reply STOP to opt out, HELP for help.
           </p>
@@ -338,10 +341,7 @@ export default function AccountPage() {
                 >
                   <span className={styles.activityText}>{item.text}</span>
                   <span className={styles.activityTime}>
-                    {new Date(item.time).toLocaleString('en-US', {
-                      month: 'short', day: 'numeric', year: 'numeric',
-                      hour: 'numeric', minute: '2-digit',
-                    })}
+                    {formatDateTime(item.time)}
                   </span>
                 </div>
               ))}

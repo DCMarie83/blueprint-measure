@@ -3,6 +3,7 @@ import { MessageSquare } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { logError } from '../../lib/logError'
+import { BRAND } from '../../lib/config'
 import styles from './FeedbackButton.module.css'
 
 const FEEDBACK_TYPES = [
@@ -165,7 +166,7 @@ export default function FeedbackButton({ prefillDescription = '' }) {
           <div className={styles.modal} onClick={e => e.stopPropagation()}>
             <div className={styles.header}>
               <div>
-                <h3 className={styles.title}>Help us improve BlueprintMeasure</h3>
+                <h3 className={styles.title}>Help us improve {BRAND.name}</h3>
                 <p className={styles.subtitle}>Found a bug or have an idea? Tell us about it.</p>
               </div>
               <button className={styles.closeBtn} onClick={handleClose}>✕</button>

@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatAuthError } from '../lib/authErrors'
+import { BRAND } from '../lib/config'
+import Logo from '../components/brand/Logo'
 import styles from './LoginPage.module.css'
 
 export default function LoginPage() {
@@ -52,12 +54,7 @@ export default function LoginPage() {
       <div className={styles.page}>
         <div className={styles.card}>
           <div className={styles.logo}>
-            <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-              <rect width="36" height="36" rx="8" fill="#2e8bff"/>
-              <path d="M8 28V10h4v14h12V10h4v18H8z" fill="white" opacity="0.9"/>
-              <path d="M14 10h8v8h-8z" fill="white"/>
-            </svg>
-            <span>BlueprintMeasure</span>
+            <Logo variant="full" />
           </div>
 
           <h1 className={styles.title}>Reset your password</h1>
@@ -103,12 +100,7 @@ export default function LoginPage() {
     <div className={styles.page}>
       <div className={styles.card}>
         <div className={styles.logo}>
-          <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-            <rect width="36" height="36" rx="8" fill="#2e8bff"/>
-            <path d="M8 28V10h4v14h12V10h4v18H8z" fill="white" opacity="0.9"/>
-            <path d="M14 10h8v8h-8z" fill="white"/>
-          </svg>
-          <span>BlueprintMeasure</span>
+          <Logo variant="full" />
         </div>
 
         <h1 className={styles.title}>Sign in to your account</h1>
@@ -152,7 +144,7 @@ export default function LoginPage() {
         </button>
 
         <p className={styles.footer}>
-          BlueprintMeasure — Professional Blueprint Measurement
+          {BRAND.name} — {BRAND.tagline}
         </p>
       </div>
     </div>

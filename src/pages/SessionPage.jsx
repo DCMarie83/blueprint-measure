@@ -26,6 +26,8 @@ import SessionSummary from '../components/zones/SessionSummary'
 import PdfPageSelector from '../components/pdf/PdfPageSelector'
 import PdfPageManager from '../components/pdf/PdfPageManager'
 import UserMenu from '../components/UserMenu'
+import { useDateFormat } from '../hooks/useDateFormat'
+import { BRAND } from '../lib/config'
 import styles from './SessionPage.module.css'
 
 // SessionPage is the main working environment.
@@ -44,6 +46,7 @@ export default function SessionPage() {
 
   // ── Add-blueprint modal state ───────────────────────────────────────────────
   const [showAddBlueprint, setShowAddBlueprint] = useState(false)
+  const { formatTime } = useDateFormat()
 
   // ── Blueprint state ──────────────────────────────────────────────────────────
   const [blueprintUrl, setBlueprintUrl] = useState(null)
@@ -1147,7 +1150,7 @@ export default function SessionPage() {
 
         {/* Print-only report header */}
         <div className={styles.printReportHeader}>
-          <h1>BlueprintMeasure — Test Report</h1>
+          <h1>{BRAND.name} — Test Report</h1>
           <div>Project: {session?.project_name}{session?.description ? ` | ${session.description}` : ''}</div>
           <div>Tester: {user?.email} | Date: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
         </div>
@@ -1185,7 +1188,7 @@ export default function SessionPage() {
             {session?.description && <div className={styles.sessionClient}>{session.description}</div>}
             <div className={styles.saveRow}>
               <span className={styles.lastSaved}>
-                {lastSavedAt ? `Saved ${lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Not yet saved'}
+                {lastSavedAt ? `Saved ${formatTime(lastSavedAt)}` : 'Not yet saved'}
               </span>
               <button className={styles.saveBtn} onClick={handleManualSave} disabled={manualSaving}>
                 {manualSaving ? 'Saving…' : 'Save'}

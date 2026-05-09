@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { SCALE_OPTIONS } from '../utils/scaleOptions'
 import { parseFeetInches, formatFeetInches } from '../utils/fractions'
+import { useDateFormat } from '../hooks/useDateFormat'
+import { BRAND } from '../lib/config'
 import styles from './AccuracyTestPage.module.css'
 
 let rowCounter = 0
@@ -81,6 +83,8 @@ function statusBg(s) {
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function AccuracyTestPage() {
+  const { formatDate } = useDateFormat()
+
   // Project info
   const [projectName, setProjectName] = useState('')
   const [sheetNumber, setSheetNumber] = useState('')
@@ -144,7 +148,7 @@ export default function AccuracyTestPage() {
       {/* ── Header ── */}
       <header className={styles.header}>
         <div className={styles.headerLeft}>
-          <span className={styles.logo}>📐 BlueprintMeasure</span>
+          <span className={styles.logo}>📐 {BRAND.name}</span>
           <span className={styles.adminBadge}>Super Admin</span>
           <span className={styles.testBadge}>Accuracy Test Mode</span>
         </div>
@@ -165,8 +169,8 @@ export default function AccuracyTestPage() {
 
         {/* ── Print-only header ── */}
         <div className={styles.printHeader}>
-          <h1>BlueprintMeasure — Accuracy Test Report</h1>
-          <p>{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+          <h1>{BRAND.name} — Accuracy Test Report</h1>
+          <p>{formatDate(new Date())}</p>
         </div>
 
         {/* ── Project info ── */}

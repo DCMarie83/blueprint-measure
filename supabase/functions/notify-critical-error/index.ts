@@ -40,9 +40,9 @@ Deno.serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'BlueprintMeasure Alerts <alerts@blueprintmeasure.com>',
+        from: 'RivetDog Alerts <alerts@blueprintmeasure.com>',
         to: ALERT_EMAIL,
-        subject: 'Critical error in BlueprintMeasure',
+        subject: 'Critical error in RivetDog',
         html: `
           <h2>Critical error detected</h2>
           <p><strong>Message:</strong> ${escapeHtml(errorRow.error_message)}</p>

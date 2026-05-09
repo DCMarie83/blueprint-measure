@@ -1,2 +1,2 @@
-# blueprint-measure
-BlueprintMeasure - blueprint measurement tool for painting contractors
+# rivetdog
+RivetDog - blueprint measurement tool for painting contractors

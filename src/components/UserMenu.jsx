@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { User, Settings, Users, LogOut } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import ThemeToggle from './ThemeToggle'
 import styles from './UserMenu.module.css'
 
 const ADMIN_EMAIL = 'main@ngautomationhub.com'
@@ -77,9 +78,13 @@ export default function UserMenu() {
             )}
           </div>
           <div className={styles.menuSection}>
-            <button className={styles.menuItem} onClick={() => { navigate('/account'); setOpen(false) }}>
-              <User size={15} />
-              <span>Account</span>
+            <div className={styles.menuItem} style={{ justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Theme</span>
+              <ThemeToggle />
+            </div>
+            <button className={styles.menuItem} onClick={() => { navigate('/settings'); setOpen(false) }}>
+              <Settings size={15} />
+              <span>Settings</span>
             </button>
             {role === 'contractor_admin' && (
               <button className={styles.menuItem} onClick={() => { navigate('/dashboard/team'); setOpen(false) }}>

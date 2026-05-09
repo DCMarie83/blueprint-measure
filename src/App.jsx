@@ -10,6 +10,7 @@ import SessionPage from './pages/SessionPage'
 import AccuracyTestPage from './pages/AccuracyTestPage'
 import ChangePasswordPage from './pages/ChangePasswordPage'
 import AccountPage from './pages/AccountPage'
+import SettingsPage from './pages/SettingsPage'
 import FeedbackButton from './components/feedback/FeedbackButton'
 
 // Admin layout + sections
@@ -161,8 +162,12 @@ export default function App() {
         element={<ProtectedRoute><SessionPage /></ProtectedRoute>}
       />
       <Route
+        path="/settings"
+        element={<ProtectedRoute><SettingsPage /></ProtectedRoute>}
+      />
+      <Route
         path="/account"
-        element={<ProtectedRoute><AccountPage /></ProtectedRoute>}
+        element={<Navigate to="/settings" replace />}
       />
 
       {/* Contractor admin team management */}

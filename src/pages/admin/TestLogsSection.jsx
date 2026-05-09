@@ -1,10 +1,12 @@
 import { useState, useEffect, Fragment } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAdminData } from '../../context/AdminDataContext'
+import { useDateFormat } from '../../hooks/useDateFormat'
 import styles from './sections.module.css'
 
 export default function TestLogsSection() {
   const { companies, users } = useAdminData()
+  const { formatDateTime } = useDateFormat()
   const [logs, setLogs] = useState([])
   const [loading, setLoading] = useState(true)
   const [verdictFilter, setVerdictFilter] = useState('ALL')
@@ -73,7 +75,7 @@ export default function TestLogsSection() {
                 return (
                   <Fragment key={log.id}>
                     <tr className={styles.tr} onClick={() => setExpandedId(isExp ? null : log.id)} style={{ cursor: 'pointer' }}>
-                      <td className={styles.td}>{new Date(log.logged_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                      <td className={styles.td}>{formatDateTime(log.logged_at)}</td>
                       <td className={styles.td}>{userEmail}</td>
                       <td className={styles.td}>{sessionLabel}</td>
                       <td className={styles.td}>{log.zone_name}</td>

@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import UserMenu from '../components/UserMenu'
 import Modal from '../components/ui/Modal'
+import { useDateFormat } from '../hooks/useDateFormat'
 import styles from './TeamPage.module.css'
 
 export default function TeamPage() {
@@ -22,6 +23,7 @@ export default function TeamPage() {
   const [invitePassword, setInvitePassword] = useState('')
   const [inviting, setInviting] = useState(false)
   const [inviteError, setInviteError] = useState('')
+  const { formatDate } = useDateFormat()
 
   useEffect(() => {
     async function load() {
@@ -190,7 +192,7 @@ export default function TeamPage() {
                         <span style={{ fontSize: 10, color: '#f59e0b', fontWeight: 600 }}>Pending</span>
                       )}
                     </td>
-                    <td className={styles.td}>{new Date(m.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                    <td className={styles.td}>{formatDate(m.created_at)}</td>
                   </tr>
                 ))}
               </tbody>
