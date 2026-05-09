@@ -7,7 +7,7 @@ import styles from './BlueprintUploader.module.css'
 
 const MAX_FILE_SIZE_GB = 1
 
-export default function BlueprintUploader({ sessionId, projectId, onUploaded, onStorageCheck, oldBlueprintType }) {
+export default function BlueprintUploader({ sessionId, projectId, onSplitFlowRedirect, onUploaded, onStorageCheck, oldBlueprintType }) {
   const { user } = useAuth()
   const navigate = useNavigate()
   const inputRef = useRef(null)
@@ -173,7 +173,11 @@ export default function BlueprintUploader({ sessionId, projectId, onUploaded, on
               )}
               {isSplittableError && projectId && (
                 <button
-                  onClick={e => { e.stopPropagation(); navigate(`/project/${projectId}`) }}
+                  onClick={e => {
+                    e.stopPropagation()
+                    if (onSplitFlowRedirect) onSplitFlowRedirect()
+                    else navigate(`/project/${projectId}`)
+                  }}
                   style={{
                     marginTop: 8, padding: '8px 16px', background: 'var(--color-primary)',
                     color: 'white', border: 'none', borderRadius: 6, fontWeight: 600,
