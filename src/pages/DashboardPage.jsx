@@ -5,14 +5,15 @@ import { useAuth } from '../context/AuthContext'
 import { useProjects } from '../hooks/useProjects'
 import { useSessions } from '../hooks/useSessions'
 import { getCompanyStorageUsage } from '../utils/storageUsage'
+import { getStorageLimitMb } from '../lib/plans'
 import Modal from '../components/ui/Modal'
 import NewProjectForm from '../components/auth/NewProjectForm'
 import NewSessionForm from '../components/auth/NewSessionForm'
+import StorageBar from '../components/ui/StorageBar'
 import UserMenu from '../components/UserMenu'
 import styles from './DashboardPage.module.css'
 
 const ADMIN_EMAIL = 'main@ngautomationhub.com'
-const PLAN_STORAGE = { basic: 5120, plus: 25600, ultra: 102400, founders: 25600, pilot: null }
 
 function timeAgo(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -70,11 +71,13 @@ export default function DashboardPage() {
 
       if (profile?.company_id) {
         try {
-          const limitMb = PLAN_STORAGE[plan] ?? null
+          const limitMb = getStorageLimitMb(plan)
           const usage = await getCompanyStorageUsage(profile.company_id)
           setStorageDisplay({
             usedGb: (usage.totalBytes / (1024 * 1024 * 1024)).toFixed(1),
             limitGb: limitMb != null ? (limitMb / 1024).toFixed(0) : null,
+            usedBytes: usage.totalBytes,
+            limitBytes: limitMb != null ? limitMb * 1024 * 1024 : null,
           })
         } catch { /* ignore */ }
       }
@@ -162,11 +165,6 @@ export default function DashboardPage() {
           {companyPlan === 'founders' && (
             <span className={styles.foundersBadge}>Founders</span>
           )}
-          {storageDisplay && (
-            <span className={styles.storageIndicator}>
-              {storageDisplay.usedGb} GB{storageDisplay.limitGb ? ` of ${storageDisplay.limitGb} GB` : ''} used
-            </span>
-          )}
           <UserMenu />
         </div>
       </header>
@@ -194,11 +192,10 @@ export default function DashboardPage() {
               </div>
               <div className={styles.metricCard}>
                 <div className={styles.metricLabel}>Storage Used</div>
-                <div className={styles.metricValue}>
-                  {storageDisplay
-                    ? `${storageDisplay.usedGb} GB${storageDisplay.limitGb ? ` / ${storageDisplay.limitGb} GB` : ''}`
-                    : '—'}
-                </div>
+                {storageDisplay
+                  ? <StorageBar usedBytes={storageDisplay.usedBytes} limitBytes={storageDisplay.limitBytes} />
+                  : <div className={styles.metricValue}>—</div>
+                }
               </div>
             </div>
 

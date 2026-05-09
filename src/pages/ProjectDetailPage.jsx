@@ -5,13 +5,12 @@ import { useAuth } from '../context/AuthContext'
 import { useProject } from '../hooks/useProject'
 import { useProjects } from '../hooks/useProjects'
 import { useSessions } from '../hooks/useSessions'
+import { getStorageLimitMb } from '../lib/plans'
 import Modal from '../components/ui/Modal'
 import NewSessionForm from '../components/auth/NewSessionForm'
 import MultiFileUploader from '../components/canvas/MultiFileUploader'
 import UserMenu from '../components/UserMenu'
 import styles from './DashboardPage.module.css'
-
-const PLAN_STORAGE = { basic: 5120, plus: 25600, ultra: 102400, founders: 25600, pilot: null }
 
 function timeAgo(dateStr) {
   if (!dateStr) return ''
@@ -58,7 +57,7 @@ export default function ProjectDetailPage() {
           .select('plan')
           .eq('id', profile.company_id)
           .maybeSingle()
-        setStorageLimitMb(PLAN_STORAGE[comp?.plan] ?? null)
+        setStorageLimitMb(getStorageLimitMb(comp?.plan))
       }
     }
     loadLimit()

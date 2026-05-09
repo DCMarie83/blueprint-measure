@@ -13,6 +13,7 @@ import { downloadPdfWithMeasurements } from '../utils/pdfExport'
 import { detectScaleFromImage } from '../utils/detectScale'
 import { evaluateZoneTest } from '../utils/testEvaluation'
 import { getCompanyStorageUsage } from '../utils/storageUsage'
+import { getStorageLimitMb } from '../lib/plans'
 import BlueprintCanvas from '../components/canvas/BlueprintCanvas'
 import BlueprintUploader from '../components/canvas/BlueprintUploader'
 import Modal from '../components/ui/Modal'
@@ -1220,8 +1221,7 @@ export default function SessionPage() {
                   .eq('id', profile.company_id)
                   .single()
                 const plan = comp?.plan
-                const PLAN_STORAGE = { basic: 5120, plus: 25600, ultra: 102400, founders: 25600, pilot: null }
-                const limitMb = PLAN_STORAGE[plan] ?? null
+                const limitMb = getStorageLimitMb(plan)
                 if (limitMb == null) return true // pilot = unlimited
                 const usage = await getCompanyStorageUsage(profile.company_id)
                 const projectedBytes = usage.totalBytes + fileSize
