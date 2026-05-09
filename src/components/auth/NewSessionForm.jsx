@@ -4,7 +4,7 @@ import styles from './NewSessionForm.module.css'
 // Form shown inside a modal when the user clicks "New Session" or "Add Blueprint".
 // When projectId is supplied, the project_name field is hidden (session is scoped to the project).
 export default function NewSessionForm({ onCreate, onCancel, projectId }) {
-  const [clientName, setClientName] = useState('')
+  const [description, setDescription] = useState('')
   const [projectName, setProjectName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -14,7 +14,7 @@ export default function NewSessionForm({ onCreate, onCancel, projectId }) {
     setError('')
     setLoading(true)
     try {
-      await onCreate({ clientName, projectName, projectId })
+      await onCreate({ description: description || null, projectName, projectId })
     } catch (err) {
       setError(err.message)
       setLoading(false)
@@ -24,13 +24,12 @@ export default function NewSessionForm({ onCreate, onCancel, projectId }) {
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
       <div className={styles.field}>
-        <label htmlFor="clientName">Client Name</label>
+        <label htmlFor="description">Description (optional)</label>
         <input
-          id="clientName"
-          value={clientName}
-          onChange={e => setClientName(e.target.value)}
-          placeholder="e.g. Smith Residence"
-          required
+          id="description"
+          value={description}
+          onChange={e => setDescription(e.target.value)}
+          placeholder="e.g. Floor Plan, Electrical, Site Plan"
         />
       </div>
 

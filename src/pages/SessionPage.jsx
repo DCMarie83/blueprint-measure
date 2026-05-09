@@ -1148,7 +1148,7 @@ export default function SessionPage() {
         {/* Print-only report header */}
         <div className={styles.printReportHeader}>
           <h1>BlueprintMeasure — Test Report</h1>
-          <div>Project: {session?.project_name} | Client: {session?.client_name}</div>
+          <div>Project: {session?.project_name}{session?.description ? ` | ${session.description}` : ''}</div>
           <div>Tester: {user?.email} | Date: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
         </div>
 
@@ -1182,7 +1182,7 @@ export default function SessionPage() {
           )}
           <div className={styles.sessionInfo}>
             <div className={styles.sessionProject}>{session?.project_name}</div>
-            <div className={styles.sessionClient}>{session?.client_name}</div>
+            {session?.description && <div className={styles.sessionClient}>{session.description}</div>}
             <div className={styles.saveRow}>
               <span className={styles.lastSaved}>
                 {lastSavedAt ? `Saved ${lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Not yet saved'}

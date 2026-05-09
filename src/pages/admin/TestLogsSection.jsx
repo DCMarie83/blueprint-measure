@@ -15,7 +15,7 @@ export default function TestLogsSection() {
     async function load() {
       const { data, error } = await supabase
         .from('session_test_logs')
-        .select('*, sessions(project_name, client_name)')
+        .select('*, sessions(project_name, description)')
         .order('logged_at', { ascending: false })
         .limit(500)
       if (!error) setLogs(data ?? [])
@@ -67,7 +67,7 @@ export default function TestLogsSection() {
             <tbody>
               {filtered.map(log => {
                 const userEmail = users.find(u => u.id === log.user_id)?.email ?? '—'
-                const sessionLabel = log.sessions ? `${log.sessions.client_name ?? ''} / ${log.sessions.project_name ?? ''}` : '—'
+                const sessionLabel = log.sessions ? `${log.sessions.project_name ?? ''}${log.sessions.description ? ' / ' + log.sessions.description : ''}` : '—'
                 const stated = log.stated_sf ?? log.stated_lf ?? '—'
                 const isExp = expandedId === log.id
                 return (

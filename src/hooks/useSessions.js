@@ -29,7 +29,7 @@ export function useSessions() {
     fetchSessions()
   }, [fetchSessions])
 
-  async function createSession({ clientName, projectName, projectId }) {
+  async function createSession({ description, projectName, projectId }) {
     // Check blueprint limit before creating — skipped for super admin.
     if (user.email !== 'main@ngautomationhub.com') {
       const { data: profile } = await supabase
@@ -83,7 +83,6 @@ export function useSessions() {
         .insert({
           user_id: user.id,
           name: projectName,
-          client_name: clientName,
         })
         .select()
         .single()
@@ -97,7 +96,7 @@ export function useSessions() {
       .insert({
         user_id: user.id,
         project_id: resolvedProjectId,
-        client_name: clientName,
+        description: description ?? null,
         project_name: projectName || 'Blueprint',
       })
       .select()
@@ -108,7 +107,7 @@ export function useSessions() {
     return data
   }
 
-  async function createSessionsBatch({ files, projectId, clientName }) {
+  async function createSessionsBatch({ files, projectId }) {
     const results = []
     for (const file of files) {
       const name = file.name.replace(/\.[^.]+$/, '').replace(/_/g, ' ')
@@ -118,7 +117,6 @@ export function useSessions() {
           .insert({
             user_id: user.id,
             project_id: projectId,
-            client_name: clientName || null,
             project_name: name || 'Blueprint',
           })
           .select()

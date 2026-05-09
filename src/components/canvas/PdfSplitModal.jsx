@@ -19,7 +19,7 @@ function buildDefaultRanges(pageCount, baseName) {
   return ranges
 }
 
-export default function PdfSplitModal({ file, projectId, clientName, onComplete, onCancel }) {
+export default function PdfSplitModal({ file, projectId, onComplete, onCancel }) {
   const { user } = useAuth()
   const { createSession } = useSessions()
   const [pageCount, setPageCount] = useState(null)
@@ -108,7 +108,7 @@ export default function PdfSplitModal({ file, projectId, clientName, onComplete,
         session = await createSession({
           projectName: range.name,
           projectId,
-          clientName: clientName || '',
+          description: null,
         })
       } catch (err) {
         setStatuses(prev => ({ ...prev, [id]: { status: 'error', message: err.message } }))
@@ -192,7 +192,7 @@ export default function PdfSplitModal({ file, projectId, clientName, onComplete,
         session = await createSession({
           projectName: range.name,
           projectId,
-          clientName: clientName || '',
+          description: null,
         })
       } catch (err) {
         setStatuses(prev => ({ ...prev, [rangeId]: { status: 'error', message: err.message } }))

@@ -86,7 +86,7 @@ export function exportCSV(session, zones, enabledFeatures = {}) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `${session.client_name}_${session.project_name}_measurements.csv`
+  a.download = `${session.project_name}${session.description ? '_' + session.description : ''}_measurements.csv`
     .replace(/\s+/g, '_')
     .replace(/[^a-zA-Z0-9_.-]/g, '')
   a.click()

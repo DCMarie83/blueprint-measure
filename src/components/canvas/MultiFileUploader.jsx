@@ -163,7 +163,6 @@ export default function MultiFileUploader({ projectId, project, existingEmptySes
     const results = await createSessionsBatch({
       files,
       projectId,
-      clientName: project?.client_name || null,
     })
 
     // Update states with session IDs
@@ -310,7 +309,6 @@ export default function MultiFileUploader({ projectId, project, existingEmptySes
         <PdfSplitModal
           file={splittableFile}
           projectId={projectId}
-          clientName={project?.client_name || null}
           onComplete={() => {
             setSplittableFile(null)
             onComplete?.()

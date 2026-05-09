@@ -126,7 +126,7 @@ export default function DashboardPage() {
       const session = await createSession({
         projectName: project.name,
         projectId: project.id,
-        clientName: fields.clientName || null,
+        description: null,
       })
       navigate(`/session/${session.id}`)
     } catch {
