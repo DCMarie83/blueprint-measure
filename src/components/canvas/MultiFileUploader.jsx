@@ -5,6 +5,7 @@ import { useSessions } from '../../hooks/useSessions'
 import { uploadBlueprint, validateFile } from '../../lib/uploadBlueprint'
 import { getUserStorageUsage } from '../../utils/storageUsage'
 import Modal from '../ui/Modal'
+import PdfSplitModal from './PdfSplitModal'
 import styles from './MultiFileUploader.module.css'
 
 const MAX_CONCURRENT = 3
@@ -25,6 +26,7 @@ export default function MultiFileUploader({ projectId, project, existingEmptySes
   const [batchError, setBatchError] = useState('')
   const [batchWarning, setBatchWarning] = useState('')
   const [showResumePrompt, setShowResumePrompt] = useState(null) // { files, emptyCount }
+  const [splittableFile, setSplittableFile] = useState(null)
   const activeUploads = useRef(0)
   const fileQueue = useRef([])
 
@@ -88,11 +90,28 @@ export default function MultiFileUploader({ projectId, project, existingEmptySes
     // Validate all files first
     const errors = []
     const warnings = []
+    const splittable = []
     for (const file of files) {
       const result = validateFile(file)
-      if (!result.valid) errors.push(`${file.name}: ${result.error}`)
-      else if (result.warning) warnings.push(`${file.name}: ${result.warning}`)
+      if (!result.valid && result.splittable) {
+        splittable.push(file)
+      } else if (!result.valid) {
+        errors.push(`${file.name}: ${result.error}`)
+      } else if (result.warning) {
+        warnings.push(`${file.name}: ${result.warning}`)
+      }
     }
+
+    // Handle splittable files
+    if (splittable.length > 0) {
+      if (splittable.length > 1 || errors.length > 0 || files.length > splittable.length) {
+        setBatchError('Drop one large PDF at a time for splitting. Re-drop other files separately.')
+        return
+      }
+      setSplittableFile(splittable[0])
+      return
+    }
+
     if (errors.length > 0) {
       setBatchError(errors.join('\n'))
       return
@@ -284,6 +303,20 @@ export default function MultiFileUploader({ projectId, project, existingEmptySes
             </button>
           </div>
         </Modal>
+      )}
+
+      {/* PDF Split modal */}
+      {splittableFile && (
+        <PdfSplitModal
+          file={splittableFile}
+          projectId={projectId}
+          clientName={project?.client_name || null}
+          onComplete={() => {
+            setSplittableFile(null)
+            onComplete?.()
+          }}
+          onCancel={() => setSplittableFile(null)}
+        />
       )}
     </div>
   )

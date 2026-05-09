@@ -31,7 +31,11 @@ export default function BlueprintUploader({ sessionId, onUploaded, onStorageChec
 
     const validation = validateFile(file)
     if (!validation.valid) {
-      setError(validation.error)
+      if (validation.splittable) {
+        setError('PDF is too large for direct upload. Use the multi-file drop zone on Job Overview to split a large PDF into multiple blueprints.')
+      } else {
+        setError(validation.error)
+      }
       return
     }
     setWarning(validation.warning || '')

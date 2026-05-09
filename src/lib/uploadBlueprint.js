@@ -16,7 +16,7 @@ export function validateFile(file) {
   }
   const sizeMb = Math.round(file.size / 1024 / 1024)
   if (file.type === 'application/pdf' && file.size > HARD_LIMIT_FILE_SIZE_BYTES) {
-    return { valid: false, error: `PDF is too large (${sizeMb} MB). Browser-based PDF rendering is limited to ~200 MB. Use Adobe Acrobat or smallpdf.com to extract just the drawing sheets you need (typically 10-30 pages), then upload those as separate blueprints under this Job.` }
+    return { valid: false, splittable: true, error: `PDF is too large (${sizeMb} MB). Use the split feature to break it into smaller blueprints.` }
   }
   if (file.size > WARN_FILE_SIZE_BYTES) {
     return { valid: true, warning: `Large file (${sizeMb} MB) — may take a while to upload and render.` }
