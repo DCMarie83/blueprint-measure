@@ -61,19 +61,20 @@ export function uploadBlueprint({ file, sessionId, userId, accessToken, onProgre
     },
     async onSuccess() {
       try {
-        const { data: { publicUrl } } = supabase.storage
+        const { data: urlData, error: urlError } = await supabase.storage
           .from(bucketName)
-          .getPublicUrl(path)
+          .createSignedUrl(path, 3600)
 
-        const cacheBustedUrl = publicUrl + (publicUrl.includes('?') ? '&' : '?') + 'v=' + Date.now()
+        if (urlError) throw new Error(urlError.message)
+        const signedUrl = urlData.signedUrl
 
         const { error: updateError } = await supabase
           .from('sessions')
-          .update({ blueprint_url: cacheBustedUrl, blueprint_path: path, blueprint_type: file.type })
+          .update({ blueprint_url: signedUrl, blueprint_path: path, blueprint_type: file.type })
           .eq('id', sessionId)
 
         if (updateError) throw new Error(updateError.message)
-        onSuccess?.({ url: cacheBustedUrl, path })
+        onSuccess?.({ url: signedUrl, path })
       } catch (err) {
         onError?.(err.message)
       }
