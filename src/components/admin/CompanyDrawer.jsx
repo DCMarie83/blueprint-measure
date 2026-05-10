@@ -1,16 +1,9 @@
 import { useEffect } from 'react'
 import { useDateFormat } from '../../hooks/useDateFormat'
+import { FEATURE_KEYS } from '../../lib/plans'
 import styles from './CompanyDrawer.module.css'
 
-const FEATURES = [
-  { key: 'multi_page_pdf',     label: 'Multi-page PDF' },
-  { key: 'csv_export',         label: 'CSV Export' },
-  { key: 'redraw_zones',       label: 'Redraw Zones' },
-  { key: 'paint_calculator',   label: 'Paint Calculator' },
-  { key: 'ai_scale_detection', label: 'AI Scale Detection' },
-  { key: 'wall_calculator',    label: 'Wall Calculator' },
-  { key: 'test_mode',          label: 'Test Mode' },
-]
+const FEATURES = FEATURE_KEYS
 
 export default function CompanyDrawer({
   company, companyUsers, sessionsThisMonth, sessionsAllTime,

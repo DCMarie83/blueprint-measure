@@ -44,6 +44,35 @@ export function getStorageLimitMb(planKey) {
   return FALLBACK_PLANS[planKey]?.storage_limit_mb ?? null
 }
 
+// Returns display_name for a plan key (sync, uses cache/fallback).
+export function getPlanDisplayName(planKey) {
+  if (!planKey) return null
+  const cached = cachedPlans?.[planKey]
+  if (cached) return cached.display_name ?? planKey
+  return FALLBACK_PLANS[planKey]?.display_name ?? planKey
+}
+
+// Returns an array of { value, label } suitable for <select> dropdowns.
+// Sorted by sort_order. Sync — uses cached plans or fallback.
+export function getPlanOptions() {
+  const source = cachedPlans ?? FALLBACK_PLANS
+  return Object.values(source)
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    .map(p => ({ value: p.key, label: p.display_name ?? p.key }))
+}
+
+// Feature flag keys with display labels. Single source of truth.
+export const FEATURE_KEYS = [
+  { key: 'blueprint_measurement', label: 'Blueprint Measurement' },
+  { key: 'multi_page_pdf',       label: 'Multi-page PDF' },
+  { key: 'csv_export',           label: 'CSV Export' },
+  { key: 'redraw_zones',         label: 'Redraw Zones' },
+  { key: 'paint_calculator',     label: 'Paint Calculator' },
+  { key: 'ai_scale_detection',   label: 'AI Scale Detection' },
+  { key: 'wall_calculator',      label: 'Wall Calculator' },
+  { key: 'test_mode',            label: 'Test Mode' },
+]
+
 // Force-refresh cache after a write
 export function invalidatePlansCache() {
   cachedPlans = null

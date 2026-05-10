@@ -1,18 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAdminData } from '../../context/AdminDataContext'
-import { invalidatePlansCache } from '../../lib/plans'
+import { invalidatePlansCache, FEATURE_KEYS } from '../../lib/plans'
 import styles from './sections.module.css'
-
-const FEATURE_KEYS = [
-  { key: 'multi_page_pdf',     label: 'Multi-page PDF' },
-  { key: 'csv_export',         label: 'CSV Export' },
-  { key: 'redraw_zones',       label: 'Redraw Zones' },
-  { key: 'paint_calculator',   label: 'Paint Calculator' },
-  { key: 'ai_scale_detection', label: 'AI Scale Detection' },
-  { key: 'wall_calculator',    label: 'Wall Calculator' },
-  { key: 'test_mode',          label: 'Test Mode' },
-]
 
 export default function PlansSection() {
   const { companies } = useAdminData()

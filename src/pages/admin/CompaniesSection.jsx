@@ -3,19 +3,11 @@ import { useLocation } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAdminData } from '../../context/AdminDataContext'
-import { getAllPlans } from '../../lib/plans'
+import { getAllPlans, getPlanOptions, FEATURE_KEYS } from '../../lib/plans'
 import CompanyDrawer from '../../components/admin/CompanyDrawer'
 import styles from './sections.module.css'
 
-const FEATURES = [
-  { key: 'multi_page_pdf',     label: 'Multi-page PDF' },
-  { key: 'csv_export',         label: 'CSV Export' },
-  { key: 'redraw_zones',       label: 'Redraw Zones' },
-  { key: 'paint_calculator',   label: 'Paint Calculator' },
-  { key: 'ai_scale_detection', label: 'AI Scale Detection' },
-  { key: 'wall_calculator',    label: 'Wall Calculator' },
-  { key: 'test_mode',          label: 'Test Mode' },
-]
+const FEATURES = FEATURE_KEYS
 
 const PAGE_SIZE = 25
 
@@ -281,7 +273,7 @@ export default function CompaniesSection() {
 
   const PLANS_LIST = Object.values(PLAN_FEATURES).length > 0
     ? Object.entries(PLAN_FEATURES).map(([k, v]) => ({ value: k, label: v.display_name ?? k }))
-    : [{ value: 'basic', label: 'Basic' }, { value: 'plus', label: 'Plus' }, { value: 'ultra', label: 'Ultra' }, { value: 'founders', label: 'Founders' }, { value: 'pilot', label: 'Pilot' }]
+    : getPlanOptions()
 
   // Drawer data
   const drawerCompany = drawerCompanyId ? companies.find(c => c.id === drawerCompanyId) : null

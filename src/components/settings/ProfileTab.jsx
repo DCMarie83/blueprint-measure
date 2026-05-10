@@ -3,15 +3,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { useDateFormat } from '../../hooks/useDateFormat'
+import { getPlanDisplayName } from '../../lib/plans'
 import styles from '../../pages/AccountPage.module.css'
-
-const PLAN_LABELS = {
-  basic: 'Basic',
-  plus: 'Plus',
-  ultra: 'Ultra',
-  founders: 'Founders',
-  pilot: 'Pilot',
-}
 
 const ROLE_LABELS = {
   contractor_user: 'Member',
@@ -233,7 +226,7 @@ export default function ProfileTab() {
       <section className={styles.card}>
         <h2 className={styles.cardTitle}>Company</h2>
         <div className={styles.infoRow}><span className={styles.infoLabel}>Company</span><span className={styles.infoValue}>{company?.name ?? 'Not assigned'}</span></div>
-        <div className={styles.infoRow}><span className={styles.infoLabel}>Plan</span><span className={styles.planBadge}>{company?.plan ? (PLAN_LABELS[company.plan] ?? company.plan) : '—'}</span></div>
+        <div className={styles.infoRow}><span className={styles.infoLabel}>Plan</span><span className={styles.planBadge}>{company?.plan ? getPlanDisplayName(company.plan) : '—'}</span></div>
         <div className={styles.infoRow}><span className={styles.infoLabel}>Role</span><span className={styles.infoValue}>{role ? (ROLE_LABELS[role] ?? role) : 'Member'}</span></div>
         <p className={styles.hint}>Contact your admin to change company details.</p>
       </section>

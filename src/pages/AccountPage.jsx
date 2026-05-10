@@ -5,15 +5,8 @@ import { useAuth } from '../context/AuthContext'
 import UserMenu from '../components/UserMenu'
 import { useDateFormat } from '../hooks/useDateFormat'
 import { BRAND } from '../lib/config'
+import { getPlanDisplayName } from '../lib/plans'
 import styles from './AccountPage.module.css'
-
-const PLAN_LABELS = {
-  basic: 'Basic',
-  plus: 'Plus',
-  ultra: 'Ultra',
-  founders: 'Founders',
-  pilot: 'Pilot',
-}
 
 const ROLE_LABELS = {
   contractor_user: 'Member',
@@ -273,7 +266,7 @@ export default function AccountPage() {
           </div>
           <div className={styles.infoRow}>
             <span className={styles.infoLabel}>Plan</span>
-            <span className={styles.planBadge}>{company?.plan ? (PLAN_LABELS[company.plan] ?? company.plan) : '—'}</span>
+            <span className={styles.planBadge}>{company?.plan ? getPlanDisplayName(company.plan) : '—'}</span>
           </div>
           <div className={styles.infoRow}>
             <span className={styles.infoLabel}>Role</span>
