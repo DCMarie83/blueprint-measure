@@ -15,6 +15,8 @@ export default function TeamPage() {
   const [loading, setLoading] = useState(true)
   const [showDeleted, setShowDeleted] = useState(false)
   const [search, setSearch] = useState('')
+  const [sortBy, setSortBy] = useState('created_at')
+  const [sortDir, setSortDir] = useState('desc')
 
   // Invite state
   const [showInvite, setShowInvite] = useState(false)
@@ -107,7 +109,24 @@ export default function TeamPage() {
       if (!m.email?.toLowerCase().includes(q) && !(m.full_name || '').toLowerCase().includes(q)) return false
     }
     return true
+  }).sort((a, b) => {
+    const dir = sortDir === 'asc' ? 1 : -1
+    const av = a[sortBy], bv = b[sortBy]
+    if (av == null && bv == null) return 0
+    if (av == null) return 1
+    if (bv == null) return -1
+    if (typeof av === 'string') return dir * av.localeCompare(bv)
+    return dir * (new Date(av) - new Date(bv))
   })
+
+  function handleSort(col) {
+    if (sortBy === col) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(col)
+      setSortDir('asc')
+    }
+  }
 
   return (
     <div className={styles.page}>
@@ -160,11 +179,22 @@ export default function TeamPage() {
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th className={styles.th}>Name</th>
-                  <th className={styles.th}>Email</th>
-                  <th className={styles.th}>Role</th>
-                  <th className={styles.th}>Setup</th>
-                  <th className={styles.th}>Joined</th>
+                  {[
+                    { key: 'full_name', label: 'Name' },
+                    { key: 'email', label: 'Email' },
+                    { key: 'role', label: 'Role' },
+                    { key: 'setup_completed_at', label: 'Setup' },
+                    { key: 'created_at', label: 'Joined' },
+                  ].map(col => (
+                    <th
+                      key={col.key}
+                      className={styles.th}
+                      onClick={() => handleSort(col.key)}
+                      style={{ cursor: 'pointer', userSelect: 'none', color: sortBy === col.key ? 'var(--color-text)' : undefined }}
+                    >
+                      {col.label}{sortBy === col.key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>

@@ -41,6 +41,9 @@ export default function ProjectDetailPage() {
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [storageLimitMb, setStorageLimitMb] = useState(null)
 
+  // Sort state
+  const [bpSort, setBpSort] = useState('updated_desc')
+
   // Blueprint rename state
   const [renamingSessionId, setRenamingSessionId] = useState(null)
   const [renameValue, setRenameValue] = useState('')
@@ -220,9 +223,25 @@ export default function ProjectDetailPage() {
         <section className={styles.dashSection}>
           <div className={styles.dashSectionHeader}>
             <h2 className={styles.dashSectionTitle}>Blueprints ({sessions.length})</h2>
-            <button className={styles.quickBtn} style={{ padding: '8px 16px', fontSize: 13 }} onClick={() => setShowAddBlueprint(true)}>
-              + Add Blueprint
-            </button>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {sessions.length > 1 && (
+                <select
+                  value={bpSort}
+                  onChange={e => setBpSort(e.target.value)}
+                  style={{ padding: '5px 10px', fontSize: 12, border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', background: 'var(--color-bg)', color: 'var(--color-text)', outline: 'none' }}
+                >
+                  <option value="updated_desc">Last edited (newest)</option>
+                  <option value="updated_asc">Last edited (oldest)</option>
+                  <option value="created_desc">Created (newest)</option>
+                  <option value="created_asc">Created (oldest)</option>
+                  <option value="name_asc">Name A→Z</option>
+                  <option value="name_desc">Name Z→A</option>
+                </select>
+              )}
+              <button className={styles.quickBtn} style={{ padding: '8px 16px', fontSize: 13 }} onClick={() => setShowAddBlueprint(true)}>
+                + Add Blueprint
+              </button>
+            </div>
           </div>
 
           {sessions.length === 0 ? (
@@ -232,7 +251,16 @@ export default function ProjectDetailPage() {
             </div>
           ) : (
             <div className={styles.grid}>
-              {sessions.map(session => (
+              {[...sessions].sort((a, b) => {
+                switch (bpSort) {
+                  case 'updated_asc': return new Date(a.updated_at ?? a.created_at) - new Date(b.updated_at ?? b.created_at)
+                  case 'created_desc': return new Date(b.created_at) - new Date(a.created_at)
+                  case 'created_asc': return new Date(a.created_at) - new Date(b.created_at)
+                  case 'name_asc': return (a.project_name || '').localeCompare(b.project_name || '')
+                  case 'name_desc': return (b.project_name || '').localeCompare(a.project_name || '')
+                  default: return new Date(b.updated_at ?? b.created_at) - new Date(a.updated_at ?? a.created_at)
+                }
+              }).map(session => (
                 <div key={session.id} className={styles.card}>
                   <div className={styles.cardMain} onClick={() => navigate(`/session/${session.id}`)}>
                     {renamingSessionId === session.id ? (

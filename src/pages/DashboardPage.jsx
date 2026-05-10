@@ -43,6 +43,7 @@ export default function DashboardPage() {
   const [totalZones, setTotalZones] = useState(null)
   const [activity, setActivity] = useState([])
   const [activityOpen, setActivityOpen] = useState(true)
+  const [jobSort, setJobSort] = useState('updated_desc')
   const navigate = useNavigate()
 
   const loading = projectsLoading || sessionsLoading
@@ -202,6 +203,20 @@ export default function DashboardPage() {
             <section className={styles.dashSection}>
               <div className={styles.dashSectionHeader}>
                 <h2 className={styles.dashSectionTitle}>Jobs</h2>
+                {projects.length > 1 && (
+                  <select
+                    value={jobSort}
+                    onChange={e => setJobSort(e.target.value)}
+                    style={{ padding: '5px 10px', fontSize: 12, border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', background: 'var(--color-bg)', color: 'var(--color-text)', outline: 'none' }}
+                  >
+                    <option value="updated_desc">Last activity (newest)</option>
+                    <option value="updated_asc">Last activity (oldest)</option>
+                    <option value="created_desc">Created (newest)</option>
+                    <option value="created_asc">Created (oldest)</option>
+                    <option value="name_asc">Name A→Z</option>
+                    <option value="name_desc">Name Z→A</option>
+                  </select>
+                )}
               </div>
               {projects.length === 0 ? (
                 <div className={styles.emptyState}>
@@ -213,7 +228,16 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <div className={styles.grid}>
-                  {projects.map(project => (
+                  {[...projects].sort((a, b) => {
+                    switch (jobSort) {
+                      case 'updated_asc': return new Date(a.last_activity) - new Date(b.last_activity)
+                      case 'created_desc': return new Date(b.created_at) - new Date(a.created_at)
+                      case 'created_asc': return new Date(a.created_at) - new Date(b.created_at)
+                      case 'name_asc': return (a.name || '').localeCompare(b.name || '')
+                      case 'name_desc': return (b.name || '').localeCompare(a.name || '')
+                      default: return new Date(b.last_activity) - new Date(a.last_activity)
+                    }
+                  }).map(project => (
                     <div key={project.id} className={styles.card}>
                       <div className={styles.cardMain} onClick={() => {
                         if (project.session_count === 1 && project.first_session_id) {
