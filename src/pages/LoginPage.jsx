@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { formatAuthError } from '../lib/authErrors'
 import { BRAND } from '../lib/config'
@@ -144,7 +145,8 @@ export default function LoginPage() {
         </button>
 
         <p className={styles.footer}>
-          {BRAND.name} — {BRAND.tagline}
+          Don't have an account?{' '}
+          <Link to="/signup" style={{ color: 'var(--color-primary)', fontWeight: 500 }}>Sign up free</Link>
         </p>
       </div>
     </div>

@@ -4,6 +4,9 @@ import { useAuth } from './context/AuthContext'
 import { supabase } from './lib/supabase'
 import { addBreadcrumb } from './lib/breadcrumbs'
 import LoginPage from './pages/LoginPage'
+import SignupPage from './pages/SignupPage'
+import TermsPage from './pages/TermsPage'
+import PrivacyPage from './pages/PrivacyPage'
 import RegisterPage from './pages/RegisterPage'
 import DashboardPage from './pages/DashboardPage'
 import SessionPage from './pages/SessionPage'
@@ -136,11 +139,17 @@ export default function App() {
     <RouteBreadcrumbs />
     <PasswordRecoveryHandler />
     <Routes>
-      {/* Public route — login page */}
+      {/* Public routes */}
       <Route
         path="/login"
         element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />}
       />
+      <Route
+        path="/signup"
+        element={user ? <Navigate to="/dashboard" replace /> : <SignupPage />}
+      />
+      <Route path="/terms" element={<TermsPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
 
       {/* Registration / setup — only for users who haven't completed setup */}
       <Route
