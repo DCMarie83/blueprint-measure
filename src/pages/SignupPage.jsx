@@ -10,6 +10,7 @@ export default function SignupPage() {
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [companyName, setCompanyName] = useState('')
   const [tradeVertical, setTradeVertical] = useState('painting')
   const [termsAccepted, setTermsAccepted] = useState(false)
@@ -19,7 +20,8 @@ export default function SignupPage() {
   const [resending, setResending] = useState(false)
   const [resendMsg, setResendMsg] = useState('')
 
-  const canSubmit = firstName.trim() && lastName.trim() && email.trim() && password.length >= 8 && companyName.trim() && termsAccepted
+  const passwordsMatch = password === confirmPassword
+  const canSubmit = firstName.trim() && lastName.trim() && email.trim() && password.length >= 8 && passwordsMatch && confirmPassword && companyName.trim() && termsAccepted
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -165,6 +167,22 @@ export default function SignupPage() {
               minLength={8}
               autoComplete="new-password"
             />
+          </div>
+
+          <div className={styles.field}>
+            <label htmlFor="confirmPassword">Confirm password</label>
+            <input
+              id="confirmPassword"
+              type="password"
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
+              placeholder="Repeat password"
+              required
+              autoComplete="new-password"
+            />
+            {confirmPassword && !passwordsMatch && (
+              <div className={styles.error}>Passwords don't match</div>
+            )}
           </div>
 
           <div className={styles.field}>

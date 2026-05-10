@@ -17,7 +17,6 @@ import { getStorageLimitMb } from '../lib/plans'
 import BlueprintCanvas from '../components/canvas/BlueprintCanvas'
 import BlueprintUploader from '../components/canvas/BlueprintUploader'
 import Modal from '../components/ui/Modal'
-import NewSessionForm from '../components/auth/NewSessionForm'
 import ScalePanel from '../components/canvas/ScalePanel'
 import ScaleChangeDialog from '../components/canvas/ScaleChangeDialog'
 import ZoneDrawPanel from '../components/zones/ZoneDrawPanel'
@@ -43,10 +42,8 @@ export default function SessionPage() {
   const { user } = useAuth()
   const isAdmin = user?.email === ADMIN_EMAIL
   const { session, zones, enabledFeatures, loading, error, saveZone, updateZone, updateZoneLabelOffset, redrawZone, deleteZone, updateSession, refetch } = useSession(sessionId)
-  const { createSession, deleteSession } = useSessions()
+  const { deleteSession } = useSessions()
 
-  // ── Add-blueprint modal state ───────────────────────────────────────────────
-  const [showAddBlueprint, setShowAddBlueprint] = useState(false)
   const { formatTime } = useDateFormat()
 
   // ── Blueprint state ──────────────────────────────────────────────────────────
@@ -123,6 +120,8 @@ export default function SessionPage() {
   // ── Save status ─────────────────────────────────────────────────────────────
   const [lastSavedAt, setLastSavedAt] = useState(null)
   const [manualSaving, setManualSaving] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState(false)
 
   // ── Sibling session count + project name (for breadcrumb + add-blueprint button)
   const [siblingCount, setSiblingCount] = useState(1)
@@ -319,9 +318,12 @@ export default function SessionPage() {
   async function handleSavePageMetadata(metadata) {
     setPageMetadata(metadata)
     setShowPageManager(false)
+    setIsSaving(true)
+    setSaveError(false)
     try {
       await updateSession({ page_metadata: metadata })
       setLastSavedAt(new Date())
+      setIsSaving(false)
       // If current page is now hidden, jump to the first visible page
       if (metadata[String(currentPage)]?.hidden) {
         for (let i = 1; i <= pageCount; i++) {
@@ -333,6 +335,8 @@ export default function SessionPage() {
       }
     } catch (err) {
       console.error('Failed to save page metadata:', err)
+      setIsSaving(false)
+      setSaveError(true)
     }
   }
 
@@ -341,11 +345,16 @@ export default function SessionPage() {
     const newScales = { ...pageScales, [currentPage]: ppf }
     setPageScales(newScales)
     runScaleSanityCheck(ppf, 'dropdown')
+    setIsSaving(true)
+    setSaveError(false)
     try {
       await updateSession({ page_scales: newScales })
       setLastSavedAt(new Date())
+      setIsSaving(false)
     } catch (err) {
       console.error('Failed to save page scale:', err)
+      setIsSaving(false)
+      setSaveError(true)
     }
   }
 
@@ -801,13 +810,17 @@ export default function SessionPage() {
 
   async function handleManualSave() {
     setManualSaving(true)
+    setIsSaving(true)
+    setSaveError(false)
     try {
       await updateSession({ page_scales: pageScales, page_number: currentPage })
       setLastSavedAt(new Date())
+      setSaveError(false)
     } catch (err) {
-      alert('Save failed — ' + err.message)
+      setSaveError(true)
     } finally {
       setManualSaving(false)
+      setIsSaving(false)
     }
   }
 
@@ -1181,20 +1194,33 @@ export default function SessionPage() {
           </div>
           {session?.project_id && (
             <button
-              onClick={() => setShowAddBlueprint(true)}
+              onClick={() => navigate(`/project/${session.project_id}`)}
               style={{ fontSize: 12, padding: '4px 10px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 4, color: 'var(--color-text-muted)', cursor: 'pointer', marginTop: 4, alignSelf: 'flex-start' }}
             >
-              + Add another blueprint
+              + Add blueprint to this Job
             </button>
           )}
           <div className={styles.sessionInfo}>
             <div className={styles.sessionProject}>{session?.project_name}</div>
             {session?.description && <div className={styles.sessionClient}>{session.description}</div>}
             <div className={styles.saveRow}>
-              <span className={styles.lastSaved}>
-                {lastSavedAt ? `Saved ${formatTime(lastSavedAt)}` : 'Not yet saved'}
-              </span>
-              <button className={styles.saveBtn} onClick={handleManualSave} disabled={manualSaving}>
+              {saveError ? (
+                <div className={`${styles.saveStatus} ${styles.saveStatusFailed}`} onClick={handleManualSave} title="Click to retry">
+                  <span className={`${styles.saveDot} ${styles.saveDotFailed}`} />
+                  <span>Save failed — click to retry</span>
+                </div>
+              ) : isSaving ? (
+                <div className={styles.saveStatus}>
+                  <span className={`${styles.saveDot} ${styles.saveDotSaving}`} />
+                  <span style={{ color: 'var(--color-primary)' }}>Saving…</span>
+                </div>
+              ) : (
+                <div className={styles.saveStatus}>
+                  <span className={`${styles.saveDot} ${styles.saveDotSaved}`} />
+                  <span>{lastSavedAt ? `Saved ${formatTime(lastSavedAt)}` : 'Not yet saved'}</span>
+                </div>
+              )}
+              <button className={styles.saveBtn} onClick={handleManualSave} disabled={manualSaving || isSaving}>
                 {manualSaving ? 'Saving…' : 'Save'}
               </button>
             </div>
@@ -1715,20 +1741,6 @@ export default function SessionPage() {
         </div>
       )}
 
-      {/* Add another blueprint modal */}
-      {showAddBlueprint && (
-        <Modal title="Add Blueprint" onClose={() => setShowAddBlueprint(false)}>
-          <NewSessionForm
-            projectId={session.project_id}
-            onCreate={async (fields) => {
-              const newSession = await createSession({ ...fields, projectId: session.project_id })
-              setShowAddBlueprint(false)
-              navigate(`/session/${newSession.id}`)
-            }}
-            onCancel={() => setShowAddBlueprint(false)}
-          />
-        </Modal>
-      )}
     </div>
   )
 }

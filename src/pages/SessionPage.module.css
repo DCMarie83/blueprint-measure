@@ -50,29 +50,66 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 4px;
+  margin-top: 6px;
 }
 
-.lastSaved {
-  font-size: 10px;
+.saveStatus {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
   color: var(--color-text-muted);
-  opacity: 0.7;
+}
+
+.saveStatusFailed {
+  color: var(--color-danger, #b54040);
+  cursor: pointer;
+}
+
+.saveStatusFailed:hover {
+  text-decoration: underline;
+}
+
+.saveDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.saveDotSaved {
+  background: var(--color-success);
+}
+
+.saveDotSaving {
+  background: var(--color-primary);
+  animation: savePulse 1s ease-in-out infinite;
+}
+
+.saveDotFailed {
+  background: var(--color-danger, #b54040);
+}
+
+@keyframes savePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
 }
 
 .saveBtn {
   background: none;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
-  padding: 2px 8px;
-  font-size: 10px;
-  font-weight: 600;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--color-text-muted);
   cursor: pointer;
-  transition: color 0.15s;
+  transition: color 0.15s, border-color 0.15s;
 }
 
 .saveBtn:hover:not(:disabled) {
-  color: var(--color-text);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
 }
 
 .saveBtn:disabled {
