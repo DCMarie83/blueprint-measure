@@ -1,6 +1,11 @@
 // admin-users Edge Function
 // Handles listing, inviting, creating, resending, setting passwords, and deleting auth users.
 // Runs on Supabase's servers — the service_role key never reaches the browser.
+//
+// Permissions:
+//   super_admin (ADMIN_EMAIL) — all actions, any company
+//   contractor_admin — invite/create/resend to own company only
+//   contractor_user — rejected (403)
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -27,16 +32,43 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) return json({ error: 'Missing Authorization header' }, 401)
 
+    // Validate caller identity via JWT
     const callerClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
       { global: { headers: { Authorization: authHeader } } }
     )
-    const { data: { user }, error: userErr } = await callerClient.auth.getUser()
-    if (userErr || !user) return json({ error: 'Unauthorized' }, 401)
+    const { data: { user: caller }, error: userErr } = await callerClient.auth.getUser()
+    if (userErr || !caller) return json({ error: 'Unauthorized' }, 401)
 
-    if (user.email !== ADMIN_EMAIL) {
-      return json({ error: 'Forbidden' }, 403)
+    // Service-role client for privileged operations
+    const adminClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    )
+
+    // Resolve caller's role and company
+    const isSuperAdmin = caller.email === ADMIN_EMAIL
+    let callerRole: string | null = null
+    let callerCompanyId: string | null = null
+
+    if (!isSuperAdmin) {
+      const { data: profile } = await adminClient
+        .from('user_profiles')
+        .select('role, company_id')
+        .eq('user_id', caller.id)
+        .single()
+
+      callerRole = profile?.role ?? null
+      callerCompanyId = profile?.company_id ?? null
+
+      if (callerRole !== 'contractor_admin') {
+        return json({ error: 'Forbidden: only admins can manage users' }, 403)
+      }
+      if (!callerCompanyId) {
+        return json({ error: 'Forbidden: no company associated with your account' }, 403)
+      }
     }
 
     let body: Record<string, unknown> = {}
@@ -48,20 +80,26 @@ Deno.serve(async (req) => {
     }
     const action = body.action ?? 'list'
 
-    const adminClient = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    )
+    // Resolve the target company_id:
+    // - super_admin: uses body.company_id (can target any company)
+    // - contractor_admin: always uses their own company_id (ignores body.company_id)
+    const targetCompanyId = isSuperAdmin
+      ? (body.company_id as string || null)
+      : callerCompanyId
 
+    // ── list ──────────────────────────────────────────────────────────────────
     if (action === 'list') {
+      if (!isSuperAdmin) {
+        return json({ error: 'Forbidden: only super admin can list all users' }, 403)
+      }
       const { data, error } = await adminClient.auth.admin.listUsers({ perPage: 1000 })
       if (error) throw error
       return json({ users: data.users })
     }
 
+    // ── invite ────────────────────────────────────────────────────────────────
     if (action === 'invite') {
-      const { email, company_id } = body
+      const { email } = body
       if (!email) return json({ error: 'email is required' }, 400)
 
       const { data: authData, error: authErr } =
@@ -72,7 +110,7 @@ Deno.serve(async (req) => {
         .from('user_profiles')
         .insert({
           user_id:    authData.user.id,
-          company_id: company_id || null,
+          company_id: targetCompanyId,
           email:      authData.user.email,
         })
       if (profileErr) throw profileErr
@@ -80,8 +118,9 @@ Deno.serve(async (req) => {
       return json({ user: authData.user })
     }
 
+    // ── create ────────────────────────────────────────────────────────────────
     if (action === 'create') {
-      const { email, password, company_id } = body
+      const { email, password } = body
       if (!email)    return json({ error: 'email is required' }, 400)
       if (!password) return json({ error: 'password is required' }, 400)
 
@@ -97,7 +136,7 @@ Deno.serve(async (req) => {
         .from('user_profiles')
         .insert({
           user_id:    authData.user.id,
-          company_id: company_id || null,
+          company_id: targetCompanyId,
           email:      authData.user.email,
         })
       if (profileErr) throw profileErr
@@ -105,10 +144,24 @@ Deno.serve(async (req) => {
       return json({ user: authData.user })
     }
 
+    // ── set_password ──────────────────────────────────────────────────────────
     if (action === 'set_password') {
-      const { user_id, new_password } = body
-      if (!user_id)      return json({ error: 'user_id is required' }, 400)
+      const { user_id } = body
+      if (!user_id) return json({ error: 'user_id is required' }, 400)
+      const { new_password } = body
       if (!new_password) return json({ error: 'new_password is required' }, 400)
+
+      // contractor_admin: verify target user is in same company
+      if (!isSuperAdmin) {
+        const { data: target } = await adminClient
+          .from('user_profiles')
+          .select('company_id')
+          .eq('user_id', user_id)
+          .single()
+        if (!target || target.company_id !== callerCompanyId) {
+          return json({ error: 'Forbidden: user not in your company' }, 403)
+        }
+      }
 
       const { error: updateErr } = await adminClient.auth.admin.updateUserById(
         user_id as string,
@@ -122,9 +175,22 @@ Deno.serve(async (req) => {
       return json({ success: true })
     }
 
+    // ── resend ────────────────────────────────────────────────────────────────
     if (action === 'resend') {
       const { email } = body
       if (!email) return json({ error: 'email is required' }, 400)
+
+      // contractor_admin: verify target user is in same company
+      if (!isSuperAdmin) {
+        const { data: target } = await adminClient
+          .from('user_profiles')
+          .select('company_id')
+          .eq('email', email)
+          .maybeSingle()
+        if (!target || target.company_id !== callerCompanyId) {
+          return json({ error: 'Forbidden: user not in your company' }, 403)
+        }
+      }
 
       const { error: inviteErr } =
         await adminClient.auth.admin.inviteUserByEmail(email as string)
@@ -133,7 +199,12 @@ Deno.serve(async (req) => {
       return json({ success: true })
     }
 
+    // ── delete ────────────────────────────────────────────────────────────────
     if (action === 'delete') {
+      if (!isSuperAdmin) {
+        return json({ error: 'Forbidden: only super admin can delete users' }, 403)
+      }
+
       const { user_id } = body
       if (!user_id) return json({ error: 'user_id is required' }, 400)
 
