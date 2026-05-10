@@ -121,7 +121,7 @@ export default function FeedbackButton({ prefillDescription = '' }) {
       const { error: insertErr } = await supabase
         .from('beta_feedback')
         .insert({
-          tenant_id: profile?.company_id ?? null,
+          company_id: profile?.company_id ?? null,
           user_id: user.id,
           session_id: sessionId,
           type,

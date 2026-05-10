@@ -43,6 +43,7 @@ export function useSession(sessionId) {
     // The super admin always gets every feature unlocked, regardless of company flags.
     if (user.email === 'main@ngautomationhub.com') {
       setEnabledFeatures({
+        blueprint_measurement: true,
         multi_page_pdf:     true,
         csv_export:         true,
         redraw_zones:       true,

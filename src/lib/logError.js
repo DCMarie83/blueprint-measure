@@ -38,7 +38,7 @@ export async function logError(error, severity = 'error', extraContext = {}) {
     }
 
     const errorRow = {
-      tenant_id: tenantId,
+      company_id: tenantId,
       user_id: userId,
       severity,
       error_message: (error?.message || String(error)).slice(0, 2000),

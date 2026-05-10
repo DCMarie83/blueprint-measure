@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
           <p><strong>Message:</strong> ${escapeHtml(errorRow.error_message)}</p>
           <p><strong>Page:</strong> ${escapeHtml(errorRow.page_url)}</p>
           <p><strong>User:</strong> ${errorRow.user_id || 'unauthenticated'}</p>
-          <p><strong>Tenant:</strong> ${errorRow.tenant_id || 'none'}</p>
+          <p><strong>Company:</strong> ${errorRow.company_id || 'none'}</p>
           <p><strong>When:</strong> ${errorRow.created_at}</p>
           <pre style="background:#f4f4f4;padding:1rem;border-radius:4px;overflow:auto;">${escapeHtml(errorRow.error_stack || '(no stack)')}</pre>
           <p><a href="https://app.blueprintmeasure.com/admin/errors?id=${errorRow.id}">View in admin portal</a></p>

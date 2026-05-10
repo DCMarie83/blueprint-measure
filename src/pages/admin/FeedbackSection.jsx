@@ -55,7 +55,7 @@ export default function FeedbackSection() {
     async function load() {
       const { data, error } = await supabase
         .from('beta_feedback')
-        .select('id, tenant_id, user_id, session_id, type, description, screenshot_url, page_url, user_agent, status, admin_notes, responded_at, response_count, created_at')
+        .select('id, company_id, user_id, session_id, type, description, screenshot_url, page_url, user_agent, status, admin_notes, responded_at, response_count, created_at')
         .order('created_at', { ascending: false })
         .limit(500)
       if (!error) setItems(data ?? [])
@@ -195,7 +195,7 @@ export default function FeedbackSection() {
             <tbody>
               {filtered.map(fb => {
                 const fbUser = users.find(u => u.id === fb.user_id)?.email ?? '—'
-                const fbCompany = fb.tenant_id ? companies.find(c => c.id === fb.tenant_id)?.name ?? '—' : '—'
+                const fbCompany = fb.company_id ? companies.find(c => c.id === fb.company_id)?.name ?? '—' : '—'
                 const isExp = expandedId === fb.id
                 const responses = responsesByFeedback[fb.id] ?? []
                 const respLoading = !!responsesLoading[fb.id]

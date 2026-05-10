@@ -178,7 +178,7 @@ export default function ErrorsSection() {
     if (resolvedFilter === 'unresolved' && ce.resolved) return false
     if (resolvedFilter === 'resolved' && !ce.resolved) return false
     // Tenant
-    if (tenantFilter !== 'all' && ce.tenant_id !== tenantFilter) return false
+    if (tenantFilter !== 'all' && ce.company_id !== tenantFilter) return false
     // Search
     if (searchText && !ce.error_message?.toLowerCase().includes(searchText.toLowerCase())) return false
     return true
@@ -329,7 +329,7 @@ export default function ErrorsSection() {
             <tbody>
               {displayRows.map(ce => {
                 const ceUser = users.find(u => u.id === ce.user_id)?.email ?? '-'
-                const ceCompany = ce.tenant_id ? companies.find(c => c.id === ce.tenant_id)?.name ?? '-' : '-'
+                const ceCompany = ce.company_id ? companies.find(c => c.id === ce.company_id)?.name ?? '-' : '-'
                 const isExp = expandedId === ce.id
                 return (
                   <Fragment key={ce.id}>
