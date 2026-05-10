@@ -34,12 +34,17 @@ export default function ProjectDetailPage() {
   const { user } = useAuth()
   const { project, sessions, loading, error, refetch } = useProject(projectId)
   const { updateProject } = useProjects()
-  const { createSession, deleteSession } = useSessions()
+  const { createSession, updateSession, deleteSession } = useSessions()
   const { formatDate, formatDateTime } = useDateFormat()
 
   const [showAddBlueprint, setShowAddBlueprint] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [storageLimitMb, setStorageLimitMb] = useState(null)
+
+  // Blueprint rename state
+  const [renamingSessionId, setRenamingSessionId] = useState(null)
+  const [renameValue, setRenameValue] = useState('')
+  const [renameSaving, setRenameSaving] = useState(false)
 
   // Inline edit state
   const [editField, setEditField] = useState(null)
@@ -78,6 +83,24 @@ export default function ProjectDetailPage() {
     await deleteSession(sessionId)
     setDeleteConfirm(null)
     refetch()
+  }
+
+  async function handleRenameSession() {
+    const trimmed = renameValue.trim()
+    if (!trimmed || !renamingSessionId) {
+      setRenamingSessionId(null)
+      return
+    }
+    setRenameSaving(true)
+    try {
+      await updateSession(renamingSessionId, { project_name: trimmed })
+      refetch()
+    } catch (err) {
+      console.error('Failed to rename blueprint:', err)
+    } finally {
+      setRenameSaving(false)
+      setRenamingSessionId(null)
+    }
   }
 
   async function handleSaveField(fieldName) {
@@ -212,7 +235,34 @@ export default function ProjectDetailPage() {
               {sessions.map(session => (
                 <div key={session.id} className={styles.card}>
                   <div className={styles.cardMain} onClick={() => navigate(`/session/${session.id}`)}>
-                    <div className={styles.cardTitle}>{session.project_name}</div>
+                    {renamingSessionId === session.id ? (
+                      <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }} onClick={e => e.stopPropagation()}>
+                        <input
+                          type="text"
+                          value={renameValue}
+                          onChange={e => setRenameValue(e.target.value)}
+                          style={{ padding: '4px 8px', fontSize: 14, border: '1px solid var(--color-border)', borderRadius: 4, background: 'var(--color-bg)', color: 'var(--color-text)', outline: 'none', minWidth: 160, flex: 1 }}
+                          autoFocus
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') handleRenameSession()
+                            if (e.key === 'Escape') setRenamingSessionId(null)
+                          }}
+                          onBlur={handleRenameSession}
+                          disabled={renameSaving}
+                        />
+                      </div>
+                    ) : (
+                      <div className={styles.cardTitle} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <span>{session.project_name}</span>
+                        <button
+                          onClick={e => { e.stopPropagation(); setRenamingSessionId(session.id); setRenameValue(session.project_name || '') }}
+                          style={{ fontSize: 13, background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '0 2px', opacity: 0.6 }}
+                          title="Rename blueprint"
+                        >
+                          &#9998;
+                        </button>
+                      </div>
+                    )}
                     <div className={styles.cardMeta}>
                       <span>{timeAgo(session.updated_at ?? session.created_at)}</span>
                       {session.blueprint_url ? (

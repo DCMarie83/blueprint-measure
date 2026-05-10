@@ -154,5 +154,18 @@ export function useSessions() {
     setSessions(prev => prev.filter(s => s.id !== sessionId))
   }
 
-  return { sessions, loading, error, createSession, createSessionsBatch, deleteSession, refetch: fetchSessions }
+  async function updateSession(sessionId, updates) {
+    const { data, error } = await supabase
+      .from('sessions')
+      .update(updates)
+      .eq('id', sessionId)
+      .eq('user_id', user.id)
+      .select()
+      .single()
+    if (error) throw new Error(error.message)
+    setSessions(prev => prev.map(s => s.id === data.id ? { ...s, ...data } : s))
+    return data
+  }
+
+  return { sessions, loading, error, createSession, createSessionsBatch, updateSession, deleteSession, refetch: fetchSessions }
 }
