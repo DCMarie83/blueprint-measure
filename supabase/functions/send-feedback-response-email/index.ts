@@ -1,35 +1,79 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+const ADMIN_EMAIL = 'main@ngautomationhub.com'
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, content-type, x-client-info, apikey',
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'authorization, content-type, x-client-info, apikey',
-      },
-    })
+    return new Response('ok', { headers: CORS_HEADERS })
   }
 
   try {
+    // ── Step 1: Validate caller identity via JWT ──────────────────────────────
+    const authHeader = req.headers.get('authorization')
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+      })
+    }
+
+    const anonClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    )
+
+    const { data: { user: caller }, error: authError } = await anonClient.auth.getUser()
+    if (authError || !caller) {
+      return new Response(JSON.stringify({ error: 'unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+      })
+    }
+
+    // ── Step 2: Parse request body ────────────────────────────────────────────
     const { feedback_id } = await req.json()
     if (!feedback_id) throw new Error('feedback_id required')
 
+    // ── Step 3: Service-role client for privileged operations ──────────────────
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
 
-    // Get feedback + user email + latest non-internal response
+    // ── Step 4: Tenant ownership check ────────────────────────────────────────
     const { data: feedback, error: fbErr } = await supabase
       .from('beta_feedback')
-      .select('id, description, user_id')
+      .select('id, description, user_id, company_id')
       .eq('id', feedback_id)
       .single()
     if (fbErr) throw new Error('feedback fetch: ' + fbErr.message)
 
-    const { data: { user } } = await supabase.auth.admin.getUserById(feedback.user_id)
-    if (!user?.email) throw new Error('user has no email')
+    // Allow super admin OR same-company caller
+    const isSuperAdmin = caller.email === ADMIN_EMAIL
+    if (!isSuperAdmin) {
+      const { data: callerProfile } = await supabase
+        .from('user_profiles')
+        .select('company_id')
+        .eq('user_id', caller.id)
+        .single()
+
+      if (!callerProfile?.company_id || callerProfile.company_id !== feedback.company_id) {
+        return new Response(JSON.stringify({ error: 'forbidden: feedback row not in your company' }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+        })
+      }
+    }
+
+    // ── Step 5: Fetch recipient email + latest response ───────────────────────
+    const { data: { user: feedbackUser } } = await supabase.auth.admin.getUserById(feedback.user_id)
+    if (!feedbackUser?.email) throw new Error('user has no email')
 
     const { data: responses, error: rErr } = await supabase
       .from('feedback_responses')
@@ -46,9 +90,7 @@ Deno.serve(async (req) => {
       ? feedback.description.slice(0, 200) + '...'
       : feedback.description
 
-    // TODO: Configure RESEND_API_KEY in Supabase Edge Function secrets.
-    // If not configured, the email send will fail gracefully — the response
-    // itself is already saved, just no email goes out.
+    // ── Step 6: Send email via Resend ─────────────────────────────────────────
     const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
     if (!RESEND_API_KEY) throw new Error('RESEND_API_KEY not configured')
 
@@ -60,7 +102,7 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         from: 'RivetDog <feedback@blueprintmeasure.com>',
-        to: user.email,
+        to: feedbackUser.email,
         subject: 'Re: Your RivetDog feedback',
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
@@ -90,12 +132,12 @@ Deno.serve(async (req) => {
     }
 
     return new Response(JSON.stringify({ success: true }), {
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
     })
   } catch (err) {
     return new Response(JSON.stringify({ error: (err as Error).message }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
     })
   }
 })
