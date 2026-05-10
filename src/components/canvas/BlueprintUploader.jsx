@@ -94,8 +94,8 @@ export default function BlueprintUploader({ sessionId, projectId, onSplitFlowRed
         setFailedFile(file)
         setUploading(false)
       },
-      onSuccess(cacheBustedUrl) {
-        onUploaded({ url: cacheBustedUrl, type: file.type, originalName: file.name })
+      onSuccess({ url: cacheBustedUrl, path: storagePath }) {
+        onUploaded({ url: cacheBustedUrl, path: storagePath, type: file.type, originalName: file.name })
         setUploading(false)
         setProgress(0)
         setFailedFile(null)

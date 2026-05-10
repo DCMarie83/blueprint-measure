@@ -69,11 +69,11 @@ export function uploadBlueprint({ file, sessionId, userId, accessToken, onProgre
 
         const { error: updateError } = await supabase
           .from('sessions')
-          .update({ blueprint_url: cacheBustedUrl, blueprint_type: file.type })
+          .update({ blueprint_url: cacheBustedUrl, blueprint_path: path, blueprint_type: file.type })
           .eq('id', sessionId)
 
         if (updateError) throw new Error(updateError.message)
-        onSuccess?.(cacheBustedUrl)
+        onSuccess?.({ url: cacheBustedUrl, path })
       } catch (err) {
         onError?.(err.message)
       }

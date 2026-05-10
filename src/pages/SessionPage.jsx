@@ -28,6 +28,7 @@ import PdfPageManager from '../components/pdf/PdfPageManager'
 import UserMenu from '../components/UserMenu'
 import { useDateFormat } from '../hooks/useDateFormat'
 import { BRAND } from '../lib/config'
+import { getBlueprintSignedUrl } from '../lib/blueprintUrl'
 import styles from './SessionPage.module.css'
 
 // SessionPage is the main working environment.
@@ -163,19 +164,22 @@ export default function SessionPage() {
   // source: 'dropdown' | 'calibration' | 'ai'
 
   // ── Session restore ──────────────────────────────────────────────────────────
-  // Runs when Supabase returns the session — restores blueprint URL and saved page.
+  // Runs when Supabase returns the session — resolves blueprint URL (signed or public) and saved page.
   useEffect(() => {
-    if (session?.blueprint_url && !blueprintUrl) {
+    if ((session?.blueprint_url || session?.blueprint_path) && !blueprintUrl) {
       // Fall back to URL extension if blueprint_type wasn't saved (older sessions)
       let type = session.blueprint_type
       if (!type) {
-        const lower = session.blueprint_url.toLowerCase()
-        if (lower.includes('.pdf')) type = 'application/pdf'
-        else if (lower.includes('.png')) type = 'image/png'
+        const ref = session.blueprint_path || session.blueprint_url || ''
+        const lower = ref.toLowerCase()
+        if (lower.includes('.pdf') || lower.endsWith('pdf')) type = 'application/pdf'
+        else if (lower.includes('.png') || lower.endsWith('png')) type = 'image/png'
         else type = 'image/jpeg'
       }
-      setBlueprintUrl(session.blueprint_url)
       setBlueprintType(type)
+      getBlueprintSignedUrl(session).then(url => {
+        if (url) setBlueprintUrl(url)
+      })
       setCurrentPage(session.page_number ?? 1)
       // Restore per-page scales saved in a previous session, or apply 1/4" default
       if (session.page_scales && Object.keys(session.page_scales).length > 0) {
@@ -290,7 +294,7 @@ export default function SessionPage() {
     navigate(`/project/${session.project_id}`)
   }
 
-  function handleUploaded({ url, type }) {
+  function handleUploaded({ url, path, type }) {
     setBlueprintUrl(url)
     setBlueprintType(type)
     setReplacingBlueprintType(null)
@@ -1677,7 +1681,7 @@ export default function SessionPage() {
 
                   const { error: updErr } = await supabase
                     .from('sessions')
-                    .update({ blueprint_url: null, blueprint_type: null })
+                    .update({ blueprint_url: null, blueprint_path: null, blueprint_type: null })
                     .eq('id', sessionId)
                   if (updErr) throw new Error(updErr.message)
                 } catch (err) {
