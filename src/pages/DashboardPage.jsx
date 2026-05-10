@@ -276,11 +276,13 @@ export default function DashboardPage() {
             </section>
 
             {/* Quick Actions */}
-            <div className={styles.quickActions}>
-              <button className={styles.quickBtn} onClick={() => setShowNewProject(true)}>
-                + New Job
-              </button>
-            </div>
+            {projects.length > 0 && (
+              <div className={styles.quickActions}>
+                <button className={styles.quickBtn} onClick={() => setShowNewProject(true)}>
+                  + New Job
+                </button>
+              </div>
+            )}
 
             {/* Recent Activity */}
             {activity.length > 0 && (
