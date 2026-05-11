@@ -43,6 +43,8 @@
   --color-action-delete-hover: #b91c1c;
   --color-action-delete-text: #ffffff;
   --color-button-border: var(--color-primary);
+  --color-stat-bg: #a0a5aa;
+  --color-stat-text: #26464c;
   --color-accent: #f59e0b;
   --color-text: #f5f5f5;
   --color-text-muted: #8a9096;
@@ -90,6 +92,8 @@
   --color-action-delete-hover: #b91c1c;
   --color-action-delete-text: #ffffff;
   --color-button-border: #26464c;
+  --color-stat-bg: #c5c9cd;
+  --color-stat-text: #26464c;
   --color-text: #1a1a1a;
   --color-text-muted: #6b7280;
   --color-border: #d1cdc7;

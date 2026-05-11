@@ -109,8 +109,8 @@
 }
 
 .metricCard {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: var(--color-stat-bg);
+  border: 1px solid var(--color-button-border);
   border-radius: var(--radius-lg);
   padding: 18px 20px;
 }
@@ -120,14 +120,14 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--color-text-muted);
+  color: var(--color-stat-text);
   margin-bottom: 6px;
 }
 
 .metricValue {
   font-size: 22px;
   font-weight: 700;
-  color: var(--color-text);
+  color: var(--color-stat-text);
 }
 
 /* ── Dashboard sections ───────────────────────────────────────────────────── */
