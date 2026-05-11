@@ -12,7 +12,7 @@ export default function JobDetailPage() {
         <UserMenu />
       </header>
       <main className={styles.main}>
-        <Link to="/dashboard" style={{ fontSize: 13, color: 'var(--color-text-muted)', textDecoration: 'none', marginBottom: 24, display: 'block' }}>← Dashboard</Link>
+        <Link to="/opportunities" style={{ fontSize: 13, color: 'var(--color-text-muted)', textDecoration: 'none', marginBottom: 24, display: 'block' }}>← Opportunities</Link>
         <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>Job Details</h1>
         <p style={{ color: 'var(--color-text-muted)' }}>Job {id} — full details coming Friday</p>
       </main>

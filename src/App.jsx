@@ -70,7 +70,7 @@ function AdminRoute({ children }) {
 
   if (!user) return <Navigate to="/login" replace />
   if (setupComplete === false) return <Navigate to="/register" replace />
-  if (user.email !== ADMIN_EMAIL) return <Navigate to="/dashboard" replace />
+  if (user.email !== ADMIN_EMAIL) return <Navigate to="/opportunities" replace />
   return children
 }
 
@@ -87,7 +87,7 @@ function RegisterRoute({ children }) {
   }
 
   if (!user) return <Navigate to="/login" replace />
-  if (setupComplete === true) return <Navigate to="/dashboard" replace />
+  if (setupComplete === true) return <Navigate to="/opportunities" replace />
   return children
 }
 
@@ -118,7 +118,7 @@ function ContractorAdminRoute({ children }) {
 
   if (!user) return <Navigate to="/login" replace />
   if (setupComplete === false) return <Navigate to="/register" replace />
-  if (!allowed) return <Navigate to="/dashboard" replace />
+  if (!allowed) return <Navigate to="/opportunities" replace />
   return <>{children}<FeedbackButton /></>
 }
 
@@ -147,11 +147,11 @@ export default function App() {
       {/* Public routes */}
       <Route
         path="/login"
-        element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />}
+        element={user ? <Navigate to="/opportunities" replace /> : <LoginPage />}
       />
       <Route
         path="/signup"
-        element={user ? <Navigate to="/dashboard" replace /> : <SignupPage />}
+        element={user ? <Navigate to="/opportunities" replace /> : <SignupPage />}
       />
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
@@ -240,7 +240,7 @@ export default function App() {
       />
 
       {/* Default: redirect to dashboard */}
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<Navigate to="/opportunities" replace />} />
     </Routes>
     </>
   )
