@@ -1,10 +1,15 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import styles from './PdfPageManager.module.css'
 
 // Modal for naming and hiding/unhiding PDF pages.
 // page_metadata shape: { "1": { name: "First Floor", hidden: false }, ... }
-export default function PdfPageManager({ pageCount, thumbnails, initialMetadata, onSave, onCancel }) {
+export default function PdfPageManager({ pageCount, thumbnails, initialMetadata, renderPage, onSave, onCancel }) {
   const [metadata, setMetadata] = useState({})
+
+  // Lightbox state
+  const [lightboxPage, setLightboxPage] = useState(null)
+  const [lightboxImage, setLightboxImage] = useState(null)
+  const [lightboxLoading, setLightboxLoading] = useState(false)
 
   useEffect(() => {
     // Initialize metadata for all pages, merging with any existing saved metadata
@@ -38,12 +43,42 @@ export default function PdfPageManager({ pageCount, thumbnails, initialMetadata,
     onSave(metadata)
   }
 
+  // Lightbox handlers
+  const openLightbox = useCallback(async (pageNum) => {
+    if (!renderPage) return
+    setLightboxPage(pageNum)
+    setLightboxImage(null)
+    setLightboxLoading(true)
+    const url = await renderPage(pageNum, 1.5)
+    setLightboxImage(url)
+    setLightboxLoading(false)
+  }, [renderPage])
+
+  function closeLightbox() {
+    setLightboxPage(null)
+    setLightboxImage(null)
+    setLightboxLoading(false)
+  }
+
+  // Escape closes lightbox (not the parent modal)
+  useEffect(() => {
+    if (lightboxPage === null) return
+    function onKey(e) {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        closeLightbox()
+      }
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [lightboxPage])
+
   return (
     <div className={styles.backdrop} onClick={onCancel}>
       <div className={styles.modal} onClick={e => e.stopPropagation()}>
         <div className={styles.header}>
           <h2 className={styles.title}>Manage Pages</h2>
-          <p className={styles.subtitle}>Name your pages and hide any you don't need for this takeoff.</p>
+          <p className={styles.subtitle}>Name your pages and hide any you don't need for this takeoff. Click a thumbnail to zoom in.</p>
         </div>
 
         <div className={styles.grid}>
@@ -54,7 +89,10 @@ export default function PdfPageManager({ pageCount, thumbnails, initialMetadata,
 
             return (
               <div key={pageNum} className={`${styles.card} ${isHidden ? styles.cardHidden : ''}`}>
-                <div className={styles.thumbWrap}>
+                <div
+                  className={`${styles.thumbWrap} ${thumbnails[pageNum] ? styles.thumbClickable : ''}`}
+                  onClick={() => thumbnails[pageNum] && openLightbox(pageNum)}
+                >
                   {thumbnails[pageNum] ? (
                     <img src={thumbnails[pageNum]} alt={`Page ${pageNum}`} className={styles.thumbImg} />
                   ) : (
@@ -88,6 +126,22 @@ export default function PdfPageManager({ pageCount, thumbnails, initialMetadata,
           <button className={styles.saveBtn} onClick={handleSave}>Save & Continue</button>
         </div>
       </div>
+
+      {/* Lightbox */}
+      {lightboxPage !== null && (
+        <div className={styles.lightboxBackdrop} onClick={closeLightbox}>
+          <div className={styles.lightboxContent} onClick={e => e.stopPropagation()}>
+            <button className={styles.lightboxClose} onClick={closeLightbox} aria-label="Close preview">✕</button>
+            {lightboxLoading ? (
+              <div className={styles.lightboxLoading}>Loading page {lightboxPage}…</div>
+            ) : lightboxImage ? (
+              <img src={lightboxImage} alt={`Page ${lightboxPage}`} className={styles.lightboxImage} />
+            ) : (
+              <div className={styles.lightboxLoading}>Failed to load preview</div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

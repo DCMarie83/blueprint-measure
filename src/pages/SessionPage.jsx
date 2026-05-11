@@ -1646,6 +1646,7 @@ export default function SessionPage() {
           pageCount={pageCount}
           thumbnails={thumbnails}
           initialMetadata={pageMetadata}
+          renderPage={renderPage}
           onSave={handleSavePageMetadata}
           onCancel={() => setShowPageManager(false)}
         />
