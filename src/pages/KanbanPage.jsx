@@ -12,8 +12,8 @@ export default function KanbanPage() {
       </header>
       <main className={styles.main}>
         <Link to="/dashboard" style={{ fontSize: 13, color: 'var(--color-text-muted)', textDecoration: 'none', marginBottom: 24, display: 'block' }}>← Dashboard</Link>
-        <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>Kanban</h1>
-        <p style={{ color: 'var(--color-text-muted)' }}>Kanban board — building Friday</p>
+        <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>Opportunities</h1>
+        <p style={{ color: 'var(--color-text-muted)' }}>Opportunities board — building Friday</p>
       </main>
     </div>
   )

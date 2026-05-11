@@ -82,9 +82,9 @@ export default function UserMenu() {
               <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Theme</span>
               <ThemeToggle />
             </div>
-            <button className={styles.menuItem} onClick={() => { navigate('/kanban'); setOpen(false) }}>
+            <button className={styles.menuItem} onClick={() => { navigate('/opportunities'); setOpen(false) }}>
               <Columns3 size={15} />
-              <span>Kanban</span>
+              <span>Opportunities</span>
             </button>
             <button className={styles.menuItem} onClick={() => { navigate('/clients'); setOpen(false) }}>
               <BookUser size={15} />

@@ -181,7 +181,7 @@ export default function App() {
         element={<ProtectedRoute><SettingsPage /></ProtectedRoute>}
       />
       <Route
-        path="/kanban"
+        path="/opportunities"
         element={<ProtectedRoute><KanbanPage /></ProtectedRoute>}
       />
       <Route
