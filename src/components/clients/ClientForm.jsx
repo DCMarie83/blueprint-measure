@@ -5,6 +5,21 @@ import styles from './ClientForm.module.css'
 
 const US_STATES = ['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC']
 
+function AddressFields({ value, onChange }) {
+  return (
+    <div className={styles.addressGrid}>
+      <input className={styles.input} placeholder="Street address" value={value.street || ''} onChange={e => onChange({ ...value, street: e.target.value })} style={{ gridColumn: '1 / -1' }} />
+      <input className={styles.input} placeholder="Unit / Suite" value={value.unit || ''} onChange={e => onChange({ ...value, unit: e.target.value })} />
+      <input className={styles.input} placeholder="City" value={value.city || ''} onChange={e => onChange({ ...value, city: e.target.value })} />
+      <select className={styles.select} value={value.state || ''} onChange={e => onChange({ ...value, state: e.target.value })}>
+        <option value="">State</option>
+        {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+      </select>
+      <input className={styles.input} placeholder="ZIP" value={value.zip || ''} onChange={e => onChange({ ...value, zip: e.target.value })} maxLength={10} />
+    </div>
+  )
+}
+
 export default function ClientForm({ initialClient = null, initialContacts = [], onSubmit, onCancel }) {
   const isEdit = !!initialClient
 
@@ -97,22 +112,6 @@ export default function ClientForm({ initialClient = null, initialContacts = [],
     } finally {
       setSubmitting(false)
     }
-  }
-
-  // Helper for address fields
-  function AddressFields({ value, onChange }) {
-    return (
-      <div className={styles.addressGrid}>
-        <input className={styles.input} placeholder="Street address" value={value.street || ''} onChange={e => onChange({ ...value, street: e.target.value })} style={{ gridColumn: '1 / -1' }} />
-        <input className={styles.input} placeholder="Unit / Suite" value={value.unit || ''} onChange={e => onChange({ ...value, unit: e.target.value })} />
-        <input className={styles.input} placeholder="City" value={value.city || ''} onChange={e => onChange({ ...value, city: e.target.value })} />
-        <select className={styles.select} value={value.state || ''} onChange={e => onChange({ ...value, state: e.target.value })}>
-          <option value="">State</option>
-          {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
-        <input className={styles.input} placeholder="ZIP" value={value.zip || ''} onChange={e => onChange({ ...value, zip: e.target.value })} maxLength={10} />
-      </div>
-    )
   }
 
   return (
