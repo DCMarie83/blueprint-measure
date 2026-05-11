@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { User, Settings, Users, LogOut, Columns3, BookUser, LayoutDashboard, GraduationCap, BarChart3 } from 'lucide-react'
+import { User, Settings, Users, LogOut, ChevronDown } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import ThemeToggle from './ThemeToggle'
@@ -34,7 +34,6 @@ export default function UserMenu() {
     }
   }, [])
 
-  // Fetch role once on mount
   useEffect(() => {
     if (!user) return
     supabase
@@ -60,9 +59,9 @@ export default function UserMenu() {
   return (
     <div className={styles.wrap} ref={ref}>
       <button className={styles.trigger} onClick={() => setOpen(v => !v)} aria-label="User menu">
-        <span className={styles.avatar}>
-          <User size={18} />
-        </span>
+        <User size={16} />
+        <span className={styles.triggerLabel}>Menu</span>
+        <ChevronDown size={14} className={open ? styles.chevronOpen : ''} />
       </button>
       {open && (
         <div className={styles.dropdown}>
@@ -82,26 +81,6 @@ export default function UserMenu() {
               <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Theme</span>
               <ThemeToggle />
             </div>
-            <button className={styles.menuItem} onClick={() => { navigate('/jobs'); setOpen(false) }}>
-              <Columns3 size={15} />
-              <span>Jobs</span>
-            </button>
-            <button className={styles.menuItem} onClick={() => { navigate('/clients'); setOpen(false) }}>
-              <BookUser size={15} />
-              <span>Clients</span>
-            </button>
-            <button className={styles.menuItem} onClick={() => { navigate('/academy'); setOpen(false) }}>
-              <GraduationCap size={15} />
-              <span>Academy</span>
-            </button>
-            <button className={styles.menuItem} onClick={() => { navigate('/reports'); setOpen(false) }}>
-              <BarChart3 size={15} />
-              <span>Reports</span>
-            </button>
-            <button className={styles.menuItem} onClick={() => { navigate('/dashboard'); setOpen(false) }}>
-              <LayoutDashboard size={15} />
-              <span>Dashboard</span>
-            </button>
             <button className={styles.menuItem} onClick={() => { navigate('/settings'); setOpen(false) }}>
               <Settings size={15} />
               <span>Settings</span>

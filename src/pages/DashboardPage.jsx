@@ -1,5 +1,4 @@
-import Logo from '../components/brand/Logo'
-import UserMenu from '../components/UserMenu'
+import AppHeader from '../components/AppHeader'
 import { useDashboardData } from '../hooks/useDashboardData'
 import GreetingStrip from '../components/dashboard/GreetingStrip'
 import QuickActionsRow from '../components/dashboard/QuickActionsRow'
@@ -20,10 +19,7 @@ export default function DashboardPage() {
 
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
-        <div className={styles.logo}><Logo variant="mark" /></div>
-        <UserMenu />
-      </header>
+      <AppHeader />
       <main className={styles.main}>
         {loading ? (
           <div className={styles.loading}>Loading…</div>

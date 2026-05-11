@@ -148,11 +148,11 @@ export default function App() {
       {/* Public routes */}
       <Route
         path="/login"
-        element={user ? <Navigate to="/jobs" replace /> : <LoginPage />}
+        element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />}
       />
       <Route
         path="/signup"
-        element={user ? <Navigate to="/jobs" replace /> : <SignupPage />}
+        element={user ? <Navigate to="/dashboard" replace /> : <SignupPage />}
       />
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
@@ -245,7 +245,7 @@ export default function App() {
       />
 
       {/* Default: redirect to dashboard */}
-      <Route path="*" element={<Navigate to="/jobs" replace />} />
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
     </>
   )

@@ -1,18 +1,13 @@
-import { useParams, Link } from 'react-router-dom'
-import Logo from '../components/brand/Logo'
-import UserMenu from '../components/UserMenu'
+import { useParams } from 'react-router-dom'
+import AppHeader from '../components/AppHeader'
 import styles from './DashboardPage.module.css'
 
 export default function ClientDetailPage() {
   const { id } = useParams()
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
-        <div className={styles.logo}><Logo variant="mark" /></div>
-        <UserMenu />
-      </header>
+      <AppHeader />
       <main className={styles.main}>
-        <Link to="/clients" style={{ fontSize: 13, color: 'var(--color-text-muted)', textDecoration: 'none', marginBottom: 24, display: 'block' }}>← Clients</Link>
         <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>Client Details</h1>
         <p style={{ color: 'var(--color-text-muted)' }}>Client {id} — full details coming Friday</p>
       </main>

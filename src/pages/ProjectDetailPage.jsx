@@ -9,10 +9,9 @@ import { getStorageLimitMb } from '../lib/plans'
 import Modal from '../components/ui/Modal'
 import NewSessionForm from '../components/auth/NewSessionForm'
 import MultiFileUploader from '../components/canvas/MultiFileUploader'
-import UserMenu from '../components/UserMenu'
+import AppHeader from '../components/AppHeader'
 import { useDateFormat } from '../hooks/useDateFormat'
 import { BRAND } from '../lib/config'
-import Logo from '../components/brand/Logo'
 import styles from './DashboardPage.module.css'
 
 function timeAgo(dateStr) {
@@ -132,15 +131,9 @@ export default function ProjectDetailPage() {
   if (error || !project) {
     return (
       <div className={styles.page}>
-        <header className={styles.header}>
-          <div className={styles.logo}>
-            <Logo variant="mark" />
-          </div>
-          <UserMenu />
-        </header>
+        <AppHeader />
         <main className={styles.main}>
           <p className={styles.empty}>Job not found.</p>
-          <Link to="/dashboard" style={{ color: 'var(--color-primary)', fontSize: 14 }}>← Back to Dashboard</Link>
         </main>
       </div>
     )
@@ -150,17 +143,9 @@ export default function ProjectDetailPage() {
 
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
-        <div className={styles.logo}>
-          <Logo variant="mark" />
-        </div>
-        <UserMenu />
-      </header>
+      <AppHeader />
 
       <main className={styles.main}>
-        <div style={{ marginBottom: 24 }}>
-          <Link to="/dashboard" style={{ fontSize: 13, color: 'var(--color-text-muted)', textDecoration: 'none' }}>← Dashboard</Link>
-        </div>
 
         {/* Inline-editable project header */}
         <div style={{ color: 'var(--color-text-muted)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>Job Overview</div>

@@ -1,6 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom'
-import Logo from '../components/brand/Logo'
-import UserMenu from '../components/UserMenu'
+import AppHeader from '../components/AppHeader'
 import { useOpportunities } from '../hooks/useOpportunities'
 import styles from './KanbanPage.module.css'
 
@@ -25,10 +24,7 @@ export default function KanbanPage() {
 
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
-        <div className={styles.logoWrap}><Logo variant="mark" /></div>
-        <UserMenu />
-      </header>
+      <AppHeader />
 
       <main className={styles.main}>
         <h1 className={styles.pageTitle}>Jobs</h1>

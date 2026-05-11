@@ -1,0 +1,169 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  height: 68px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  min-height: 48px;
+}
+
+.logoLink {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  transition: opacity 0.15s;
+  height: 44px;
+}
+
+.logoLink:hover {
+  opacity: 0.8;
+}
+
+.logoLink :global(svg),
+.logoLink :global(img) {
+  height: 100%;
+  width: auto;
+  max-height: 44px;
+}
+
+.primaryNav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.navItem {
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: 0.2px;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.navItem:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+}
+
+.navItemActive {
+  background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hamburger {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  transition: background 0.15s;
+}
+
+.hamburger:hover {
+  background: var(--color-surface-2);
+}
+
+@media (max-width: 768px) {
+  .header {
+    padding: 0 16px;
+    height: 60px;
+  }
+  .primaryNav {
+    display: none;
+  }
+  .hamburger {
+    display: inline-flex;
+  }
+  .logoLink {
+    height: 36px;
+  }
+  .logoLink :global(svg),
+  .logoLink :global(img) {
+    max-height: 36px;
+  }
+}
+
+.drawerBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 100;
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 280px;
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+  z-index: 101;
+  display: flex;
+  flex-direction: column;
+}
+
+.drawerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.drawerTitle {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--color-text);
+}
+
+.drawerClose {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  transition: background 0.15s, color 0.15s;
+}
+
+.drawerClose:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+}
+
+.drawerNav {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  gap: 4px;
+}
+
+.drawerNav .navItem {
+  padding: 12px 14px;
+  font-size: 15px;
+}

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import UserMenu from '../components/UserMenu'
+import AppHeader from '../components/AppHeader'
 import Modal from '../components/ui/Modal'
 import { useDateFormat } from '../hooks/useDateFormat'
 import styles from './TeamPage.module.css'
@@ -130,13 +130,7 @@ export default function TeamPage() {
 
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
-        <div className={styles.headerLeft}>
-          <button className={styles.backBtn} onClick={() => navigate('/dashboard')}>&larr; Dashboard</button>
-          <h1 className={styles.title}>Team {companyName && `- ${companyName}`}</h1>
-        </div>
-        <UserMenu />
-      </header>
+      <AppHeader extras={<h1 className={styles.title}>Team {companyName && `- ${companyName}`}</h1>} />
 
       <main className={styles.main}>
         <div className={styles.toolbar}>

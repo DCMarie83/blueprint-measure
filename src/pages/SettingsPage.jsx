@@ -1,8 +1,6 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import Logo from '../components/brand/Logo';
-import UserMenu from '../components/UserMenu';
+import AppHeader from '../components/AppHeader';
 import ProfileTab from '../components/settings/ProfileTab';
 import PreferencesTab from '../components/settings/PreferencesTab';
 import NotificationsTab from '../components/settings/NotificationsTab';
@@ -20,16 +18,8 @@ export default function SettingsPage() {
   if (!user) return null;
   return (
     <div className={styles.page}>
-      <header className={styles.appHeader}>
-        <Link to="/dashboard" className={styles.logoLink}>
-          <Logo variant="mark" />
-        </Link>
-        <UserMenu />
-      </header>
+      <AppHeader />
       <div className={styles.content}>
-        <Link to="/dashboard" className={styles.backLink}>
-          ← Back to Dashboard
-        </Link>
         <div className={styles.settingsHeader}>
           <h1 className={styles.title}>Settings</h1>
         </div>
