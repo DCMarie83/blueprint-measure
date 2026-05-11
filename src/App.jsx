@@ -29,6 +29,11 @@ import SystemSection from './pages/admin/SystemSection'
 import UserDetailPage from './pages/admin/UserDetailPage'
 import TeamPage from './pages/TeamPage'
 import ProjectDetailPage from './pages/ProjectDetailPage'
+import KanbanPage from './pages/KanbanPage'
+import JobDetailPage from './pages/JobDetailPage'
+import ClientsPage from './pages/ClientsPage'
+import ClientDetailPage from './pages/ClientDetailPage'
+import PortalPage from './pages/PortalPage'
 import PasswordRecoveryHandler from './components/PasswordRecoveryHandler'
 
 const ADMIN_EMAIL = 'main@ngautomationhub.com'
@@ -150,6 +155,7 @@ export default function App() {
       />
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/portal/:token" element={<PortalPage />} />
 
       {/* Registration / setup — only for users who haven't completed setup */}
       <Route
@@ -173,6 +179,22 @@ export default function App() {
       <Route
         path="/settings"
         element={<ProtectedRoute><SettingsPage /></ProtectedRoute>}
+      />
+      <Route
+        path="/kanban"
+        element={<ProtectedRoute><KanbanPage /></ProtectedRoute>}
+      />
+      <Route
+        path="/jobs/:id"
+        element={<ProtectedRoute><JobDetailPage /></ProtectedRoute>}
+      />
+      <Route
+        path="/clients"
+        element={<ProtectedRoute><ClientsPage /></ProtectedRoute>}
+      />
+      <Route
+        path="/clients/:id"
+        element={<ProtectedRoute><ClientDetailPage /></ProtectedRoute>}
       />
       <Route
         path="/account"

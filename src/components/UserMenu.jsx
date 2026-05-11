@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { User, Settings, Users, LogOut } from 'lucide-react'
+import { User, Settings, Users, LogOut, Columns3, BookUser } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import ThemeToggle from './ThemeToggle'
@@ -82,6 +82,14 @@ export default function UserMenu() {
               <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Theme</span>
               <ThemeToggle />
             </div>
+            <button className={styles.menuItem} onClick={() => { navigate('/kanban'); setOpen(false) }}>
+              <Columns3 size={15} />
+              <span>Kanban</span>
+            </button>
+            <button className={styles.menuItem} onClick={() => { navigate('/clients'); setOpen(false) }}>
+              <BookUser size={15} />
+              <span>Clients</span>
+            </button>
             <button className={styles.menuItem} onClick={() => { navigate('/settings'); setOpen(false) }}>
               <Settings size={15} />
               <span>Settings</span>
