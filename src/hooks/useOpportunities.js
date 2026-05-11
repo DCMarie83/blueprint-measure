@@ -16,7 +16,6 @@ export function useOpportunities() {
     setError(null)
 
     try {
-      // Fetch kanban columns for this company
       const { data: colData, error: colErr } = await supabase
         .from('kanban_columns')
         .select('*')
@@ -25,7 +24,6 @@ export function useOpportunities() {
 
       if (colErr) throw colErr
 
-      // Fetch active projects for this company
       const { data: projData, error: projErr } = await supabase
         .from('projects')
         .select('*, sessions(id)')
@@ -35,14 +33,12 @@ export function useOpportunities() {
 
       if (projErr) throw projErr
 
-      // Enrich projects with session_count
       const projects = (projData ?? []).map(p => ({
         ...p,
         session_count: p.sessions?.length ?? 0,
         sessions: undefined,
       }))
 
-      // Group projects under their columns
       const board = (colData ?? []).map(col => ({
         ...col,
         projects: projects.filter(p => p.kanban_column_id === col.id),
@@ -50,7 +46,7 @@ export function useOpportunities() {
 
       setColumns(board)
     } catch (err) {
-      setError(err.message ?? 'Failed to load opportunities')
+      setError(err.message ?? 'Failed to load board')
     } finally {
       setLoading(false)
     }
@@ -60,5 +56,43 @@ export function useOpportunities() {
     fetchBoard()
   }, [fetchBoard])
 
-  return { columns, loading, error, refetch: fetchBoard }
+  async function moveProject(projectId, fromColumnId, toColumnId) {
+    // Optimistic local update
+    setColumns(prev => {
+      const movedProject = prev
+        .find(c => c.id === fromColumnId)?.projects
+        .find(p => p.id === projectId)
+      if (!movedProject) return prev
+
+      return prev.map(col => {
+        if (col.id === fromColumnId) {
+          return { ...col, projects: col.projects.filter(p => p.id !== projectId) }
+        }
+        if (col.id === toColumnId) {
+          return {
+            ...col,
+            projects: [
+              { ...movedProject, updated_at: new Date().toISOString() },
+              ...col.projects,
+            ],
+          }
+        }
+        return col
+      })
+    })
+
+    // Persist
+    const { error: updateError } = await supabase
+      .from('projects')
+      .update({ kanban_column_id: toColumnId, updated_at: new Date().toISOString() })
+      .eq('id', projectId)
+
+    if (updateError) {
+      await fetchBoard()
+      return { error: updateError.message }
+    }
+    return { error: null }
+  }
+
+  return { columns, loading, error, refetch: fetchBoard, moveProject }
 }

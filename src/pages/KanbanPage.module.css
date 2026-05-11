@@ -65,10 +65,17 @@
   max-width: 360px;
   flex: 1 0 300px;
   background: var(--color-surface-2);
+  border: 2px solid transparent;
   border-radius: var(--radius-lg);
   padding: 16px;
   display: flex;
   flex-direction: column;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.columnOver {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface-2));
 }
 
 .columnHeader {
@@ -102,6 +109,7 @@
   flex-direction: column;
   gap: 10px;
   flex: 1;
+  min-height: 80px;
 }
 
 /* ── Card ──────────────────────────────────────────────────────────────────── */
@@ -111,8 +119,13 @@
   border: 1px solid var(--color-button-border);
   border-radius: var(--radius-md);
   padding: 14px 16px;
-  cursor: pointer;
+  cursor: grab;
   transition: border-color 0.15s, transform 0.15s;
+  touch-action: none;
+}
+
+.card:active {
+  cursor: grabbing;
 }
 
 .card:hover {
@@ -174,4 +187,17 @@
   padding: 60px 20px;
   color: var(--color-text-muted);
   font-size: 15px;
+}
+
+/* ── Drag overlay ──────────────────────────────────────────────────────────── */
+
+.dragOverlay {
+  background: var(--color-surface);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  transform: rotate(2deg);
+  cursor: grabbing;
+  max-width: 340px;
 }
