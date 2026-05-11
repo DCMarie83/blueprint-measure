@@ -35,7 +35,7 @@
   border: 1px solid rgba(245, 158, 11, 0.3);
   border-radius: 20px;
   padding: 2px 10px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.07em;
@@ -208,7 +208,7 @@
 }
 
 .formLabel {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -281,7 +281,7 @@
 .th {
   padding: 10px 24px;
   text-align: left;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -366,7 +366,7 @@
 }
 
 .usageLabel {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--color-text-muted);
 }
 
@@ -419,7 +419,7 @@
 }
 
 .planDesc {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--color-text-muted);
 }
 
@@ -436,7 +436,7 @@
 }
 
 .flagOnBadge {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.05em;
   color: var(--color-primary);
@@ -762,7 +762,7 @@
 }
 
 .pendingBadge {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.05em;
   color: var(--color-accent);
@@ -883,7 +883,7 @@
 
 /* Chevron icon that rotates when the row is expanded */
 .expandChevron {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--color-text-muted);
   display: inline-block;
   transition: transform 0.15s;
@@ -912,7 +912,7 @@
 
 /* "✓ Saved" flash message below the plan select */
 .planSaved {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--color-success);
   margin-top: 4px;
@@ -950,7 +950,7 @@
 }
 
 .expandedSectionTitle {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.07em;
@@ -982,7 +982,7 @@
 }
 
 .expandedStatLabel {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -998,7 +998,7 @@
 .expandedTh {
   padding: 6px 10px;
   text-align: left;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -1081,7 +1081,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   padding: 4px 8px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--color-text);
   outline: none;
 }
@@ -1089,7 +1089,7 @@
 /* ── Seat warning ─────────────────────────────────────────────────────────── */
 
 .seatWarning {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   color: #f59e0b;
 }
@@ -1132,7 +1132,7 @@
 .testLogVerdict {
   padding: 2px 8px;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -1148,7 +1148,7 @@
 /* ── Seat badge (D5) ─────────────────────────────────────────────────────── */
 
 .seatBadge {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--color-text-muted);
 }
 
@@ -1173,7 +1173,7 @@
 /* ── Feedback status badge (D2) ──────────────────────────────────────────── */
 
 .feedbackStatus {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   padding: 2px 8px;
   border-radius: 4px;

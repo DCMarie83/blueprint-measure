@@ -90,7 +90,7 @@
 }
 
 .metricLabel {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -121,7 +121,7 @@
 .quickStatItem:hover { border-color: var(--color-primary); }
 
 .quickStatValue { font-size: 18px; font-weight: 700; color: var(--color-text); }
-.quickStatLabel { font-size: 11px; color: var(--color-text-muted); }
+.quickStatLabel { font-size: 12px; color: var(--color-text-muted); }
 
 /* ── Section card ────────────────────────────────────────────────────────── */
 
@@ -168,7 +168,7 @@
 
 .th {
   text-align: left;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -271,7 +271,7 @@
 /* ── Badges / pills ──────────────────────────────────────────────────────── */
 
 .pill {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   background: rgba(46, 139, 255, 0.1);
   color: var(--color-primary);
@@ -281,7 +281,7 @@
 }
 
 .badge {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   padding: 2px 7px;
   border-radius: 4px;
@@ -424,7 +424,7 @@
 }
 
 .planFieldLabel {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -462,9 +462,9 @@
 
 .usageCell { display: flex; flex-direction: column; gap: 2px; }
 .usageCount { font-size: 13px; font-weight: 600; }
-.usageLabel { font-size: 10px; color: var(--color-text-muted); }
-.seatBadge { font-size: 10px; color: var(--color-text-muted); }
-.seatWarning { font-size: 10px; font-weight: 600; color: #f59e0b; }
+.usageLabel { font-size: 12px; color: var(--color-text-muted); }
+.seatBadge { font-size: 12px; color: var(--color-text-muted); }
+.seatWarning { font-size: 12px; font-weight: 600; color: #f59e0b; }
 
 .miniBarTrack {
   width: 80px;
@@ -496,7 +496,7 @@
 /* ── Status badges ───────────────────────────────────────────────────────── */
 
 .pendingBadge {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   color: #f59e0b;
   background: rgba(245,158,11,0.1);
@@ -506,7 +506,7 @@
 }
 
 .feedbackStatus {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   padding: 2px 8px;
   border-radius: 4px;
@@ -519,6 +519,6 @@
 .testLogVerdict {
   padding: 2px 8px;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
 }

@@ -104,7 +104,7 @@
   transform: translate(-50%, -50%);
   background: rgba(239, 68, 68, 0.85);
   color: white;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.05em;
   padding: 4px 10px;
@@ -112,7 +112,7 @@
 }
 
 .pageNumber {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--color-text-muted);
 }
@@ -240,23 +240,26 @@
 
 .lightboxClose {
   position: absolute;
-  top: -12px;
-  right: -12px;
-  width: 32px;
-  height: 32px;
+  top: 12px;
+  right: 12px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: var(--color-primary);
+  border: none;
   border-radius: 50%;
-  color: white;
-  font-size: 14px;
+  color: var(--color-on-primary, #fff);
+  font-size: 20px;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s, background 0.15s;
 }
 .lightboxClose:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: #d85a30;
+  transform: scale(1.05);
 }
 
 .lightboxLoading {

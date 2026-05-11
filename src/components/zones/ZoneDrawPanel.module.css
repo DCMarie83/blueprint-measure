@@ -12,7 +12,7 @@
 }
 
 .field label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -169,7 +169,7 @@
 }
 
 .typeBtnDesc {
-  font-size: 10px;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -231,7 +231,7 @@
 }
 
 .countLabel {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -345,7 +345,7 @@
 }
 
 .accumLabel {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -387,7 +387,7 @@
 .colorAuto {
   background: var(--color-surface-2);
   border-color: var(--color-border);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--color-text-muted);
   display: flex;
@@ -416,7 +416,7 @@
 }
 
 .heightField label {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -447,7 +447,7 @@
 /* --- Locked feature notice --- */
 
 .lockedFeature {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 400;
   color: var(--color-text-muted);
   opacity: 0.6;
@@ -458,7 +458,7 @@
 /* --- Wall openings list --- */
 
 .openingsHeader {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -498,7 +498,7 @@
 }
 
 .openingSfUnit {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--color-text-muted);
   flex-shrink: 0;
 }
@@ -532,7 +532,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   padding: 4px 7px;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--color-text-muted);
   cursor: pointer;
@@ -565,7 +565,7 @@
 }
 
 .sfPreviewLabel {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -585,7 +585,7 @@
 }
 
 .sfPreviewAdj {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: #22c55e;
   text-align: right;

@@ -71,7 +71,7 @@
 }
 
 .pageLabel {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--color-text-muted);
   line-height: 1;
@@ -90,7 +90,7 @@
   border-radius: 9px;
   background: var(--color-primary);
   color: white;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   display: flex;
   align-items: center;

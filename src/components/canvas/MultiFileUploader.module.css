@@ -66,13 +66,13 @@
 }
 
 .fileSize {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--color-text-muted);
   white-space: nowrap;
 }
 
 .fileStatus {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -99,7 +99,7 @@
 
 .retryBtn {
   padding: 3px 10px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: white;
   background: var(--color-primary);

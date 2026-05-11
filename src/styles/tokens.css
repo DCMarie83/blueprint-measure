@@ -1,29 +1,20 @@
 /* RivetDog design tokens — single source of truth.
-   Dark is baseline (matching existing app). Light is the explicit override.
-   Brand tokens, typography, radii, and spacing are constant across themes. */
+   Dark is the baseline. Light theme override follows. */
 
 :root {
-  /* Brand — constant across themes */
-  --brand-rivet-green: #31463E;
-  --brand-steel-blue: #2C3E50;
-  --brand-burnished-brass: #8A6A3D;
-  --brand-concrete-dust: #D9D4C9;
-  --brand-canvas-tan: #B8AA91;
-  --brand-oxblood: #8F3A32;
+  /* Typography */
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-heading: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
 
-  /* Typography — constant */
-  --font-display: 'Archivo', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-body: 'Public Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'Roboto Mono', ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, monospace;
-
-  /* Radii — constant */
+  /* Radii */
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
   --radius-pill: 9999px;
 
-  /* Spacing — constant */
+  /* Spacing */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -39,58 +30,46 @@
 /* ── Dark theme (default) ──────────────────────────────────────────────────── */
 
 :root, [data-theme="dark"] {
-  --bg-primary: #1A2220;
-  --bg-secondary: #232C29;
-  --bg-tertiary: #2A3431;
-  --bg-elevated: #2C3633;
-  --bg-overlay: rgba(0, 0, 0, 0.65);
+  --color-bg: #1b2426;
+  --color-surface: #26464c;
+  --color-surface-2: #1f3338;
+  --color-primary: #f27243;
+  --color-primary-hover: #d85a30;
+  --color-on-primary: #ffffff;
+  --color-action-open: #10b981;
+  --color-action-open-hover: #059669;
+  --color-action-open-text: #ffffff;
+  --color-action-delete: #dc2626;
+  --color-action-delete-hover: #b91c1c;
+  --color-action-delete-text: #ffffff;
+  --color-button-border: var(--color-primary);
+  --color-accent: #f59e0b;
+  --color-text: #f5f5f5;
+  --color-text-muted: #8a9096;
+  --color-border: #3a4548;
 
-  --text-primary: #F0EDE5;
-  --text-secondary: #B5B0A5;
-  --text-tertiary: #7A7569;
-  --text-disabled: #5A5650;
-  --text-on-brand: #F0EDE5;
-  --text-link: #8FA8C0;
-
-  --border-default: #3A4442;
-  --border-subtle: #2A3431;
-  --border-strong: #5A6461;
-  --border-focus: #8FA8C0;
-
-  --accent-primary: #4A6359;
-  --accent-primary-hover: #5C7568;
-  --accent-primary-text: #F0EDE5;
-  --accent-secondary: #4A6378;
-  --accent-secondary-hover: #5C7589;
-  --accent-secondary-text: #F0EDE5;
-
-  --color-success: #5BA77E;
-  --color-success-bg: #1F2E26;
-  --color-success-border: #3A5A47;
-  --color-warning: #D4A958;
-  --color-warning-bg: #2E2618;
-  --color-warning-border: #5C4A2B;
-  --color-danger: #C26157;
-  --color-danger-bg: #2E1F1D;
-  --color-danger-border: #5C3835;
-  --color-info: #5B82A7;
-  --color-info-bg: #1F2A36;
-  --color-info-border: #3A4D63;
+  --color-success: #4ade80;
+  --color-success-bg: #1a2e22;
+  --color-success-border: #2d5a3e;
+  --color-warning: #f59e0b;
+  --color-warning-bg: #2e2618;
+  --color-warning-border: #5c4a2b;
+  --color-danger: #dc2626;
+  --color-danger-hover: #b91c1c;
+  --color-danger-bg: #2e1f1d;
+  --color-danger-border: #5c3835;
+  --color-info: #60a5fa;
+  --color-info-bg: #1f2a36;
+  --color-info-border: #3a4d63;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
-
-  /* Legacy aliases — map old --color-* names to new tokens */
-  --color-bg: var(--bg-primary);
-  --color-surface: var(--bg-elevated);
-  --color-surface-2: var(--bg-tertiary);
-  --color-border: var(--border-default);
-  --color-text: var(--text-primary);
-  --color-text-muted: var(--text-secondary);
-  --radius: var(--radius-lg);
-  --radius-lg: var(--radius-lg);
   --shadow: var(--shadow-lg);
+
+  /* Legacy aliases for backward compat with existing module.css files */
+  --radius: var(--radius-lg);
+  --font: var(--font-body);
 
   color-scheme: dark;
 }
@@ -98,69 +77,56 @@
 /* ── Light theme ───────────────────────────────────────────────────────────── */
 
 [data-theme="light"] {
-  --bg-primary: #F8F6F1;
-  --bg-secondary: #EFEAE0;
-  --bg-tertiary: #E5DECD;
-  --bg-elevated: #FFFFFF;
-  --bg-overlay: rgba(26, 26, 26, 0.45);
+  --color-bg: #f5f3f0;
+  --color-surface: #ffffff;
+  --color-surface-2: #eae7e2;
+  --color-primary: #f27243;
+  --color-primary-hover: #d85a30;
+  --color-on-primary: #ffffff;
+  --color-action-open: #059669;
+  --color-action-open-hover: #047857;
+  --color-action-open-text: #ffffff;
+  --color-action-delete: #dc2626;
+  --color-action-delete-hover: #b91c1c;
+  --color-action-delete-text: #ffffff;
+  --color-button-border: #26464c;
+  --color-text: #1a1a1a;
+  --color-text-muted: #6b7280;
+  --color-border: #d1cdc7;
 
-  --text-primary: #1A1A1A;
-  --text-secondary: #5A5A5A;
-  --text-tertiary: #8A8A8A;
-  --text-disabled: #B5B0A5;
-  --text-on-brand: #FFFFFF;
-  --text-link: #2C3E50;
-
-  --border-default: #C9C2B5;
-  --border-subtle: #D9D4C9;
-  --border-strong: #A89F8B;
-  --border-focus: #31463E;
-
-  --accent-primary: #31463E;
-  --accent-primary-hover: #2A3D36;
-  --accent-primary-text: #FFFFFF;
-  --accent-secondary: #2C3E50;
-  --accent-secondary-hover: #243443;
-  --accent-secondary-text: #FFFFFF;
-
-  --color-success: #2D7A4F;
-  --color-success-bg: #E8F4ED;
-  --color-success-border: #95C2A8;
-  --color-warning: #B07A1A;
-  --color-warning-bg: #FBF3E0;
-  --color-warning-border: #DEB665;
-  --color-danger: #8F3A32;
-  --color-danger-bg: #FBEAE8;
-  --color-danger-border: #D69992;
-  --color-info: #2C3E50;
-  --color-info-bg: #E8EEF4;
-  --color-info-border: #95A8C0;
+  --color-success: #16a34a;
+  --color-success-bg: #e8f4ed;
+  --color-success-border: #95c2a8;
+  --color-warning: #d97706;
+  --color-warning-bg: #fbf3e0;
+  --color-warning-border: #deb665;
+  --color-danger: #dc2626;
+  --color-danger-hover: #b91c1c;
+  --color-danger-bg: #fbeae8;
+  --color-danger-border: #d69992;
+  --color-info: #2563eb;
+  --color-info-bg: #e8eef4;
+  --color-info-border: #95a8c0;
 
   --shadow-sm: 0 1px 3px rgba(26, 26, 26, 0.06);
   --shadow-md: 0 4px 12px rgba(26, 26, 26, 0.08);
   --shadow-lg: 0 12px 32px rgba(26, 26, 26, 0.10);
-
-  /* Legacy aliases — light versions */
-  --color-bg: var(--bg-primary);
-  --color-surface: var(--bg-elevated);
-  --color-surface-2: var(--bg-tertiary);
-  --color-border: var(--border-default);
-  --color-text: var(--text-primary);
-  --color-text-muted: var(--text-secondary);
   --shadow: var(--shadow-lg);
 
   color-scheme: light;
 }
 
 html {
-  background: var(--bg-primary);
-  color: var(--text-primary);
+  background: var(--color-bg);
+  color: var(--color-text);
   font-family: var(--font-body);
 }
 
 body {
   margin: 0;
-  background: var(--bg-primary);
-  color: var(--text-primary);
+  background: var(--color-bg);
+  color: var(--color-text);
   font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
 }

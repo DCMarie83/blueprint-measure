@@ -46,7 +46,7 @@
 }
 
 .planBadge {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: capitalize;
   padding: 2px 8px;
@@ -108,7 +108,7 @@
 }
 
 .statLabel {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--color-text-muted);
 }
 
@@ -124,7 +124,7 @@
 
 .th {
   text-align: left;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;

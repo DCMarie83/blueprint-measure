@@ -197,7 +197,7 @@
 }
 
 .smsDisclosure {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--color-text-muted);
   line-height: 1.5;
   margin: 0;
@@ -347,7 +347,7 @@
 }
 
 .dangerFootnote {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--color-text-muted);
   margin: 16px 0 0;
   line-height: 1.4;

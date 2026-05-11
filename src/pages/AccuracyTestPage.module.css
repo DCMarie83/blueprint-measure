@@ -41,7 +41,7 @@
   border: 1px solid rgba(245, 158, 11, 0.3);
   border-radius: 20px;
   padding: 2px 10px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.07em;
@@ -53,7 +53,7 @@
   border: 1px solid rgba(139, 92, 246, 0.3);
   border-radius: 20px;
   padding: 2px 10px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.07em;
@@ -127,7 +127,7 @@
 }
 
 .projectField label {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -195,7 +195,7 @@
   margin-top: 10px;
   background: none;
   border: none;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--color-text-muted);
   cursor: pointer;
   padding: 0;
@@ -266,7 +266,7 @@
 }
 
 .calibField label {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -274,7 +274,7 @@
 }
 
 .calibParsed {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--color-text-muted);
   opacity: 0.7;
 }
@@ -351,7 +351,7 @@
   background: var(--color-surface);
   padding: 8px 8px;
   text-align: left;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -390,19 +390,19 @@
 }
 
 .dirOver {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: #f59e0b;
 }
 
 .dirUnder {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: #ef4444;
 }
 
 .dirExact {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: #22c55e;
 }
@@ -448,7 +448,7 @@
 }
 
 .summaryLabel {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -485,7 +485,7 @@
 }
 
 .verdictLabel {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;

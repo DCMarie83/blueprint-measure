@@ -6,7 +6,7 @@
 }
 
 .label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -88,7 +88,7 @@
 }
 
 .activeScale {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--color-success);
   background: rgba(34, 197, 94, 0.1);
   border: 1px solid rgba(34, 197, 94, 0.2);
@@ -99,7 +99,7 @@
 .rescaleBtn {
   width: 100%;
   padding: 6px 10px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--color-primary);
   background: rgba(46, 139, 255, 0.08);
@@ -123,7 +123,7 @@
   gap: 4px;
   padding: 5px 10px;
   border-radius: var(--radius);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.4;
 }
 
@@ -165,7 +165,7 @@
 
 .scalePillHelper {
   width: 100%;
-  font-size: 10px;
+  font-size: 12px;
   opacity: 0.85;
   margin-top: 2px;
 }
@@ -185,14 +185,14 @@
 }
 
 .scalePillPopTitle {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--color-text);
   margin-bottom: 6px;
 }
 
 .scalePillPopBody {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
   color: var(--color-text-muted);
   margin: 0;
@@ -242,7 +242,7 @@
 }
 
 .confirmPanel {
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.5;
   color: var(--color-text-muted);
   background: var(--color-bg);
@@ -271,7 +271,7 @@
 .confirmTable {
   width: 100%;
   border-collapse: collapse;
-  font-size: 10px;
+  font-size: 12px;
   font-family: 'SF Mono', 'Fira Code', monospace;
 }
 
@@ -306,7 +306,7 @@
 /* ── Pixel sanity check badges ── */
 
 .sanityPass {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--color-success);
   background: rgba(34, 197, 94, 0.08);
   border: 1px solid rgba(34, 197, 94, 0.2);
@@ -316,7 +316,7 @@
 }
 
 .sanityWarn {
-  font-size: 11px;
+  font-size: 12px;
   color: #f59e0b;
   background: rgba(245, 158, 11, 0.08);
   border: 1px solid rgba(245, 158, 11, 0.25);
@@ -355,7 +355,7 @@
 }
 
 .aiHint {
-  font-size: 10px;
+  font-size: 12px;
   font-style: italic;
   color: var(--color-text-muted);
   line-height: 1.5;
@@ -363,7 +363,7 @@
 }
 
 .aiLocked {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 400;
   color: var(--color-text-muted);
   opacity: 0.6;
@@ -405,7 +405,7 @@
   height: 16px;
   border-radius: 50%;
   background: var(--color-border);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--color-text-muted);
   flex-shrink: 0;
@@ -431,7 +431,7 @@
 }
 
 .helpOptionLabel {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--color-text);
 }
@@ -449,7 +449,7 @@
 }
 
 .helpTip {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--color-primary);
   background: rgba(46, 139, 255, 0.08);
   border: 1px solid rgba(46, 139, 255, 0.2);
