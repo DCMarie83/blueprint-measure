@@ -69,7 +69,7 @@ export default function RegisterPage() {
       if (profileErr) throw new Error(profileErr.message)
 
       console.log('[register] redirecting to /dashboard')
-      window.location.href = '/opportunities'
+      window.location.href = '/jobs'
     } catch (err) {
       console.error('[register] caught error:', err)
       setError(err.message)

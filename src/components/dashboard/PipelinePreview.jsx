@@ -9,7 +9,7 @@ export default function PipelinePreview({ pipeline, hasZeroJobs }) {
       <section className={styles.section}>
         <div className={styles.sectionHeader}>
           <span className={styles.sectionTitle}>Pipeline</span>
-          <Link to="/opportunities" className={styles.boardLink}>See full board &rarr;</Link>
+          <Link to="/jobs" className={styles.boardLink}>See full board &rarr;</Link>
         </div>
         <div className={styles.empty}>
           No opportunities yet. Create your first job to get started.
@@ -22,7 +22,7 @@ export default function PipelinePreview({ pipeline, hasZeroJobs }) {
     <section className={styles.section}>
       <div className={styles.sectionHeader}>
         <span className={styles.sectionTitle}>Pipeline</span>
-        <Link to="/opportunities" className={styles.boardLink}>See full board &rarr;</Link>
+        <Link to="/jobs" className={styles.boardLink}>See full board &rarr;</Link>
       </div>
 
       <div className={styles.columns}>

@@ -30,10 +30,11 @@ import UserDetailPage from './pages/admin/UserDetailPage'
 import TeamPage from './pages/TeamPage'
 import ProjectDetailPage from './pages/ProjectDetailPage'
 import KanbanPage from './pages/KanbanPage'
-import JobDetailPage from './pages/JobDetailPage'
 import ClientsPage from './pages/ClientsPage'
 import ClientDetailPage from './pages/ClientDetailPage'
 import PortalPage from './pages/PortalPage'
+import AcademyPage from './pages/AcademyPage'
+import ReportsPage from './pages/ReportsPage'
 import PasswordRecoveryHandler from './components/PasswordRecoveryHandler'
 
 const ADMIN_EMAIL = 'main@ngautomationhub.com'
@@ -70,7 +71,7 @@ function AdminRoute({ children }) {
 
   if (!user) return <Navigate to="/login" replace />
   if (setupComplete === false) return <Navigate to="/register" replace />
-  if (user.email !== ADMIN_EMAIL) return <Navigate to="/opportunities" replace />
+  if (user.email !== ADMIN_EMAIL) return <Navigate to="/jobs" replace />
   return children
 }
 
@@ -87,7 +88,7 @@ function RegisterRoute({ children }) {
   }
 
   if (!user) return <Navigate to="/login" replace />
-  if (setupComplete === true) return <Navigate to="/opportunities" replace />
+  if (setupComplete === true) return <Navigate to="/jobs" replace />
   return children
 }
 
@@ -118,7 +119,7 @@ function ContractorAdminRoute({ children }) {
 
   if (!user) return <Navigate to="/login" replace />
   if (setupComplete === false) return <Navigate to="/register" replace />
-  if (!allowed) return <Navigate to="/opportunities" replace />
+  if (!allowed) return <Navigate to="/jobs" replace />
   return <>{children}<FeedbackButton /></>
 }
 
@@ -147,11 +148,11 @@ export default function App() {
       {/* Public routes */}
       <Route
         path="/login"
-        element={user ? <Navigate to="/opportunities" replace /> : <LoginPage />}
+        element={user ? <Navigate to="/jobs" replace /> : <LoginPage />}
       />
       <Route
         path="/signup"
-        element={user ? <Navigate to="/opportunities" replace /> : <SignupPage />}
+        element={user ? <Navigate to="/jobs" replace /> : <SignupPage />}
       />
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
@@ -181,12 +182,8 @@ export default function App() {
         element={<ProtectedRoute><SettingsPage /></ProtectedRoute>}
       />
       <Route
-        path="/opportunities"
+        path="/jobs"
         element={<ProtectedRoute><KanbanPage /></ProtectedRoute>}
-      />
-      <Route
-        path="/jobs/:id"
-        element={<ProtectedRoute><JobDetailPage /></ProtectedRoute>}
       />
       <Route
         path="/clients"
@@ -195,6 +192,14 @@ export default function App() {
       <Route
         path="/clients/:id"
         element={<ProtectedRoute><ClientDetailPage /></ProtectedRoute>}
+      />
+      <Route
+        path="/academy"
+        element={<ProtectedRoute><AcademyPage /></ProtectedRoute>}
+      />
+      <Route
+        path="/reports"
+        element={<ProtectedRoute><ReportsPage /></ProtectedRoute>}
       />
       <Route
         path="/account"
@@ -240,7 +245,7 @@ export default function App() {
       />
 
       {/* Default: redirect to dashboard */}
-      <Route path="*" element={<Navigate to="/opportunities" replace />} />
+      <Route path="*" element={<Navigate to="/jobs" replace />} />
     </Routes>
     </>
   )

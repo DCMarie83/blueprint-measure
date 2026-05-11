@@ -31,8 +31,8 @@ export default function KanbanPage() {
       </header>
 
       <main className={styles.main}>
-        <h1 className={styles.pageTitle}>Opportunities</h1>
-        <p className={styles.subTitle}>Click any opportunity to open the job. Drag-and-drop coming soon.</p>
+        <h1 className={styles.pageTitle}>Jobs</h1>
+        <p className={styles.subTitle}>Click any job to open it. Drag between columns to update status.</p>
 
         {loading ? (
           <div className={styles.loading}>Loading…</div>

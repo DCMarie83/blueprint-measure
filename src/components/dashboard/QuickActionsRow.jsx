@@ -1,4 +1,4 @@
-import { Briefcase, FileUp, Columns3, BookUser } from 'lucide-react'
+import { Briefcase, Columns3, BookUser, GraduationCap } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import Modal from '../ui/Modal'
@@ -35,22 +35,22 @@ export default function QuickActionsRow() {
       onClick: () => setShowModal(true),
     },
     {
-      icon: FileUp,
-      label: '+ Add Blueprint',
-      desc: 'Upload to existing job',
-      onClick: () => navigate('/opportunities'),
-    },
-    {
       icon: Columns3,
-      label: 'View Opportunities',
+      label: 'View Jobs',
       desc: 'Pipeline board',
-      onClick: () => navigate('/opportunities'),
+      onClick: () => navigate('/jobs'),
     },
     {
       icon: BookUser,
       label: 'Manage Clients',
       desc: 'Client contacts',
       onClick: () => navigate('/clients'),
+    },
+    {
+      icon: GraduationCap,
+      label: 'RivetDog Academy',
+      desc: 'Training videos & tutorials',
+      onClick: () => navigate('/academy'),
     },
   ]
 

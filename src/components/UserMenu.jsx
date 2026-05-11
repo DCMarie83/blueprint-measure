@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { User, Settings, Users, LogOut, Columns3, BookUser, LayoutDashboard } from 'lucide-react'
+import { User, Settings, Users, LogOut, Columns3, BookUser, LayoutDashboard, GraduationCap, BarChart3 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import ThemeToggle from './ThemeToggle'
@@ -82,13 +82,21 @@ export default function UserMenu() {
               <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Theme</span>
               <ThemeToggle />
             </div>
-            <button className={styles.menuItem} onClick={() => { navigate('/opportunities'); setOpen(false) }}>
+            <button className={styles.menuItem} onClick={() => { navigate('/jobs'); setOpen(false) }}>
               <Columns3 size={15} />
-              <span>Opportunities</span>
+              <span>Jobs</span>
             </button>
             <button className={styles.menuItem} onClick={() => { navigate('/clients'); setOpen(false) }}>
               <BookUser size={15} />
               <span>Clients</span>
+            </button>
+            <button className={styles.menuItem} onClick={() => { navigate('/academy'); setOpen(false) }}>
+              <GraduationCap size={15} />
+              <span>Academy</span>
+            </button>
+            <button className={styles.menuItem} onClick={() => { navigate('/reports'); setOpen(false) }}>
+              <BarChart3 size={15} />
+              <span>Reports</span>
             </button>
             <button className={styles.menuItem} onClick={() => { navigate('/dashboard'); setOpen(false) }}>
               <LayoutDashboard size={15} />

@@ -11,7 +11,7 @@ export default function ClientsPage() {
         <UserMenu />
       </header>
       <main className={styles.main}>
-        <Link to="/opportunities" style={{ fontSize: 13, color: 'var(--color-text-muted)', textDecoration: 'none', marginBottom: 24, display: 'block' }}>← Opportunities</Link>
+        <Link to="/jobs" style={{ fontSize: 13, color: 'var(--color-text-muted)', textDecoration: 'none', marginBottom: 24, display: 'block' }}>← Jobs</Link>
         <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>Clients</h1>
         <p style={{ color: 'var(--color-text-muted)' }}>Clients list — coming Friday</p>
       </main>
