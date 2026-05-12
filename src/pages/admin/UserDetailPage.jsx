@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, Fragment } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { useDateFormat } from '../../hooks/useDateFormat'
+import BackLink from '../../components/BackLink'
 import styles from './sections.module.css'
 
 const ADMIN_EMAIL = 'main@ngautomationhub.com'
@@ -39,6 +40,7 @@ function timeAgo(dateStr) {
 export default function UserDetailPage() {
   const { userId } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { user: currentUser } = useAuth()
   const { formatDate, formatDateTime, formatTime } = useDateFormat()
   const isSuperAdmin = currentUser?.email === ADMIN_EMAIL
@@ -201,11 +203,12 @@ export default function UserDetailPage() {
 
   return (
     <div>
-      {/* Header with back button */}
+      {/* Header with back link */}
+      <BackLink
+        to={location.pathname.startsWith('/admin/') ? '/admin/users' : '/dashboard/team'}
+        label={location.pathname.startsWith('/admin/') ? 'Users' : 'Team'}
+      />
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-        <button className={styles.secondaryBtn} onClick={() => navigate(-1)} style={{ padding: '6px 12px', fontSize: 12 }}>
-          &larr; Back
-        </button>
         <h1 className={styles.pageTitle} style={{ margin: 0 }}>
           {profile?.full_name || profile?.email}
           {profile?.deleted_at && <span style={{ fontSize: 12, color: '#ef4444', marginLeft: 8 }}>DELETED</span>}

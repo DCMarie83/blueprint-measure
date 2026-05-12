@@ -10,6 +10,7 @@ import Modal from '../components/ui/Modal'
 import NewSessionForm from '../components/auth/NewSessionForm'
 import MultiFileUploader from '../components/canvas/MultiFileUploader'
 import AppHeader from '../components/AppHeader'
+import BackLink from '../components/BackLink'
 import { useDateFormat } from '../hooks/useDateFormat'
 import { BRAND } from '../lib/config'
 import styles from './DashboardPage.module.css'
@@ -133,6 +134,7 @@ export default function ProjectDetailPage() {
       <div className={styles.page}>
         <AppHeader />
         <main className={styles.main}>
+          <BackLink to="/jobs" label="Jobs" />
           <p className={styles.empty}>Job not found.</p>
         </main>
       </div>
@@ -146,6 +148,7 @@ export default function ProjectDetailPage() {
       <AppHeader />
 
       <main className={styles.main}>
+        <BackLink to="/jobs" label="Jobs" />
 
         {/* Inline-editable project header */}
         <div style={{ color: 'var(--color-text-muted)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>Job Overview</div>

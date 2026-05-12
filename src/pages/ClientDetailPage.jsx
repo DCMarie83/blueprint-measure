@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Home, Building2, Mail, Phone, MapPin, Tag, FileText, Briefcase, Trash2, Edit, User } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
+import BackLink from '../components/BackLink'
 import Modal from '../components/ui/Modal'
 import ClientForm from '../components/clients/ClientForm'
 import { useClient } from '../hooks/useClient'
@@ -47,6 +48,7 @@ export default function ClientDetailPage() {
     <div className={styles.page}>
       <AppHeader />
       <main className={styles.main}>
+        <BackLink to="/clients" label="Clients" />
         <div className={styles.topRow}>
           <div className={styles.topLeft}>
             <span className={styles.typeBadge}>{client.client_type === 'commercial' ? <Building2 size={14} /> : <Home size={14} />} {client.client_type}</span>
