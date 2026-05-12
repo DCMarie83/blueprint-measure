@@ -66,42 +66,39 @@ export default function EstimateDetailPage() {
 
   const estimate = builder.estimate
 
-  useEffect(() => {
+  async function fetchProjectClientCompany() {
     if (!estimate?.project_id) return
-    let cancelled = false
-    ;(async () => {
-      const { data: proj } = await supabase
-        .from('projects')
-        .select('id, name, address, client_id, company_id, portal_token')
-        .eq('id', estimate.project_id)
-        .single()
-      if (cancelled || !proj) return
-      setProjectData(proj)
+    const { data: proj } = await supabase
+      .from('projects')
+      .select('id, name, address, client_id, company_id, portal_token')
+      .eq('id', estimate.project_id)
+      .single()
+    if (!proj) return
+    setProjectData(proj)
 
-      const fetches = []
-      if (proj.client_id) {
-        fetches.push(
-          supabase
-            .from('clients')
-            .select('id, display_name, business_name, primary_email, address_line1, address_city, address_state, client_contacts(email, is_portal_recipient)')
-            .eq('id', proj.client_id)
-            .single()
-            .then(({ data }) => { if (!cancelled && data) setClientData(data) })
-        )
-      }
-      if (proj.company_id) {
-        fetches.push(
-          supabase
-            .from('companies')
-            .select('id, name')
-            .eq('id', proj.company_id)
-            .single()
-            .then(({ data }) => { if (!cancelled && data) setCompanyData(data) })
-        )
-      }
-      await Promise.all(fetches)
-    })()
-    return () => { cancelled = true }
+    if (proj.client_id) {
+      const { data: cli } = await supabase
+        .from('clients')
+        .select('id, display_name, business_name, primary_email, address_line1, address_city, address_state, client_contacts(email, is_portal_recipient)')
+        .eq('id', proj.client_id)
+        .single()
+      setClientData(cli || null)
+    } else {
+      setClientData(null)
+    }
+
+    if (proj.company_id) {
+      const { data: co } = await supabase
+        .from('companies')
+        .select('id, name')
+        .eq('id', proj.company_id)
+        .single()
+      if (co) setCompanyData(co)
+    }
+  }
+
+  useEffect(() => {
+    fetchProjectClientCompany()
   }, [estimate?.project_id])
 
   if (builder.loading) {
@@ -321,7 +318,7 @@ export default function EstimateDetailPage() {
 
             {/* Send to Client CTA */}
             {canSend && (
-              <button className={styles.sendBtn} onClick={() => setShowSendModal(true)}>
+              <button className={styles.sendBtn} onClick={async () => { await fetchProjectClientCompany(); setShowSendModal(true) }}>
                 <Send size={16} /> {sendLabel}
               </button>
             )}
