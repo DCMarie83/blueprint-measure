@@ -107,14 +107,16 @@ Deno.serve(async (req) => {
     const totalMap: Record<string, number> = { good: Number(estimate.good_total || 0), better: Number(estimate.better_total || 0), best: Number(estimate.best_total || 0) }
     const selectedTotal = selected_variant ? totalMap[selected_variant] : null
     const totalHtml = selectedTotal != null
-      ? `<div style="margin: 16px 0; padding: 14px 16px; background: #1b2426; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
-           <span style="color: #fff; font-size: 15px; font-weight: 600;">Estimate Total</span>
-           <span style="color: #f27243; font-size: 20px; font-weight: 700; font-family: monospace;">$${selectedTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-         </div>`
+      ? `<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="width: 100%; margin: 16px 0; border-collapse: separate; border-spacing: 0;">
+           <tr>
+             <td style="padding: 14px 16px; background: #1b2426; border-radius: 8px 0 0 8px; color: #ffffff; font-size: 15px; font-weight: 600;">Estimate Total</td>
+             <td style="padding: 14px 16px; background: #1b2426; border-radius: 0 8px 8px 0; color: #f27243; font-size: 20px; font-weight: 700; font-family: monospace; text-align: right; white-space: nowrap;">$${selectedTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+           </tr>
+         </table>`
       : `<table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px;">
-          <tr><td style="padding: 8px 12px; background: #f5f5f5; border-radius: 4px 0 0 0;">Option 1</td><td style="padding: 8px 12px; background: #f5f5f5; text-align: right; border-radius: 0 4px 0 0;">$${totalMap.good.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td></tr>
-          <tr><td style="padding: 8px 12px;">Option 2</td><td style="padding: 8px 12px; text-align: right;">$${totalMap.better.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td></tr>
-          <tr><td style="padding: 8px 12px; background: #f5f5f5; border-radius: 0 0 0 4px; font-weight: 600;">Option 3</td><td style="padding: 8px 12px; background: #f5f5f5; text-align: right; font-weight: 600; border-radius: 0 0 4px 0;">$${totalMap.best.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td></tr>
+          <tr><td style="padding: 8px 12px; background: #f5f5f5; border-radius: 4px 0 0 0;">Option 1</td><td style="padding: 8px 12px; background: #f5f5f5; text-align: right; border-radius: 0 4px 0 0;">$${totalMap.good.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr>
+          <tr><td style="padding: 8px 12px;">Option 2</td><td style="padding: 8px 12px; text-align: right;">$${totalMap.better.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr>
+          <tr><td style="padding: 8px 12px; background: #f5f5f5; border-radius: 0 0 0 4px; font-weight: 600;">Option 3</td><td style="padding: 8px 12px; background: #f5f5f5; text-align: right; font-weight: 600; border-radius: 0 0 4px 0;">$${totalMap.best.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr>
         </table>`
 
     const html = `

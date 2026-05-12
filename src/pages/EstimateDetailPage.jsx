@@ -58,6 +58,18 @@ export default function EstimateDetailPage() {
   const [saveMsg, setSaveMsg] = useState(null)
   const [titleValue, setTitleValue] = useState(null)
   const [showSendModal, setShowSendModal] = useState(false)
+  const [pdfMenuOpen, setPdfMenuOpen] = useState(false)
+  const pdfMenuRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (pdfMenuRef.current && !pdfMenuRef.current.contains(e.target)) {
+        setPdfMenuOpen(false)
+      }
+    }
+    if (pdfMenuOpen) document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [pdfMenuOpen])
 
   // Fetch project + client + company for PDF/Send
   const [projectData, setProjectData] = useState(null)
@@ -173,15 +185,26 @@ export default function EstimateDetailPage() {
     }
   }
 
-  function handleDownloadPDF() {
-    generateEstimatePDF({
+  function handleDownloadPDF(variant = null) {
+    setPdfMenuOpen(false)
+    const pdf = generateEstimatePDF({
       estimate: { ...estimate, title: title || null, notes },
       lineItems,
       project: projectData,
       client: clientData,
       company: companyData,
-      returnAs: 'save',
+      variant,
+      returnAs: 'blob',
     })
+    const url = URL.createObjectURL(pdf)
+    const a = document.createElement('a')
+    a.href = url
+    const variantSuffix = variant ? `_${variant}` : '_internal'
+    a.download = `estimate_${estimate.estimate_number || estimate.id}${variantSuffix}.pdf`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   }
 
   function handleAddZone(zone) {
@@ -254,9 +277,29 @@ export default function EstimateDetailPage() {
           {isAdmin && (
             <div className={styles.headerActions}>
               {saveMsg && <span className={styles.saveMsg}>{saveMsg}</span>}
-              <button className={styles.toolBtn} onClick={handleDownloadPDF} title="Download PDF">
-                <Download size={15} /> PDF
-              </button>
+              <div className={styles.pdfDropdown} ref={pdfMenuRef}>
+                <button className={styles.toolBtn} onClick={() => setPdfMenuOpen(v => !v)} title="Download PDF">
+                  <Download size={15} /> PDF <span className={styles.pdfCaret}>▾</span>
+                </button>
+                {pdfMenuOpen && (
+                  <div className={styles.pdfMenu}>
+                    <button onClick={() => handleDownloadPDF(null)} className={styles.pdfMenuItem}>
+                      <span className={styles.pdfMenuLabel}>All Tiers</span>
+                      <span className={styles.pdfMenuHint}>Internal reference — Good / Better / Best</span>
+                    </button>
+                    <div className={styles.pdfMenuDivider} />
+                    <button onClick={() => handleDownloadPDF('good')} className={styles.pdfMenuItem}>
+                      <span className={styles.pdfMenuLabel}>Good — Client Version</span>
+                    </button>
+                    <button onClick={() => handleDownloadPDF('better')} className={styles.pdfMenuItem}>
+                      <span className={styles.pdfMenuLabel}>Better — Client Version</span>
+                    </button>
+                    <button onClick={() => handleDownloadPDF('best')} className={styles.pdfMenuItem}>
+                      <span className={styles.pdfMenuLabel}>Best — Client Version</span>
+                    </button>
+                  </div>
+                )}
+              </div>
               <button className={styles.saveBtn} onClick={handleSave} disabled={saving}>
                 <Save size={15} /> {saving ? 'Saving...' : 'Save'}
               </button>

@@ -17,7 +17,7 @@ const UNIT_LABELS = { sf: 'SF', lf: 'LF', each: 'Each', hour: 'Hour', lump_sum: 
 
 function fmtMoney(val) {
   if (val == null) return '$0.00'
-  return `$${Number(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return `$${Number(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 function fmtDate(dateStr) {
@@ -175,7 +175,7 @@ export function generateEstimatePDF({ estimate, lineItems, project, client, comp
       for (const li of groups[cat]) {
         tableBody.push([
           li.description || '',
-          Number(li.quantity || 0).toLocaleString(undefined, { maximumFractionDigits: 2 }),
+          Number(li.quantity || 0).toLocaleString('en-US', { maximumFractionDigits: 2 }),
           UNIT_LABELS[li.unit] || li.unit || '',
           fmtMoney(li[v.rateField]),
           fmtMoney(li[v.totalField]),
