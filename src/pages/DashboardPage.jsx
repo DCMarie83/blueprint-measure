@@ -27,7 +27,7 @@ export default function DashboardPage() {
           <div className={styles.loading} style={{ color: 'var(--color-danger)' }}>{error}</div>
         ) : (
           <div className={styles.sections}>
-            <GreetingStrip firstName={firstName} todayDate={todayDate} />
+            <GreetingStrip firstName={firstName} />
             <QuickActionsRow />
             {isNewUser && checklist && !checklist.allComplete && (
               <GettingStartedChecklist checklist={checklist} />

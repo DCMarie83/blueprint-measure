@@ -1,10 +1,14 @@
+import { useAuth } from '../../context/AuthContext'
 import styles from './GreetingStrip.module.css'
 
-export default function GreetingStrip({ firstName, todayDate }) {
+export default function GreetingStrip({ firstName }) {
+  const { userProfile } = useAuth()
   const hour = new Date().getHours()
-  const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening'
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 
-  const formatted = new Date(todayDate).toLocaleDateString('en-US', {
+  const logoUrl = userProfile?.logo_url || null
+
+  const formattedDate = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
@@ -12,10 +16,13 @@ export default function GreetingStrip({ firstName, todayDate }) {
   })
 
   return (
-    <div className={styles.wrap}>
-      <div className={styles.greeting}>Good {timeOfDay}, {firstName}</div>
-      <div className={styles.pageLabel}>RivetDog Dashboard</div>
-      <div className={styles.date}>{formatted}</div>
+    <div className={styles.hero}>
+      {logoUrl && (
+        <img src={logoUrl} alt="" className={styles.logo} />
+      )}
+      <h1 className={styles.title}>RivetDog Dashboard</h1>
+      <p className={styles.greeting}>{greeting}, {firstName}</p>
+      <p className={styles.date}>{formattedDate}</p>
     </div>
   )
 }
