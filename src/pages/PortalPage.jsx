@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import PortalEstimateSection from '../components/portal/PortalEstimateSection'
 import styles from './PortalPage.module.css'
 
 export default function PortalPage() {
   const { token } = useParams()
   const [data, setData] = useState(null)
+  const [estimateData, setEstimateData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
@@ -14,14 +16,28 @@ export default function PortalPage() {
     let cancelled = false
     ;(async () => {
       try {
-        const { data: row, error: err } = await supabase
-          .from('portal_view')
-          .select('*')
-          .eq('portal_token', token)
-          .maybeSingle()
+        // Fetch portal view + estimate data in parallel
+        const [portalRes, estimateRes] = await Promise.all([
+          supabase
+            .from('portal_view')
+            .select('*')
+            .eq('portal_token', token)
+            .maybeSingle(),
+          supabase.rpc('get_portal_estimate', { p_portal_token: token }),
+        ])
+
         if (cancelled) return
-        if (err || !row) setError(true)
-        else setData(row)
+
+        if (portalRes.error || !portalRes.data) {
+          setError(true)
+        } else {
+          setData(portalRes.data)
+        }
+
+        // Estimate may not exist (null is fine)
+        if (estimateRes.data && estimateRes.data.estimate) {
+          setEstimateData(estimateRes.data)
+        }
       } catch {
         if (!cancelled) setError(true)
       } finally {
@@ -84,6 +100,15 @@ export default function PortalPage() {
               )}
             </div>
           </div>
+        )}
+
+        {/* Estimate section — only renders if estimate exists with sent/accepted/declined status */}
+        {estimateData && (
+          <PortalEstimateSection
+            estimate={estimateData.estimate}
+            lineItems={estimateData.line_items || []}
+            portalToken={token}
+          />
         )}
 
         <div className={styles.footerWrap}>

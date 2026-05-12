@@ -1,0 +1,76 @@
+.confirmText {
+  font-size: 15px;
+  color: var(--color-text);
+  margin: 0 0 14px;
+  line-height: 1.5;
+}
+
+.recipientList {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.recipientLabel {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+.recipientEmail {
+  font-size: 13px;
+  padding: 2px 10px;
+  background: var(--color-surface-2, rgba(255,255,255,0.06));
+  border-radius: var(--radius-pill);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+}
+
+.note {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin: 0 0 16px;
+}
+
+.errorBlock {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 14px;
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  border-radius: var(--radius-md);
+  color: var(--color-danger, #dc2626);
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.cancelBtn {
+  padding: 9px 18px;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+.sendBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 20px;
+  background: var(--color-primary);
+  color: var(--color-on-primary, #fff);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.sendBtn:hover { opacity: 0.9; }
+.sendBtn:disabled { opacity: 0.6; cursor: not-allowed; }

@@ -232,6 +232,18 @@ export function useEstimateBuilder(estimateId) {
     if (err) throw err
   }
 
+  // ── Send estimate via Edge Function ────────────────────────────────────
+  async function sendEstimate(pdfBase64) {
+    if (!estimateId) throw new Error('No estimate')
+    const { data, error: fnErr } = await supabase.functions.invoke('send-estimate-email', {
+      body: { estimate_id: estimateId, pdf_base64: pdfBase64 },
+    })
+    if (fnErr) throw new Error(fnErr.message || 'Send failed')
+    if (data?.error) throw new Error(data.error)
+    await fetchEstimate()
+    return data
+  }
+
   return {
     estimate,
     lineItems,
@@ -247,6 +259,7 @@ export function useEstimateBuilder(estimateId) {
     saveAll,
     updateEstimate,
     deleteEstimate,
+    sendEstimate,
     refreshZones: fetchZones,
     refetch: fetchEstimate,
   }

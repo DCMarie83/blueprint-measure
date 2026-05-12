@@ -1,15 +1,18 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Save, Trash2, Plus, Package } from 'lucide-react'
+import { Save, Trash2, Plus, Package, Download, Send } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import BackLink from '../components/BackLink'
 import ZoneAggregationPanel from '../components/estimates/ZoneAggregationPanel'
 import PricingItemPicker from '../components/estimates/PricingItemPicker'
 import LineItemsTable from '../components/estimates/LineItemsTable'
+import SendEstimateModal from '../components/estimates/SendEstimateModal'
 import { useEstimateBuilder } from '../hooks/useEstimateBuilder'
 import { usePricingCategories } from '../hooks/usePricingCategories'
 import { usePricingItems } from '../hooks/usePricingItems'
 import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
+import { generateEstimatePDF } from '../lib/generateEstimatePDF'
 import styles from './EstimateDetailPage.module.css'
 
 const STATUS_OPTIONS = ['draft', 'sent', 'accepted', 'declined', 'expired']
@@ -27,6 +30,17 @@ function fmtMoney(val) {
   return `$${Number(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
+function timeAgo(dateStr) {
+  if (!dateStr) return ''
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
 export default function EstimateDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -42,6 +56,53 @@ export default function EstimateDetailPage() {
   const [pickerZone, setPickerZone] = useState(null)
   const [notesValue, setNotesValue] = useState(null)
   const [saveMsg, setSaveMsg] = useState(null)
+  const [titleValue, setTitleValue] = useState(null)
+  const [showSendModal, setShowSendModal] = useState(false)
+
+  // Fetch project + client + company for PDF/Send
+  const [projectData, setProjectData] = useState(null)
+  const [clientData, setClientData] = useState(null)
+  const [companyData, setCompanyData] = useState(null)
+
+  const estimate = builder.estimate
+
+  useEffect(() => {
+    if (!estimate?.project_id) return
+    let cancelled = false
+    ;(async () => {
+      const { data: proj } = await supabase
+        .from('projects')
+        .select('id, name, address, client_id, company_id, portal_token')
+        .eq('id', estimate.project_id)
+        .single()
+      if (cancelled || !proj) return
+      setProjectData(proj)
+
+      const fetches = []
+      if (proj.client_id) {
+        fetches.push(
+          supabase
+            .from('clients')
+            .select('id, display_name, business_name, primary_email, address_line1, address_city, address_state, client_contacts(email, is_portal_recipient)')
+            .eq('id', proj.client_id)
+            .single()
+            .then(({ data }) => { if (!cancelled && data) setClientData(data) })
+        )
+      }
+      if (proj.company_id) {
+        fetches.push(
+          supabase
+            .from('companies')
+            .select('id, name')
+            .eq('id', proj.company_id)
+            .single()
+            .then(({ data }) => { if (!cancelled && data) setCompanyData(data) })
+        )
+      }
+      await Promise.all(fetches)
+    })()
+    return () => { cancelled = true }
+  }, [estimate?.project_id])
 
   if (builder.loading) {
     return (
@@ -52,7 +113,7 @@ export default function EstimateDetailPage() {
     )
   }
 
-  if (builder.error || !builder.estimate) {
+  if (builder.error || !estimate) {
     return (
       <div className={styles.page}>
         <AppHeader />
@@ -63,14 +124,18 @@ export default function EstimateDetailPage() {
     )
   }
 
-  const { estimate, lineItems, zones, totals, saving } = builder
+  const { lineItems, zones, totals, saving } = builder
   const notes = notesValue ?? estimate.notes ?? ''
+  const title = titleValue ?? estimate.title ?? ''
 
   async function handleSave() {
     try {
       await builder.saveAll()
-      if (notesValue !== null) {
-        await builder.updateEstimate({ notes: notesValue })
+      const patch = {}
+      if (notesValue !== null) patch.notes = notesValue
+      if (titleValue !== null) patch.title = titleValue
+      if (Object.keys(patch).length > 0) {
+        await builder.updateEstimate(patch)
       }
       setSaveMsg('Saved!')
       setTimeout(() => setSaveMsg(null), 2000)
@@ -79,9 +144,23 @@ export default function EstimateDetailPage() {
     }
   }
 
+  async function handleTitleBlur() {
+    if (titleValue !== null && titleValue !== (estimate.title ?? '')) {
+      try {
+        await builder.updateEstimate({ title: titleValue || null })
+      } catch (err) {
+        console.error('Title save failed:', err)
+      }
+    }
+  }
+
   async function handleStatusChange(newStatus) {
     try {
-      await builder.updateEstimate({ status: newStatus })
+      const patch = { status: newStatus }
+      if (newStatus === 'sent' && !estimate.sent_at) patch.sent_at = new Date().toISOString()
+      if (newStatus === 'accepted') patch.accepted_at = new Date().toISOString()
+      if (newStatus === 'declined') patch.declined_at = new Date().toISOString()
+      await builder.updateEstimate(patch)
     } catch (err) {
       alert('Failed to update status: ' + err.message)
     }
@@ -95,6 +174,17 @@ export default function EstimateDetailPage() {
     } catch (err) {
       alert('Delete failed: ' + err.message)
     }
+  }
+
+  function handleDownloadPDF() {
+    generateEstimatePDF({
+      estimate: { ...estimate, title: title || null, notes },
+      lineItems,
+      project: projectData,
+      client: clientData,
+      company: companyData,
+      returnAs: 'save',
+    })
   }
 
   function handleAddZone(zone) {
@@ -119,34 +209,57 @@ export default function EstimateDetailPage() {
     setPickerZone(null)
   }
 
+  const canSend = isAdmin && (estimate.status === 'draft' || estimate.status === 'sent')
+  const sendLabel = estimate.status === 'sent' ? 'Resend to Client' : 'Send to Client'
+
   return (
     <div className={styles.page}>
       <AppHeader />
       <main className={styles.main}>
         <BackLink to={`/project/${estimate.project_id}`} label="Back to project" />
 
+        {/* Header: editable title + estimate number + status */}
         <div className={styles.headerRow}>
           <div className={styles.titleWrap}>
-            <h1 className={styles.title}>{estimate.estimate_number || 'Estimate'}</h1>
             {isAdmin ? (
-              <select
-                className={`${styles.statusSelect} ${STATUS_CLASS[estimate.status] || styles.statusDraft}`}
-                value={estimate.status}
-                onChange={e => handleStatusChange(e.target.value)}
-              >
-                {STATUS_OPTIONS.map(s => (
-                  <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-                ))}
-              </select>
+              <input
+                className={styles.titleInput}
+                value={title}
+                onChange={e => setTitleValue(e.target.value)}
+                onBlur={handleTitleBlur}
+                placeholder="Untitled Estimate"
+              />
             ) : (
-              <span className={`${styles.statusBadge} ${STATUS_CLASS[estimate.status] || styles.statusDraft}`}>
-                {estimate.status}
-              </span>
+              <h1 className={styles.title}>{title || 'Untitled Estimate'}</h1>
             )}
+            <div className={styles.subline}>
+              <span className={styles.estNumber}>{estimate.estimate_number}</span>
+              {isAdmin ? (
+                <select
+                  className={`${styles.statusSelect} ${STATUS_CLASS[estimate.status] || styles.statusDraft}`}
+                  value={estimate.status}
+                  onChange={e => handleStatusChange(e.target.value)}
+                >
+                  {STATUS_OPTIONS.map(s => (
+                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                  ))}
+                </select>
+              ) : (
+                <span className={`${styles.statusBadge} ${STATUS_CLASS[estimate.status] || styles.statusDraft}`}>
+                  {estimate.status}
+                </span>
+              )}
+              {estimate.sent_at && (
+                <span className={styles.sentIndicator}>Sent {timeAgo(estimate.sent_at)}</span>
+              )}
+            </div>
           </div>
           {isAdmin && (
             <div className={styles.headerActions}>
               {saveMsg && <span className={styles.saveMsg}>{saveMsg}</span>}
+              <button className={styles.toolBtn} onClick={handleDownloadPDF} title="Download PDF">
+                <Download size={15} /> PDF
+              </button>
               <button className={styles.saveBtn} onClick={handleSave} disabled={saving}>
                 <Save size={15} /> {saving ? 'Saving...' : 'Save'}
               </button>
@@ -206,6 +319,13 @@ export default function EstimateDetailPage() {
               </div>
             </div>
 
+            {/* Send to Client CTA */}
+            {canSend && (
+              <button className={styles.sendBtn} onClick={() => setShowSendModal(true)}>
+                <Send size={16} /> {sendLabel}
+              </button>
+            )}
+
             <div className={styles.notesSection}>
               <h3 className={styles.sectionTitle}>Notes</h3>
               <textarea
@@ -233,6 +353,21 @@ export default function EstimateDetailPage() {
           items={pricingItems}
           onPick={handlePickPricingItem}
           onClose={() => { setShowPicker(false); setPickerZone(null) }}
+        />
+      )}
+
+      {showSendModal && (
+        <SendEstimateModal
+          estimate={{ ...estimate, title: title || null, notes }}
+          lineItems={lineItems}
+          project={projectData}
+          client={clientData}
+          company={companyData}
+          onClose={() => setShowSendModal(false)}
+          onSent={() => {
+            setShowSendModal(false)
+            builder.refetch()
+          }}
         />
       )}
     </div>

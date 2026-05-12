@@ -1,0 +1,151 @@
+.section {
+  margin-top: 24px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.header { margin-bottom: 16px; }
+.title { font-size: 22px; font-weight: 700; color: #1b2426; margin: 0 0 4px; }
+.meta { display: flex; flex-wrap: wrap; gap: 12px; }
+.estNumber { font-size: 13px; font-family: monospace; color: #6b7280; }
+.date { font-size: 13px; color: #6b7280; }
+
+/* Status banners */
+.acceptedBanner {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 16px; background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.25);
+  border-radius: 8px; color: #16a34a; font-weight: 600; font-size: 14px; margin-bottom: 16px;
+}
+.declinedBanner {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 12px 16px; background: rgba(107,114,128,0.08); border: 1px solid rgba(107,114,128,0.2);
+  border-radius: 8px; color: #6b7280; font-weight: 600; font-size: 14px; margin-bottom: 16px;
+}
+.declineReason { font-weight: 400; font-size: 13px; color: #9ca3af; margin-top: 4px; }
+
+/* Variant tabs */
+.variantTabs {
+  display: flex; gap: 4px; margin-bottom: 16px;
+  border: 1px solid #e5e7eb; border-radius: 8px; padding: 3px; background: #f9fafb;
+}
+.variantTab {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 10px 8px; border: none; border-radius: 6px;
+  background: transparent; color: #6b7280; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: background 0.12s, color 0.12s;
+}
+.variantTab:hover { background: #fff; }
+.variantTabActive { background: #fff; color: #1b2426; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.variantTotal { font-family: monospace; font-size: 14px; font-weight: 700; }
+.variantTabActive .variantTotal { color: #f27243; }
+
+/* Line items */
+.lineItems { margin-bottom: 12px; }
+.catHeader {
+  padding: 6px 0; font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.4px; color: #f27243; border-bottom: 1px solid #f0f0f0; margin-bottom: 4px;
+}
+.lineRow {
+  display: grid; grid-template-columns: 1fr auto auto auto; gap: 12px;
+  padding: 8px 0; border-bottom: 1px solid #f9fafb; font-size: 14px; color: #1b2426;
+  align-items: center;
+}
+.lineDesc { display: flex; align-items: center; gap: 6px; }
+.zoneBadge {
+  font-size: 10px; padding: 1px 6px; border-radius: 9999px;
+  background: rgba(242,114,67,0.1); color: #f27243;
+}
+.lineQty { font-size: 13px; color: #6b7280; white-space: nowrap; text-align: right; }
+.lineRate { font-family: monospace; font-size: 13px; color: #6b7280; text-align: right; }
+.lineTotal { font-family: monospace; font-size: 14px; font-weight: 600; text-align: right; }
+
+/* Grand total */
+.grandTotal {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 16px; background: #1b2426; border-radius: 8px;
+  color: #fff; font-size: 15px; font-weight: 600; margin-bottom: 16px;
+}
+.grandTotalValue { font-family: monospace; font-size: 20px; font-weight: 700; color: #f27243; }
+
+/* Notes */
+.notes {
+  font-size: 13px; color: #6b7280; line-height: 1.5;
+  padding: 12px; background: #f9fafb; border-radius: 8px; margin-bottom: 16px;
+}
+
+/* Error */
+.errorBlock {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 14px; background: rgba(220,38,38,0.08); border: 1px solid rgba(220,38,38,0.2);
+  border-radius: 8px; color: #dc2626; font-size: 13px; margin-bottom: 14px;
+}
+
+/* Action buttons */
+.actionRow { display: flex; gap: 12px; margin-top: 8px; }
+.acceptBtn {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 14px 20px; background: #16a34a; color: #fff; border: none; border-radius: 8px;
+  font-size: 15px; font-weight: 700; cursor: pointer; transition: opacity 0.15s;
+}
+.acceptBtn:hover { opacity: 0.9; }
+.declineBtn {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 14px 20px; background: none; border: 1px solid #d1d5db; border-radius: 8px;
+  color: #6b7280; font-size: 14px; font-weight: 600; cursor: pointer; transition: border-color 0.12s;
+}
+.declineBtn:hover { border-color: #9ca3af; }
+
+/* Response forms */
+.responseForm {
+  margin-top: 12px; padding: 16px; background: #f9fafb; border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+.formTitle { font-size: 16px; font-weight: 700; margin: 0 0 12px; color: #1b2426; }
+.field { margin-bottom: 12px; }
+.fieldLabel { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 4px; }
+.fieldInput {
+  width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 6px;
+  font-size: 14px; color: #1b2426; outline: none; box-sizing: border-box;
+}
+.fieldInput:focus { border-color: #f27243; }
+.fieldTextarea {
+  width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 6px;
+  font-size: 14px; color: #1b2426; outline: none; resize: vertical; box-sizing: border-box;
+}
+.fieldTextarea:focus { border-color: #f27243; }
+
+.confirmText { font-size: 14px; color: #374151; line-height: 1.5; margin: 0 0 12px; }
+
+.checkboxRow {
+  display: flex; align-items: flex-start; gap: 8px; font-size: 13px; color: #374151;
+  margin-bottom: 14px; cursor: pointer;
+}
+.checkboxRow input[type="checkbox"] { margin-top: 2px; accent-color: #f27243; }
+
+.formActions { display: flex; justify-content: flex-end; gap: 10px; }
+.cancelFormBtn {
+  padding: 9px 18px; background: none; border: 1px solid #d1d5db; border-radius: 6px;
+  color: #6b7280; font-size: 13px; cursor: pointer;
+}
+.confirmAcceptBtn {
+  padding: 9px 20px; background: #16a34a; color: #fff; border: none; border-radius: 6px;
+  font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.15s;
+}
+.confirmAcceptBtn:hover { opacity: 0.9; }
+.confirmAcceptBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.confirmDeclineBtn {
+  padding: 9px 20px; background: #6b7280; color: #fff; border: none; border-radius: 6px;
+  font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.15s;
+}
+.confirmDeclineBtn:hover { opacity: 0.9; }
+.confirmDeclineBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+@media (max-width: 600px) {
+  .lineRow { grid-template-columns: 1fr; gap: 4px; }
+  .lineQty, .lineRate, .lineTotal { text-align: left; }
+  .variantTabs { flex-direction: column; }
+  .actionRow { flex-direction: column; }
+}
