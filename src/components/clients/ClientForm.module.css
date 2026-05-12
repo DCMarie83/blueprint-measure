@@ -5,6 +5,7 @@
 .sectionTitle { font-size: 14px; font-weight: 600; color: var(--color-text); margin: 0 0 12px; }
 .sectionHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .sectionHeader .sectionTitle { margin: 0; }
+.contactHint { font-size: 13px; color: var(--color-text-muted); margin: 0 0 12px; line-height: 1.4; }
 .field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 500; color: var(--color-text-muted); flex: 1; min-width: 0; }
 .fieldLabel { font-size: 13px; font-weight: 500; color: var(--color-text-muted); margin-bottom: 6px; }
 .row { display: flex; gap: 12px; margin-bottom: 10px; }

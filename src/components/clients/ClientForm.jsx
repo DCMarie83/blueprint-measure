@@ -40,12 +40,13 @@ export default function ClientForm({ initialClient = null, initialContacts = [],
   const [tags, setTags] = useState(initialClient?.tags || [])
   const [tagInput, setTagInput] = useState('')
   const [notes, setNotes] = useState(initialClient?.notes || '')
-  const [contacts, setContacts] = useState(initialContacts.length > 0 ? initialContacts : [{ name: '', title: '', email: '', phone: '', is_primary: true, is_portal_recipient: false, notes: '' }])
+  const emptyContact = { name: '', title: '', email: '', phone: '', is_primary: true, is_portal_recipient: false, notes: '' }
+  const [contacts, setContacts] = useState(initialContacts.length > 0 ? initialContacts : (initialClient?.client_type || 'residential') === 'commercial' ? [{ ...emptyContact }] : [])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
   const propertyTypes = clientType === 'commercial' ? COMMERCIAL_PROPERTY_TYPES : RESIDENTIAL_PROPERTY_TYPES
-  const canSubmit = displayName.trim() && contacts.some(c => c.name.trim())
+  const canSubmit = !!displayName.trim()
 
   function addTag() {
     const t = tagInput.trim()
@@ -121,8 +122,14 @@ export default function ClientForm({ initialClient = null, initialContacts = [],
       {/* Type toggle */}
       <div className={styles.section}>
         <div className={styles.typeToggle}>
-          <button type="button" className={`${styles.typeBtn} ${clientType === 'residential' ? styles.typeBtnActive : ''}`} onClick={() => setClientType('residential')}>Residential</button>
-          <button type="button" className={`${styles.typeBtn} ${clientType === 'commercial' ? styles.typeBtnActive : ''}`} onClick={() => setClientType('commercial')}>Commercial</button>
+          <button type="button" className={`${styles.typeBtn} ${clientType === 'residential' ? styles.typeBtnActive : ''}`} onClick={() => {
+            setClientType('residential')
+            setContacts(prev => prev.length === 1 && !prev[0].name.trim() ? [] : prev)
+          }}>Residential</button>
+          <button type="button" className={`${styles.typeBtn} ${clientType === 'commercial' ? styles.typeBtnActive : ''}`} onClick={() => {
+            setClientType('commercial')
+            setContacts(prev => prev.length === 0 ? [{ ...emptyContact }] : prev)
+          }}>Commercial</button>
         </div>
       </div>
 
@@ -204,11 +211,20 @@ export default function ClientForm({ initialClient = null, initialContacts = [],
 
       {/* Contacts */}
       <div className={styles.section}>
-        <div className={styles.sectionHeader}><h3 className={styles.sectionTitle}>Contacts</h3><button type="button" className={styles.addBtn} onClick={addContact}><Plus size={14} /> Add Contact</button></div>
+        <div className={styles.sectionHeader}>
+          <h3 className={styles.sectionTitle}>{clientType === 'commercial' ? 'Contacts' : 'Additional Contacts (optional)'}</h3>
+          <button type="button" className={styles.addBtn} onClick={addContact}><Plus size={14} /> Add Contact</button>
+        </div>
+        <p className={styles.contactHint}>
+          {clientType === 'commercial'
+            ? 'Add the people you work with at this business — optional but recommended'
+            : `Add spouse, partner, or other decision-makers — leave empty if you'll work directly with ${displayName.trim() || 'the client'}`
+          }
+        </p>
         {contacts.map((c, i) => (
           <div key={i} className={styles.contactCard}>
             <div className={styles.row}>
-              <label className={styles.field}><span>Name *</span><input className={styles.input} value={c.name} onChange={e => updateContact(i, 'name', e.target.value)} placeholder="Contact name" required /></label>
+              <label className={styles.field}><span>Name</span><input className={styles.input} value={c.name} onChange={e => updateContact(i, 'name', e.target.value)} placeholder="Contact name" /></label>
               <label className={styles.field}><span>Title</span><input className={styles.input} value={c.title || ''} onChange={e => updateContact(i, 'title', e.target.value)} placeholder="e.g. Property Manager" /></label>
             </div>
             <div className={styles.row}>
@@ -218,7 +234,7 @@ export default function ClientForm({ initialClient = null, initialContacts = [],
             <div className={styles.contactOptions}>
               <label className={styles.checkRow}><input type="checkbox" checked={c.is_primary} onChange={() => updateContact(i, 'is_primary', true)} /><span>Primary</span></label>
               <label className={styles.checkRow}><input type="checkbox" checked={c.is_portal_recipient} onChange={e => updateContact(i, 'is_portal_recipient', e.target.checked)} /><span>Portal recipient</span></label>
-              {contacts.length > 1 && <button type="button" className={styles.removeBtn} onClick={() => removeContact(i)}>Remove</button>}
+              <button type="button" className={styles.removeBtn} onClick={() => removeContact(i)}>Remove</button>
             </div>
           </div>
         ))}

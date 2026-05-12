@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Home, Building2, Mail, Phone, MapPin, Tag, FileText, Briefcase, Trash2, Edit } from 'lucide-react'
+import { Home, Building2, Mail, Phone, MapPin, Tag, FileText, Briefcase, Trash2, Edit, User } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import Modal from '../components/ui/Modal'
 import ClientForm from '../components/clients/ClientForm'
@@ -88,7 +88,10 @@ export default function ClientDetailPage() {
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>Contacts ({contacts.length})</h2>
           {contacts.length === 0 ? (
-            <p className={styles.muted}>No contacts added yet.</p>
+            <div className={styles.contactEmpty}>
+              <User size={20} />
+              <span>No additional contacts. We'll communicate with {client.display_name} directly using the primary contact info above.</span>
+            </div>
           ) : (
             <div className={styles.contactList}>
               {contacts.map(c => (
