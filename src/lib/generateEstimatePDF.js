@@ -249,19 +249,60 @@ export function generateEstimatePDF({ estimate, lineItems, project, client, comp
     doc.text(grandTotalStr, pageWidth - margin - 4, y + 9, { align: 'right' })
     y += 22
 
-    // ── Notes ────────────────────────────────────────────────
-    if (estimate.notes) {
-      doc.setFontSize(10)
-      doc.setFont('helvetica', 'bold')
-      doc.setTextColor(...DARK)
-      doc.text('Notes', margin, y)
-      y += 5
-      doc.setFont('helvetica', 'italic')
-      doc.setFontSize(9)
-      doc.setTextColor(...MUTED)
-      const noteLines = doc.splitTextToSize(estimate.notes, pageWidth - margin * 2)
-      doc.text(noteLines, margin, y)
-      y += noteLines.length * 4.5
+    // ── Notes / Deposit / Terms ────────────────────────────────
+    const showNotes = estimate.notes && estimate.notes.trim()
+    const showDeposit = estimate.deposit_amount != null && Number(estimate.deposit_amount) > 0
+    const showTerms = estimate.terms && estimate.terms.trim()
+
+    if (showNotes || showDeposit || showTerms) {
+      y += 4
+      if (y > pageHeight - 80) { doc.addPage(); y = margin }
+
+      if (showNotes) {
+        doc.setFontSize(10)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(...DARK)
+        doc.text('NOTES', margin, y)
+        y += 5
+        doc.setFontSize(9)
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(80, 80, 80)
+        const noteLines = doc.splitTextToSize(estimate.notes, pageWidth - margin * 2)
+        doc.text(noteLines, margin, y)
+        y += noteLines.length * 4.2 + 6
+      }
+
+      if (showDeposit) {
+        const dep = Number(estimate.deposit_amount)
+        const tierTotal = Number(estimate[v.grandTotal] || 0)
+        const pct = tierTotal > 0 ? Math.round((dep / tierTotal) * 100) : null
+        doc.setFontSize(10)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(...DARK)
+        doc.text('DEPOSIT REQUIRED', margin, y)
+        y += 5
+        doc.setFontSize(11)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(...ORANGE)
+        const depFmt = `$${dep.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        const depositLine = pct != null ? `${depFmt}  (${pct}%)` : depFmt
+        doc.text(depositLine, margin, y)
+        y += 8
+      }
+
+      if (showTerms) {
+        doc.setFontSize(10)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(...DARK)
+        doc.text('TERMS & CONDITIONS', margin, y)
+        y += 5
+        doc.setFontSize(8.5)
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(80, 80, 80)
+        const termsLines = doc.splitTextToSize(estimate.terms, pageWidth - margin * 2)
+        doc.text(termsLines, margin, y)
+        y += termsLines.length * 4 + 4
+      }
     }
 
     // ── Footer ───────────────────────────────────────────────

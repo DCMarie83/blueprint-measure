@@ -233,23 +233,82 @@
 }
 .sendBtn:hover { opacity: 0.9; }
 
-/* Notes */
-.sectionTitle { font-size: 15px; font-weight: 600; margin: 0 0 8px; }
-.notesSection { /* just spacing wrapper */ }
-.notesArea {
-  width: 100%;
-  padding: 10px 14px;
+/* Edit sections (Notes / Deposit / Terms) */
+.editSection {
+  padding: 14px 16px;
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-size: 14px;
-  resize: vertical;
+}
+.editLabel {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+  margin-bottom: 8px;
+}
+.editTextarea {
+  width: 100%;
   min-height: 80px;
+  padding: 10px 12px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm, 4px);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
   outline: none;
   box-sizing: border-box;
 }
-.notesArea:focus { border-color: var(--color-primary); }
+.editTextarea:focus { border-color: var(--color-primary); }
+.depositRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.depositInputWrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.depositDollar {
+  position: absolute;
+  left: 12px;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  pointer-events: none;
+  font-size: 14px;
+}
+.depositInput {
+  padding: 10px 12px 10px 26px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm, 4px);
+  color: var(--color-text);
+  font-size: 14px;
+  width: 180px;
+  font-family: var(--font-mono);
+  outline: none;
+  box-sizing: border-box;
+}
+.depositInput:focus { border-color: var(--color-primary); }
+.depositPercent {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-primary);
+  font-family: var(--font-mono);
+}
+.depositPercentHint {
+  color: var(--color-text-muted);
+  font-weight: 400;
+  font-size: 12px;
+  font-family: inherit;
+}
 
 /* Delete */
 .deleteBtn {

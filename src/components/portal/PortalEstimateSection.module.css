@@ -82,10 +82,48 @@
 }
 .grandTotalValue { font-family: monospace; font-size: 20px; font-weight: 700; color: #f27243; }
 
-/* Notes */
-.notes {
-  font-size: 13px; color: #6b7280; line-height: 1.5;
-  padding: 12px; background: #f9fafb; border-radius: 8px; margin-bottom: 16px;
+/* Details block (Notes / Deposit / Terms) */
+.detailsBlock {
+  margin-bottom: 16px;
+  padding: 20px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.detailSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.detailHeader {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #6b7280;
+  margin: 0;
+}
+.detailBody {
+  font-size: 14px;
+  line-height: 1.55;
+  color: #1b2426;
+  margin: 0;
+  white-space: pre-wrap;
+}
+.depositAmount {
+  font-size: 18px;
+  font-weight: 700;
+  color: #f27243;
+  font-family: monospace;
+}
+.depositPct {
+  font-size: 14px;
+  font-weight: 600;
+  color: #6b7280;
+  margin-left: 6px;
 }
 
 /* Error */

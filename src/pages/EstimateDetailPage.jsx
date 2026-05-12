@@ -13,6 +13,7 @@ import { usePricingItems } from '../hooks/usePricingItems'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { generateEstimatePDF } from '../lib/generateEstimatePDF'
+import { calculateDepositPercent, getReferenceTotal } from '../lib/depositMath'
 import styles from './EstimateDetailPage.module.css'
 
 const STATUS_OPTIONS = ['draft', 'sent', 'accepted', 'declined', 'expired']
@@ -58,6 +59,8 @@ export default function EstimateDetailPage() {
   const [saveMsg, setSaveMsg] = useState(null)
   const [titleValue, setTitleValue] = useState(null)
   const [showSendModal, setShowSendModal] = useState(false)
+  const [termsValue, setTermsValue] = useState(null)
+  const [depositValue, setDepositValue] = useState(null)
   const [pdfMenuOpen, setPdfMenuOpen] = useState(false)
   const pdfMenuRef = useRef(null)
 
@@ -136,6 +139,12 @@ export default function EstimateDetailPage() {
   const { lineItems, zones, totals, saving } = builder
   const notes = notesValue ?? estimate.notes ?? ''
   const title = titleValue ?? estimate.title ?? ''
+  const terms = termsValue ?? estimate.terms ?? ''
+  const depositAmount = depositValue ?? estimate.deposit_amount ?? ''
+  const depositPercent = calculateDepositPercent(depositAmount, getReferenceTotal(estimate))
+  const referenceVariantLabel = estimate?.selected_variant
+    ? estimate.selected_variant.charAt(0).toUpperCase() + estimate.selected_variant.slice(1)
+    : 'Better'
 
   async function handleSave() {
     try {
@@ -143,6 +152,10 @@ export default function EstimateDetailPage() {
       const patch = {}
       if (notesValue !== null) patch.notes = notesValue
       if (titleValue !== null) patch.title = titleValue
+      if (termsValue !== null) patch.terms = termsValue
+      if (depositValue !== null) {
+        patch.deposit_amount = depositValue === '' || depositValue == null ? null : Number(depositValue)
+      }
       if (Object.keys(patch).length > 0) {
         await builder.updateEstimate(patch)
       }
@@ -161,6 +174,28 @@ export default function EstimateDetailPage() {
         console.error('Title save failed:', err)
       }
     }
+  }
+
+  async function handleNotesBlur() {
+    if (notesValue !== null && notesValue !== (estimate.notes ?? '')) {
+      try { await builder.updateEstimate({ notes: notesValue }) }
+      catch (err) { console.error('Notes save failed:', err) }
+    }
+  }
+
+  async function handleTermsBlur() {
+    if (termsValue !== null && termsValue !== (estimate.terms ?? '')) {
+      try { await builder.updateEstimate({ terms: termsValue }) }
+      catch (err) { console.error('Terms save failed:', err) }
+    }
+  }
+
+  async function handleDepositBlur() {
+    const parsed = depositValue === '' || depositValue == null ? null : Number(depositValue)
+    if (parsed === (estimate?.deposit_amount ?? null)) return
+    if (parsed != null && (isNaN(parsed) || parsed < 0)) return
+    try { await builder.updateEstimate({ deposit_amount: parsed }) }
+    catch (err) { console.error('Deposit save failed:', err) }
   }
 
   async function handleStatusChange(newStatus) {
@@ -375,14 +410,58 @@ export default function EstimateDetailPage() {
               </button>
             )}
 
-            <div className={styles.notesSection}>
-              <h3 className={styles.sectionTitle}>Notes</h3>
+            <div className={styles.editSection}>
+              <label className={styles.editLabel}>Notes</label>
               <textarea
-                className={styles.notesArea}
+                className={styles.editTextarea}
                 value={notes}
                 onChange={e => setNotesValue(e.target.value)}
-                placeholder="Add notes..."
+                onBlur={handleNotesBlur}
+                placeholder="Project scope, what's included or excluded, special instructions..."
                 readOnly={!isAdmin}
+                rows={4}
+              />
+            </div>
+
+            {isAdmin && (
+              <div className={styles.editSection}>
+                <label className={styles.editLabel}>Deposit Required</label>
+                <div className={styles.depositRow}>
+                  <div className={styles.depositInputWrap}>
+                    <span className={styles.depositDollar}>$</span>
+                    <input
+                      type="number"
+                      className={styles.depositInput}
+                      value={depositAmount === 0 || depositAmount == null ? '' : depositAmount}
+                      onChange={e => setDepositValue(e.target.value)}
+                      onBlur={handleDepositBlur}
+                      placeholder="0.00"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                  {depositPercent != null && (
+                    <span className={styles.depositPercent}>
+                      {depositPercent}%
+                      {!estimate?.selected_variant && (
+                        <span className={styles.depositPercentHint}> of {referenceVariantLabel} tier</span>
+                      )}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className={styles.editSection}>
+              <label className={styles.editLabel}>Terms &amp; Conditions</label>
+              <textarea
+                className={styles.editTextarea}
+                value={terms}
+                onChange={e => setTermsValue(e.target.value)}
+                onBlur={handleTermsBlur}
+                placeholder="Deposit schedule, payment terms, warranty, cancellation policy..."
+                readOnly={!isAdmin}
+                rows={5}
               />
             </div>
 

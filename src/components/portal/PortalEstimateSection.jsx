@@ -176,10 +176,37 @@ export default function PortalEstimateSection({ estimate, lineItems, portalToken
         <span className={styles.grandTotalValue}>{variantTotal}</span>
       </div>
 
-      {/* Notes */}
-      {estimate.notes && (
-        <div className={styles.notes}>
-          <strong>Notes:</strong> {estimate.notes}
+      {/* Notes / Deposit / Terms */}
+      {(estimate.notes || estimate.deposit_amount || estimate.terms) && (
+        <div className={styles.detailsBlock}>
+          {estimate.notes && estimate.notes.trim() && (
+            <div className={styles.detailSection}>
+              <h4 className={styles.detailHeader}>Notes</h4>
+              <p className={styles.detailBody}>{estimate.notes}</p>
+            </div>
+          )}
+          {estimate.deposit_amount != null && Number(estimate.deposit_amount) > 0 && (() => {
+            const refKey = lockedVariant || 'better'
+            const refTotal = Number(estimate[`${refKey}_total`] || 0)
+            const dep = Number(estimate.deposit_amount)
+            const pct = (refTotal > 0 && dep > 0) ? Math.round((dep / refTotal) * 100) : null
+            const depFmt = `$${dep.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            return (
+              <div className={styles.detailSection}>
+                <h4 className={styles.detailHeader}>Deposit Required</h4>
+                <p className={styles.detailBody}>
+                  <span className={styles.depositAmount}>{depFmt}</span>
+                  {pct != null && <span className={styles.depositPct}> ({pct}%)</span>}
+                </p>
+              </div>
+            )
+          })()}
+          {estimate.terms && estimate.terms.trim() && (
+            <div className={styles.detailSection}>
+              <h4 className={styles.detailHeader}>Terms &amp; Conditions</h4>
+              <p className={styles.detailBody}>{estimate.terms}</p>
+            </div>
+          )}
         </div>
       )}
 
