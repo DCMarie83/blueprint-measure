@@ -20,17 +20,16 @@ export default function JobsListView({ projects, columns, onClickProject }) {
 
   const colMap = Object.fromEntries((columns ?? []).map(c => [c.id, c]))
 
-  const allProjects = (columns ?? []).flatMap(col => col.projects.map(p => ({ ...p, _colName: col.name, _colPos: col.position })))
-    .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+  const sorted = [...(projects ?? [])].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
 
-  if (allProjects.length === 0) return null
+  if (sorted.length === 0) return null
 
   return (
     <div className={styles.list}>
-      {allProjects.map(project => {
+      {sorted.map(project => {
         const col = colMap[project.kanban_column_id]
-        const colName = col?.name ?? project._colName ?? '—'
-        const colPos = col?.position ?? project._colPos ?? 0
+        const colName = col?.name ?? '—'
+        const colPos = col?.position ?? 0
         const dotColor = DOT_COLORS[(colPos - 1) % DOT_COLORS.length]
 
         const linkedClient = project.client_id ? clients.find(c => c.id === project.client_id) : null
