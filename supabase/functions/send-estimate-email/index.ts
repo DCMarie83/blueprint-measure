@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     // 4. Fetch estimate + project
     const { data: estimate, error: estErr } = await adminClient
       .from('estimates')
-      .select('id, estimate_number, title, status, good_total, better_total, best_total, notes, project_id, company_id')
+      .select('id, estimate_number, title, status, good_total, better_total, best_total, notes, deposit_amount, project_id, company_id')
       .eq('id', estimate_id)
       .single()
     if (estErr || !estimate) return json({ error: 'Estimate not found' }, 404)
@@ -119,6 +119,25 @@ Deno.serve(async (req) => {
           <tr><td style="padding: 8px 12px; background: #f5f5f5; border-radius: 0 0 0 4px; font-weight: 600;">Option 3</td><td style="padding: 8px 12px; background: #f5f5f5; text-align: right; font-weight: 600; border-radius: 0 0 4px 0;">$${totalMap.best.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr>
         </table>`
 
+    // Build deposit display
+    const depositAmount = Number(estimate.deposit_amount || 0)
+    const refTotalForDeposit = selected_variant
+      ? Number(estimate[`${selected_variant}_total`] || 0)
+      : Number(estimate.better_total || 0)
+    const depositPct = (depositAmount > 0 && refTotalForDeposit > 0)
+      ? Math.round((depositAmount / refTotalForDeposit) * 100)
+      : null
+    const depositFmt = depositAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+    const depositHtml = depositAmount > 0
+      ? `<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="width: 100%; margin: 0 0 16px 0; border-collapse: separate; border-spacing: 0;">
+           <tr>
+             <td style="padding: 12px 16px; background: #f5f5f5; border-radius: 8px 0 0 8px; color: #1b2426; font-size: 14px; font-weight: 600;">Deposit Required${depositPct != null ? ` <span style="color: #6b7280; font-weight: 400; font-size: 13px;">(${depositPct}%)</span>` : ''}</td>
+             <td style="padding: 12px 16px; background: #f5f5f5; border-radius: 0 8px 8px 0; color: #f27243; font-size: 16px; font-weight: 700; font-family: monospace; text-align: right; white-space: nowrap;">$${depositFmt}</td>
+           </tr>
+         </table>`
+      : ''
+
     const html = `
       <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
         <h2 style="color: #f27243; margin: 0 0 16px 0;">${escapeHtml(companyName)}</h2>
@@ -129,6 +148,7 @@ Deno.serve(async (req) => {
           ${escapeHtml(estimate.estimate_number)} for project <strong>${escapeHtml(project.name)}</strong>
         </p>
         ${totalHtml}
+        ${depositHtml}
         <p style="font-size: 14px; color: #555; line-height: 1.5;">
           View the full estimate and approve online:
         </p>
