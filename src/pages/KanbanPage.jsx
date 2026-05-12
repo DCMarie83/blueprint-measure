@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { Plus, Columns3, List } from 'lucide-react'
 import {
   DndContext, DragOverlay, useDroppable,
   useSensor, useSensors, PointerSensor, TouchSensor, KeyboardSensor,
@@ -8,7 +9,13 @@ import {
 import { useSortable, SortableContext, verticalListSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import AppHeader from '../components/AppHeader'
+import Modal from '../components/ui/Modal'
+import ViewToggle from '../components/ui/ViewToggle'
+import NewProjectForm from '../components/auth/NewProjectForm'
+import JobsListView from '../components/jobs/JobsListView'
 import { useOpportunities } from '../hooks/useOpportunities'
+import { useProjects } from '../hooks/useProjects'
+import { useViewPreference } from '../hooks/useViewPreference'
 import styles from './KanbanPage.module.css'
 
 function timeAgo(dateStr) {
@@ -24,30 +31,17 @@ function timeAgo(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-// ── Sub-components ─────────────────────────────────────────────────────────────
-
 function SortableJobCard({ project, columnId }) {
   const navigate = useNavigate()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: project.id,
     data: { columnId, project },
   })
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.3 : 1,
-  }
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.3 : 1 }
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      className={styles.card}
-      onClick={() => !isDragging && navigate(`/project/${project.id}`)}
-    >
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}
+      className={styles.card} onClick={() => !isDragging && navigate(`/project/${project.id}`)}>
       <div className={styles.cardName}>{project.name}</div>
       {project.address && <div className={styles.cardAddress}>{project.address}</div>}
       <div className={styles.cardMeta}>
@@ -59,11 +53,7 @@ function SortableJobCard({ project, columnId }) {
 }
 
 function DroppableColumn({ column }) {
-  const { setNodeRef, isOver } = useDroppable({
-    id: column.id,
-    data: { columnId: column.id },
-  })
-
+  const { setNodeRef, isOver } = useDroppable({ id: column.id, data: { columnId: column.id } })
   return (
     <div ref={setNodeRef} className={`${styles.column} ${isOver ? styles.columnOver : ''}`}>
       <div className={styles.columnHeader}>
@@ -74,11 +64,7 @@ function DroppableColumn({ column }) {
         <div className={styles.cardList}>
           {column.projects.length === 0 ? (
             <div className={styles.emptyColumn}>Drop a job here</div>
-          ) : (
-            column.projects.map(p => (
-              <SortableJobCard key={p.id} project={p} columnId={column.id} />
-            ))
-          )}
+          ) : column.projects.map(p => <SortableJobCard key={p.id} project={p} columnId={column.id} />)}
         </div>
       </SortableContext>
     </div>
@@ -96,11 +82,18 @@ function DragCardDisplay({ project }) {
   )
 }
 
-// ── Main page ──────────────────────────────────────────────────────────────────
+const VIEW_OPTIONS = [
+  { value: 'kanban', icon: Columns3, label: 'Kanban view' },
+  { value: 'list', icon: List, label: 'List view' },
+]
 
 export default function KanbanPage() {
-  const { columns, loading, error, moveProject } = useOpportunities()
+  const navigate = useNavigate()
+  const { columns, loading, error, moveProject, refetch } = useOpportunities()
+  const { createProject } = useProjects()
+  const [view, setView] = useViewPreference('jobs', 'kanban')
   const [activeId, setActiveId] = useState(null)
+  const [showNewJob, setShowNewJob] = useState(false)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -118,25 +111,32 @@ export default function KanbanPage() {
     setActiveId(null)
     const { active, over } = event
     if (!over) return
-
     const fromColumnId = active.data.current?.columnId
     const toColumnId = over.data.current?.columnId ?? over.id
-
     if (!fromColumnId || !toColumnId || fromColumnId === toColumnId) return
-
     const result = await moveProject(active.id, fromColumnId, toColumnId)
-    if (result?.error) {
-      alert('Could not move card: ' + result.error)
-    }
+    if (result?.error) alert('Could not move card: ' + result.error)
+  }
+
+  async function handleCreateJob(payload) {
+    await createProject(payload)
+    setShowNewJob(false)
+    await refetch()
   }
 
   return (
     <div className={styles.page}>
       <AppHeader />
-
       <main className={styles.main}>
-        <h1 className={styles.pageTitle}>Jobs</h1>
-        <p className={styles.subTitle}>Click any job to open it. Drag between columns to update status.</p>
+        <div className={styles.pageHeader}>
+          <h1 className={styles.pageTitle}>Jobs</h1>
+          <div className={styles.headerActions}>
+            <ViewToggle view={view} onChange={setView} options={VIEW_OPTIONS} />
+            <button className={styles.newJobBtn} onClick={() => setShowNewJob(true)}>
+              <Plus size={16} /> New Job
+            </button>
+          </div>
+        </div>
 
         {loading ? (
           <div className={styles.loading}>Loading…</div>
@@ -145,29 +145,38 @@ export default function KanbanPage() {
         ) : totalProjects === 0 && columns.length > 0 ? (
           <div className={styles.emptyBoard}>
             <p>No jobs yet.</p>
-            <Link to="/dashboard" className={styles.emptyLink}>Create your first job on the Dashboard →</Link>
+            <button className={styles.newJobBtn} onClick={() => setShowNewJob(true)}>
+              <Plus size={16} /> Create your first job
+            </button>
           </div>
-        ) : (
+        ) : view === 'kanban' ? (
           <div className={styles.boardContainer}>
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
+            <DndContext sensors={sensors} collisionDetection={closestCenter}
               onDragStart={(e) => setActiveId(e.active.id)}
               onDragCancel={() => setActiveId(null)}
-              onDragEnd={handleDragEnd}
-            >
+              onDragEnd={handleDragEnd}>
               <div className={styles.board}>
-                {columns.map(col => (
-                  <DroppableColumn key={col.id} column={col} />
-                ))}
+                {columns.map(col => <DroppableColumn key={col.id} column={col} />)}
               </div>
               <DragOverlay>
                 {activeProject ? <DragCardDisplay project={activeProject} /> : null}
               </DragOverlay>
             </DndContext>
           </div>
+        ) : (
+          <JobsListView
+            projects={columns.flatMap(c => c.projects)}
+            columns={columns}
+            onClickProject={(id) => navigate(`/project/${id}`)}
+          />
         )}
       </main>
+
+      {showNewJob && (
+        <Modal title="Create New Job" onClose={() => setShowNewJob(false)}>
+          <NewProjectForm onCreate={handleCreateJob} onCancel={() => setShowNewJob(false)} />
+        </Modal>
+      )}
     </div>
   )
 }
