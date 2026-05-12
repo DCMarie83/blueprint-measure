@@ -73,6 +73,12 @@
   background: var(--color-primary-hover);
 }
 
+.filterCount {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-bottom: 12px;
+}
+
 /* ── Board ─────────────────────────────────────────────────────────────────── */
 
 .boardContainer {

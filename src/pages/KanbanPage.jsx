@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Plus, Columns3, List } from 'lucide-react'
 import {
@@ -13,8 +13,12 @@ import Modal from '../components/ui/Modal'
 import ViewToggle from '../components/ui/ViewToggle'
 import NewProjectForm from '../components/auth/NewProjectForm'
 import JobsListView from '../components/jobs/JobsListView'
+import JobsFilterBar from '../components/jobs/JobsFilterBar'
 import { useOpportunities } from '../hooks/useOpportunities'
 import { useProjects } from '../hooks/useProjects'
+import { useClients } from '../hooks/useClients'
+import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 import { useViewPreference } from '../hooks/useViewPreference'
 import styles from './KanbanPage.module.css'
 
@@ -91,9 +95,65 @@ export default function KanbanPage() {
   const navigate = useNavigate()
   const { columns, loading, error, moveProject, refetch } = useOpportunities()
   const { createProject } = useProjects()
+  const { clients } = useClients()
+  const { userProfile } = useAuth()
   const [view, setView] = useViewPreference('jobs', 'kanban')
   const [activeId, setActiveId] = useState(null)
   const [showNewJob, setShowNewJob] = useState(false)
+
+  // Filters
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [typeFilter, setTypeFilter] = useState('all')
+  const [ownerFilter, setOwnerFilter] = useState('all')
+  const [clientFilter, setClientFilter] = useState('all')
+  const [teamMembers, setTeamMembers] = useState([])
+
+  useEffect(() => {
+    if (!userProfile?.company_id) return
+    let cancelled = false
+    ;(async () => {
+      const { data } = await supabase
+        .from('user_profiles')
+        .select('user_id, full_name, email')
+        .eq('company_id', userProfile.company_id)
+        .is('deleted_at', null)
+      if (!cancelled) setTeamMembers(data ?? [])
+    })()
+    return () => { cancelled = true }
+  }, [userProfile?.company_id])
+
+  // Filter options
+  const statusOptions = columns.map(c => ({ value: c.id, label: c.name }))
+  const clientOptions = clients.map(c => ({ value: c.id, label: c.display_name })).sort((a, b) => a.label.localeCompare(b.label))
+  const ownerOptions = teamMembers.map(m => ({ value: m.user_id, label: m.full_name || m.email }))
+
+  // Filter logic
+  const allProjects = columns.flatMap(c => c.projects ?? [])
+  const filteredProjects = allProjects.filter(p => {
+    if (search.trim()) {
+      const q = search.toLowerCase().trim()
+      const linked = clients.find(c => c.id === p.client_id)
+      const haystacks = [p.name, p.address, p.client_name, linked?.display_name, linked?.business_name]
+      if (!haystacks.some(s => s && s.toLowerCase().includes(q))) return false
+    }
+    if (statusFilter !== 'all' && p.kanban_column_id !== statusFilter) return false
+    if (typeFilter !== 'all') {
+      const linked = clients.find(c => c.id === p.client_id)
+      if (!linked || linked.client_type !== typeFilter) return false
+    }
+    if (ownerFilter !== 'all' && p.user_id !== ownerFilter) return false
+    if (clientFilter !== 'all' && p.client_id !== clientFilter) return false
+    return true
+  })
+
+  const filteredColumns = columns.map(col => ({
+    ...col,
+    projects: filteredProjects.filter(p => p.kanban_column_id === col.id),
+  }))
+
+  const hasActiveFilters = search.trim() !== '' || statusFilter !== 'all' || typeFilter !== 'all' || ownerFilter !== 'all' || clientFilter !== 'all'
+  function clearAll() { setSearch(''); setStatusFilter('all'); setTypeFilter('all'); setOwnerFilter('all'); setClientFilter('all') }
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -102,10 +162,10 @@ export default function KanbanPage() {
   )
 
   const activeProject = activeId
-    ? columns.flatMap(c => c.projects).find(p => p.id === activeId)
+    ? allProjects.find(p => p.id === activeId)
     : null
 
-  const totalProjects = columns.reduce((sum, col) => sum + col.projects.length, 0)
+  const totalProjects = allProjects.length
 
   async function handleDragEnd(event) {
     setActiveId(null)
@@ -149,26 +209,41 @@ export default function KanbanPage() {
               <Plus size={16} /> Create your first job
             </button>
           </div>
-        ) : view === 'kanban' ? (
-          <div className={styles.boardContainer}>
-            <DndContext sensors={sensors} collisionDetection={closestCenter}
-              onDragStart={(e) => setActiveId(e.active.id)}
-              onDragCancel={() => setActiveId(null)}
-              onDragEnd={handleDragEnd}>
-              <div className={styles.board}>
-                {columns.map(col => <DroppableColumn key={col.id} column={col} />)}
-              </div>
-              <DragOverlay>
-                {activeProject ? <DragCardDisplay project={activeProject} /> : null}
-              </DragOverlay>
-            </DndContext>
-          </div>
         ) : (
-          <JobsListView
-            projects={columns.flatMap(c => c.projects)}
-            columns={columns}
-            onClickProject={(id) => navigate(`/project/${id}`)}
-          />
+          <>
+            <JobsFilterBar
+              search={search} onSearchChange={setSearch}
+              statusFilter={statusFilter} onStatusChange={setStatusFilter} statusOptions={statusOptions}
+              typeFilter={typeFilter} onTypeChange={setTypeFilter}
+              ownerFilter={ownerFilter} onOwnerChange={setOwnerFilter} ownerOptions={ownerOptions}
+              clientFilter={clientFilter} onClientChange={setClientFilter} clientOptions={clientOptions}
+              onClearAll={clearAll} hasActiveFilters={hasActiveFilters}
+            />
+            {hasActiveFilters && (
+              <div className={styles.filterCount}>Showing {filteredProjects.length} of {totalProjects} jobs</div>
+            )}
+            {view === 'kanban' ? (
+              <div className={styles.boardContainer}>
+                <DndContext sensors={sensors} collisionDetection={closestCenter}
+                  onDragStart={(e) => setActiveId(e.active.id)}
+                  onDragCancel={() => setActiveId(null)}
+                  onDragEnd={handleDragEnd}>
+                  <div className={styles.board}>
+                    {filteredColumns.map(col => <DroppableColumn key={col.id} column={col} />)}
+                  </div>
+                  <DragOverlay>
+                    {activeProject ? <DragCardDisplay project={activeProject} /> : null}
+                  </DragOverlay>
+                </DndContext>
+              </div>
+            ) : (
+              <JobsListView
+                projects={filteredProjects}
+                columns={columns}
+                onClickProject={(id) => navigate(`/project/${id}`)}
+              />
+            )}
+          </>
         )}
       </main>
 
