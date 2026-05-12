@@ -3,8 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { Home, Building2, Search, Plus } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import Modal from '../components/ui/Modal'
+import ViewToggle from '../components/ui/ViewToggle'
 import ClientForm from '../components/clients/ClientForm'
+import ClientListView from '../components/clients/ClientListView'
 import { useClients } from '../hooks/useClients'
+import { useViewPreference } from '../hooks/useViewPreference'
 import styles from './ClientsPage.module.css'
 
 export default function ClientsPage() {
@@ -13,6 +16,7 @@ export default function ClientsPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
+  const [view, setView] = useViewPreference('clients', 'list')
 
   const filtered = clients.filter(c => {
     if (typeFilter !== 'all' && c.client_type !== typeFilter) return false
@@ -45,12 +49,15 @@ export default function ClientsPage() {
             <Search size={16} className={styles.searchIcon} />
             <input className={styles.searchInput} placeholder="Search clients…" value={search} onChange={e => setSearch(e.target.value)} />
           </div>
-          <div className={styles.chips}>
-            {['all', 'residential', 'commercial'].map(t => (
-              <button key={t} className={`${styles.chip} ${typeFilter === t ? styles.chipActive : ''}`} onClick={() => setTypeFilter(t)}>
-                {t === 'all' ? 'All' : t.charAt(0).toUpperCase() + t.slice(1)}
-              </button>
-            ))}
+          <div className={styles.filterRight}>
+            <div className={styles.chips}>
+              {['all', 'residential', 'commercial'].map(t => (
+                <button key={t} className={`${styles.chip} ${typeFilter === t ? styles.chipActive : ''}`} onClick={() => setTypeFilter(t)}>
+                  {t === 'all' ? 'All' : t.charAt(0).toUpperCase() + t.slice(1)}
+                </button>
+              ))}
+            </div>
+            <ViewToggle view={view} onChange={setView} />
           </div>
         </div>
 
@@ -65,6 +72,8 @@ export default function ClientsPage() {
           </div>
         ) : filtered.length === 0 ? (
           <div className={styles.empty}>No clients match your search.</div>
+        ) : view === 'list' ? (
+          <ClientListView clients={filtered} onClickClient={(id) => navigate(`/clients/${id}`)} />
         ) : (
           <div className={styles.grid}>
             {filtered.map(client => (
@@ -83,6 +92,9 @@ export default function ClientsPage() {
                   </div>
                   <div className={styles.cardFooter}>
                     {client.property_type && <span className={styles.badge}>{client.property_type.replace(/_/g, ' ')}</span>}
+                    {(client.active_jobs_count ?? 0) > 0 && (
+                      <span className={styles.badge}>{client.active_jobs_count} job{client.active_jobs_count !== 1 ? 's' : ''}</span>
+                    )}
                     {(client.client_contacts?.length ?? 0) > 0 && (
                       <span className={styles.badge}>{client.client_contacts.length} contact{client.client_contacts.length !== 1 ? 's' : ''}</span>
                     )}

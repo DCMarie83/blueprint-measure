@@ -16,11 +16,16 @@ export function useClients() {
     try {
       const { data, error: err } = await supabase
         .from('clients')
-        .select('*, client_contacts(*)')
+        .select('*, client_contacts(*), projects(id)')
         .eq('company_id', companyId)
         .order('display_name', { ascending: true })
       if (err) throw err
-      setClients(data ?? [])
+      const enriched = (data ?? []).map(c => ({
+        ...c,
+        active_jobs_count: (c.projects ?? []).length,
+        projects: undefined,
+      }))
+      setClients(enriched)
     } catch (err) {
       setError(err.message)
     } finally {
