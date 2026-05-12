@@ -51,7 +51,7 @@ export function useProjects() {
     fetchProjects()
   }, [fetchProjects])
 
-  async function createProject({ name, clientName, address }) {
+  async function createProject({ name, address, clientId }) {
     const companyId = userProfile?.company_id
     if (!companyId) throw new Error('No company assigned. Contact support.')
 
@@ -73,7 +73,7 @@ export function useProjects() {
         company_id: companyId,
         kanban_column_id: firstCol.id,
         name,
-        client_name: clientName || null,
+        client_id: clientId || null,
         address: address || null,
       })
       .select()

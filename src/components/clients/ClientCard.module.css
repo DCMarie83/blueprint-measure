@@ -1,0 +1,19 @@
+.card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 16px;
+}
+.icon { color: var(--color-primary); flex-shrink: 0; }
+.info { flex: 1; min-width: 0; }
+.name { font-size: 15px; font-weight: 600; color: var(--color-text); text-decoration: none; }
+.name:hover { color: var(--color-primary); }
+.biz { font-size: 13px; color: var(--color-text-muted); margin-top: 1px; }
+.contact { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--color-text-muted); margin-top: 4px; }
+.dot { flex-shrink: 0; }
+.unlinkBtn { background: none; border: none; color: var(--color-text-muted); font-size: 13px; cursor: pointer; padding: 4px 8px; border-radius: var(--radius-sm); transition: color 0.15s; }
+.unlinkBtn:hover { color: var(--color-danger); }

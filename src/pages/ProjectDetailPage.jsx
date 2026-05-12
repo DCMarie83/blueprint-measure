@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -11,6 +11,10 @@ import NewSessionForm from '../components/auth/NewSessionForm'
 import MultiFileUploader from '../components/canvas/MultiFileUploader'
 import AppHeader from '../components/AppHeader'
 import BackLink from '../components/BackLink'
+import ClientCard from '../components/clients/ClientCard'
+import ClientPicker from '../components/clients/ClientPicker'
+import QuickClientForm from '../components/clients/QuickClientForm'
+import { useClients } from '../hooks/useClients'
 import { useDateFormat } from '../hooks/useDateFormat'
 import { BRAND } from '../lib/config'
 import styles from './DashboardPage.module.css'
@@ -40,6 +44,14 @@ export default function ProjectDetailPage() {
   const [showAddBlueprint, setShowAddBlueprint] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [storageLimitMb, setStorageLimitMb] = useState(null)
+
+  // Client linking
+  const { clients } = useClients()
+  const [showLinkModal, setShowLinkModal] = useState(false)
+  const [linkTab, setLinkTab] = useState('existing')
+  const [modalClientId, setModalClientId] = useState(null)
+  const modalQuickRef = useRef(null)
+  const linkedClient = project?.client_id ? clients.find(c => c.id === project.client_id) : null
 
   // Sort state
   const [bpSort, setBpSort] = useState('updated_desc')
@@ -166,20 +178,24 @@ export default function ProjectDetailPage() {
             onChangeValue={setEditValue}
             renderDisplay={(val) => <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, display: 'inline' }}>{val}</h1>}
           />
-          <div style={{ marginTop: 6 }}>
-            <InlineField
-              value={project.client_name}
-              placeholder="Add client name"
-              editField={editField}
-              fieldName="client_name"
-              editValue={editValue}
-              saving={saving}
-              onStartEdit={(v) => { setEditField('client_name'); setEditValue(v || '') }}
-              onSave={() => handleSaveField('client_name')}
-              onCancel={() => setEditField(null)}
-              onChangeValue={setEditValue}
-              renderDisplay={(val) => <span style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>{val}</span>}
-            />
+          <div style={{ marginTop: 10 }}>
+            {linkedClient ? (
+              <ClientCard client={linkedClient} onUnlink={async () => { await updateProject(projectId, { client_id: null }); refetch() }} />
+            ) : (
+              <>
+                {project.client_name && (
+                  <div style={{ fontSize: 14, color: 'var(--color-text-muted)', marginBottom: 8 }}>
+                    Client: {project.client_name} <span style={{ fontSize: 12, opacity: 0.6 }}>(legacy)</span>
+                  </div>
+                )}
+                <button
+                  onClick={() => { setShowLinkModal(true); setLinkTab('existing'); setModalClientId(null) }}
+                  style={{ fontSize: 13, background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '6px 14px', color: 'var(--color-primary)', cursor: 'pointer' }}
+                >
+                  + Link Client
+                </button>
+              </>
+            )}
           </div>
           <div style={{ marginTop: 2 }}>
             <InlineField
@@ -332,6 +348,35 @@ export default function ProjectDetailPage() {
               Delete
             </button>
           </div>
+        </Modal>
+      )}
+
+      {/* Link Client Modal */}
+      {showLinkModal && (
+        <Modal title="Link Client to Job" onClose={() => setShowLinkModal(false)}>
+          <div style={{ display: 'flex', gap: 4, marginBottom: 16, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: 3 }}>
+            <button type="button" onClick={() => setLinkTab('existing')} style={{ flex: 1, padding: '7px 10px', fontSize: 13, fontWeight: 500, border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', background: linkTab === 'existing' ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'var(--color-bg)', color: linkTab === 'existing' ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>Link Existing</button>
+            <button type="button" onClick={() => setLinkTab('new')} style={{ flex: 1, padding: '7px 10px', fontSize: 13, fontWeight: 500, border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', background: linkTab === 'new' ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'var(--color-bg)', color: linkTab === 'new' ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>Create New</button>
+          </div>
+
+          {linkTab === 'existing' ? (
+            <div>
+              <ClientPicker clients={clients} value={modalClientId} onChange={setModalClientId} />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
+                <button onClick={() => setShowLinkModal(false)} style={{ padding: '9px 18px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', color: 'var(--color-text-muted)', cursor: 'pointer' }}>Cancel</button>
+                <button disabled={!modalClientId} onClick={async () => { await updateProject(projectId, { client_id: modalClientId }); setShowLinkModal(false); refetch() }} style={{ padding: '9px 18px', background: 'var(--color-primary)', border: 'none', borderRadius: 'var(--radius-md)', color: '#fff', fontWeight: 600, cursor: 'pointer', opacity: modalClientId ? 1 : 0.5 }}>Link Client</button>
+              </div>
+            </div>
+          ) : (
+            <QuickClientForm
+              ref={modalQuickRef}
+              onCreated={async (newClient) => {
+                await updateProject(projectId, { client_id: newClient.id })
+                setShowLinkModal(false)
+                refetch()
+              }}
+            />
+          )}
         </Modal>
       )}
     </div>
