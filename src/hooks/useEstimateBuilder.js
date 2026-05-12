@@ -167,7 +167,7 @@ export function useEstimateBuilder(estimateId) {
 
       if (lineItems.length > 0) {
         const rows = lineItems.map((li, idx) => ({
-          id: li._isNew ? undefined : li.id,
+          id: li.id,
           estimate_id: estimateId,
           pricing_item_id: li.pricing_item_id || null,
           description: li.description,

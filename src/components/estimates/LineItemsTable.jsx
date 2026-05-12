@@ -105,8 +105,10 @@ function GroupRows({ category, items, onUpdate, onRemove, readOnly }) {
                 type="number"
                 step="0.01"
                 min="0"
-                value={li.quantity ?? ''}
-                onChange={e => onUpdate(li.id, { quantity: parseFloat(e.target.value) || 0 })}
+                value={li.quantity === 0 || li.quantity == null ? '' : li.quantity}
+                placeholder="0"
+                onChange={e => onUpdate(li.id, { quantity: e.target.value === '' ? 0 : Number(e.target.value) })}
+                onFocus={e => e.target.select()}
               />
             )}
           </td>
@@ -119,8 +121,10 @@ function GroupRows({ category, items, onUpdate, onRemove, readOnly }) {
                 type="number"
                 step="0.01"
                 min="0"
-                value={li.rate_good ?? ''}
-                onChange={e => onUpdate(li.id, { rate_good: parseFloat(e.target.value) || 0 })}
+                value={li.rate_good === 0 || li.rate_good == null ? '' : li.rate_good}
+                placeholder="0"
+                onChange={e => onUpdate(li.id, { rate_good: e.target.value === '' ? 0 : Number(e.target.value) })}
+                onFocus={e => e.target.select()}
               />
             )}
           </td>
@@ -133,8 +137,10 @@ function GroupRows({ category, items, onUpdate, onRemove, readOnly }) {
                 type="number"
                 step="0.01"
                 min="0"
-                value={li.rate_better ?? ''}
-                onChange={e => onUpdate(li.id, { rate_better: parseFloat(e.target.value) || 0 })}
+                value={li.rate_better === 0 || li.rate_better == null ? '' : li.rate_better}
+                placeholder="0"
+                onChange={e => onUpdate(li.id, { rate_better: e.target.value === '' ? 0 : Number(e.target.value) })}
+                onFocus={e => e.target.select()}
               />
             )}
           </td>
@@ -147,8 +153,10 @@ function GroupRows({ category, items, onUpdate, onRemove, readOnly }) {
                 type="number"
                 step="0.01"
                 min="0"
-                value={li.rate_best ?? ''}
-                onChange={e => onUpdate(li.id, { rate_best: parseFloat(e.target.value) || 0 })}
+                value={li.rate_best === 0 || li.rate_best == null ? '' : li.rate_best}
+                placeholder="0"
+                onChange={e => onUpdate(li.id, { rate_best: e.target.value === '' ? 0 : Number(e.target.value) })}
+                onFocus={e => e.target.select()}
               />
             )}
           </td>
