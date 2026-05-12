@@ -25,6 +25,19 @@
 }
 .declineReason { font-weight: 400; font-size: 13px; color: #9ca3af; margin-top: 4px; }
 
+/* Single variant header */
+.singleVariantHeader {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 16px; background: #f9fafb; border: 1px solid #e5e7eb;
+  border-radius: 8px; margin-bottom: 16px;
+}
+.singleVariantLabel {
+  font-size: 16px; font-weight: 700; color: #1b2426; text-transform: capitalize;
+}
+.singleVariantTotal {
+  font-family: monospace; font-size: 22px; font-weight: 700; color: #f27243;
+}
+
 /* Variant tabs */
 .variantTabs {
   display: flex; gap: 4px; margin-bottom: 16px;

@@ -30,7 +30,7 @@ function sanitizeFilename(str) {
 }
 
 /**
- * Generate a branded estimate PDF with 3 pages (Good, Better, Best).
+ * Generate a branded estimate PDF.
  *
  * @param {Object} opts
  * @param {Object} opts.estimate - Estimate row
@@ -38,10 +38,11 @@ function sanitizeFilename(str) {
  * @param {Object} opts.project - { name, address }
  * @param {Object} opts.client - { display_name, business_name, address } (nullable)
  * @param {Object} opts.company - { name } (nullable)
+ * @param {'good'|'better'|'best'|null} opts.variant - Single variant (Send flow) or null for all 3 (Download flow)
  * @param {'blob'|'base64'|'save'} opts.returnAs - Output format
  * @returns {Blob|string|void}
  */
-export function generateEstimatePDF({ estimate, lineItems, project, client, company, returnAs = 'blob' }) {
+export function generateEstimatePDF({ estimate, lineItems, project, client, company, variant = null, returnAs = 'blob' }) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
@@ -51,7 +52,14 @@ export function generateEstimatePDF({ estimate, lineItems, project, client, comp
   const estTitle = estimate.title || estimate.estimate_number
   const estNumber = estimate.estimate_number
 
-  VARIANTS.forEach((variant, vi) => {
+  // Determine which variants to render
+  const variantsToRender = variant
+    ? VARIANTS.filter(v => v.key === variant)
+    : VARIANTS
+  const totalPages = variantsToRender.length
+  const isSingleVariant = totalPages === 1
+
+  variantsToRender.forEach((v, vi) => {
     if (vi > 0) doc.addPage()
 
     let y = margin
@@ -67,10 +75,9 @@ export function generateEstimatePDF({ estimate, lineItems, project, client, comp
     doc.setFontSize(13)
     doc.setFont('helvetica', 'normal')
     doc.setTextColor(...MUTED)
-    const titleRight = estTitle
-    doc.text(titleRight, pageWidth - margin, y + 4, { align: 'right' })
+    doc.text(estTitle, pageWidth - margin, y + 4, { align: 'right' })
 
-    // Always show estimate number below title
+    // Always show estimate number below title if title exists
     if (estimate.title) {
       doc.setFontSize(10)
       doc.text(estNumber, pageWidth - margin, y + 10, { align: 'right' })
@@ -137,11 +144,13 @@ export function generateEstimatePDF({ estimate, lineItems, project, client, comp
     doc.setFontSize(16)
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(...ORANGE)
-    doc.text(variant.label, pageWidth / 2, y, { align: 'center' })
+    const variantTitle = isSingleVariant
+      ? `Estimate — ${v.label.charAt(0) + v.label.slice(1).toLowerCase()} Tier`
+      : v.label
+    doc.text(variantTitle, pageWidth / 2, y, { align: 'center' })
     y += 10
 
     // ── Line items table ─────────────────────────────────────
-    // Group by category_name
     const groups = {}
     const catOrder = []
     for (const li of lineItems) {
@@ -152,7 +161,6 @@ export function generateEstimatePDF({ estimate, lineItems, project, client, comp
 
     const tableBody = []
     for (const cat of catOrder) {
-      // Category header row
       tableBody.push([{
         content: cat,
         colSpan: 5,
@@ -169,8 +177,8 @@ export function generateEstimatePDF({ estimate, lineItems, project, client, comp
           li.description || '',
           Number(li.quantity || 0).toLocaleString(undefined, { maximumFractionDigits: 2 }),
           UNIT_LABELS[li.unit] || li.unit || '',
-          fmtMoney(li[variant.rateField]),
-          fmtMoney(li[variant.totalField]),
+          fmtMoney(li[v.rateField]),
+          fmtMoney(li[v.totalField]),
         ])
       }
     }
@@ -202,17 +210,42 @@ export function generateEstimatePDF({ estimate, lineItems, project, client, comp
       alternateRowStyles: { fillColor: STRIPE },
     })
 
-    y = doc.lastAutoTable.finalY + 8
+    y = doc.lastAutoTable.finalY + 6
 
-    // ── Variant total ────────────────────────────────────────
-    const grandTotal = fmtMoney(estimate[variant.grandTotal])
+    // ── Subtotal line + prominent total ──────────────────────
+    // Compute total from estimate or from line items as fallback
+    let grandTotalNum = Number(estimate[v.grandTotal]) || 0
+    if (!grandTotalNum && lineItems.length > 0) {
+      grandTotalNum = lineItems.reduce((sum, li) => sum + (Number(li[v.totalField]) || 0), 0)
+    }
+    const grandTotalStr = fmtMoney(grandTotalNum)
+
+    // Separator line
+    doc.setDrawColor(200, 200, 200)
+    doc.setLineWidth(0.3)
+    doc.line(pageWidth - margin - 80, y, pageWidth - margin, y)
+    y += 4
+
+    // Subtotal label + value
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(...MUTED)
+    doc.text('Subtotal', pageWidth - margin - 80, y + 4)
+
+    doc.setFontSize(16)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(...DARK)
+    doc.text(grandTotalStr, pageWidth - margin, y + 4, { align: 'right' })
+    y += 10
+
+    // Dark pill with variant total
     doc.setFillColor(...DARK)
-    doc.roundedRect(pageWidth - margin - 70, y, 70, 14, 2, 2, 'F')
-    doc.setFontSize(12)
+    doc.roundedRect(pageWidth - margin - 80, y, 80, 14, 2, 2, 'F')
+    doc.setFontSize(11)
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(...WHITE)
-    doc.text(`${variant.label} TOTAL`, pageWidth - margin - 66, y + 9)
-    doc.text(grandTotal, pageWidth - margin - 4, y + 9, { align: 'right' })
+    doc.text(`${v.label} TOTAL`, pageWidth - margin - 76, y + 9)
+    doc.text(grandTotalStr, pageWidth - margin - 4, y + 9, { align: 'right' })
     y += 22
 
     // ── Notes ────────────────────────────────────────────────
@@ -236,7 +269,7 @@ export function generateEstimatePDF({ estimate, lineItems, project, client, comp
     doc.setTextColor(...MUTED)
     // TODO: Add company address when companies.address is available
     doc.text(companyName, margin, pageHeight - 12)
-    doc.text(`${estNumber}  |  Page ${vi + 1} of 3`, pageWidth - margin, pageHeight - 12, { align: 'right' })
+    doc.text(`${estNumber}  |  Page ${vi + 1} of ${totalPages}`, pageWidth - margin, pageHeight - 12, { align: 'right' })
   })
 
   // ── Output ─────────────────────────────────────────────────

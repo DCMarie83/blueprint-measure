@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
     if (userErr || !user) return json({ error: 'Invalid auth' }, 401)
 
     // 2. Parse input
-    const { estimate_id, pdf_base64 } = await req.json()
+    const { estimate_id, pdf_base64, selected_variant } = await req.json()
     if (!estimate_id) return json({ error: 'estimate_id required' }, 400)
     if (!pdf_base64) return json({ error: 'pdf_base64 required' }, 400)
 
@@ -102,6 +102,8 @@ Deno.serve(async (req) => {
     const portalUrl = `${siteUrl}/portal/${project.portal_token}`
     const companyName = company?.name || 'Your Contractor'
     const estTitle = estimate.title || estimate.estimate_number
+    const variantLabels: Record<string, string> = { good: 'Good', better: 'Better', best: 'Best' }
+    const variantLabel = selected_variant ? variantLabels[selected_variant] || '' : ''
 
     const html = `
       <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
@@ -146,7 +148,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         from: 'RivetDog <noreply@blueprintmeasure.com>',
         to: recipients,
-        subject: `Estimate ${escapeHtml(estTitle)} from ${companyName}`,
+        subject: `Estimate ${escapeHtml(estTitle)}${variantLabel ? ` — ${variantLabel} Tier` : ''} from ${companyName}`,
         html,
         attachments: [
           {
@@ -165,6 +167,9 @@ Deno.serve(async (req) => {
 
     // 10. Update estimate status + enable portal
     const updatePatch: Record<string, unknown> = { updated_at: new Date().toISOString() }
+    if (selected_variant) {
+      updatePatch.selected_variant = selected_variant
+    }
     if (estimate.status === 'draft') {
       updatePatch.status = 'sent'
       updatePatch.sent_at = new Date().toISOString()

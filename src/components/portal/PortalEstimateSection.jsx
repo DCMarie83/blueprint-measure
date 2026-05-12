@@ -22,7 +22,9 @@ function fmtDate(dateStr) {
 }
 
 export default function PortalEstimateSection({ estimate, lineItems, portalToken }) {
-  const [selectedVariant, setSelectedVariant] = useState('best')
+  // If contractor selected a specific variant, lock to it (no tabs)
+  const lockedVariant = estimate.selected_variant || null
+  const [selectedVariant, setSelectedVariant] = useState(lockedVariant || 'best')
   const [showAccept, setShowAccept] = useState(false)
   const [showDecline, setShowDecline] = useState(false)
   const [typedName, setTypedName] = useState('')
@@ -123,19 +125,26 @@ export default function PortalEstimateSection({ estimate, lineItems, portalToken
         </div>
       )}
 
-      {/* Variant tabs */}
-      <div className={styles.variantTabs}>
-        {VARIANTS.map(v => (
-          <button
-            key={v.key}
-            className={`${styles.variantTab} ${selectedVariant === v.key ? styles.variantTabActive : ''}`}
-            onClick={() => setSelectedVariant(v.key)}
-          >
-            {v.label}
-            <span className={styles.variantTotal}>{fmtMoney(estimate[v.grandTotal])}</span>
-          </button>
-        ))}
-      </div>
+      {/* Variant tabs or single-variant heading */}
+      {lockedVariant ? (
+        <div className={styles.singleVariantHeader}>
+          <span className={styles.singleVariantLabel}>{variant.label}</span>
+          <span className={styles.singleVariantTotal}>{variantTotal}</span>
+        </div>
+      ) : (
+        <div className={styles.variantTabs}>
+          {VARIANTS.map(v => (
+            <button
+              key={v.key}
+              className={`${styles.variantTab} ${selectedVariant === v.key ? styles.variantTabActive : ''}`}
+              onClick={() => setSelectedVariant(v.key)}
+            >
+              {v.label}
+              <span className={styles.variantTotal}>{fmtMoney(estimate[v.grandTotal])}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Line items */}
       <div className={styles.lineItems}>
