@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import QRCode from 'qrcode'
 import { Copy, ExternalLink, Check } from 'lucide-react'
+import { timeAgo } from '../../utils/timeAgo'
 import styles from './PortalShareSection.module.css'
 
 export default function PortalShareSection({ project, onToggle }) {
@@ -54,31 +55,38 @@ export default function PortalShareSection({ project, onToggle }) {
           Toggle on to generate a shareable link your client can view. Share it via text, email, or print the QR code.
         </p>
       ) : (
-        <div className={styles.shareGrid}>
-          {qrDataUrl && (
-            <div className={styles.qrWrap}>
-              <img src={qrDataUrl} alt="Portal QR code" className={styles.qr} />
+        <div className={styles.enabledContent}>
+          {project.portal_email_sent_at && (
+            <div className={styles.emailSent}>
+              ✓ Portal link emailed to client {timeAgo(project.portal_email_sent_at)}
             </div>
           )}
-          <div className={styles.urlBlock}>
-            <label className={styles.urlLabel}>Shareable link</label>
-            <div className={styles.urlBox}>
-              <code className={styles.urlText}>{portalUrl}</code>
-            </div>
-            <div className={styles.actions}>
-              <button onClick={handleCopy} className={styles.copyBtn}>
-                {copied ? <Check size={14} /> : <Copy size={14} />}
-                {copied ? 'Copied!' : 'Copy Link'}
-              </button>
-              <a
-                href={portalUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.previewBtn}
-              >
-                <ExternalLink size={14} />
-                Open Portal Preview
-              </a>
+          <div className={styles.shareGrid}>
+            {qrDataUrl && (
+              <div className={styles.qrWrap}>
+                <img src={qrDataUrl} alt="Portal QR code" className={styles.qr} />
+              </div>
+            )}
+            <div className={styles.urlBlock}>
+              <label className={styles.urlLabel}>Shareable link</label>
+              <div className={styles.urlBox}>
+                <code className={styles.urlText}>{portalUrl}</code>
+              </div>
+              <div className={styles.actions}>
+                <button onClick={handleCopy} className={styles.copyBtn}>
+                  {copied ? <Check size={14} /> : <Copy size={14} />}
+                  {copied ? 'Copied!' : 'Copy Link'}
+                </button>
+                <a
+                  href={portalUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.previewBtn}
+                >
+                  <ExternalLink size={14} />
+                  Open Portal Preview
+                </a>
+              </div>
             </div>
           </div>
         </div>

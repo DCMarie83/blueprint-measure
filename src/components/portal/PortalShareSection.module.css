@@ -74,6 +74,17 @@
   font-weight: 500;
 }
 
+.enabledContent {
+  display: block;
+}
+
+.emailSent {
+  font-size: 12px;
+  color: var(--color-success);
+  padding: 6px 0;
+  margin-bottom: 8px;
+}
+
 .helpText {
   font-size: 13px;
   color: var(--color-text-muted);
