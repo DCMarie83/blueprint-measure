@@ -144,10 +144,10 @@ export function generateEstimatePDF({ estimate, lineItems, project, client, comp
     doc.setFontSize(16)
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(...ORANGE)
-    const variantTitle = isSingleVariant
-      ? `Estimate — ${v.label.charAt(0) + v.label.slice(1).toLowerCase()} Tier`
+    const pageHeading = isSingleVariant
+      ? (estimate.title || 'Project Estimate')
       : v.label
-    doc.text(variantTitle, pageWidth / 2, y, { align: 'center' })
+    doc.text(pageHeading, pageWidth / 2, y, { align: 'center' })
     y += 10
 
     // ── Line items table ─────────────────────────────────────
@@ -244,7 +244,8 @@ export function generateEstimatePDF({ estimate, lineItems, project, client, comp
     doc.setFontSize(11)
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(...WHITE)
-    doc.text(`${v.label} TOTAL`, pageWidth - margin - 76, y + 9)
+    const totalPillLabel = isSingleVariant ? 'TOTAL' : `${v.label} TOTAL`
+    doc.text(totalPillLabel, pageWidth - margin - 76, y + 9)
     doc.text(grandTotalStr, pageWidth - margin - 4, y + 9, { align: 'right' })
     y += 22
 

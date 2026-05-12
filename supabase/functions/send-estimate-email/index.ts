@@ -102,8 +102,20 @@ Deno.serve(async (req) => {
     const portalUrl = `${siteUrl}/portal/${project.portal_token}`
     const companyName = company?.name || 'Your Contractor'
     const estTitle = estimate.title || estimate.estimate_number
-    const variantLabels: Record<string, string> = { good: 'Good', better: 'Better', best: 'Best' }
-    const variantLabel = selected_variant ? variantLabels[selected_variant] || '' : ''
+
+    // Build total display — single variant or all 3
+    const totalMap: Record<string, number> = { good: Number(estimate.good_total || 0), better: Number(estimate.better_total || 0), best: Number(estimate.best_total || 0) }
+    const selectedTotal = selected_variant ? totalMap[selected_variant] : null
+    const totalHtml = selectedTotal != null
+      ? `<div style="margin: 16px 0; padding: 14px 16px; background: #1b2426; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+           <span style="color: #fff; font-size: 15px; font-weight: 600;">Estimate Total</span>
+           <span style="color: #f27243; font-size: 20px; font-weight: 700; font-family: monospace;">$${selectedTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+         </div>`
+      : `<table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px;">
+          <tr><td style="padding: 8px 12px; background: #f5f5f5; border-radius: 4px 0 0 0;">Option 1</td><td style="padding: 8px 12px; background: #f5f5f5; text-align: right; border-radius: 0 4px 0 0;">$${totalMap.good.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td></tr>
+          <tr><td style="padding: 8px 12px;">Option 2</td><td style="padding: 8px 12px; text-align: right;">$${totalMap.better.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td></tr>
+          <tr><td style="padding: 8px 12px; background: #f5f5f5; border-radius: 0 0 0 4px; font-weight: 600;">Option 3</td><td style="padding: 8px 12px; background: #f5f5f5; text-align: right; font-weight: 600; border-radius: 0 0 4px 0;">$${totalMap.best.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td></tr>
+        </table>`
 
     const html = `
       <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
@@ -114,22 +126,9 @@ Deno.serve(async (req) => {
         <p style="font-size: 14px; color: #555; line-height: 1.5;">
           ${escapeHtml(estimate.estimate_number)} for project <strong>${escapeHtml(project.name)}</strong>
         </p>
-        <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px;">
-          <tr>
-            <td style="padding: 8px 12px; background: #f5f5f5; border-radius: 4px 0 0 0;">Good</td>
-            <td style="padding: 8px 12px; background: #f5f5f5; text-align: right; border-radius: 0 4px 0 0;">$${Number(estimate.good_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 12px;">Better</td>
-            <td style="padding: 8px 12px; text-align: right;">$${Number(estimate.better_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 12px; background: #f5f5f5; border-radius: 0 0 0 4px; font-weight: 600;">Best</td>
-            <td style="padding: 8px 12px; background: #f5f5f5; text-align: right; font-weight: 600; border-radius: 0 0 4px 0;">$${Number(estimate.best_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-          </tr>
-        </table>
+        ${totalHtml}
         <p style="font-size: 14px; color: #555; line-height: 1.5;">
-          View the full estimate, compare options, and approve online:
+          View the full estimate and approve online:
         </p>
         <a href="${portalUrl}" style="display: inline-block; margin: 16px 0; padding: 14px 28px; background: #f27243; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">View &amp; Approve Online</a>
         <p style="font-size: 13px; color: #888; margin-top: 24px;">A PDF copy is attached to this email. Have questions? Contact ${escapeHtml(companyName)} directly.</p>
@@ -148,7 +147,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         from: 'RivetDog <noreply@blueprintmeasure.com>',
         to: recipients,
-        subject: `Estimate ${escapeHtml(estTitle)}${variantLabel ? ` — ${variantLabel} Tier` : ''} from ${companyName}`,
+        subject: `Estimate from ${companyName} — ${escapeHtml(estTitle)}`,
         html,
         attachments: [
           {

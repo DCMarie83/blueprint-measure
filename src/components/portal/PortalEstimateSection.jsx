@@ -128,7 +128,7 @@ export default function PortalEstimateSection({ estimate, lineItems, portalToken
       {/* Variant tabs or single-variant heading */}
       {lockedVariant ? (
         <div className={styles.singleVariantHeader}>
-          <span className={styles.singleVariantLabel}>{variant.label}</span>
+          <span className={styles.singleVariantLabel}>{estimate.title || 'Project Estimate'}</span>
           <span className={styles.singleVariantTotal}>{variantTotal}</span>
         </div>
       ) : (
@@ -172,7 +172,7 @@ export default function PortalEstimateSection({ estimate, lineItems, portalToken
 
       {/* Total */}
       <div className={styles.grandTotal}>
-        <span>{variant.label} Total</span>
+        <span>{lockedVariant ? 'Total' : `${variant.label} Total`}</span>
         <span className={styles.grandTotalValue}>{variantTotal}</span>
       </div>
 
@@ -218,7 +218,7 @@ export default function PortalEstimateSection({ estimate, lineItems, portalToken
           </div>
           {typedName.trim() && (
             <p className={styles.confirmText}>
-              I, <strong>{typedName}</strong>, accept this estimate for <strong>{variant.label}</strong> totaling <strong>{variantTotal}</strong>.
+              I, <strong>{typedName}</strong>, accept this estimate totaling <strong>{variantTotal}</strong>.
             </p>
           )}
           <label className={styles.checkboxRow}>

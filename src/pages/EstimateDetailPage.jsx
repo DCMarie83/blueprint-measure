@@ -302,17 +302,26 @@ export default function EstimateDetailPage() {
             />
 
             <div className={styles.totalsCard}>
-              <div className={styles.totalRow}>
+              <div className={`${styles.totalRow} ${estimate.selected_variant === 'good' ? styles.totalRowSent : estimate.selected_variant ? styles.totalRowMuted : ''}`}>
                 <span>Good Total</span>
-                <span className={styles.totalValue}>{fmtMoney(totals.good)}</span>
+                <span className={styles.totalValue}>
+                  {fmtMoney(totals.good)}
+                  {estimate.selected_variant === 'good' && <span className={styles.sentBadge}>SENT</span>}
+                </span>
               </div>
-              <div className={styles.totalRow}>
+              <div className={`${styles.totalRow} ${estimate.selected_variant === 'better' ? styles.totalRowSent : estimate.selected_variant ? styles.totalRowMuted : ''}`}>
                 <span>Better Total</span>
-                <span className={styles.totalValue}>{fmtMoney(totals.better)}</span>
+                <span className={styles.totalValue}>
+                  {fmtMoney(totals.better)}
+                  {estimate.selected_variant === 'better' && <span className={styles.sentBadge}>SENT</span>}
+                </span>
               </div>
-              <div className={`${styles.totalRow} ${styles.totalRowBest}`}>
+              <div className={`${styles.totalRow} ${styles.totalRowBest} ${estimate.selected_variant === 'best' ? styles.totalRowSent : estimate.selected_variant ? styles.totalRowMuted : ''}`}>
                 <span>Best Total</span>
-                <span className={styles.totalValue}>{fmtMoney(totals.best)}</span>
+                <span className={styles.totalValue}>
+                  {fmtMoney(totals.best)}
+                  {estimate.selected_variant === 'best' && <span className={styles.sentBadge}>SENT</span>}
+                </span>
               </div>
             </div>
 
