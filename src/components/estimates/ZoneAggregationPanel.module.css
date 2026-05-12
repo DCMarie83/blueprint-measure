@@ -1,0 +1,136 @@
+.panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-button-border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  height: fit-content;
+  max-height: calc(100vh - 180px);
+  overflow-y: auto;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.panelTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--color-text);
+}
+
+.refreshBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s;
+}
+.refreshBtn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.emptyState {
+  color: var(--color-text-muted);
+  font-size: 13px;
+  text-align: center;
+  padding: 24px 12px;
+}
+
+.zoneList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.zoneRow {
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  border: 1px solid transparent;
+  transition: border-color 0.12s;
+}
+.zoneRow:hover {
+  border-color: var(--color-border);
+}
+
+.zoneTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.zoneName {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.typeBadge {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  flex-shrink: 0;
+}
+
+.zoneResult {
+  font-size: 22px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--color-text);
+  line-height: 1.2;
+}
+
+.zoneUnit {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.zoneSub {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+  margin-bottom: 8px;
+}
+
+.addBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-on-primary, #fff);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.12s;
+}
+.addBtn:hover {
+  opacity: 0.88;
+}

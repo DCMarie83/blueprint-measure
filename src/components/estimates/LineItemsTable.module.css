@@ -1,0 +1,143 @@
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--color-button-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.table th {
+  padding: 10px 10px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--color-text-muted);
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.thDesc { min-width: 180px; }
+.thUnit { width: 60px; text-align: center; }
+.thQty { width: 80px; text-align: right; }
+.thRate { width: 90px; text-align: right; }
+.thTotal { width: 100px; text-align: right; }
+.thAction { width: 40px; }
+
+.catRow {
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+}
+.catCell {
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.itemRow {
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 40%, transparent);
+}
+.itemRow:hover {
+  background: color-mix(in srgb, var(--color-bg) 50%, var(--color-surface));
+}
+
+.tdDesc { padding: 6px 10px; }
+.tdUnit { padding: 6px 10px; text-align: center; }
+.tdQty { padding: 6px 10px; text-align: right; }
+.tdRate { padding: 6px 10px; text-align: right; }
+.tdTotal { padding: 6px 10px; text-align: right; font-weight: 600; }
+.tdAction { padding: 6px 6px; text-align: center; }
+
+.cellInput {
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--color-text);
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.12s, background 0.12s;
+}
+.cellInput:hover {
+  border-color: var(--color-border);
+  background: var(--color-bg);
+}
+.cellInput:focus {
+  border-color: var(--color-primary);
+  background: var(--color-bg);
+}
+
+.cellNumber {
+  text-align: right;
+  font-family: var(--font-mono);
+  width: 80px;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.unitLabel {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.zoneBadge {
+  display: inline-block;
+  font-size: 10px;
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.removeBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+}
+.removeBtn:hover {
+  color: var(--color-danger, #e53e3e);
+  background: rgba(229, 62, 62, 0.08);
+}
+
+.empty {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-button-border);
+  border-radius: var(--radius-lg);
+}

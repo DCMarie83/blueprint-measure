@@ -197,7 +197,7 @@ export default function App() {
       />
       <Route
         path="/pricing"
-        element={<ProtectedRoute><PricingPage /></ProtectedRoute>}
+        element={<ContractorAdminRoute><PricingPage /></ContractorAdminRoute>}
       />
       <Route
         path="/estimates/:id"

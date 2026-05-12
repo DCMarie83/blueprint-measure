@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { User, Settings, Users, LogOut, ChevronDown } from 'lucide-react'
+import { User, Settings, Users, LogOut, ChevronDown, DollarSign } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import ThemeToggle from './ThemeToggle'
@@ -85,6 +85,12 @@ export default function UserMenu() {
               <Settings size={15} />
               <span>Settings</span>
             </button>
+            {(role === 'contractor_admin' || isSuperAdmin) && (
+              <button className={styles.menuItem} onClick={() => { navigate('/pricing'); setOpen(false) }}>
+                <DollarSign size={15} />
+                <span>Pricing Library</span>
+              </button>
+            )}
             {role === 'contractor_admin' && (
               <button className={styles.menuItem} onClick={() => { navigate('/dashboard/team'); setOpen(false) }}>
                 <Users size={15} />

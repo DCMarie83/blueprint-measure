@@ -1,0 +1,253 @@
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
+
+/**
+ * useEstimateBuilder — manages line items, zone aggregation, and totals
+ * for the estimate builder page.
+ */
+export function useEstimateBuilder(estimateId) {
+  const { userProfile } = useAuth()
+  const companyId = userProfile?.company_id
+
+  const [estimate, setEstimate] = useState(null)
+  const [lineItems, setLineItems] = useState([])
+  const [zones, setZones] = useState([])         // aggregated from all sessions
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState(null)
+  const dirty = useRef(false)
+
+  // Derive projectId from loaded estimate
+  const projectId = estimate?.project_id ?? null
+
+  // ── Fetch estimate + line items ─────────────────────────────────────────
+  const fetchEstimate = useCallback(async () => {
+    if (!estimateId) { setLoading(false); return }
+    setLoading(true)
+    setError(null)
+    try {
+      const { data, error: err } = await supabase
+        .from('estimates')
+        .select('*, estimate_line_items(*)')
+        .eq('id', estimateId)
+        .single()
+      if (err) throw err
+      setEstimate(data)
+      setLineItems(
+        (data.estimate_line_items ?? [])
+          .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+      )
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }, [estimateId])
+
+  // ── Fetch zones across all sessions and aggregate by (name, type) ───────
+  const fetchZones = useCallback(async () => {
+    if (!projectId) return
+    try {
+      const { data: sessions, error: sErr } = await supabase
+        .from('sessions')
+        .select('id, project_name')
+        .eq('project_id', projectId)
+      if (sErr) throw sErr
+      if (!sessions?.length) { setZones([]); return }
+
+      const sessionIds = sessions.map(s => s.id)
+      const { data: zoneRows, error: zErr } = await supabase
+        .from('zones')
+        .select('*')
+        .in('session_id', sessionIds)
+        .not('result', 'is', null)
+      if (zErr) throw zErr
+
+      // Group by (name.trim().toLowerCase(), measurement_type)
+      const groupMap = {}
+      for (const z of (zoneRows ?? [])) {
+        const key = `${z.name.trim().toLowerCase()}|${z.measurement_type}`
+        if (!groupMap[key]) {
+          groupMap[key] = {
+            key,
+            display_name: z.name.trim(),
+            measurement_type: z.measurement_type,
+            total_result: 0,
+            source_count: 0,
+            source_session_ids: new Set(),
+          }
+        }
+        groupMap[key].total_result += Number(z.result) || 0
+        groupMap[key].source_count += 1
+        groupMap[key].source_session_ids.add(z.session_id)
+      }
+
+      // Convert Sets to arrays and sort alphabetically
+      const aggregated = Object.values(groupMap)
+        .map(g => ({ ...g, source_session_ids: [...g.source_session_ids] }))
+        .sort((a, b) => a.display_name.toLowerCase().localeCompare(b.display_name.toLowerCase()))
+
+      setZones(aggregated)
+    } catch (err) {
+      console.error('Failed to fetch zones:', err)
+    }
+  }, [projectId])
+
+  useEffect(() => { fetchEstimate() }, [fetchEstimate])
+  useEffect(() => { fetchZones() }, [fetchZones])
+
+  // ── Line item mutations (local state — call saveAll to persist) ────────
+  function addLineItem(item) {
+    const newItem = {
+      id: crypto.randomUUID(),
+      estimate_id: estimateId,
+      pricing_item_id: item.pricing_item_id || null,
+      description: item.description || '',
+      category_name: item.category_name || '',
+      unit: item.unit || 'sf',
+      quantity: item.quantity ?? 0,
+      rate_good: item.rate_good ?? 0,
+      rate_better: item.rate_better ?? 0,
+      rate_best: item.rate_best ?? 0,
+      total_good: (item.quantity ?? 0) * (item.rate_good ?? 0),
+      total_better: (item.quantity ?? 0) * (item.rate_better ?? 0),
+      total_best: (item.quantity ?? 0) * (item.rate_best ?? 0),
+      source_zone_id: item.source_zone_id || null,
+      source_zone_name: item.source_zone_name || null,
+      source_measurement_type: item.source_measurement_type || null,
+      sort_order: lineItems.length,
+      _isNew: true,
+    }
+    setLineItems(prev => [...prev, newItem])
+    dirty.current = true
+    return newItem
+  }
+
+  function updateLineItem(id, patch) {
+    setLineItems(prev => prev.map(li => {
+      if (li.id !== id) return li
+      const updated = { ...li, ...patch }
+      // Recompute totals when qty or rate changes
+      updated.total_good = (updated.quantity ?? 0) * (updated.rate_good ?? 0)
+      updated.total_better = (updated.quantity ?? 0) * (updated.rate_better ?? 0)
+      updated.total_best = (updated.quantity ?? 0) * (updated.rate_best ?? 0)
+      return updated
+    }))
+    dirty.current = true
+  }
+
+  function removeLineItem(id) {
+    setLineItems(prev => prev.filter(li => li.id !== id))
+    dirty.current = true
+  }
+
+  // ── Computed totals ─────────────────────────────────────────────────────
+  const totals = lineItems.reduce(
+    (acc, li) => ({
+      good: acc.good + (li.total_good ?? 0),
+      better: acc.better + (li.total_better ?? 0),
+      best: acc.best + (li.total_best ?? 0),
+    }),
+    { good: 0, better: 0, best: 0 }
+  )
+
+  // ── Save all line items + estimate totals ───────────────────────────────
+  async function saveAll() {
+    if (!estimateId) return
+    setSaving(true)
+    setError(null)
+    try {
+      // Delete existing line items, then re-insert all (simple upsert strategy)
+      const { error: delErr } = await supabase
+        .from('estimate_line_items')
+        .delete()
+        .eq('estimate_id', estimateId)
+      if (delErr) throw delErr
+
+      if (lineItems.length > 0) {
+        const rows = lineItems.map((li, idx) => ({
+          id: li._isNew ? undefined : li.id,
+          estimate_id: estimateId,
+          pricing_item_id: li.pricing_item_id || null,
+          description: li.description,
+          category_name: li.category_name,
+          unit: li.unit,
+          quantity: li.quantity,
+          rate_good: li.rate_good,
+          rate_better: li.rate_better,
+          rate_best: li.rate_best,
+          total_good: li.total_good,
+          total_better: li.total_better,
+          total_best: li.total_best,
+          source_zone_id: li.source_zone_id || null,
+          source_zone_name: li.source_zone_name || null,
+          source_measurement_type: li.source_measurement_type || null,
+          sort_order: idx,
+        }))
+        const { error: insErr } = await supabase
+          .from('estimate_line_items')
+          .insert(rows)
+        if (insErr) throw insErr
+      }
+
+      // Update estimate totals
+      const { error: updErr } = await supabase
+        .from('estimates')
+        .update({
+          good_total: totals.good,
+          better_total: totals.better,
+          best_total: totals.best,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', estimateId)
+      if (updErr) throw updErr
+
+      dirty.current = false
+      // Refetch to get clean IDs
+      await fetchEstimate()
+    } catch (err) {
+      setError(err.message)
+      throw err
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // ── Update estimate-level fields (notes, status, etc.) ──────────────────
+  async function updateEstimate(patch) {
+    if (!estimateId) return
+    const { error: err } = await supabase
+      .from('estimates')
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq('id', estimateId)
+    if (err) throw err
+    setEstimate(prev => prev ? { ...prev, ...patch } : prev)
+  }
+
+  // ── Delete estimate ─────────────────────────────────────────────────────
+  async function deleteEstimate() {
+    if (!estimateId) return
+    const { error: err } = await supabase.from('estimates').delete().eq('id', estimateId)
+    if (err) throw err
+  }
+
+  return {
+    estimate,
+    lineItems,
+    zones,
+    totals,
+    loading,
+    saving,
+    error,
+    isDirty: dirty.current,
+    addLineItem,
+    updateLineItem,
+    removeLineItem,
+    saveAll,
+    updateEstimate,
+    deleteEstimate,
+    refreshZones: fetchZones,
+    refetch: fetchEstimate,
+  }
+}

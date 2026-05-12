@@ -9,7 +9,6 @@ const PRIMARY_NAV = [
   { to: '/dashboard', label: 'Dashboard' },
   { to: '/jobs', label: 'Jobs' },
   { to: '/clients', label: 'Clients' },
-  { to: '/pricing', label: 'Pricing' },
   { to: '/academy', label: 'Academy' },
   { to: '/reports', label: 'Reports' },
 ]

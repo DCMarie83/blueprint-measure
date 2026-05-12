@@ -37,8 +37,9 @@ function timeAgo(dateStr) {
 export default function ProjectDetailPage() {
   const { projectId } = useParams()
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, userProfile } = useAuth()
   const { project, sessions, loading, error, refetch } = useProject(projectId)
+  const isAdmin = userProfile?.role === 'contractor_admin' || user?.email === 'main@ngautomationhub.com'
   const { updateProject } = useProjects()
   const { createSession, updateSession, deleteSession } = useSessions()
   const { formatDate, formatDateTime } = useDateFormat()
@@ -230,19 +231,21 @@ export default function ProjectDetailPage() {
         <section style={{ marginBottom: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
             <h3 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Estimates ({estimates.length})</h3>
-            <button
-              onClick={async () => {
-                try {
-                  const est = await createEstimate(projectId)
-                  navigate(`/estimates/${est.id}`)
-                } catch (err) {
-                  alert('Failed to create estimate: ' + err.message)
-                }
-              }}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'var(--color-primary)', color: 'var(--color-on-primary, #fff)', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-            >
-              + Generate Estimate
-            </button>
+            {isAdmin && (
+              <button
+                onClick={async () => {
+                  try {
+                    const est = await createEstimate(projectId)
+                    navigate(`/estimates/${est.id}`)
+                  } catch (err) {
+                    alert('Failed to create estimate: ' + err.message)
+                  }
+                }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'var(--color-primary)', color: 'var(--color-on-primary, #fff)', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              >
+                + Generate Estimate
+              </button>
+            )}
           </div>
           {estimates.length === 0 ? (
             <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>No estimates yet. Click Generate Estimate to start.</p>
