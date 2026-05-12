@@ -16,6 +16,7 @@ import ClientCard from '../components/clients/ClientCard'
 import ClientPicker from '../components/clients/ClientPicker'
 import QuickClientForm from '../components/clients/QuickClientForm'
 import { useClients } from '../hooks/useClients'
+import { useEstimates } from '../hooks/useEstimates'
 import { useDateFormat } from '../hooks/useDateFormat'
 import { BRAND } from '../lib/config'
 import styles from './DashboardPage.module.css'
@@ -48,6 +49,7 @@ export default function ProjectDetailPage() {
 
   // Client linking
   const { clients } = useClients()
+  const { estimates, createEstimate } = useEstimates(projectId)
   const [showLinkModal, setShowLinkModal] = useState(false)
   const [linkTab, setLinkTab] = useState('existing')
   const [modalClientId, setModalClientId] = useState(null)
@@ -223,6 +225,49 @@ export default function ProjectDetailPage() {
             refetch()
           }}
         />
+
+        {/* Estimates */}
+        <section style={{ marginBottom: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Estimates ({estimates.length})</h3>
+            <button
+              onClick={async () => {
+                try {
+                  const est = await createEstimate(projectId)
+                  navigate(`/estimates/${est.id}`)
+                } catch (err) {
+                  alert('Failed to create estimate: ' + err.message)
+                }
+              }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'var(--color-primary)', color: 'var(--color-on-primary, #fff)', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+            >
+              + Generate Estimate
+            </button>
+          </div>
+          {estimates.length === 0 ? (
+            <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>No estimates yet. Click Generate Estimate to start.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {estimates.map(est => (
+                <div
+                  key={est.id}
+                  onClick={() => navigate(`/estimates/${est.id}`)}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', cursor: 'pointer', transition: 'border-color 0.15s' }}
+                >
+                  <div>
+                    <span style={{ fontWeight: 600, fontSize: 14 }}>{est.estimate_number}</span>
+                    <span style={{ marginLeft: 10, fontSize: 12, padding: '2px 8px', borderRadius: 9999, background: est.status === 'accepted' ? 'var(--color-success-bg, rgba(74,222,128,0.12))' : est.status === 'declined' ? 'var(--color-danger-bg, rgba(220,38,38,0.08))' : 'var(--color-surface-2)', color: est.status === 'accepted' ? 'var(--color-success)' : est.status === 'declined' ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
+                      {est.status}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                    Good ${Number(est.good_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
         {/* Multi-file uploader */}
         <MultiFileUploader

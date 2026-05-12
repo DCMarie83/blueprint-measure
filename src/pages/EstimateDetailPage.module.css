@@ -1,0 +1,31 @@
+.page { min-height: 100vh; background: var(--color-bg); }
+.main { max-width: 960px; margin: 0 auto; padding: 32px; }
+.headerRow { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+.titleWrap { display: flex; align-items: center; gap: 12px; }
+.title { font-size: 28px; font-weight: 700; margin: 0; }
+.statusBadge { display: inline-block; padding: 4px 12px; border-radius: var(--radius-pill); font-size: 12px; font-weight: 600; text-transform: capitalize; }
+.statusDraft { background: var(--color-surface-2); color: var(--color-text-muted); }
+.statusSent { background: rgba(59, 130, 246, 0.12); color: #3b82f6; }
+.statusAccepted { background: rgba(34, 197, 94, 0.12); color: #16a34a; }
+.statusDeclined { background: rgba(239, 68, 68, 0.12); color: #dc2626; }
+.statusExpired { background: rgba(245, 158, 11, 0.12); color: #d97706; }
+
+.card { background: var(--color-surface); border: 1px solid var(--color-button-border); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 20px; }
+.cardTitle { font-size: 15px; font-weight: 600; margin: 0 0 12px; }
+.cardRow { display: flex; justify-content: space-between; font-size: 14px; padding: 4px 0; }
+.cardLabel { color: var(--color-text-muted); }
+.cardValue { font-weight: 500; }
+
+.notesArea { width: 100%; padding: 10px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg); color: var(--color-text); font-size: 14px; resize: vertical; min-height: 80px; outline: none; box-sizing: border-box; }
+.notesArea:focus { border-color: var(--color-primary); }
+
+.lineItemsEmpty { text-align: center; padding: 40px 20px; color: var(--color-text-muted); font-size: 14px; }
+
+.totalsCard { background: var(--color-surface); border: 1px solid var(--color-button-border); border-radius: var(--radius-lg); padding: 20px; }
+.totalRow { display: flex; justify-content: space-between; font-size: 14px; padding: 6px 0; }
+.totalRow:last-child { font-size: 16px; font-weight: 700; border-top: 1px solid var(--color-border); padding-top: 10px; margin-top: 4px; }
+
+.deleteBtn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; background: transparent; border: 1px solid var(--color-danger, #e53e3e); color: var(--color-danger, #e53e3e); border-radius: var(--radius-md); font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.15s; margin-top: 24px; }
+.deleteBtn:hover { background: rgba(229, 62, 62, 0.08); }
+
+.empty { text-align: center; padding: 60px 20px; color: var(--color-text-muted); }

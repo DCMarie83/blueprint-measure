@@ -32,6 +32,8 @@ import ProjectDetailPage from './pages/ProjectDetailPage'
 import KanbanPage from './pages/KanbanPage'
 import ClientsPage from './pages/ClientsPage'
 import ClientDetailPage from './pages/ClientDetailPage'
+import PricingPage from './pages/PricingPage'
+import EstimateDetailPage from './pages/EstimateDetailPage'
 import PortalPage from './pages/PortalPage'
 import AcademyPage from './pages/AcademyPage'
 import ReportsPage from './pages/ReportsPage'
@@ -192,6 +194,14 @@ export default function App() {
       <Route
         path="/clients/:id"
         element={<ProtectedRoute><ClientDetailPage /></ProtectedRoute>}
+      />
+      <Route
+        path="/pricing"
+        element={<ProtectedRoute><PricingPage /></ProtectedRoute>}
+      />
+      <Route
+        path="/estimates/:id"
+        element={<ProtectedRoute><EstimateDetailPage /></ProtectedRoute>}
       />
       <Route
         path="/academy"
