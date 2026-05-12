@@ -11,6 +11,7 @@ import NewSessionForm from '../components/auth/NewSessionForm'
 import MultiFileUploader from '../components/canvas/MultiFileUploader'
 import AppHeader from '../components/AppHeader'
 import BackLink from '../components/BackLink'
+import PortalShareSection from '../components/portal/PortalShareSection'
 import ClientCard from '../components/clients/ClientCard'
 import ClientPicker from '../components/clients/ClientPicker'
 import QuickClientForm from '../components/clients/QuickClientForm'
@@ -213,6 +214,15 @@ export default function ProjectDetailPage() {
             />
           </div>
         </div>
+
+        {/* Customer Portal */}
+        <PortalShareSection
+          project={project}
+          onToggle={async (newEnabled) => {
+            await updateProject(projectId, { portal_enabled: newEnabled })
+            refetch()
+          }}
+        />
 
         {/* Multi-file uploader */}
         <MultiFileUploader

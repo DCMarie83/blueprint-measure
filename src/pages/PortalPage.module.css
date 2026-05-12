@@ -1,0 +1,164 @@
+.page {
+  min-height: 100vh;
+  background: var(--color-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 40px 36px;
+  max-width: 560px;
+  width: 100%;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.loading {
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 15px;
+  padding: 40px 0;
+}
+
+.companyHeader {
+  text-align: center;
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.companyName {
+  font-family: var(--font-heading);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin: 0;
+  letter-spacing: -0.3px;
+}
+
+.projectBlock {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.projectName {
+  font-family: var(--font-heading);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 8px 0;
+  line-height: 1.2;
+  letter-spacing: -0.5px;
+}
+
+.address {
+  font-size: 15px;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: var(--color-surface-2);
+  border-radius: var(--radius-md);
+  margin-bottom: 20px;
+}
+
+.statusLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.statusBadge {
+  background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+  color: var(--color-primary);
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.clientRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 14px 0;
+  border-top: 1px solid var(--color-border);
+  gap: 16px;
+}
+
+.clientRowLabel {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.clientName {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+  text-align: right;
+}
+
+.clientBusiness {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  text-align: right;
+}
+
+.footerWrap {
+  text-align: center;
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border);
+}
+
+.contactNote {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin: 0 0 8px 0;
+}
+
+.footer {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  opacity: 0.6;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.notFoundTitle {
+  font-family: var(--font-heading);
+  font-size: 22px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--color-text);
+  margin: 0 0 12px 0;
+}
+
+.notFoundText {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  text-align: center;
+  line-height: 1.5;
+  margin: 0 0 28px 0;
+}
+
+@media (max-width: 480px) {
+  .card { padding: 28px 22px; }
+  .projectName { font-size: 22px; }
+  .statusRow { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .clientRow { flex-direction: column; }
+  .clientName, .clientBusiness { text-align: left; }
+}
