@@ -79,7 +79,7 @@ export default function EstimateDetailPage() {
     if (proj.client_id) {
       const { data: cli } = await supabase
         .from('clients')
-        .select('id, display_name, business_name, primary_email, address_line1, address_city, address_state, client_contacts(email, is_portal_recipient)')
+        .select('id, display_name, business_name, primary_email, property_address, client_contacts(email, is_portal_recipient)')
         .eq('id', proj.client_id)
         .single()
       setClientData(cli || null)
