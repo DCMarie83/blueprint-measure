@@ -8,7 +8,7 @@ export default function PipelinePreview({ pipeline, hasZeroJobs }) {
     return (
       <section className={styles.section}>
         <div className={styles.sectionHeader}>
-          <span className={styles.sectionTitle}>Pipeline</span>
+          <span className={styles.sectionTitle}>Pipeline Overview</span>
           <Link to="/jobs" className={styles.boardLink}>See full board &rarr;</Link>
         </div>
         <div className={styles.empty}>
@@ -21,7 +21,7 @@ export default function PipelinePreview({ pipeline, hasZeroJobs }) {
   return (
     <section className={styles.section}>
       <div className={styles.sectionHeader}>
-        <span className={styles.sectionTitle}>Pipeline</span>
+        <span className={styles.sectionTitle}>Pipeline Overview</span>
         <Link to="/jobs" className={styles.boardLink}>See full board &rarr;</Link>
       </div>
 

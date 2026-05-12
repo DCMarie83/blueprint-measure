@@ -14,6 +14,7 @@ export default function GreetingStrip({ firstName, todayDate }) {
   return (
     <div className={styles.wrap}>
       <div className={styles.greeting}>Good {timeOfDay}, {firstName}</div>
+      <div className={styles.pageLabel}>RivetDog Dashboard</div>
       <div className={styles.date}>{formatted}</div>
     </div>
   )

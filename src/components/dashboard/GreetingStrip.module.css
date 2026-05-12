@@ -8,6 +8,13 @@
   color: var(--color-text);
 }
 
+.pageLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
 .date {
   font-size: 14px;
   color: var(--color-text-muted);

@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 
 export function useProjects() {
-  const { user } = useAuth()
+  const { user, userProfile } = useAuth()
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -52,10 +52,26 @@ export function useProjects() {
   }, [fetchProjects])
 
   async function createProject({ name, clientName, address }) {
+    const companyId = userProfile?.company_id
+    if (!companyId) throw new Error('No company assigned. Contact support.')
+
+    // Fetch the first kanban column for this company
+    const { data: firstCol, error: colErr } = await supabase
+      .from('kanban_columns')
+      .select('id')
+      .eq('company_id', companyId)
+      .order('position', { ascending: true })
+      .limit(1)
+      .single()
+
+    if (colErr || !firstCol) throw new Error('No kanban columns found for this company.')
+
     const { data, error } = await supabase
       .from('projects')
       .insert({
         user_id: user.id,
+        company_id: companyId,
+        kanban_column_id: firstCol.id,
         name,
         client_name: clientName || null,
         address: address || null,

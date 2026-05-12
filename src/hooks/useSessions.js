@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext'
 // It fetches sessions for the logged-in user and provides
 // functions to create and delete them.
 export function useSessions() {
-  const { user } = useAuth()
+  const { user, userProfile } = useAuth()
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -78,10 +78,26 @@ export function useSessions() {
     // If no projectId supplied, auto-create a project (legacy 1:1 flow)
     let resolvedProjectId = projectId
     if (!resolvedProjectId) {
+      const companyId = userProfile?.company_id
+      let kanbanColumnId = null
+
+      if (companyId) {
+        const { data: firstCol } = await supabase
+          .from('kanban_columns')
+          .select('id')
+          .eq('company_id', companyId)
+          .order('position', { ascending: true })
+          .limit(1)
+          .single()
+        kanbanColumnId = firstCol?.id ?? null
+      }
+
       const { data: project, error: projectError } = await supabase
         .from('projects')
         .insert({
           user_id: user.id,
+          company_id: companyId || null,
+          kanban_column_id: kanbanColumnId,
           name: projectName,
         })
         .select()
