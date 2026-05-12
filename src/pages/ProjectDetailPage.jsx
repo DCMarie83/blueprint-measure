@@ -257,11 +257,16 @@ export default function ProjectDetailPage() {
                   onClick={() => navigate(`/estimates/${est.id}`)}
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', cursor: 'pointer', transition: 'border-color 0.15s' }}
                 >
-                  <div>
-                    <span style={{ fontWeight: 600, fontSize: 14 }}>{est.estimate_number}</span>
-                    <span style={{ marginLeft: 10, fontSize: 12, padding: '2px 8px', borderRadius: 9999, background: est.status === 'accepted' ? 'var(--color-success-bg, rgba(74,222,128,0.12))' : est.status === 'declined' ? 'var(--color-danger-bg, rgba(220,38,38,0.08))' : 'var(--color-surface-2)', color: est.status === 'accepted' ? 'var(--color-success)' : est.status === 'declined' ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
-                      {est.status}
-                    </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontWeight: 600, fontSize: 14 }}>{est.title || est.estimate_number}</span>
+                      <span style={{ fontSize: 12, padding: '2px 8px', borderRadius: 9999, background: est.status === 'accepted' ? 'var(--color-success-bg, rgba(74,222,128,0.12))' : est.status === 'declined' ? 'var(--color-danger-bg, rgba(220,38,38,0.08))' : 'var(--color-surface-2)', color: est.status === 'accepted' ? 'var(--color-success)' : est.status === 'declined' ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
+                        {est.status}
+                      </span>
+                    </div>
+                    {est.title && (
+                      <span style={{ fontSize: 11, color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>{est.estimate_number}</span>
+                    )}
                   </div>
                   <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
                     Good ${Number(est.good_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
