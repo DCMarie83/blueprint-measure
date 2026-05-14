@@ -32,7 +32,8 @@ import ToolGroup from '../components/toolbar/ToolGroup'
 import IconButton from '../components/toolbar/IconButton'
 import ToolbarDropdown from '../components/toolbar/ToolbarDropdown'
 import Calculator from '../components/calculator/Calculator'
-import { ArrowLeft, Square, Minus, Hash, Ruler, Palette, RotateCcw, ChevronLeft, ChevronRight, Download, FileSpreadsheet, Calculator as CalcIcon, Undo2, Redo2 } from 'lucide-react'
+import ScaleInfoPopover from '../components/canvas/ScaleInfoPopover'
+import { ArrowLeft, Square, Minus, Hash, Ruler, Palette, RotateCcw, ChevronLeft, ChevronRight, Download, FileSpreadsheet, Calculator as CalcIcon, Undo2, Redo2, Info } from 'lucide-react'
 import styles from './SessionPage.module.css'
 
 // SessionPage is the main working environment.
@@ -1378,6 +1379,33 @@ export default function SessionPage() {
               {unitSystem === 'imperial' ? 'FT' : 'M'}
             </span>
           </IconButton>
+          <ToolbarDropdown icon={Info} label="" disabled={!blueprintUrl} align="right">
+            {(close) => (
+              <ScaleInfoPopover
+                scaleLabel={findScaleLabel(pixelsPerFoot)}
+                pixelsPerFoot={pixelsPerFoot}
+                pixelsPerInch={pixelsPerInch}
+                pdfPageInfo={pdfPageInfo}
+                isCalibrated={!!pixelsPerFoot}
+                zonesCount={pageZones.length}
+                userEmail={user?.email}
+                onRecalibrate={() => {
+                  const input = window.prompt('Enter a known distance on the blueprint (e.g. 12\'6" or 20):')
+                  if (input) {
+                    const ft = parseFeetInches(input)
+                    if (ft && ft > 0) handleStartCalibration(ft)
+                  }
+                }}
+                onRescale={async () => {
+                  if (!pixelsPerFoot) return
+                  const count = await rescaleZonesOnCurrentPage(pixelsPerFoot)
+                  setRescaleToast(`${count} zone${count === 1 ? '' : 's'} rescaled`)
+                  setTimeout(() => setRescaleToast(''), 3000)
+                }}
+                onClose={close}
+              />
+            )}
+          </ToolbarDropdown>
         </ToolGroup>
 
         {/* View */}
