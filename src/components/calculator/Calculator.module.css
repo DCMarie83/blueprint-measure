@@ -175,6 +175,13 @@
   -moz-appearance: textfield;
 }
 
+.parsedHint {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--color-text-muted);
+  margin-top: -4px;
+}
+
 .formResult {
   font-family: var(--font-mono);
   font-size: 18px;

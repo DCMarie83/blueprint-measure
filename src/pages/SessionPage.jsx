@@ -1441,7 +1441,7 @@ export default function SessionPage() {
 
         {/* Calculator */}
         <ToolbarDropdown icon={CalcIcon} label="Calc" align="right">
-          {() => <Calculator />}
+          {() => <Calculator unitSystem={unitSystem} />}
         </ToolbarDropdown>
 
         <div className={styles.toolbarSpacer} />

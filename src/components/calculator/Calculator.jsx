@@ -1,4 +1,5 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
+import { parseFeetInches } from '../../utils/fractions'
 import styles from './Calculator.module.css'
 
 const MODES = ['Standard', 'SF (L×W)', 'Markup %']
@@ -19,7 +20,7 @@ function evaluate(a, op, b) {
   }
 }
 
-export default function Calculator() {
+export default function Calculator({ unitSystem = 'imperial' }) {
   const [mode, setMode] = useState('Standard')
 
   // Standard calc state
@@ -80,8 +81,19 @@ export default function Calculator() {
     setFresh(false)
   }, [])
 
-  // SF mode
-  const sfResult = (parseFloat(sfLength) || 0) * (parseFloat(sfWidth) || 0)
+  // SF mode — parse based on unit system
+  const isMetric = unitSystem === 'metric'
+  const parsedLength = useMemo(() => {
+    if (!sfLength) return null
+    const v = isMetric ? parseFloat(sfLength) : parseFeetInches(sfLength)
+    return v && v > 0 ? v : null
+  }, [sfLength, isMetric])
+  const parsedWidth = useMemo(() => {
+    if (!sfWidth) return null
+    const v = isMetric ? parseFloat(sfWidth) : parseFeetInches(sfWidth)
+    return v && v > 0 ? v : null
+  }, [sfWidth, isMetric])
+  const sfResult = parsedLength && parsedWidth ? parsedLength * parsedWidth : null
 
   // Markup mode
   const markupResult = (parseFloat(cost) || 0) * (1 + (parseFloat(markup) || 0) / 100)
@@ -128,32 +140,38 @@ export default function Calculator() {
 
       {mode === 'SF (L×W)' && (
         <div className={styles.formMode}>
-          <label className={styles.fieldLabel}>Length (ft)</label>
+          <label className={styles.fieldLabel}>{isMetric ? 'Length (m)' : 'Length (ft + in)'}</label>
           <input
             className={styles.fieldInput}
-            type="number"
-            min="0"
-            step="any"
+            type="text"
             value={sfLength}
             onChange={e => setSfLength(e.target.value)}
-            placeholder="0"
+            placeholder={isMetric ? '3.8' : '12\'6"'}
           />
-          <label className={styles.fieldLabel}>Width (ft)</label>
+          {parsedLength !== null && (
+            <span className={styles.parsedHint}>→ {parsedLength.toFixed(2)} {isMetric ? 'm' : 'ft'}</span>
+          )}
+          <label className={styles.fieldLabel}>{isMetric ? 'Width (m)' : 'Width (ft + in)'}</label>
           <input
             className={styles.fieldInput}
-            type="number"
-            min="0"
-            step="any"
+            type="text"
             value={sfWidth}
             onChange={e => setSfWidth(e.target.value)}
-            placeholder="0"
+            placeholder={isMetric ? '2.5' : '10\'3"'}
           />
-          <div className={styles.formResult}>
-            = {sfResult.toLocaleString('en-US', { maximumFractionDigits: 2 })} sq ft
-          </div>
-          <button className={styles.formCopy} onClick={() => copyToClipboard(sfResult.toFixed(2))}>
-            Copy result
-          </button>
+          {parsedWidth !== null && (
+            <span className={styles.parsedHint}>→ {parsedWidth.toFixed(2)} {isMetric ? 'm' : 'ft'}</span>
+          )}
+          {sfResult !== null && (
+            <>
+              <div className={styles.formResult}>
+                = {sfResult.toLocaleString('en-US', { maximumFractionDigits: 2 })} {isMetric ? 'm²' : 'sq ft'}
+              </div>
+              <button className={styles.formCopy} onClick={() => copyToClipboard(sfResult.toFixed(2))}>
+                Copy result
+              </button>
+            </>
+          )}
         </div>
       )}
 
