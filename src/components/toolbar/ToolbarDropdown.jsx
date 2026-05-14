@@ -7,6 +7,7 @@ export default function ToolbarDropdown({
   label,
   children,
   disabled,
+  align,
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
@@ -40,7 +41,7 @@ export default function ToolbarDropdown({
         <ChevronDown size={12} className={`${styles.chevron} ${open ? styles.chevronOpen : ''}`} />
       </button>
       {open && (
-        <div className={styles.menu}>
+        <div className={styles.menu} style={align === 'right' ? { right: 0, left: 'auto' } : undefined}>
           {typeof children === 'function' ? children(() => setOpen(false)) : children}
         </div>
       )}

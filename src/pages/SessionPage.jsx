@@ -31,7 +31,8 @@ import Toolbar from '../components/toolbar/Toolbar'
 import ToolGroup from '../components/toolbar/ToolGroup'
 import IconButton from '../components/toolbar/IconButton'
 import ToolbarDropdown from '../components/toolbar/ToolbarDropdown'
-import { ArrowLeft, Square, Minus, Hash, Ruler, Palette, RotateCcw, ChevronLeft, ChevronRight, Download, FileSpreadsheet } from 'lucide-react'
+import Calculator from '../components/calculator/Calculator'
+import { ArrowLeft, Square, Minus, Hash, Ruler, Palette, RotateCcw, ChevronLeft, ChevronRight, Download, FileSpreadsheet, Calculator as CalcIcon } from 'lucide-react'
 import styles from './SessionPage.module.css'
 
 // SessionPage is the main working environment.
@@ -1354,6 +1355,11 @@ export default function SessionPage() {
             )}
           </ToolbarDropdown>
         </ToolGroup>
+
+        {/* Calculator */}
+        <ToolbarDropdown icon={CalcIcon} label="Calc" align="right">
+          {() => <Calculator />}
+        </ToolbarDropdown>
 
         <div className={styles.toolbarSpacer} />
 
