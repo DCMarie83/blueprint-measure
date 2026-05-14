@@ -474,7 +474,12 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                   >
                     {zone.measurement_type}
                   </span>
-                  {/* Collapsed result + chevron */}
+                  {/* Collapsed description preview + result + chevron */}
+                  {!isExpanded && zone.description && (
+                    <span className={styles.collapsedDesc}>
+                      {zone.description.length > 40 ? zone.description.slice(0, 40) + '…' : zone.description}
+                    </span>
+                  )}
                   {!isExpanded && (
                     <span className={styles.collapsedResult}>
                       {zone.measurement_type === 'SF'
@@ -542,22 +547,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                     </div>
                   ) : null
                 })()}
-                {zone.measurement_type === 'SF' && (
-                  enabledFeatures.paint_calculator ? (
-                    (() => {
-                      const gal = estimatePaint(zone)
-                      return gal !== null ? (
-                        <div className={styles.zonePaintEstimate}>
-                          Est. {zone.surface_type === 'Wall' ? 'wall ' : ''}paint: {gal} gal
-                        </div>
-                      ) : null
-                    })()
-                  ) : (
-                    <div className={styles.zonePaintLocked}>
-                      🔒 Paint calculator — available on paid plans
-                    </div>
-                  )
-                )}
+                {/* Paint estimate removed — estimating concern, handled by EstimateBuilder */}
                 {zone.notes && (
                   <div className={styles.zoneNotes}>{zone.notes}</div>
                 )}

@@ -86,6 +86,16 @@
   flex-shrink: 0;
 }
 
+.collapsedDesc {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100px;
+  flex-shrink: 1;
+}
+
 .collapsedResult {
   margin-left: auto;
   font-size: 13px;

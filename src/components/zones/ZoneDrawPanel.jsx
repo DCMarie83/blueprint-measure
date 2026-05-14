@@ -451,50 +451,10 @@ export default function ZoneDrawPanel({
       {/* Coat count UI removed — coats are an estimating concern handled in EstimateBuilder.
          State kept at default 1 for downstream consumers (ZoneList, canvas labels, CSV). */}
 
-      <div className={styles.field}>
-        <label>Measurement Type</label>
-        <div className={styles.typeGroup}>
-          {['SF', 'LF', 'count'].map(t => (
-            <button
-              key={t}
-              type="button"
-              className={`${styles.typeBtn} ${type === t ? styles.active : ''}`}
-              onClick={() => setType(t)}
-            >
-              <span className={styles.typeBtnLabel}>{t}</span>
-              <span className={styles.typeBtnDesc}>
-                {t === 'SF' ? 'Area' : t === 'LF' ? 'Length' : 'Count'}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Measurement type + color picker moved to Toolbar (Phase B).
+         Controlled via selectedType/selectedColor props. */}
 
-      <div className={styles.field}>
-        <label>Zone Color <span className={styles.optional}>(optional)</span></label>
-        <div className={styles.colorSwatches}>
-          <button
-            type="button"
-            className={`${styles.colorSwatch} ${styles.colorAuto} ${color === null ? styles.colorSwatchActive : ''}`}
-            onClick={() => setColor(null)}
-            title="Auto (cycles through default palette)"
-          >
-            A
-          </button>
-          {PRESET_COLORS.map(c => (
-            <button
-              key={c}
-              type="button"
-              className={`${styles.colorSwatch} ${color === c ? styles.colorSwatchActive : ''}`}
-              style={{ background: c }}
-              onClick={() => setColor(c)}
-              title={c}
-            />
-          ))}
-        </div>
-      </div>
-
-      <button type="submit" className={styles.startBtn}>Start Drawing</button>
+      <button type="submit" className={styles.startBtn}>Measure Zone</button>
     </form>
   )
 }
