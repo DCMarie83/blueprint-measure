@@ -1,0 +1,54 @@
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 6px;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  transition: background 0.12s, color 0.12s;
+  flex-shrink: 0;
+}
+
+.btn:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+}
+
+.active {
+  background: color-mix(in srgb, var(--color-primary) 18%, transparent);
+  color: var(--color-primary);
+}
+
+.active:hover {
+  background: color-mix(in srgb, var(--color-primary) 25%, transparent);
+  color: var(--color-primary);
+}
+
+.disabled {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
+
+.tooltip {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 25, 35, 0.95);
+  color: #d1d5db;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 3px 8px;
+  font-size: 11px;
+  font-family: var(--font-body);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 60;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}

@@ -1,0 +1,28 @@
+.group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  position: relative;
+  padding-right: var(--space-3);
+  margin-right: var(--space-1);
+}
+
+.group::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 1px;
+  background: var(--color-border);
+}
+
+.group:last-child {
+  padding-right: 0;
+  margin-right: 0;
+}
+
+.group:last-child::after {
+  display: none;
+}
+

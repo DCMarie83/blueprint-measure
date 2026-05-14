@@ -34,13 +34,19 @@ export default function ZoneDrawPanel({
   isDrawing, isAccumulating, segmentCount = 0, accumulatedResult = 0,
   pointCount, onFinish, drawingType, sfPreview, wallPreview,
   enabledFeatures = {},
+  selectedType, onTypeChange,
+  selectedColor, onColorChange,
 }) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [surfaceType, setSurfaceType] = useState('')
   const [coatCount, setCoatCount] = useState(1)
-  const [type, setType] = useState('SF')
-  const [color, setColor] = useState(null) // null = auto palette
+  const [typeLocal, setTypeLocal] = useState(selectedType ?? 'SF')
+  const type = selectedType ?? typeLocal
+  function setType(t) { setTypeLocal(t); onTypeChange?.(t) }
+  const [colorLocal, setColorLocal] = useState(selectedColor ?? null)
+  const color = selectedColor ?? colorLocal
+  function setColor(c) { setColorLocal(c); onColorChange?.(c) }
 
   // Ceiling-specific fields — only used when surfaceType === 'Ceiling'
   const [ceilingType, setCeilingType] = useState('flat')
@@ -442,23 +448,8 @@ export default function ZoneDrawPanel({
         )
       )}
 
-      {enabledFeatures?.paint_calculator && (
-        <div className={styles.field}>
-          <label>Number of Coats <InfoTooltip>How many coats of paint will be applied. Most jobs require 2 coats. Affects paint calculator estimates.</InfoTooltip></label>
-          <div className={styles.coatGroup}>
-            {[1, 2].map(n => (
-              <button
-                key={n}
-                type="button"
-                className={`${styles.coatBtn} ${coatCount === n ? styles.active : ''}`}
-                onClick={() => setCoatCount(n)}
-              >
-                {n} {n === 1 ? 'coat' : 'coats'}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Coat count UI removed — coats are an estimating concern handled in EstimateBuilder.
+         State kept at default 1 for downstream consumers (ZoneList, canvas labels, CSV). */}
 
       <div className={styles.field}>
         <label>Measurement Type</label>

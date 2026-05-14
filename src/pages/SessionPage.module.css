@@ -1,7 +1,14 @@
 .layout {
   display: flex;
+  flex-direction: column;
   height: 100vh;
   background: var(--color-bg);
+  overflow: hidden;
+}
+
+.workArea {
+  display: flex;
+  flex: 1;
   overflow: hidden;
 }
 
@@ -607,6 +614,160 @@
 .calibBannerBtn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* ─── Toolbar inline styles ─── */
+.toolbarSpacer {
+  flex: 1;
+  min-width: var(--space-2);
+}
+
+.toolbarRight {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.toolbarSave {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 4px;
+}
+
+.toolbarSaveText {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  font-family: var(--font-body);
+}
+
+.toolbarSaveBtn {
+  background: var(--color-success);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, opacity 0.12s;
+  flex-shrink: 0;
+}
+
+.toolbarSaveBtn:hover:not(:disabled) {
+  background: var(--color-success-border);
+}
+
+.toolbarSaveBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.toolbarSaveBtnError {
+  background: var(--color-danger);
+}
+
+.toolbarSaveBtnError:hover:not(:disabled) {
+  background: var(--color-danger-hover);
+}
+
+.toolbarColorGrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  padding: 8px;
+  min-width: 148px;
+}
+
+.toolbarColorSwatch {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  border: 2px solid transparent;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  background: var(--color-surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.12s;
+}
+
+.toolbarColorSwatch:hover {
+  border-color: var(--color-text-muted);
+}
+
+.toolbarColorActive {
+  border-color: var(--color-text);
+  box-shadow: 0 0 0 1px var(--color-text);
+}
+
+.toolbarColorDot {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 2px solid rgba(255,255,255,0.2);
+}
+
+.toolbarScaleMenu {
+  display: flex;
+  flex-direction: column;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.toolbarMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: none;
+  border: none;
+  font-size: 12px;
+  font-family: var(--font-body);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+  transition: background 0.1s, color 0.1s;
+}
+
+.toolbarMenuItem:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+}
+
+.toolbarMenuItemActive {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.toolbarMenuItem:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.toolbarMenuDivider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 4px 0;
+}
+
+.toolbarPageIndicator {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--color-text-muted);
+  min-width: 32px;
+  text-align: center;
+  white-space: nowrap;
 }
 
 /* ─── Print-only elements (hidden on screen) ─── */

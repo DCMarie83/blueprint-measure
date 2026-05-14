@@ -17,7 +17,6 @@ import { getStorageLimitMb } from '../lib/plans'
 import BlueprintCanvas from '../components/canvas/BlueprintCanvas'
 import BlueprintUploader from '../components/canvas/BlueprintUploader'
 import Modal from '../components/ui/Modal'
-import ScalePanel from '../components/canvas/ScalePanel'
 import ScaleChangeDialog from '../components/canvas/ScaleChangeDialog'
 import ZoneDrawPanel from '../components/zones/ZoneDrawPanel'
 import ZoneList from '../components/zones/ZoneList'
@@ -28,6 +27,11 @@ import UserMenu from '../components/UserMenu'
 import { useDateFormat } from '../hooks/useDateFormat'
 import { BRAND } from '../lib/config'
 import { getBlueprintSignedUrl } from '../lib/blueprintUrl'
+import Toolbar from '../components/toolbar/Toolbar'
+import ToolGroup from '../components/toolbar/ToolGroup'
+import IconButton from '../components/toolbar/IconButton'
+import ToolbarDropdown from '../components/toolbar/ToolbarDropdown'
+import { ArrowLeft, Square, Minus, Hash, Ruler, Palette, RotateCcw, ChevronLeft, ChevronRight, Download, FileSpreadsheet } from 'lucide-react'
 import styles from './SessionPage.module.css'
 
 // SessionPage is the main working environment.
@@ -35,6 +39,11 @@ import styles from './SessionPage.module.css'
 // Center: the blueprint canvas
 const ADMIN_EMAIL = 'main@ngautomationhub.com'
 const DEFAULT_TEST_INPUT = { segments: [], countVerified: null, notes: '' }
+const TOOLBAR_COLORS = [
+  '#2e8bff', '#22c55e', '#f59e0b', '#ef4444', '#a855f7',
+  '#06b6d4', '#f97316', '#84cc16', '#ec4899', '#14b8a6',
+  '#8b5cf6', '#f43f5e', '#64748b', '#0ea5e9',
+]
 
 export default function SessionPage() {
   const { sessionId } = useParams()
@@ -136,6 +145,11 @@ export default function SessionPage() {
   function toggleSummaryCollapsed() {
     setSummaryCollapsed(v => { const next = !v; localStorage.setItem('bm_summary_collapsed', String(next)); return next })
   }
+
+  // ── Toolbar tool state (lifted from ZoneDrawPanel) ───────────────────────────
+  const [selectedType, setSelectedType] = useState('SF')
+  const [selectedColor, setSelectedColor] = useState(null) // null = auto palette
+  const [unitSystem, setUnitSystem] = useState('imperial') // Phase C wires to DB
 
   // ── Ortho mode (persists via localStorage) ───────────────────────────────────
   const [orthoMode, setOrthoMode] = useState(() => localStorage.getItem('bm_ortho_mode') === 'true')
@@ -1162,6 +1176,207 @@ export default function SessionPage() {
 
   return (
     <div className={styles.layout}>
+      {/* ── Toolbar ── */}
+      <Toolbar>
+        {/* ── LEFT: navigation ── */}
+        <IconButton
+          icon={ArrowLeft}
+          label="Back to project"
+          onClick={() => session?.project_id ? navigate(`/project/${session.project_id}`) : navigate('/dashboard')}
+        />
+
+        <div className={styles.toolbarSpacer} />
+
+        {/* ── MIDDLE: tool clusters ── */}
+
+        {/* Tools */}
+        <ToolGroup label="Tools">
+          {[
+            { t: 'SF', icon: Square, lbl: 'SF' },
+            { t: 'LF', icon: Minus, lbl: 'LF' },
+            { t: 'count', icon: Hash, lbl: 'Count' },
+          ].map(({ t, icon, lbl }) => (
+            <IconButton
+              key={t}
+              icon={icon}
+              label={lbl}
+              active={(isDrawing || isAccumulating) ? activeZoneMeta?.type === t : selectedType === t}
+              onClick={() => { if (!isDrawing && !isAccumulating) setSelectedType(t) }}
+              disabled={isDrawing || isAccumulating}
+              size={14}
+            >
+              <span style={{ fontSize: 11, fontWeight: 600 }}>{lbl}</span>
+            </IconButton>
+          ))}
+        </ToolGroup>
+
+        {/* Style */}
+        <ToolGroup label="Style">
+          <ToolbarDropdown
+            icon={Palette}
+            label="Color"
+            disabled={isDrawing || isAccumulating}
+          >
+            {(close) => (
+              <div className={styles.toolbarColorGrid}>
+                <button
+                  className={`${styles.toolbarColorSwatch} ${selectedColor === null ? styles.toolbarColorActive : ''}`}
+                  onClick={() => { setSelectedColor(null); close() }}
+                  title="Auto"
+                >A</button>
+                {TOOLBAR_COLORS.map(c => (
+                  <button
+                    key={c}
+                    className={`${styles.toolbarColorSwatch} ${selectedColor === c ? styles.toolbarColorActive : ''}`}
+                    style={{ background: c }}
+                    onClick={() => { setSelectedColor(c); close() }}
+                    title={c}
+                  />
+                ))}
+              </div>
+            )}
+          </ToolbarDropdown>
+          {selectedColor && (
+            <span className={styles.toolbarColorDot} style={{ background: selectedColor }} />
+          )}
+        </ToolGroup>
+
+        {/* Cal + Units */}
+        <ToolGroup label="Scale">
+          <ToolbarDropdown
+            icon={Ruler}
+            label={findScaleLabel(pixelsPerFoot)}
+            disabled={!blueprintUrl}
+          >
+            {(close) => (
+              <div className={styles.toolbarScaleMenu}>
+                {SCALE_OPTIONS.filter(o => o.value !== 'manual').map(o => (
+                  <button
+                    key={o.value}
+                    className={`${styles.toolbarMenuItem} ${
+                      o.inchesPerFoot && pixelsPerFoot &&
+                      Math.abs(calcPixelsPerFoot(o.inchesPerFoot, pixelsPerInch) - pixelsPerFoot) < 0.5
+                        ? styles.toolbarMenuItemActive : ''
+                    }`}
+                    onClick={() => {
+                      if (o.inchesPerFoot) {
+                        handleScaleChange(calcPixelsPerFoot(o.inchesPerFoot, pixelsPerInch))
+                      }
+                      close()
+                    }}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+                <div className={styles.toolbarMenuDivider} />
+                <button
+                  className={styles.toolbarMenuItem}
+                  onClick={() => {
+                    const input = window.prompt('Enter a known distance on the blueprint (e.g. 12\'6" or 20):')
+                    if (input) {
+                      const ft = parseFeetInches(input)
+                      if (ft && ft > 0) handleStartCalibration(ft)
+                    }
+                    close()
+                  }}
+                >
+                  Manual calibration…
+                </button>
+              </div>
+            )}
+          </ToolbarDropdown>
+          <IconButton
+            label={unitSystem === 'imperial' ? 'Imperial (ft)' : 'Metric (m)'}
+            onClick={() => setUnitSystem(u => u === 'imperial' ? 'metric' : 'imperial')}
+            size={14}
+          >
+            <span style={{ fontSize: 11, fontWeight: 600, fontFamily: 'var(--font-mono)' }}>
+              {unitSystem === 'imperial' ? 'FT' : 'M'}
+            </span>
+          </IconButton>
+        </ToolGroup>
+
+        {/* View */}
+        <ToolGroup label="View">
+          <IconButton
+            icon={RotateCcw}
+            label="Reset view"
+            onClick={handleResetView}
+            disabled={!blueprintUrl}
+          />
+          <IconButton
+            label={`Straight lines ${orthoMode ? 'ON' : 'OFF'} (O)`}
+            active={orthoMode}
+            onClick={toggleOrtho}
+            size={14}
+          >
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.5px' }}>⊥</span>
+          </IconButton>
+          {isPdf && pageCount > 1 && (
+            <>
+              <IconButton
+                icon={ChevronLeft}
+                label="Previous page"
+                onClick={() => { const prev = currentPage > 1 ? currentPage - 1 : pageCount; handlePageSwitch(prev) }}
+                disabled={!blueprintUrl}
+                size={16}
+              />
+              <span className={styles.toolbarPageIndicator}>
+                {currentPage}/{pageCount}
+              </span>
+              <IconButton
+                icon={ChevronRight}
+                label="Next page"
+                onClick={() => { const next = currentPage < pageCount ? currentPage + 1 : 1; handlePageSwitch(next) }}
+                disabled={!blueprintUrl}
+                size={16}
+              />
+            </>
+          )}
+        </ToolGroup>
+
+        {/* Export */}
+        <ToolGroup label="Export">
+          <ToolbarDropdown icon={Download} label="Export" disabled={!blueprintUrl}>
+            {(close) => (
+              <div className={styles.toolbarScaleMenu}>
+                <button className={styles.toolbarMenuItem} onClick={() => { handleExportCSV(); close() }} disabled={zones.length === 0}>
+                  <FileSpreadsheet size={14} /> CSV (all pages)
+                </button>
+                <div className={styles.toolbarMenuDivider} />
+                <button className={styles.toolbarMenuItem} onClick={() => { handleDownloadClean(); close() }}>
+                  <Download size={14} /> Clean PDF
+                </button>
+                <button className={styles.toolbarMenuItem} onClick={() => { handleDownloadWithMeasurements(); close() }} disabled={downloadingPdf || zones.length === 0}>
+                  <Download size={14} /> {downloadingPdf ? 'Generating…' : 'PDF with zones'}
+                </button>
+              </div>
+            )}
+          </ToolbarDropdown>
+        </ToolGroup>
+
+        <div className={styles.toolbarSpacer} />
+
+        {/* ── RIGHT: save state ── */}
+        <div className={styles.toolbarRight}>
+          <div className={styles.toolbarSave}>
+            <span className={`${styles.saveDot} ${saveError ? styles.saveDotFailed : isSaving ? styles.saveDotSaving : styles.saveDotSaved}`} />
+            <span className={styles.toolbarSaveText}>
+              {saveError ? 'Error' : isSaving ? 'Saving…' : lastSavedAt ? `Saved ${formatTime(lastSavedAt)}` : '—'}
+            </span>
+          </div>
+          <button
+            className={`${styles.toolbarSaveBtn} ${saveError ? styles.toolbarSaveBtnError : ''}`}
+            onClick={handleManualSave}
+            disabled={manualSaving || isSaving}
+          >
+            {manualSaving ? 'Saving…' : saveError ? 'Retry' : 'Save'}
+          </button>
+          <UserMenu />
+        </div>
+      </Toolbar>
+
+      <div className={styles.workArea}>
       {/* ── Sidebar ── */}
       <aside className={`${styles.sidebar} ${isTestMode ? styles.sidebarTestMode : ''}`}>
 
@@ -1190,7 +1405,6 @@ export default function SessionPage() {
                 </>
               )}
             </div>
-            <UserMenu />
           </div>
           {session?.project_id && (
             <button
@@ -1203,27 +1417,7 @@ export default function SessionPage() {
           <div className={styles.sessionInfo}>
             <div className={styles.sessionProject}>{session?.project_name}</div>
             {session?.description && <div className={styles.sessionClient}>{session.description}</div>}
-            <div className={styles.saveRow}>
-              {saveError ? (
-                <div className={`${styles.saveStatus} ${styles.saveStatusFailed}`} onClick={handleManualSave} title="Click to retry">
-                  <span className={`${styles.saveDot} ${styles.saveDotFailed}`} />
-                  <span>Save failed — click to retry</span>
-                </div>
-              ) : isSaving ? (
-                <div className={styles.saveStatus}>
-                  <span className={`${styles.saveDot} ${styles.saveDotSaving}`} />
-                  <span style={{ color: 'var(--color-primary)' }}>Saving…</span>
-                </div>
-              ) : (
-                <div className={styles.saveStatus}>
-                  <span className={`${styles.saveDot} ${styles.saveDotSaved}`} />
-                  <span>{lastSavedAt ? `Saved ${formatTime(lastSavedAt)}` : 'Not yet saved'}</span>
-                </div>
-              )}
-              <button className={styles.saveBtn} onClick={handleManualSave} disabled={manualSaving || isSaving}>
-                {manualSaving ? 'Saving…' : 'Save'}
-              </button>
-            </div>
+            {/* Save status moved to Toolbar File cluster */}
           </div>
           {(isAdmin || enabledFeatures?.test_mode) && (
             <button
@@ -1306,36 +1500,7 @@ export default function SessionPage() {
           </div>
         )}
 
-        {/* Scale */}
-        {blueprintUrl && (
-          <div className={styles.section}>
-            <div className={styles.sectionTitle}>Scale</div>
-            <ScalePanel
-              pixelsPerFoot={pixelsPerFoot}
-              pixelsPerInch={pixelsPerInch}
-              pdfPageInfo={pdfPageInfo}
-              currentPage={currentPage}
-              pageCount={pageCount}
-              isSuperAdmin={isAdmin}
-              isPdf={isPdf}
-              onScaleChange={(ppf) => { handleScaleChange(ppf) }}
-              onStartCalibration={handleStartCalibration}
-              calibrating={calibrating}
-              pageKey={currentPage}
-              enabledFeatures={enabledFeatures}
-              onDetectScale={handleDetectScale}
-              scaleSanity={scaleSanity}
-              scaleDetectionBanner={scaleDetectionBanner}
-              hasZonesOnPage={pageZones.length > 0}
-              onRescaleZones={async () => {
-                if (!pixelsPerFoot) return
-                const count = await rescaleZonesOnCurrentPage(pixelsPerFoot)
-                setRescaleToast(`${count} zone${count === 1 ? '' : 's'} rescaled`)
-                setTimeout(() => setRescaleToast(''), 3000)
-              }}
-            />
-          </div>
-        )}
+        {/* Scale moved to Toolbar Cal+Units cluster (Phase B) */}
 
         {/* Summary moved to sidebar footer (Step 7) */}
 
@@ -1363,6 +1528,10 @@ export default function SessionPage() {
               sfPreview={sfPreview}
               wallPreview={wallPreview}
               enabledFeatures={enabledFeatures}
+              selectedType={selectedType}
+              onTypeChange={setSelectedType}
+              selectedColor={selectedColor}
+              onColorChange={setSelectedColor}
             />
           </div>
         )}
@@ -1479,34 +1648,7 @@ export default function SessionPage() {
           )
         })()}
 
-        {/* Download original file and annotated PDF */}
-        {blueprintUrl && (
-          <div className={styles.section}>
-            <div className={styles.sectionTitle}>Download</div>
-            <div className={styles.downloadBtns}>
-              <button className={styles.downloadBtn} onClick={handleDownloadClean}>
-                ↓ Clean PDF
-              </button>
-              <button
-                className={`${styles.downloadBtn} ${styles.downloadBtnMeasure}`}
-                onClick={handleDownloadWithMeasurements}
-                disabled={downloadingPdf || zones.length === 0}
-                title={zones.length === 0 ? 'Add zones first' : 'Download PDF with zone overlays'}
-              >
-                {downloadingPdf ? 'Generating…' : '↓ With Zones'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Export — always exports all zones across all pages */}
-        {zones.length > 0 && (
-          <div className={styles.section}>
-            <button className={styles.exportBtn} onClick={handleExportCSV}>
-              ↓ Export CSV
-            </button>
-          </div>
-        )}
+        {/* Download + Export moved to Toolbar Output cluster (Phase B) */}
 
         {/* Print-only report footer */}
         <div className={styles.printReportFooter}>
@@ -1565,21 +1707,7 @@ export default function SessionPage() {
           />
         )}
 
-        {/* Reset view button — always visible when a blueprint is loaded and rendered */}
-        {blueprintUrl && !pdfError && !(isPdf && (pdfLoading || !renderedPageUrl)) && (
-          <div className={styles.canvasToolbar}>
-            <button className={styles.resetViewBtn} onClick={handleResetView}>
-              Reset view
-            </button>
-            <button
-              className={`${styles.orthoBtn} ${orthoMode ? styles.orthoBtnActive : ''}`}
-              onClick={toggleOrtho}
-              title="Straight lines — snap to horizontal/vertical (O)"
-            >
-              Straight Lines {orthoMode ? 'ON' : 'OFF'}
-            </button>
-          </div>
-        )}
+        {/* Reset view + Ortho moved to Toolbar (Phase B) */}
 
         {/* AI scale detection banner */}
         {detectingScale && (
@@ -1639,6 +1767,7 @@ export default function SessionPage() {
           </div>
         )}
       </main>
+      </div>{/* close workArea */}
 
       {/* Page Manager modal */}
       {showPageManager && isPdf && pageCount > 0 && (
