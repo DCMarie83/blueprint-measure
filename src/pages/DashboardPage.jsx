@@ -6,6 +6,7 @@ import GettingStartedChecklist from '../components/dashboard/GettingStartedCheck
 import PipelinePreview from '../components/dashboard/PipelinePreview'
 import StatsTiles from '../components/dashboard/StatsTiles'
 import RecentActivity from '../components/dashboard/RecentActivity'
+import ContinueWorking from '../components/dashboard/ContinueWorking'
 import TipsPanel from '../components/dashboard/TipsPanel'
 import styles from './DashboardPage.module.css'
 
@@ -33,6 +34,7 @@ export default function DashboardPage() {
               <GettingStartedChecklist checklist={checklist} />
             )}
             {pipeline && <PipelinePreview pipeline={pipeline} hasZeroJobs={hasZeroJobs} />}
+            <ContinueWorking />
             {stats && <StatsTiles stats={stats} />}
             {recentActivity && <RecentActivity recentActivity={recentActivity} />}
             <TipsPanel tip={tip} />
