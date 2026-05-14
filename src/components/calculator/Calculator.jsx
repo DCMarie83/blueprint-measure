@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react'
-import { parseFeetInches } from '../../utils/fractions'
+import { parseFeetInches, formatFeetInches } from '../../utils/fractions'
 import styles from './Calculator.module.css'
 
 const MODES = ['Standard', 'SF (L×W)', 'Markup %']
@@ -149,7 +149,7 @@ export default function Calculator({ unitSystem = 'imperial' }) {
             placeholder={isMetric ? '3.8' : '12\'6"'}
           />
           {parsedLength !== null && (
-            <span className={styles.parsedHint}>→ {parsedLength.toFixed(2)} {isMetric ? 'm' : 'ft'}</span>
+            <span className={styles.parsedHint}>→ {isMetric ? `${parsedLength.toFixed(2)} m` : formatFeetInches(parsedLength)}</span>
           )}
           <label className={styles.fieldLabel}>{isMetric ? 'Width (m)' : 'Width (ft + in)'}</label>
           <input
@@ -160,7 +160,7 @@ export default function Calculator({ unitSystem = 'imperial' }) {
             placeholder={isMetric ? '2.5' : '10\'3"'}
           />
           {parsedWidth !== null && (
-            <span className={styles.parsedHint}>→ {parsedWidth.toFixed(2)} {isMetric ? 'm' : 'ft'}</span>
+            <span className={styles.parsedHint}>→ {isMetric ? `${parsedWidth.toFixed(2)} m` : formatFeetInches(parsedWidth)}</span>
           )}
           {sfResult !== null && (
             <>
