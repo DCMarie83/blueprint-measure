@@ -5,31 +5,28 @@ import { useAuth } from '../../context/AuthContext'
 import { useAdminData } from '../../context/AdminDataContext'
 import { logError } from '../../lib/logError'
 import { useDateFormat } from '../../hooks/useDateFormat'
+import Chip from '../../components/ui/Chip'
 import styles from './sections.module.css'
 
-const STATUS_COLORS = {
-  new:         { bg: 'rgba(30,58,138,0.2)',  color: '#93c5fd' },
-  reviewed:    { bg: 'rgba(88,28,135,0.2)',  color: '#c4b5fd' },
-  in_progress: { bg: 'rgba(146,64,14,0.2)', color: '#fcd34d' },
-  resolved:    { bg: 'rgba(20,83,45,0.2)',   color: '#86efac' },
-  wontfix:     { bg: 'rgba(153,27,27,0.2)',  color: '#fca5a5' },
+function statusVariant(value) {
+  switch (value) {
+    case 'new': return 'info'
+    case 'reviewed': return 'purple'
+    case 'in_progress': return 'warning'
+    case 'resolved': return 'success'
+    case 'wontfix': return 'danger'
+    default: return 'info'
+  }
 }
 
-const TYPE_COLORS = {
-  bug:      { bg: 'rgba(153,27,27,0.2)',  color: '#fca5a5' },
-  feature:  { bg: 'rgba(30,58,138,0.2)',  color: '#93c5fd' },
-  question: { bg: 'rgba(133,77,14,0.2)',  color: '#fde047' },
-  other:    { bg: 'rgba(55,65,81,0.2)',   color: '#d1d5db' },
-}
-
-function StatusPill({ value }) {
-  const c = STATUS_COLORS[value] ?? STATUS_COLORS.new
-  return <span style={{ background: c.bg, color: c.color, borderRadius: 9999, padding: '2px 8px', fontSize: 11, fontWeight: 500 }}>{value ?? 'new'}</span>
-}
-
-function TypePill({ value }) {
-  const c = TYPE_COLORS[value] ?? TYPE_COLORS.other
-  return <span style={{ background: c.bg, color: c.color, borderRadius: 9999, padding: '2px 8px', fontSize: 11, fontWeight: 500 }}>{value ?? 'other'}</span>
+function typeVariant(value) {
+  switch (value) {
+    case 'bug': return 'danger'
+    case 'feature': return 'info'
+    case 'question': return 'warning'
+    case 'other': return 'neutral'
+    default: return 'neutral'
+  }
 }
 
 export default function FeedbackSection() {
@@ -203,13 +200,13 @@ export default function FeedbackSection() {
                   <Fragment key={fb.id}>
                     <tr className={styles.tr} onClick={() => handleExpand(fb)} style={{ cursor: 'pointer' }}>
                       <td className={styles.td}>{formatDateTime(fb.created_at)}</td>
-                      <td className={styles.td}><TypePill value={fb.type} /></td>
+                      <td className={styles.td}><Chip variant={typeVariant(fb.type)}>{fb.type ?? 'other'}</Chip></td>
                       <td className={styles.td}>{fbUser}</td>
                       <td className={styles.td}>{fbCompany}</td>
                       <td className={styles.td} title={fb.description}>{fb.description?.length > 60 ? fb.description.slice(0, 60) + '...' : fb.description}</td>
                       <td className={styles.td}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <StatusPill value={fb.status ?? 'new'} />
+                          <Chip variant={statusVariant(fb.status ?? 'new')}>{fb.status ?? 'new'}</Chip>
                           {(fb.response_count ?? 0) > 0 && <MessageCircle size={14} style={{ color: '#93c5fd' }} />}
                         </div>
                       </td>

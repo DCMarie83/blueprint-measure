@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import InfoTooltip from '../ui/InfoTooltip'
+import Chip from '../ui/Chip'
 import styles from './ZoneList.module.css'
 import { getMaxReach, estimatePaint } from '../../utils/measurements'
 import { parseFeetInches, formatFeetInches, formatSF, formatLF } from '../../utils/fractions'
@@ -32,10 +33,13 @@ function EyeOffIcon() {
   )
 }
 
-const TYPE_COLORS = {
-  SF: '#2e8bff',
-  LF: '#22c55e',
-  count: '#f59e0b',
+function measurementVariant(type) {
+  switch (type) {
+    case 'SF': return 'info'
+    case 'LF': return 'success'
+    case 'count': return 'warning'
+    default: return 'neutral'
+  }
 }
 
 const SURFACE_TYPES = ['Wall', 'Ceiling', 'Trim', 'Door', 'Window', 'Cabinet', 'Floor', 'Exterior', 'Other']
@@ -455,12 +459,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                     />
                   )}
                   <span className={styles.zoneName}>{zone.name}</span>
-                  <span
-                    className={styles.zoneType}
-                    style={{ background: TYPE_COLORS[zone.measurement_type] + '22', color: TYPE_COLORS[zone.measurement_type] }}
-                  >
-                    {zone.measurement_type}
-                  </span>
+                  <Chip variant={measurementVariant(zone.measurement_type)}>{zone.measurement_type}</Chip>
                   {/* Collapsed description preview + result + chevron */}
                   {!isExpanded && zone.description && (
                     <span className={styles.collapsedDesc}>

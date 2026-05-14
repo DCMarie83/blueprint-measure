@@ -63,6 +63,12 @@
   --color-info: #60a5fa;
   --color-info-bg: #1f2a36;
   --color-info-border: #3a4d63;
+  --color-purple: #c4b5fd;
+  --color-purple-bg: rgba(88, 28, 135, 0.2);
+  --color-purple-border: #6d28d9;
+  --color-neutral: #d1d5db;
+  --color-neutral-bg: rgba(55, 65, 81, 0.2);
+  --color-neutral-border: #4b5563;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.4);
@@ -111,6 +117,12 @@
   --color-info: #2563eb;
   --color-info-bg: #e8eef4;
   --color-info-border: #95a8c0;
+  --color-purple: #6d28d9;
+  --color-purple-bg: #f3e8ff;
+  --color-purple-border: #d8b4fe;
+  --color-neutral: #4b5563;
+  --color-neutral-bg: #f3f4f6;
+  --color-neutral-border: #d1d5db;
 
   --shadow-sm: 0 1px 3px rgba(26, 26, 26, 0.06);
   --shadow-md: 0 4px 12px rgba(26, 26, 26, 0.08);
