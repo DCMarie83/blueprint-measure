@@ -1,10 +1,9 @@
-import { NavLink, Outlet, Link, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, Link } from 'react-router-dom'
 import { LayoutDashboard, Building2, Users, Package, FlaskConical,
          MessageSquare, AlertTriangle, Settings } from 'lucide-react'
-import { supabase } from '../../lib/supabase'
-import { useAuth } from '../../context/AuthContext'
 import { BRAND } from '../../lib/config'
 import Logo from '../../components/brand/Logo'
+import UserMenu from '../../components/UserMenu'
 import { AdminDataProvider, useAdminData } from '../../context/AdminDataContext'
 import styles from './AdminLayout.module.css'
 
@@ -29,7 +28,14 @@ function AdminShell() {
           <SidebarContent />
         </aside>
         <main className={styles.main}>
-          <div className={styles.loadingCenter}>Loading admin data…</div>
+          <header className={styles.topHeader}>
+            <div className={styles.topHeaderInner}>
+              <UserMenu />
+            </div>
+          </header>
+          <div className={styles.mainContent}>
+            <div className={styles.loadingCenter}>Loading admin data…</div>
+          </div>
         </main>
       </div>
     )
@@ -41,22 +47,20 @@ function AdminShell() {
         <SidebarContent />
       </aside>
       <main className={styles.main}>
-        <Outlet />
+        <header className={styles.topHeader}>
+          <div className={styles.topHeaderInner}>
+            <UserMenu />
+          </div>
+        </header>
+        <div className={styles.mainContent}>
+          <Outlet />
+        </div>
       </main>
     </div>
   )
 }
 
 function SidebarContent() {
-  const { user } = useAuth()
-  const navigate = useNavigate()
-
-  async function handleSignOut() {
-    sessionStorage.removeItem('bpm_password_recovery_pending')
-    await supabase.auth.signOut()
-    navigate('/login')
-  }
-
   return (
     <>
       <div className={styles.sidebarHeader}>
@@ -79,10 +83,8 @@ function SidebarContent() {
         })}
       </nav>
       <div className={styles.sidebarFooter}>
-        <span className={styles.footerEmail}>{user?.email}</span>
         <Link to="/accuracy-test" className={styles.footerLink}>Accuracy Test</Link>
         <Link to="/dashboard" className={styles.footerLink}>Back to Dashboard</Link>
-        <button className={styles.signOutBtn} onClick={handleSignOut}>Sign Out</button>
       </div>
     </>
   )

@@ -144,9 +144,34 @@
 
 .main {
   flex: 1;
-  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
   min-width: 0;
+}
+
+.topHeader {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 56px;
+  padding: 0 24px;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.topHeaderInner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mainContent {
+  flex: 1;
+  padding: 28px 32px;
 }
 
 .loadingCenter {
