@@ -368,29 +368,16 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                   </div>
                 )}
 
-                {enabledFeatures?.paint_calculator && (
-                  <div className={styles.editCoatGroup}>
-                    <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Coats <InfoTooltip>How many coats of paint. Most jobs require 2 coats. Affects paint calculator.</InfoTooltip></span>
-                    {[1, 2].map(n => (
-                      <button
-                        key={n}
-                        type="button"
-                        className={`${styles.editCoatBtn} ${editCoatCount === n ? styles.editCoatActive : ''}`}
-                        onClick={() => setEditCoatCount(n)}
-                      >
-                        {n} {n === 1 ? 'coat' : 'coats'}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                {/* Coats UI removed — estimating concern, handled by EstimateBuilder.
+                   editCoatCount state + save payload kept intact (default 1). */}
 
                 {enabledFeatures.paint_calculator && (
                   <div className={styles.editFinishGroup}>
                     <span className={styles.editFinishLabel}>Surface finish <InfoTooltip>Coverage rate per gallon. Smooth surfaces (drywall, trim) cover ~350 SF/gal. Textured (popcorn, stucco) cover ~275 SF/gal.</InfoTooltip></span>
                     <div className={styles.editFinishBtns}>
                       {[
-                        { value: 'smooth',   label: 'Smooth (350 SF/gal)' },
-                        { value: 'textured', label: 'Textured (275 SF/gal)' },
+                        { value: 'smooth',   label: 'Smooth' },
+                        { value: 'textured', label: 'Textured' },
                       ].map(({ value, label }) => (
                         <button
                           key={value}
@@ -494,14 +481,11 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                 {isExpanded && zone.description && (
                   <div className={styles.zoneDescription}>{zone.description}</div>
                 )}
-                {isExpanded && (zone.surface_type || (enabledFeatures?.paint_calculator && zone.coat_count > 1)) && (
+                {isExpanded && zone.surface_type && (
                   <div className={styles.zoneMeta}>
-                    {[
-                      zone.surface_type === 'Ceiling' && zone.ceiling_type && zone.ceiling_type !== 'flat'
-                        ? `${zone.surface_type} · ${CEILING_TYPE_LABELS[zone.ceiling_type] ?? zone.ceiling_type}`
-                        : zone.surface_type,
-                      enabledFeatures?.paint_calculator && zone.coat_count > 1 ? `${zone.coat_count} coats` : null,
-                    ].filter(Boolean).join(' · ')}
+                    {zone.surface_type === 'Ceiling' && zone.ceiling_type && zone.ceiling_type !== 'flat'
+                      ? `${zone.surface_type} · ${CEILING_TYPE_LABELS[zone.ceiling_type] ?? zone.ceiling_type}`
+                      : zone.surface_type}
                   </div>
                 )}
                 {isExpanded && (<>
