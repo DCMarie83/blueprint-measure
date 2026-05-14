@@ -193,6 +193,20 @@ export function useSession(sessionId) {
     setZones(prev => prev.filter(z => z.id !== zoneId))
   }
 
+  // Re-insert a previously deleted zone with its original id.
+  // Used by undo/redo to restore zones.
+  async function restoreZone(zone) {
+    const { id, created_at, updated_at, ...rest } = zone
+    const { data, error } = await supabase
+      .from('zones')
+      .insert({ id, ...rest })
+      .select()
+      .single()
+    if (error) throw new Error(error.message)
+    setZones(prev => [...prev, data])
+    return data
+  }
+
   async function updateSession(updates) {
     const { data, error } = await supabase
       .from('sessions')
@@ -205,5 +219,5 @@ export function useSession(sessionId) {
     return data
   }
 
-  return { session, zones, enabledFeatures, loading, error, saveZone, updateZone, updateZoneLabelOffset, redrawZone, deleteZone, updateSession, refetch: fetchSession }
+  return { session, zones, enabledFeatures, loading, error, saveZone, updateZone, updateZoneLabelOffset, redrawZone, deleteZone, restoreZone, updateSession, refetch: fetchSession }
 }

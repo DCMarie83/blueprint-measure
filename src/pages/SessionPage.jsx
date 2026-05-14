@@ -32,7 +32,7 @@ import ToolGroup from '../components/toolbar/ToolGroup'
 import IconButton from '../components/toolbar/IconButton'
 import ToolbarDropdown from '../components/toolbar/ToolbarDropdown'
 import Calculator from '../components/calculator/Calculator'
-import { ArrowLeft, Square, Minus, Hash, Ruler, Palette, RotateCcw, ChevronLeft, ChevronRight, Download, FileSpreadsheet, Calculator as CalcIcon } from 'lucide-react'
+import { ArrowLeft, Square, Minus, Hash, Ruler, Palette, RotateCcw, ChevronLeft, ChevronRight, Download, FileSpreadsheet, Calculator as CalcIcon, Undo2, Redo2 } from 'lucide-react'
 import styles from './SessionPage.module.css'
 
 // SessionPage is the main working environment.
@@ -51,7 +51,7 @@ export default function SessionPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const isAdmin = user?.email === ADMIN_EMAIL
-  const { session, zones, enabledFeatures, loading, error, saveZone, updateZone, updateZoneLabelOffset, redrawZone, deleteZone, updateSession, refetch } = useSession(sessionId)
+  const { session, zones, enabledFeatures, loading, error, saveZone, updateZone, updateZoneLabelOffset, redrawZone, deleteZone, restoreZone, updateSession, refetch } = useSession(sessionId)
   const { deleteSession } = useSessions()
 
   const { formatTime } = useDateFormat()
@@ -152,6 +152,62 @@ export default function SessionPage() {
   const [selectedColor, setSelectedColor] = useState(null) // null = auto palette
   const [unitSystem, setUnitSystem] = useState('imperial') // Phase C wires to DB
 
+  // ── Undo/redo history (zone add + delete only) ──────────────────────────────
+  const [history, setHistory] = useState([])
+  const [historyIndex, setHistoryIndex] = useState(-1)
+  const skipHistoryRef = useRef(false)
+  const MAX_HISTORY = 50
+
+  const canUndo = historyIndex >= 0
+  const canRedo = historyIndex < history.length - 1
+
+  function recordAction(action) {
+    if (skipHistoryRef.current) return
+    setHistory(prev => {
+      const truncated = prev.slice(0, historyIndex + 1)
+      const next = [...truncated, action].slice(-MAX_HISTORY)
+      // Must set index in the same tick — use the known length
+      setHistoryIndex(next.length - 1)
+      return next
+    })
+  }
+
+  const handleUndo = useCallback(async () => {
+    if (historyIndex < 0) return
+    const action = history[historyIndex]
+    skipHistoryRef.current = true
+    try {
+      if (action.type === 'add') {
+        await deleteZone(action.zone.id)
+      } else if (action.type === 'delete') {
+        await restoreZone(action.zone)
+      }
+    } catch (err) {
+      console.error('Undo failed:', err)
+    } finally {
+      skipHistoryRef.current = false
+    }
+    setHistoryIndex(i => i - 1)
+  }, [history, historyIndex, deleteZone, restoreZone])
+
+  const handleRedo = useCallback(async () => {
+    if (historyIndex >= history.length - 1) return
+    const action = history[historyIndex + 1]
+    skipHistoryRef.current = true
+    try {
+      if (action.type === 'add') {
+        await restoreZone(action.zone)
+      } else if (action.type === 'delete') {
+        await deleteZone(action.zone.id)
+      }
+    } catch (err) {
+      console.error('Redo failed:', err)
+    } finally {
+      skipHistoryRef.current = false
+    }
+    setHistoryIndex(i => i + 1)
+  }, [history, historyIndex, deleteZone, restoreZone])
+
   // ── Ortho mode (persists via localStorage) ───────────────────────────────────
   const [orthoMode, setOrthoMode] = useState(() => localStorage.getItem('bm_ortho_mode') === 'true')
   function toggleOrtho() {
@@ -170,6 +226,23 @@ export default function SessionPage() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+
+  // Keyboard shortcuts: Cmd+Z undo, Cmd+Shift+Z redo
+  useEffect(() => {
+    function onKey(e) {
+      const tag = e.target.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault()
+        handleUndo()
+      } else if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'Z' || e.key === 'z')) {
+        e.preventDefault()
+        handleRedo()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [handleUndo, handleRedo])
 
   // ── Pixel sanity check (all users, all tiers) ────────────────────────────────
   // After any scale change, checks if the drawing dimensions are reasonable.
@@ -609,7 +682,7 @@ export default function SessionPage() {
       if (redrawingZoneId) {
         await redrawZone(redrawingZoneId, drawnPoints, result)
       } else {
-        await saveZone({
+        const saved = await saveZone({
           name: activeZoneMeta.name,
           description: activeZoneMeta.description,
           surface_type: activeZoneMeta.surface_type,
@@ -631,6 +704,7 @@ export default function SessionPage() {
           result,
           page_number: currentPage,
         })
+        if (saved) recordAction({ type: 'add', zone: saved })
       }
     } catch (err) {
       alert('Error saving zone: ' + err.message)
@@ -677,7 +751,7 @@ export default function SessionPage() {
       if (redrawingZoneId) {
         await redrawZone(redrawingZoneId, combinedPoints, result)
       } else {
-        await saveZone({
+        const saved = await saveZone({
           name: activeZoneMeta.name,
           description: activeZoneMeta.description,
           surface_type: activeZoneMeta.surface_type,
@@ -696,6 +770,7 @@ export default function SessionPage() {
           result,
           page_number: currentPage,
         })
+        if (saved) recordAction({ type: 'add', zone: saved })
       }
     } catch (err) {
       alert('Error saving zone: ' + err.message)
@@ -796,8 +871,10 @@ export default function SessionPage() {
   }
 
   async function handleDeleteZone(zoneId) {
+    const snapshot = zones.find(z => z.id === zoneId)
     try {
       await deleteZone(zoneId)
+      if (snapshot) recordAction({ type: 'delete', zone: snapshot })
     } catch (err) {
       alert('Error deleting zone: ' + err.message)
     }
@@ -1189,6 +1266,12 @@ export default function SessionPage() {
         <div className={styles.toolbarSpacer} />
 
         {/* ── MIDDLE: tool clusters ── */}
+
+        {/* Undo / Redo */}
+        <ToolGroup>
+          <IconButton icon={Undo2} label="Undo (⌘Z)" onClick={handleUndo} disabled={!canUndo} size={16} />
+          <IconButton icon={Redo2} label="Redo (⌘⇧Z)" onClick={handleRedo} disabled={!canRedo} size={16} />
+        </ToolGroup>
 
         {/* Tools */}
         <ToolGroup label="Tools">
