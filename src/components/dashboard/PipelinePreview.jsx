@@ -12,7 +12,7 @@ export default function PipelinePreview({ pipeline, hasZeroJobs }) {
           <Link to="/jobs" className={styles.boardLink}>See full board &rarr;</Link>
         </div>
         <div className={styles.empty}>
-          No opportunities yet. Create your first job to get started.
+          Quiet today. Create your first job to get started.
         </div>
       </section>
     )

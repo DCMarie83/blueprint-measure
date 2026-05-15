@@ -139,7 +139,7 @@ export default function BlueprintUploader({ sessionId, projectId, onSplitFlowRed
       {uploading ? (
         <div className={styles.uploadingState}>
           <div className={styles.progressInfo}>
-            <span className={styles.progressLabel}>Uploading… {progress}%</span>
+            <span className={styles.progressLabel}>Fetching... {progress}%</span>
             <span className={styles.progressBytes}>
               {formatBytes(bytesUploaded)} / {formatBytes(bytesTotal)}
             </span>
@@ -155,7 +155,7 @@ export default function BlueprintUploader({ sessionId, projectId, onSplitFlowRed
         <>
           <div className={styles.icon}>📋</div>
           <div className={styles.text}>
-            <strong>Drop blueprint here</strong> or click to browse
+            <strong>Drop the bone here</strong> or click to browse
           </div>
           <div className={styles.sub}>JPG, PNG, or PDF — up to {MAX_FILE_SIZE_GB}GB</div>
           {warning && (

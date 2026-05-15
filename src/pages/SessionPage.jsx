@@ -335,7 +335,7 @@ export default function SessionPage() {
     if (pageCount > 100) {
       setPdfError(`This PDF has ${pageCount} pages. Browser-based rendering is limited to ~100 pages. Please extract just the drawing sheets you need (typically 10-30 pages) using Adobe Acrobat or smallpdf.com, then re-upload as a new blueprint.`)
     } else if (pageCount > 50) {
-      setPdfWarningToast(`Large PDF (${pageCount} pages) — rendering may be slow.`)
+      setPdfWarningToast(`Big bone to chew (${pageCount} pages) — rendering may be slow.`)
     }
   }, [isPdf, pageCount])
 
@@ -895,7 +895,7 @@ export default function SessionPage() {
 
   function handleExportCSV() {
     if (zones.length === 0) {
-      alert('No zones to export yet.')
+      alert('Nothing to fetch yet.')
       return
     }
     exportCSV(session, zones, enabledFeatures)
@@ -1005,7 +1005,7 @@ export default function SessionPage() {
       }
     }
     setSavingTests(false)
-    if (saved > 0) alert(`${saved} test result${saved > 1 ? 's' : ''} logged.`)
+    if (saved > 0) alert(`Fetched: ${saved} test result${saved > 1 ? 's' : ''}.`)
   }
 
   // Computed test summary
@@ -1189,7 +1189,7 @@ export default function SessionPage() {
   if (loading) {
     return (
       <div className={styles.loading}>
-        <div className={styles.spinner} /> Loading session…
+        <div className={styles.spinner} /> Sniffing out your session...
       </div>
     )
   }
@@ -1460,7 +1460,7 @@ export default function SessionPage() {
                   <Download size={14} /> Clean PDF
                 </button>
                 <button className={styles.toolbarMenuItem} onClick={() => { handleDownloadWithMeasurements(); close() }} disabled={downloadingPdf || zones.length === 0}>
-                  <Download size={14} /> {downloadingPdf ? 'Generating…' : 'PDF with zones'}
+                  <Download size={14} /> {downloadingPdf ? 'Almost there...' : 'PDF with zones'}
                 </button>
               </div>
             )}
@@ -1580,7 +1580,7 @@ export default function SessionPage() {
             }} />
           ) : (
             <div className={styles.blueprintLoaded}>
-              <span className={styles.blueprintCheck}>✓</span> Blueprint loaded
+              <span className={styles.blueprintCheck}>✓</span> Blueprint fetched
               <button
                 className={styles.replaceBtn}
                 onClick={() => {
@@ -1780,7 +1780,7 @@ export default function SessionPage() {
           /* State A — No blueprint */
           <div className={styles.emptyCanvas}>
             <div className={styles.emptyCanvasIcon}>📐</div>
-            <p>Upload a blueprint to start measuring</p>
+            <p>Fetch a blueprint to start measuring</p>
           </div>
         ) : pdfError ? (
           /* State C — Critical PDF error (too many pages) */
@@ -1801,7 +1801,7 @@ export default function SessionPage() {
           /* State B — Loading PDF / rendering first page */
           <div className={styles.emptyCanvas}>
             <div className="spinner" />
-            <p style={{ marginTop: 12, color: 'var(--color-text-muted)' }}>Loading PDF…</p>
+            <p style={{ marginTop: 12, color: 'var(--color-text-muted)' }}>Fetching your PDF...</p>
           </div>
         ) : (
           /* State D — Loaded successfully */
@@ -1830,12 +1830,12 @@ export default function SessionPage() {
         {detectingScale && (
           <div className={styles.scaleBanner}>
             <span className={styles.scaleBannerDot} />
-            Detecting scale…
+            Sniffing for scale...
           </div>
         )}
         {scaleDetectionBanner && !detectingScale && (
           <div className={styles.scaleBanner}>
-            Scale auto-detected: <strong>{scaleDetectionBanner.label}</strong>
+            Sniffed out the scale: <strong>{scaleDetectionBanner.label}</strong>
             <button
               className={styles.scaleBannerDismiss}
               onClick={() => setScaleDetectionBanner(null)}

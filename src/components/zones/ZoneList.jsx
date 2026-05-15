@@ -160,7 +160,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
   if (zones.length === 0) {
     return (
       <div className={styles.empty}>
-        No zones yet. Select a measurement type and click the canvas to start drawing.
+        No zones in the yard yet. Pick a tool and start drawing on the canvas.
       </div>
     )
   }

@@ -159,7 +159,7 @@ export default function EstimateDetailPage() {
       if (Object.keys(patch).length > 0) {
         await builder.updateEstimate(patch)
       }
-      setSaveMsg('Saved!')
+      setSaveMsg('Sit, stay, saved!')
       setTimeout(() => setSaveMsg(null), 2000)
     } catch (err) {
       alert('Save failed: ' + err.message)

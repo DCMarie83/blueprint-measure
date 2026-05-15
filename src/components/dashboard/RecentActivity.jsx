@@ -22,7 +22,7 @@ export default function RecentActivity({ recentActivity }) {
 
       {!collapsed && (
         recentActivity.length === 0 ? (
-          <p className={styles.empty}>No recent activity yet.</p>
+          <p className={styles.empty}>Quiet day in the yard.</p>
         ) : (
           <div className={styles.list}>
             {recentActivity.slice(0, 5).map((event, i) => {

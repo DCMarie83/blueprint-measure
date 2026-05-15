@@ -248,7 +248,7 @@ export default function ProjectDetailPage() {
             )}
           </div>
           {estimates.length === 0 ? (
-            <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>No estimates yet. Click Generate Estimate to start.</p>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>No estimates yet. Click Generate to fetch one.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {estimates.map(est => (
@@ -313,7 +313,7 @@ export default function ProjectDetailPage() {
 
           {sessions.length === 0 ? (
             <div className={styles.emptyState}>
-              <h2>No blueprints yet</h2>
+              <h2>No bones in the yard yet.</h2>
               <p>Drop files above or add your first blueprint to start measuring.</p>
             </div>
           ) : (

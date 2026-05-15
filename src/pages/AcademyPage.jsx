@@ -58,7 +58,7 @@ export default function AcademyPage() {
           </div>
         ) : filtered.length === 0 ? (
           <div className={styles.filterEmpty}>
-            <p>No videos in this category yet.</p>
+            <p>No tricks here yet — check back soon.</p>
           </div>
         ) : (
           <div className={styles.grid}>

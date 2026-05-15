@@ -83,7 +83,7 @@ export default function RegisterPage() {
     <div className={styles.page}>
       <div className={styles.card}>
         <div className={styles.logo}><Logo variant="full" /></div>
-        <h1 className={styles.title}>Welcome! Let's set up your account.</h1>
+        <h1 className={styles.title}>Welcome to the pack! Let's get you set up.</h1>
 
         {error && <div className={styles.error}>{error}</div>}
 
@@ -168,7 +168,7 @@ export default function RegisterPage() {
           </div>
 
           <button type="submit" className={styles.submitBtn} disabled={!canSubmit || submitting}>
-            {submitting ? 'Setting up…' : 'Complete Setup'}
+            {submitting ? 'Setting up your den...' : 'Complete Setup'}
           </button>
         </form>
       </div>

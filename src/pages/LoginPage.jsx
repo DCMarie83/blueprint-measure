@@ -62,7 +62,7 @@ export default function LoginPage() {
 
           {forgotSent ? (
             <div className={styles.successBox}>
-              Check your email for a password reset link.
+              Sniff your inbox for the reset link.
             </div>
           ) : (
             <form className={styles.form} onSubmit={handleForgot}>
@@ -83,7 +83,7 @@ export default function LoginPage() {
               {forgotError && <div className={styles.error}>{forgotError}</div>}
 
               <button type="submit" className={styles.btn} disabled={forgotLoading}>
-                {forgotLoading ? 'Sending…' : 'Send reset link'}
+                {forgotLoading ? 'On the trail...' : 'Send reset link'}
               </button>
             </form>
           )}
@@ -104,7 +104,7 @@ export default function LoginPage() {
           <Logo variant="full" />
         </div>
 
-        <h1 className={styles.title}>Sign in to your account</h1>
+        <h1 className={styles.title}>Welcome back to the pack</h1>
 
         <form className={styles.form} onSubmit={handleLogin}>
           <div className={styles.field}>
@@ -136,7 +136,7 @@ export default function LoginPage() {
           {error && <div className={styles.error}>{error}</div>}
 
           <button type="submit" className={styles.btn} disabled={loading}>
-            {loading ? 'Signing in…' : 'Sign in'}
+            {loading ? 'Opening the door...' : 'Sign in'}
           </button>
         </form>
 

@@ -204,7 +204,7 @@ export default function KanbanPage() {
           <div className={styles.loading} style={{ color: 'var(--color-danger)' }}>{error}</div>
         ) : totalProjects === 0 && columns.length > 0 ? (
           <div className={styles.emptyBoard}>
-            <p>No jobs yet.</p>
+            <p>No jobs in the pack yet.</p>
             <button className={styles.newJobBtn} onClick={() => setShowNewJob(true)}>
               <Plus size={16} /> Create your first job
             </button>

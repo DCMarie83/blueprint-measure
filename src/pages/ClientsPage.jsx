@@ -66,7 +66,7 @@ export default function ClientsPage() {
         ) : filtered.length === 0 && clients.length === 0 ? (
           <div className={styles.emptyState}>
             <Building2 size={48} />
-            <h2>No clients yet</h2>
+            <h2>Pack is empty — no clients yet.</h2>
             <p>Add your first client to start managing contacts and linking jobs.</p>
             <button className={styles.newBtn} onClick={() => setShowCreate(true)}><Plus size={16} /> Add your first client</button>
           </div>

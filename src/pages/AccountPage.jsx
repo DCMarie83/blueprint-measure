@@ -127,7 +127,7 @@ export default function AccountPage() {
         .eq('user_id', user.id)
       if (error) throw new Error(error.message)
       setProfileDirty(false)
-      setProfileToast('Saved')
+      setProfileToast('Pawsome!')
       setTimeout(() => setProfileToast(''), 2000)
     } catch (err) {
       alert('Failed to save: ' + err.message)
@@ -205,7 +205,7 @@ export default function AccountPage() {
   if (profileLoading) {
     return (
       <div className={styles.page}>
-        <div className={styles.center}>Loading…</div>
+        <div className={styles.center}>Sniffing around...</div>
       </div>
     )
   }
@@ -339,7 +339,7 @@ export default function AccountPage() {
                 </div>
               ))}
               {filteredActivity.length === 0 && (
-                <p className={styles.hint} style={{ padding: '12px 0' }}>No activity for this filter.</p>
+                <p className={styles.hint} style={{ padding: '12px 0' }}>Quiet for this filter.</p>
               )}
             </div>
           </section>

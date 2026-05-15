@@ -114,7 +114,7 @@ export default function PricingPage() {
                 </div>
                 {expanded && (
                   catItems.length === 0 ? (
-                    <div className={styles.emptyCategory}>No items yet</div>
+                    <div className={styles.emptyCategory}>Empty bowl — no items yet.</div>
                   ) : (
                     catItems.map(item => (
                       <div key={item.id} className={styles.itemRow}>

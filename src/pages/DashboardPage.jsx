@@ -23,7 +23,7 @@ export default function DashboardPage() {
       <AppHeader />
       <main className={styles.main}>
         {loading ? (
-          <div className={styles.loading}>Loading…</div>
+          <div className={styles.loading}>Sniffing around...</div>
         ) : error ? (
           <div className={styles.loading} style={{ color: 'var(--color-danger)' }}>{error}</div>
         ) : (
