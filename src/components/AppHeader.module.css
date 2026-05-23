@@ -23,7 +23,7 @@
   align-items: center;
   text-decoration: none;
   transition: opacity 0.15s;
-  height: 44px;
+  height: 48px;
 }
 
 .logoLink:hover {
@@ -34,7 +34,7 @@
 .logoLink :global(img) {
   height: 100%;
   width: auto;
-  max-height: 44px;
+  max-height: 48px;
 }
 
 .primaryNav {

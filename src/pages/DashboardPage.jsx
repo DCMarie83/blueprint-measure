@@ -8,6 +8,7 @@ import StatsTiles from '../components/dashboard/StatsTiles'
 import RecentActivity from '../components/dashboard/RecentActivity'
 import ContinueWorking from '../components/dashboard/ContinueWorking'
 import TipsPanel from '../components/dashboard/TipsPanel'
+import Logo from '../components/brand/Logo'
 import styles from './DashboardPage.module.css'
 
 export default function DashboardPage() {
@@ -28,6 +29,15 @@ export default function DashboardPage() {
           <div className={styles.loading} style={{ color: 'var(--color-danger)' }}>{error}</div>
         ) : (
           <div className={styles.sections}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              paddingTop: 24,
+              paddingBottom: 24,
+            }}>
+              <Logo variant="full" style={{ maxWidth: 320, height: 'auto' }} />
+            </div>
             <GreetingStrip firstName={firstName} />
             <QuickActionsRow />
             {isNewUser && checklist && !checklist.allComplete && (

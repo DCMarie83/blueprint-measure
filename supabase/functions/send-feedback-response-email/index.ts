@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'RivetDog <feedback@blueprintmeasure.com>',
+        from: 'RivetDog <feedback@rivetdog.com>',
         to: feedbackUser.email,
         subject: 'Re: Your RivetDog feedback',
         html: `
@@ -116,7 +116,7 @@ Deno.serve(async (req) => {
               ${latestResponse.body.replace(/\n/g, '<br>')}
             </div>
             <p style="color: #6b7280; font-size: 13px;">
-              You can submit additional feedback anytime by clicking the orange "Send Feedback" button at blueprintmeasure.com.
+              You can submit additional feedback anytime by clicking the orange "Send Feedback" button at rivetdog.com.
             </p>
             <p style="color: #9ca3af; font-size: 11px; margin-top: 32px;">
               RivetDog | NG Automation Hub

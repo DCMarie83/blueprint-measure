@@ -13,7 +13,7 @@ export default function TermsPage() {
         <h1 className={styles.title}>Terms of Service</h1>
         <p style={{ color: 'var(--color-text-muted)', fontSize: 14, lineHeight: 1.6, marginBottom: 24 }}>
           The {BRAND.name} Terms of Service are being finalized and will be published here before launch.
-          For questions, contact <a href="mailto:support@blueprintmeasure.com" style={{ color: 'var(--color-primary)' }}>support@blueprintmeasure.com</a>.
+          For questions, contact <a href="mailto:support@rivetdog.com" style={{ color: 'var(--color-primary)' }}>support@rivetdog.com</a>.
         </p>
         <Link to="/signup" className={styles.backLink}>← Back to sign up</Link>
       </div>

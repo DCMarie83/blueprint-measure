@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
         Deno.env.get('SUPABASE_ANON_KEY')!
       )
       const { error } = await anonClient.auth.resetPasswordForEmail(targetProfile.email, {
-        redirectTo: 'https://app.blueprintmeasure.com/change-password',
+        redirectTo: 'https://app.rivetdog.com/change-password',
       })
       if (error) return json({ error: error.message }, 500)
       return json({ ok: true, message: 'Recovery email sent' })

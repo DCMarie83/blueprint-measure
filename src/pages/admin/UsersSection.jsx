@@ -150,7 +150,7 @@ export default function UsersSection() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `blueprintmeasure_users_${new Date().toISOString().slice(0, 10)}.csv`
+    a.download = `rivetdog_users_${new Date().toISOString().slice(0, 10)}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }

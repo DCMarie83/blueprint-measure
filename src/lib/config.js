@@ -8,14 +8,14 @@ export const BRAND = {
 };
 
 export const SUPPORT = {
-  email: 'support@blueprintmeasure.com',
-  fromEmail: 'noreply@blueprintmeasure.com',
+  email: 'support@rivetdog.com',
+  fromEmail: 'noreply@rivetdog.com',
   fromName: 'RivetDog',
 };
 
 export const DOMAINS = {
-  app: 'app.blueprintmeasure.com',
-  marketing: 'blueprintmeasure.com',
+  app: 'app.rivetdog.com',
+  marketing: 'rivetdog.com',
 };
 
 export const FEATURE_FLAGS = {

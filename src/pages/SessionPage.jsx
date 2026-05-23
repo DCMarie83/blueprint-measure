@@ -1769,7 +1769,7 @@ export default function SessionPage() {
 
         {/* Print-only report footer */}
         <div className={styles.printReportFooter}>
-          blueprintmeasure.com | Accuracy Test Report
+          rivetdog.com | Accuracy Test Report
         </div>
 
       </aside>

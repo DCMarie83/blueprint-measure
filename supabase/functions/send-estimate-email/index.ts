@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
     if (recipients.length === 0) return json({ error: 'No email recipients' }, 400)
 
     // 8. Build email
-    const siteUrl = Deno.env.get('SITE_URL') || 'https://app.blueprintmeasure.com'
+    const siteUrl = Deno.env.get('SITE_URL') || 'https://app.rivetdog.com'
     const portalUrl = `${siteUrl}/portal/${project.portal_token}`
     const companyName = company?.name || 'Your Contractor'
     const estTitle = estimate.title || estimate.estimate_number
@@ -167,7 +167,7 @@ Deno.serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'RivetDog <noreply@blueprintmeasure.com>',
+        from: 'RivetDog <noreply@rivetdog.com>',
         to: recipients,
         subject: `Estimate from ${companyName} — ${escapeHtml(estTitle)}`,
         html,

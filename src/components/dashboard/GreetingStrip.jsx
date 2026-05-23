@@ -20,7 +20,7 @@ export default function GreetingStrip({ firstName }) {
       {logoUrl && (
         <img src={logoUrl} alt="" className={styles.logo} />
       )}
-      <h1 className={styles.title}>RivetDog Dashboard</h1>
+      <h1 className={styles.title}>Dashboard</h1>
       <p className={styles.greeting}>{greeting}, {firstName}</p>
       <p className={styles.date}>{formattedDate}</p>
     </div>

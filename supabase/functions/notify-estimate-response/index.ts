@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
     const estTitle = estimate.title || estimate.estimate_number
     const statusVerb = estimate.status === 'accepted' ? 'accepted' : 'declined'
     const statusColor = estimate.status === 'accepted' ? '#16a34a' : '#dc2626'
-    const siteUrl = Deno.env.get('SITE_URL') || 'https://app.blueprintmeasure.com'
+    const siteUrl = Deno.env.get('SITE_URL') || 'https://app.rivetdog.com'
     const estimateUrl = `${siteUrl}/estimates/${estimate.id}`
 
     const html = `
@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'RivetDog <noreply@blueprintmeasure.com>',
+        from: 'RivetDog <noreply@rivetdog.com>',
         to: [contractor.email],
         subject: `Estimate ${statusVerb}: ${escapeHtml(estTitle)} from ${escapeHtml(clientName)}`,
         html,
