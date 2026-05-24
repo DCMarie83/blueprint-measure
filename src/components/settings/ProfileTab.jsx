@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { useDateFormat } from '../../hooks/useDateFormat'
-import { getPlanDisplayName } from '../../lib/plans'
+import { useCompanyPlan } from '../../lib/plans'
 import styles from '../../pages/AccountPage.module.css'
 
 const ROLE_LABELS = {
@@ -55,7 +55,7 @@ export default function ProfileTab() {
       if (profile?.company_id) {
         const { data: c } = await supabase
           .from('companies')
-          .select('name, plan')
+          .select('name, plan, plan_key, subscription_status')
           .eq('id', profile.company_id)
           .single()
         companyData = c
@@ -69,7 +69,7 @@ export default function ProfileTab() {
         setSmsConsentAt(profile.sms_consent_at ?? null)
       }
       if (companyData) {
-        setCompany({ name: companyData.name, plan: companyData.plan })
+        setCompany(companyData)
       }
 
       const activityItems = []
@@ -181,6 +181,8 @@ export default function ProfileTab() {
     }
   }
 
+  const companyPlan = useCompanyPlan(company)
+
   const filteredActivity = activityFilter === 'all'
     ? activity
     : activity.filter(a => {
@@ -226,7 +228,7 @@ export default function ProfileTab() {
       <section className={styles.card}>
         <h2 className={styles.cardTitle}>Company</h2>
         <div className={styles.infoRow}><span className={styles.infoLabel}>Company</span><span className={styles.infoValue}>{company?.name ?? 'Not assigned'}</span></div>
-        <div className={styles.infoRow}><span className={styles.infoLabel}>Plan</span><span className={styles.planBadge}>{company?.plan ? getPlanDisplayName(company.plan) : '—'}</span></div>
+        <div className={styles.infoRow}><span className={styles.infoLabel}>Plan</span><span className={styles.planBadge}>{companyPlan?.display_name ?? '—'}</span></div>
         <div className={styles.infoRow}><span className={styles.infoLabel}>Role</span><span className={styles.infoValue}>{role ? (ROLE_LABELS[role] ?? role) : 'Member'}</span></div>
         <p className={styles.hint}>Contact your admin to change company details.</p>
       </section>

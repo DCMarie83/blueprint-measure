@@ -13,7 +13,7 @@ import { downloadPdfWithMeasurements } from '../utils/pdfExport'
 import { detectScaleFromImage } from '../utils/detectScale'
 import { evaluateZoneTest } from '../utils/testEvaluation'
 import { getCompanyStorageUsage } from '../utils/storageUsage'
-import { getStorageLimitMb } from '../lib/plans'
+import { useCompanyPlan } from '../lib/plans'
 import BlueprintCanvas from '../components/canvas/BlueprintCanvas'
 import BlueprintUploader from '../components/canvas/BlueprintUploader'
 import Modal from '../components/ui/Modal'
@@ -56,6 +56,21 @@ export default function SessionPage() {
   const { deleteSession } = useSessions()
 
   const { formatTime } = useDateFormat()
+
+  // ── Company + plan (for storage limit checks) ───────────────────────────────
+  const [sessionCompany, setSessionCompany] = useState(null)
+  useEffect(() => {
+    if (!user) return
+    async function loadCompany() {
+      const { data: profile } = await supabase.from('user_profiles').select('company_id').eq('user_id', user.id).single()
+      if (!profile?.company_id) return
+      const { data: comp } = await supabase.from('companies').select('plan, plan_key, subscription_status').eq('id', profile.company_id).single()
+      if (comp) setSessionCompany({ ...comp, id: profile.company_id })
+    }
+    loadCompany()
+  }, [user])
+  const companyPlan = useCompanyPlan(sessionCompany)
+  const storageLimitMb = companyPlan?.unlimited ? null : (companyPlan?.max_storage_gb || 5) * 1024
 
   // ── Blueprint state ──────────────────────────────────────────────────────────
   const [blueprintUrl, setBlueprintUrl] = useState(null)
@@ -1551,31 +1566,18 @@ export default function SessionPage() {
           <div className={styles.sectionTitle}>Blueprint</div>
           {!blueprintUrl ? (
             <BlueprintUploader sessionId={sessionId} projectId={session?.project_id} onSplitFlowRedirect={handleSplitFlowRedirect} onUploaded={handleUploaded} oldBlueprintType={replacingBlueprintType} onStorageCheck={async (fileSize) => {
-              // Check company storage limit before upload
               try {
-                const { data: profile } = await supabase
-                  .from('user_profiles')
-                  .select('company_id')
-                  .eq('user_id', user.id)
-                  .single()
-                if (!profile?.company_id) return true // no company = allow
-                const { data: comp } = await supabase
-                  .from('companies')
-                  .select('plan')
-                  .eq('id', profile.company_id)
-                  .single()
-                const plan = comp?.plan
-                const limitMb = getStorageLimitMb(plan)
-                if (limitMb == null) return true // pilot = unlimited
-                const usage = await getCompanyStorageUsage(profile.company_id)
+                if (!sessionCompany?.id) return true
+                if (storageLimitMb == null) return true // unlimited (pilot)
+                const usage = await getCompanyStorageUsage(sessionCompany.id)
                 const projectedBytes = usage.totalBytes + fileSize
-                if (projectedBytes > limitMb * 1024 * 1024) {
+                if (projectedBytes > storageLimitMb * 1024 * 1024) {
                   alert('Your company has reached its storage limit. Contact your admin to upgrade.')
                   return false
                 }
                 return true
               } catch {
-                return true // allow on error
+                return true
               }
             }} />
           ) : (

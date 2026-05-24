@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'
 import { useAuth } from './AuthContext'
 import { supabase } from '../lib/supabase'
+import { GRANDFATHER_DEFAULTS } from '../lib/plans'
 
 const STALE_TTL = 5 * 60 * 1000 // 5 minutes
 
@@ -71,4 +72,20 @@ export function usePlan(planKey) {
   const { plans } = usePlans()
   if (!planKey) return null
   return plans.find(p => p.key === planKey) ?? null
+}
+
+export function useCompanyPlan(company) {
+  const { plans } = usePlans()
+  if (!company) return null
+  if (company.subscription_status === 'pilot') {
+    return {
+      ...GRANDFATHER_DEFAULTS,
+      key: 'pilot',
+      display_name: 'Pilot',
+      unlimited: true,
+    }
+  }
+  const plan = plans.find(p => p.key === company.plan_key)
+  if (plan) return plan
+  return GRANDFATHER_DEFAULTS
 }

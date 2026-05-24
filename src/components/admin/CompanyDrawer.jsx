@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useDateFormat } from '../../hooks/useDateFormat'
-import { FEATURE_KEYS } from '../../lib/plans'
+import { FEATURE_KEYS, useCompanyPlan } from '../../lib/plans'
 import styles from './CompanyDrawer.module.css'
 
 const FEATURES = FEATURE_KEYS
@@ -17,6 +17,8 @@ export default function CompanyDrawer({
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
+  const companyPlan = useCompanyPlan(company)
+
   if (!company) return null
 
   const flags = company.features ?? {}
@@ -27,7 +29,7 @@ export default function CompanyDrawer({
         <div className={styles.header}>
           <div>
             <h2 className={styles.companyName}>{company.name}</h2>
-            <span className={styles.planBadge}>{company.plan}</span>
+            <span className={styles.planBadge}>{companyPlan?.display_name ?? company.plan ?? 'Legacy'}</span>
           </div>
           <button className={styles.closeBtn} onClick={onClose}>✕</button>
         </div>

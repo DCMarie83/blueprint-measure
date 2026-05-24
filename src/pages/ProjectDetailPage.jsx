@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { useProject } from '../hooks/useProject'
 import { useProjects } from '../hooks/useProjects'
 import { useSessions } from '../hooks/useSessions'
-import { getStorageLimitMb } from '../lib/plans'
+import { useCompanyPlan } from '../lib/plans'
 import Modal from '../components/ui/Modal'
 import NewSessionForm from '../components/auth/NewSessionForm'
 import MultiFileUploader from '../components/canvas/MultiFileUploader'
@@ -46,7 +46,21 @@ export default function ProjectDetailPage() {
 
   const [showAddBlueprint, setShowAddBlueprint] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
-  const [storageLimitMb, setStorageLimitMb] = useState(null)
+
+  // Company + plan (for storage limit checks)
+  const [pdpCompany, setPdpCompany] = useState(null)
+  useEffect(() => {
+    if (!user) return
+    async function loadCompany() {
+      const { data: profile } = await supabase.from('user_profiles').select('company_id').eq('user_id', user.id).maybeSingle()
+      if (!profile?.company_id) return
+      const { data: comp } = await supabase.from('companies').select('plan, plan_key, subscription_status').eq('id', profile.company_id).maybeSingle()
+      if (comp) setPdpCompany(comp)
+    }
+    loadCompany()
+  }, [user])
+  const companyPlan = useCompanyPlan(pdpCompany)
+  const storageLimitMb = companyPlan?.unlimited ? null : (companyPlan?.max_storage_gb || 5) * 1024
 
   // Client linking
   const { clients } = useClients()
@@ -69,27 +83,6 @@ export default function ProjectDetailPage() {
   const [editField, setEditField] = useState(null)
   const [editValue, setEditValue] = useState('')
   const [saving, setSaving] = useState(false)
-
-  // Load storage limit for quota check
-  useEffect(() => {
-    if (!user) return
-    async function loadLimit() {
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('company_id')
-        .eq('user_id', user.id)
-        .maybeSingle()
-      if (profile?.company_id) {
-        const { data: comp } = await supabase
-          .from('companies')
-          .select('plan')
-          .eq('id', profile.company_id)
-          .maybeSingle()
-        setStorageLimitMb(getStorageLimitMb(comp?.plan))
-      }
-    }
-    loadLimit()
-  }, [user])
 
   async function handleCreateSession(fields) {
     const session = await createSession({ ...fields, projectId })

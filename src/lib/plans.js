@@ -67,4 +67,4 @@ export function invalidatePlansCache() {
 }
 
 // Re-export hooks for one-stop import
-export { usePlans, usePlan, PlansProvider } from '../context/PlansContext'
+export { usePlans, usePlan, useCompanyPlan, PlansProvider } from '../context/PlansContext'

@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import UserMenu from '../components/UserMenu'
 import { useDateFormat } from '../hooks/useDateFormat'
 import { BRAND } from '../lib/config'
-import { getPlanDisplayName } from '../lib/plans'
+import { useCompanyPlan } from '../lib/plans'
 import styles from './AccountPage.module.css'
 
 const ROLE_LABELS = {
@@ -64,7 +64,7 @@ export default function AccountPage() {
       if (profile?.company_id) {
         const { data: c } = await supabase
           .from('companies')
-          .select('name, plan')
+          .select('name, plan, plan_key, subscription_status')
           .eq('id', profile.company_id)
           .single()
         companyData = c
@@ -78,7 +78,7 @@ export default function AccountPage() {
         setSmsConsentAt(profile.sms_consent_at ?? null)
       }
       if (companyData) {
-        setCompany({ name: companyData.name, plan: companyData.plan })
+        setCompany(companyData)
       }
 
       // Activity — derive from sessions + zones
@@ -193,6 +193,8 @@ export default function AccountPage() {
     }
   }
 
+  const companyPlan = useCompanyPlan(company)
+
   const filteredActivity = activityFilter === 'all'
     ? activity
     : activity.filter(a => {
@@ -266,7 +268,7 @@ export default function AccountPage() {
           </div>
           <div className={styles.infoRow}>
             <span className={styles.infoLabel}>Plan</span>
-            <span className={styles.planBadge}>{company?.plan ? getPlanDisplayName(company.plan) : '—'}</span>
+            <span className={styles.planBadge}>{companyPlan?.display_name ?? '—'}</span>
           </div>
           <div className={styles.infoRow}>
             <span className={styles.infoLabel}>Role</span>
