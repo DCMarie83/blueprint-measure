@@ -1,22 +1,45 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Home, Building2, Search, Plus } from 'lucide-react'
+import { Building2, Search, Plus, X } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import Modal from '../components/ui/Modal'
-import ViewToggle from '../components/ui/ViewToggle'
 import ClientForm from '../components/clients/ClientForm'
 import ClientListView from '../components/clients/ClientListView'
+import ClientSortDropdown from '../components/clients/ClientSortDropdown'
 import { useClients } from '../hooks/useClients'
-import { useViewPreference } from '../hooks/useViewPreference'
 import styles from './ClientsPage.module.css'
+
+function sortClients(clients, key) {
+  const copy = [...clients]
+  switch (key) {
+    case 'name_az':
+      return copy.sort((a, b) => (a.display_name ?? '').localeCompare(b.display_name ?? ''))
+    case 'lifetime_value':
+      return copy.sort((a, b) => (Number(b.lifetime_value) || 0) - (Number(a.lifetime_value) || 0))
+    case 'last_contact':
+      return copy.sort((a, b) => {
+        const at = a.last_contact_at ? new Date(a.last_contact_at).getTime() : 0
+        const bt = b.last_contact_at ? new Date(b.last_contact_at).getTime() : 0
+        return bt - at
+      })
+    case 'recent_activity':
+    default:
+      return copy.sort((a, b) => {
+        const at = new Date(a.last_contact_at || a.updated_at || 0).getTime()
+        const bt = new Date(b.last_contact_at || b.updated_at || 0).getTime()
+        return bt - at
+      })
+  }
+}
 
 export default function ClientsPage() {
   const navigate = useNavigate()
-  const { clients, loading, createClient } = useClients()
+  const { clients, loading, error, createClient } = useClients()
   const [showCreate, setShowCreate] = useState(false)
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
-  const [view, setView] = useViewPreference('clients', 'list')
+  const [sortKey, setSortKey] = useState('recent_activity')
+  const [errorDismissed, setErrorDismissed] = useState(false)
 
   const filtered = clients.filter(c => {
     if (typeFilter !== 'all' && c.client_type !== typeFilter) return false
@@ -26,6 +49,8 @@ export default function ClientsPage() {
     }
     return true
   })
+
+  const sorted = sortClients(filtered, sortKey)
 
   async function handleCreate(payload, contacts) {
     await createClient(payload, contacts)
@@ -57,52 +82,30 @@ export default function ClientsPage() {
                 </button>
               ))}
             </div>
-            <ViewToggle view={view} onChange={setView} />
+            <ClientSortDropdown value={sortKey} onChange={setSortKey} />
           </div>
         </div>
 
+        {error && !errorDismissed && (
+          <div className={styles.errorBanner}>
+            <span>Failed to load clients: {error}</span>
+            <button className={styles.errorDismiss} onClick={() => setErrorDismissed(true)}><X size={14} /></button>
+          </div>
+        )}
+
         {loading ? (
           <div className={styles.empty}>Loading…</div>
-        ) : filtered.length === 0 && clients.length === 0 ? (
+        ) : sorted.length === 0 && clients.length === 0 ? (
           <div className={styles.emptyState}>
             <Building2 size={48} />
             <h2>Pack is empty — no clients yet.</h2>
             <p>Add your first client to start managing contacts and linking jobs.</p>
             <button className={styles.newBtn} onClick={() => setShowCreate(true)}><Plus size={16} /> Add your first client</button>
           </div>
-        ) : filtered.length === 0 ? (
+        ) : sorted.length === 0 ? (
           <div className={styles.empty}>No clients match your search.</div>
-        ) : view === 'list' ? (
-          <ClientListView clients={filtered} onClickClient={(id) => navigate(`/clients/${id}`)} />
         ) : (
-          <div className={styles.grid}>
-            {filtered.map(client => (
-              <div key={client.id} className={styles.card} onClick={() => navigate(`/clients/${client.id}`)}>
-                <div className={styles.cardIcon}>
-                  {client.client_type === 'commercial' ? <Building2 size={20} /> : <Home size={20} />}
-                </div>
-                <div className={styles.cardBody}>
-                  <h3 className={styles.cardName}>{client.display_name}</h3>
-                  {client.business_name && client.client_type === 'commercial' && (
-                    <div className={styles.cardBiz}>{client.business_name}</div>
-                  )}
-                  <div className={styles.cardMeta}>
-                    {client.primary_email && <span>{client.primary_email}</span>}
-                    {client.primary_phone && <span>{client.primary_phone}</span>}
-                  </div>
-                  <div className={styles.cardFooter}>
-                    {client.property_type && <span className={styles.badge}>{client.property_type.replace(/_/g, ' ')}</span>}
-                    {(client.active_jobs_count ?? 0) > 0 && (
-                      <span className={styles.badge}>{client.active_jobs_count} job{client.active_jobs_count !== 1 ? 's' : ''}</span>
-                    )}
-                    {(client.client_contacts?.length ?? 0) > 0 && (
-                      <span className={styles.badge}>{client.client_contacts.length} contact{client.client_contacts.length !== 1 ? 's' : ''}</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <ClientListView clients={sorted} onClickClient={(id) => navigate(`/clients/${id}`)} />
         )}
       </main>
 

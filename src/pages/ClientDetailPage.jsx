@@ -82,17 +82,21 @@ export default function ClientDetailPage() {
           </div>
         </div>
 
-        <div className={styles.cards}>
-          <div className={styles.infoCard}>
-            <h3 className={styles.cardTitle}>Contact Info</h3>
+        {/* Contact Info */}
+        <div className={styles.flatSection}>
+          <h3 className={styles.flatLabel}>Contact Info</h3>
+          <div className={styles.flatContent}>
             {client.primary_email && <div className={styles.infoRow}><Mail size={14} /> {client.primary_email}</div>}
             {client.primary_phone && <div className={styles.infoRow}><Phone size={14} /> {client.primary_phone}</div>}
             {client.preferred_contact_method && <div className={styles.infoRow}><span className={styles.label}>Preferred:</span> {client.preferred_contact_method}</div>}
             {client.billing_terms && <div className={styles.infoRow}><span className={styles.label}>Billing:</span> {client.billing_terms.replace(/_/g, ' ')}</div>}
           </div>
+        </div>
 
-          <div className={styles.infoCard}>
-            <h3 className={styles.cardTitle}>Details</h3>
+        {/* Details */}
+        <div className={styles.flatSection}>
+          <h3 className={styles.flatLabel}>Details</h3>
+          <div className={styles.flatContent}>
             {client.property_type && <div className={styles.infoRow}><span className={styles.label}>Property:</span> {client.property_type.replace(/_/g, ' ')}</div>}
             {client.tags?.length > 0 && <div className={styles.infoRow}><Tag size={14} /> {client.tags.map(t => <span key={t} className={styles.tag}>{t}</span>)}</div>}
             {client.company_website && <div className={styles.infoRow}><span className={styles.label}>Website:</span> <a href={client.company_website} target="_blank" rel="noopener noreferrer">{client.company_website}</a></div>}

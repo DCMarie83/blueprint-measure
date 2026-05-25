@@ -26,6 +26,8 @@
 .cardMeta { display: flex; flex-wrap: wrap; gap: 8px; font-size: 13px; color: var(--color-text-muted); margin-bottom: 8px; }
 .cardFooter { display: flex; gap: 6px; flex-wrap: wrap; }
 .badge { font-size: 12px; padding: 2px 8px; border-radius: var(--radius-pill); background: var(--color-surface-2); color: var(--color-text-muted); text-transform: capitalize; }
+.errorBanner { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: var(--color-danger-bg); border: 1px solid var(--color-danger-border); border-radius: var(--radius-md); color: var(--color-danger); font-size: 13px; margin-bottom: 16px; }
+.errorDismiss { background: none; border: none; color: var(--color-danger); cursor: pointer; padding: 2px; display: flex; }
 .emptyState { text-align: center; padding: 80px 20px; color: var(--color-text-muted); }
 .emptyState h2 { color: var(--color-text); margin: 16px 0 8px; }
 .emptyState p { margin-bottom: 20px; }
