@@ -6,7 +6,7 @@ const OPTIONS = [
   { value: 'recent_activity', label: 'Recent activity' },
   { value: 'name_az', label: 'Name A-Z' },
   { value: 'lifetime_value', label: 'Lifetime value' },
-  { value: 'last_contact', label: 'Last contact' },
+  { value: 'last_contact', label: 'Last activity' },
 ]
 
 export default function ClientSortDropdown({ value, onChange }) {

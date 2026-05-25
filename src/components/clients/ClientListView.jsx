@@ -51,7 +51,7 @@ export default function ClientListView({ clients, onClickClient }) {
             <div className={styles.right}>
               <span className={ltv > 0 ? styles.ltv : styles.ltvZero}>{fmtCurrency(ltv)}</span>
               <span className={styles.meta}>
-                {client.last_contact_at ? timeAgo(client.last_contact_at) : 'No contact yet'}
+                {client.last_contact_at ? timeAgo(client.last_contact_at) : 'No activity yet'}
                 {jobCount > 0 && <> &middot; {jobCount} job{jobCount !== 1 ? 's' : ''}</>}
               </span>
             </div>

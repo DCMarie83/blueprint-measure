@@ -72,7 +72,7 @@ export default function ClientDetailPage() {
               <div className={styles.statsStrip}>
                 <span className={styles.stat}><DollarSign size={14} /> {fmtCurrency(client.lifetime_value)}</span>
                 <span className={styles.statDot}>&middot;</span>
-                <span className={styles.stat}><Clock size={14} /> {client.last_contact_at ? timeAgo(client.last_contact_at) : 'No contact yet'}</span>
+                <span className={styles.stat}><Clock size={14} /> {client.last_contact_at ? timeAgo(client.last_contact_at) : 'No activity yet'}</span>
               </div>
             </div>
           </div>
