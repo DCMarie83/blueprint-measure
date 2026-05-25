@@ -22,7 +22,7 @@ export default function PaymentInstructionsTab() {
   const [errors, setErrors] = useState({})
 
   useEffect(() => {
-    if (paymentInstructions && !form) setForm(structuredClone(paymentInstructions))
+    if (paymentInstructions) setForm(structuredClone(paymentInstructions))
   }, [paymentInstructions])
 
   useEffect(() => {
