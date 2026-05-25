@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Home, Building2, Mail, Phone, Tag, FileText, Briefcase, Trash2, Edit, User, DollarSign, Clock } from 'lucide-react'
+import { Home, Building2, Mail, Phone, Tag, FileText, Briefcase, Trash2, Edit, DollarSign, Clock } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import BackLink from '../components/BackLink'
 import Modal from '../components/ui/Modal'
 import ClientForm from '../components/clients/ClientForm'
 import ClientLogoUpload from '../components/clients/ClientLogoUpload'
 import ClientAddressEditor from '../components/clients/ClientAddressEditor'
+import ClientContactsSection from '../components/clients/ClientContactsSection'
+import ClientActivitySection from '../components/clients/ClientActivitySection'
 import { useClient } from '../hooks/useClient'
 import { useClients } from '../hooks/useClients'
 import { timeAgo } from '../utils/timeAgo'
@@ -20,7 +22,7 @@ const fmtCurrency = (val) => {
 export default function ClientDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { client, contacts, projects, loading, error, refetch } = useClient(id)
+  const { client, contacts, projects, loading, error, refetch, addContact, updateContact, deleteContact } = useClient(id)
   const { updateClient, deleteClient } = useClients()
   const [showEdit, setShowEdit] = useState(false)
   const [showDelete, setShowDelete] = useState(false)
@@ -102,29 +104,18 @@ export default function ClientDetailPage() {
         <ClientAddressEditor clientId={id} />
 
         {/* Contacts */}
-        <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>Contacts ({contacts.length})</h2>
-          {contacts.length === 0 ? (
-            <div className={styles.contactEmpty}>
-              <User size={20} />
-              <span>No additional contacts. We'll communicate with {client.display_name} directly using the primary contact info above.</span>
-            </div>
-          ) : (
-            <div className={styles.contactList}>
-              {contacts.map(c => (
-                <div key={c.id} className={styles.contactRow}>
-                  <div><strong>{c.name}</strong>{c.title && <span className={styles.muted}> — {c.title}</span>}</div>
-                  <div className={styles.contactMeta}>
-                    {c.email && <span>{c.email}</span>}
-                    {c.phone && <span>{c.phone}</span>}
-                    {c.is_primary && <span className={styles.primaryBadge}>Primary</span>}
-                    {c.is_portal_recipient && <span className={styles.portalBadge}>Portal</span>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
+        <ClientContactsSection
+          clientId={id}
+          contacts={contacts}
+          clientName={client.display_name}
+          addContact={addContact}
+          updateContact={updateContact}
+          deleteContact={deleteContact}
+          onChange={() => refetch()}
+        />
+
+        {/* Activity */}
+        <ClientActivitySection clientId={id} onChange={() => refetch()} />
 
         {/* Linked Jobs */}
         <section className={styles.section}>
