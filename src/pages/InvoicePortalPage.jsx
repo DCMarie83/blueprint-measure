@@ -49,7 +49,7 @@ export default function InvoicePortalPage() {
     try {
       const inv = data.invoice
       const lineItems = data.line_items || []
-      const companyData = { name: data.company_name, primary_color: data.company_primary_color }
+      const companyData = { name: data.company_name, primary_color: data.company_primary_color, payment_instructions: data.company_payment_instructions }
       // Pre-fetch logo for PDF
       if (data.company_logo_url) {
         try {

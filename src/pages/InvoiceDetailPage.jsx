@@ -58,7 +58,7 @@ export default function InvoiceDetailPage() {
       }) : Promise.resolve({ data: null }),
     ])
 
-    let companyData = { name: company?.name, primary_color: company?.primary_color }
+    let companyData = { name: company?.name, primary_color: company?.primary_color, payment_instructions: company?.payment_instructions }
     if (company?.logo_url) {
       try {
         const res = await fetch(company.logo_url)

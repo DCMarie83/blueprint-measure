@@ -105,7 +105,7 @@ export default function EstimateDetailPage() {
     if (proj.company_id) {
       const { data: co } = await supabase
         .from('companies')
-        .select('id, name, logo_url')
+        .select('id, name, logo_url, primary_color, payment_instructions')
         .eq('id', proj.company_id)
         .single()
       if (co) {
