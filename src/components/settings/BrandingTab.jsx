@@ -15,6 +15,7 @@ export default function BrandingTab() {
   const [name, setName] = useState('')
   const [primaryColor, setPrimaryColor] = useState(PLATFORM_PRIMARY)
   const [accentColor, setAccentColor] = useState(PLATFORM_ACCENT)
+  const [portalTheme, setPortalTheme] = useState('light')
   const [toast, setToast] = useState('')
   const [saveError, setSaveError] = useState(null)
 
@@ -24,6 +25,7 @@ export default function BrandingTab() {
     setName(company.name || '')
     setPrimaryColor(company.primary_color || PLATFORM_PRIMARY)
     setAccentColor(company.accent_color || PLATFORM_ACCENT)
+    setPortalTheme(company.portal_theme || 'light')
   }, [company])
 
   useEffect(() => {
@@ -39,7 +41,8 @@ export default function BrandingTab() {
   const hasChanges = company && (
     name !== (company.name || '') ||
     primaryColor !== (company.primary_color || PLATFORM_PRIMARY) ||
-    accentColor !== (company.accent_color || PLATFORM_ACCENT)
+    accentColor !== (company.accent_color || PLATFORM_ACCENT) ||
+    portalTheme !== (company.portal_theme || 'light')
   )
 
   const canSave = hasChanges && primaryValid && accentValid && nameValid && !loading
@@ -49,6 +52,7 @@ export default function BrandingTab() {
     setName(company.name || '')
     setPrimaryColor(company.primary_color || PLATFORM_PRIMARY)
     setAccentColor(company.accent_color || PLATFORM_ACCENT)
+    setPortalTheme(company.portal_theme || 'light')
     setSaveError(null)
   }
 
@@ -59,6 +63,7 @@ export default function BrandingTab() {
         name: name.trim(),
         primary_color: primaryColor === PLATFORM_PRIMARY ? null : primaryColor,
         accent_color: accentColor === PLATFORM_ACCENT ? null : accentColor,
+        portal_theme: portalTheme,
       })
       setToast('Brand saved — looking fetching!')
     } catch (err) {
@@ -145,6 +150,28 @@ export default function BrandingTab() {
             type="button"
           >
             Send Estimate
+          </button>
+        </div>
+      </div>
+
+      {/* PORTAL THEME */}
+      <div className={styles.section}>
+        <h3 className={styles.sectionLabel}>Portal Theme</h3>
+        <p className={styles.sectionHint}>How your clients see your invoice and estimate portal pages. Light is recommended for most contractors — it matches the convention for client-facing financial documents.</p>
+        <div className={styles.themeToggle}>
+          <button
+            type="button"
+            className={`${styles.themeOption} ${portalTheme === 'light' ? styles.themeOptionActive : ''}`}
+            onClick={() => setPortalTheme('light')}
+          >
+            Light
+          </button>
+          <button
+            type="button"
+            className={`${styles.themeOption} ${portalTheme === 'dark' ? styles.themeOptionActive : ''}`}
+            onClick={() => setPortalTheme('dark')}
+          >
+            Dark
           </button>
         </div>
       </div>

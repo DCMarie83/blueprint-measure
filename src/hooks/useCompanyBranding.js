@@ -77,7 +77,7 @@ export function useCompanyBranding() {
     }
   }
 
-  async function updateBranding({ name, primary_color, accent_color }) {
+  async function updateBranding({ name, primary_color, accent_color, portal_theme }) {
     if (!companyId) throw new Error('No company context')
     setLoading(true)
     setError(null)
@@ -86,6 +86,7 @@ export function useCompanyBranding() {
       if (name !== undefined) patch.name = name
       if (primary_color !== undefined) patch.primary_color = primary_color || null
       if (accent_color !== undefined) patch.accent_color = accent_color || null
+      if (portal_theme !== undefined) patch.portal_theme = portal_theme || 'light'
 
       const { error: err } = await supabase
         .from('companies')

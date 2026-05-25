@@ -72,6 +72,17 @@ export default function PortalPage() {
     )
   }
 
+  // Enforce portal theme on document root
+  useEffect(() => {
+    const theme = data?.company_portal_theme || 'light'
+    const previous = document.documentElement.getAttribute('data-theme')
+    document.documentElement.setAttribute('data-theme', theme)
+    return () => {
+      if (previous) document.documentElement.setAttribute('data-theme', previous)
+      else document.documentElement.removeAttribute('data-theme')
+    }
+  }, [data?.company_portal_theme])
+
   const tenantName = data.company_name || 'Your Contractor'
   const tenantLogoUrl = data.company_logo_url || null
   const tenantPrimary = data.company_primary_color || null

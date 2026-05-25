@@ -103,6 +103,17 @@ export default function InvoicePortalPage() {
     )
   }
 
+  // Enforce portal theme on document root
+  useEffect(() => {
+    const theme = data?.company_portal_theme || 'light'
+    const previous = document.documentElement.getAttribute('data-theme')
+    document.documentElement.setAttribute('data-theme', theme)
+    return () => {
+      if (previous) document.documentElement.setAttribute('data-theme', previous)
+      else document.documentElement.removeAttribute('data-theme')
+    }
+  }, [data?.company_portal_theme])
+
   const inv = data.invoice
   const lineItems = data.line_items || []
   const tenantName = data.company_name || 'Your Contractor'
