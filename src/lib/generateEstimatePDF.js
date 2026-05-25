@@ -1,11 +1,12 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import { hexToRgb, normalizedPrimary } from '../utils/colorUtils'
 
-const ORANGE = [242, 114, 67]   // #f27243
 const DARK = [27, 36, 38]       // #1b2426
 const MUTED = [138, 144, 150]   // #8a9096
 const WHITE = [255, 255, 255]
 const STRIPE = [245, 245, 245]
+const FALLBACK_PRIMARY = [242, 114, 67] // #f27243
 
 const VARIANTS = [
   { key: 'good', label: 'GOOD', rateField: 'rate_good', totalField: 'total_good', grandTotal: 'good_total' },
@@ -49,6 +50,8 @@ export function generateEstimatePDF({ estimate, lineItems, project, client, comp
   const margin = 20
 
   const companyName = company?.name || 'Your Contractor'
+  const companyPrimaryHex = normalizedPrimary(company?.primary_color)
+  const companyPrimaryRgb = hexToRgb(companyPrimaryHex) ?? FALLBACK_PRIMARY
   const estTitle = estimate.title || estimate.estimate_number
   const estNumber = estimate.estimate_number
 
@@ -159,7 +162,7 @@ export function generateEstimatePDF({ estimate, lineItems, project, client, comp
     // ── Variant title ────────────────────────────────────────
     doc.setFontSize(16)
     doc.setFont('helvetica', 'bold')
-    doc.setTextColor(...ORANGE)
+    doc.setTextColor(...companyPrimaryRgb)
     const pageHeading = isSingleVariant
       ? (estimate.title || 'Project Estimate')
       : v.label
@@ -183,7 +186,7 @@ export function generateEstimatePDF({ estimate, lineItems, project, client, comp
         styles: {
           fontStyle: 'bold',
           fillColor: [240, 240, 240],
-          textColor: ORANGE,
+          textColor: companyPrimaryRgb,
           fontSize: 9,
           cellPadding: { top: 3, bottom: 3, left: 4, right: 4 },
         },
@@ -299,7 +302,7 @@ export function generateEstimatePDF({ estimate, lineItems, project, client, comp
         y += 5
         doc.setFontSize(11)
         doc.setFont('helvetica', 'bold')
-        doc.setTextColor(...ORANGE)
+        doc.setTextColor(...companyPrimaryRgb)
         const depFmt = `$${dep.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
         const depositLine = pct != null ? `${depFmt}  (${pct}%)` : depFmt
         doc.text(depositLine, margin, y)

@@ -72,11 +72,14 @@ export default function PortalPage() {
   }
 
   const tenantName = data.company_name || 'Your Contractor'
+  const tenantLogoUrl = data.company_logo_url || null
+  const tenantPrimary = data.company_primary_color || null
 
   return (
     <div className={styles.page}>
-      <div className={styles.card}>
+      <div className={styles.card} style={tenantPrimary ? { '--color-primary': tenantPrimary } : undefined}>
         <div className={styles.companyHeader}>
+          {tenantLogoUrl && <img src={tenantLogoUrl} alt={`${tenantName} logo`} className={styles.companyLogo} />}
           <h2 className={styles.companyName}>{tenantName}</h2>
         </div>
 

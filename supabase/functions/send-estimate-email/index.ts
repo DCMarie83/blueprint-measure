@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
 
     const { data: company } = await adminClient
       .from('companies')
-      .select('name')
+      .select('name, primary_color, logo_url')
       .eq('id', estimate.company_id)
       .single()
 
@@ -101,6 +101,8 @@ Deno.serve(async (req) => {
     const siteUrl = Deno.env.get('SITE_URL') || 'https://app.rivetdog.com'
     const portalUrl = `${siteUrl}/portal/${project.portal_token}`
     const companyName = company?.name || 'Your Contractor'
+    const tenantPrimary = company?.primary_color || '#f27243'
+    const tenantLogoUrl = company?.logo_url || null
     const estTitle = estimate.title || estimate.estimate_number
 
     // Build total display — single variant or all 3
@@ -110,7 +112,7 @@ Deno.serve(async (req) => {
       ? `<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="width: 100%; margin: 16px 0; border-collapse: separate; border-spacing: 0;">
            <tr>
              <td style="padding: 14px 16px; background: #1b2426; border-radius: 8px 0 0 8px; color: #ffffff; font-size: 15px; font-weight: 600;">Estimate Total</td>
-             <td style="padding: 14px 16px; background: #1b2426; border-radius: 0 8px 8px 0; color: #f27243; font-size: 20px; font-weight: 700; font-family: monospace; text-align: right; white-space: nowrap;">$${selectedTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+             <td style="padding: 14px 16px; background: #1b2426; border-radius: 0 8px 8px 0; color: ${tenantPrimary}; font-size: 20px; font-weight: 700; font-family: monospace; text-align: right; white-space: nowrap;">$${selectedTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
            </tr>
          </table>`
       : `<table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px;">
@@ -133,14 +135,19 @@ Deno.serve(async (req) => {
       ? `<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="width: 100%; margin: 0 0 16px 0; border-collapse: separate; border-spacing: 0;">
            <tr>
              <td style="padding: 12px 16px; background: #f5f5f5; border-radius: 8px 0 0 8px; color: #1b2426; font-size: 14px; font-weight: 600;">Deposit Required${depositPct != null ? ` <span style="color: #6b7280; font-weight: 400; font-size: 13px;">(${depositPct}%)</span>` : ''}</td>
-             <td style="padding: 12px 16px; background: #f5f5f5; border-radius: 0 8px 8px 0; color: #f27243; font-size: 16px; font-weight: 700; font-family: monospace; text-align: right; white-space: nowrap;">$${depositFmt}</td>
+             <td style="padding: 12px 16px; background: #f5f5f5; border-radius: 0 8px 8px 0; color: ${tenantPrimary}; font-size: 16px; font-weight: 700; font-family: monospace; text-align: right; white-space: nowrap;">$${depositFmt}</td>
            </tr>
          </table>`
       : ''
 
+    const logoHtml = tenantLogoUrl
+      ? `<img src="${tenantLogoUrl}" alt="${escapeHtml(companyName)} logo" style="max-height: 60px; max-width: 200px; display: block; margin: 0 auto 20px;" />`
+      : ''
+
     const html = `
       <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
-        <h2 style="color: #f27243; margin: 0 0 16px 0;">${escapeHtml(companyName)}</h2>
+        ${logoHtml}
+        <h2 style="color: ${tenantPrimary}; margin: 0 0 16px 0;">${escapeHtml(companyName)}</h2>
         <p style="font-size: 15px; color: #1b2426; line-height: 1.5;">
           You've received an estimate: <strong>${escapeHtml(estTitle)}</strong>
         </p>
@@ -152,7 +159,7 @@ Deno.serve(async (req) => {
         <p style="font-size: 14px; color: #555; line-height: 1.5;">
           View the full estimate and approve online:
         </p>
-        <a href="${portalUrl}" style="display: inline-block; margin: 16px 0; padding: 14px 28px; background: #f27243; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">View &amp; Approve Online</a>
+        <a href="${portalUrl}" style="display: inline-block; margin: 16px 0; padding: 14px 28px; background: ${tenantPrimary}; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">View &amp; Approve Online</a>
         <p style="font-size: 13px; color: #888; margin-top: 24px;">A PDF copy is attached to this email. Have questions? Contact ${escapeHtml(companyName)} directly.</p>
         <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
         <p style="font-size: 11px; color: #999; text-align: center;">Powered by RivetDog</p>

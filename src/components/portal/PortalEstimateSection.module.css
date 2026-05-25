@@ -35,7 +35,7 @@
   font-size: 16px; font-weight: 700; color: #1b2426; text-transform: capitalize;
 }
 .singleVariantTotal {
-  font-family: monospace; font-size: 22px; font-weight: 700; color: #f27243;
+  font-family: monospace; font-size: 22px; font-weight: 700; color: var(--color-primary);
 }
 
 /* Variant tabs */
@@ -52,13 +52,13 @@
 .variantTab:hover { background: #fff; }
 .variantTabActive { background: #fff; color: #1b2426; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
 .variantTotal { font-family: monospace; font-size: 14px; font-weight: 700; }
-.variantTabActive .variantTotal { color: #f27243; }
+.variantTabActive .variantTotal { color: var(--color-primary); }
 
 /* Line items */
 .lineItems { margin-bottom: 12px; }
 .catHeader {
   padding: 6px 0; font-size: 11px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.4px; color: #f27243; border-bottom: 1px solid #f0f0f0; margin-bottom: 4px;
+  letter-spacing: 0.4px; color: var(--color-primary); border-bottom: 1px solid #f0f0f0; margin-bottom: 4px;
 }
 .lineRow {
   display: grid; grid-template-columns: 1fr auto auto auto; gap: 12px;
@@ -68,7 +68,7 @@
 .lineDesc { display: flex; align-items: center; gap: 6px; }
 .zoneBadge {
   font-size: 10px; padding: 1px 6px; border-radius: 9999px;
-  background: rgba(242,114,67,0.1); color: #f27243;
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent); color: var(--color-primary);
 }
 .lineQty { font-size: 13px; color: #6b7280; white-space: nowrap; text-align: right; }
 .lineRate { font-family: monospace; font-size: 13px; color: #6b7280; text-align: right; }
@@ -80,7 +80,7 @@
   padding: 14px 16px; background: #1b2426; border-radius: 8px;
   color: #fff; font-size: 15px; font-weight: 600; margin-bottom: 16px;
 }
-.grandTotalValue { font-family: monospace; font-size: 20px; font-weight: 700; color: #f27243; }
+.grandTotalValue { font-family: monospace; font-size: 20px; font-weight: 700; color: var(--color-primary); }
 
 /* Details block (Notes / Deposit / Terms) */
 .detailsBlock {
@@ -116,7 +116,7 @@
 .depositAmount {
   font-size: 18px;
   font-weight: 700;
-  color: #f27243;
+  color: var(--color-primary);
   font-family: monospace;
 }
 .depositPct {
@@ -160,12 +160,12 @@
   width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 6px;
   font-size: 14px; color: #1b2426; outline: none; box-sizing: border-box;
 }
-.fieldInput:focus { border-color: #f27243; }
+.fieldInput:focus { border-color: var(--color-primary); }
 .fieldTextarea {
   width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 6px;
   font-size: 14px; color: #1b2426; outline: none; resize: vertical; box-sizing: border-box;
 }
-.fieldTextarea:focus { border-color: #f27243; }
+.fieldTextarea:focus { border-color: var(--color-primary); }
 
 .confirmText { font-size: 14px; color: #374151; line-height: 1.5; margin: 0 0 12px; }
 
@@ -173,7 +173,7 @@
   display: flex; align-items: flex-start; gap: 8px; font-size: 13px; color: #374151;
   margin-bottom: 14px; cursor: pointer;
 }
-.checkboxRow input[type="checkbox"] { margin-top: 2px; accent-color: #f27243; }
+.checkboxRow input[type="checkbox"] { margin-top: 2px; accent-color: var(--color-primary); }
 
 .formActions { display: flex; justify-content: flex-end; gap: 10px; }
 .cancelFormBtn {
