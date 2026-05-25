@@ -198,7 +198,7 @@ export default function InvoiceDetailPage() {
                   <td className={styles.td}>{li.category_name || '—'}</td>
                   <td className={styles.tdR}>{Number(li.quantity || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}</td>
                   <td className={styles.tdC}>{UNIT_LABELS[li.unit] || li.unit}</td>
-                  <td className={styles.tdR}>{fmtMoney(li.rate)}</td>
+                  <td className={styles.tdR}>{fmtMoney(li.unit_rate)}</td>
                   <td className={styles.tdR}>{fmtMoney(li.total)}</td>
                 </tr>
               ))}

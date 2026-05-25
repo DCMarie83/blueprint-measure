@@ -128,7 +128,7 @@ export function useInvoiceMutations() {
           item_type: li.item_type || null,
           unit: li.unit || 'each',
           quantity: Number(li.quantity) || 0,
-          rate: Number(li.rate) || 0,
+          unit_rate: Number(li.rate) || 0,
           total: (Number(li.quantity) || 0) * (Number(li.rate) || 0),
           sort_order: i,
         }))
@@ -178,7 +178,7 @@ export function useInvoiceMutations() {
           item_type: li.item_type || null,
           unit: li.unit || 'each',
           quantity: Number(li.quantity) || 0,
-          rate: Number(li.rate) || 0,
+          unit_rate: Number(li.rate) || 0,
           total: (Number(li.quantity) || 0) * (Number(li.rate) || 0),
           sort_order: i,
         }))

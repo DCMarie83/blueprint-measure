@@ -55,7 +55,7 @@ export default function InvoiceForm({ existingInvoice, existingLineItems }) {
   const [adjustmentAmount, setAdjustmentAmount] = useState(existingInvoice?.adjustment_amount ?? '')
   const [lineItems, setLineItems] = useState(
     existingLineItems?.length > 0
-      ? existingLineItems.map(li => ({ ...li, id: li.id || crypto.randomUUID() }))
+      ? existingLineItems.map(li => ({ ...li, id: li.id || crypto.randomUUID(), rate: li.unit_rate ?? li.rate ?? 0 }))
       : [emptyLine()]
   )
   const [formError, setFormError] = useState(null)

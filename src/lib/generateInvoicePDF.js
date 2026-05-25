@@ -145,7 +145,7 @@ export function generateInvoicePDF({ invoice, lineItems, project, client, compan
       li.category_name || '',
       Number(li.quantity || 0).toLocaleString('en-US', { maximumFractionDigits: 2 }),
       UNIT_LABELS[li.unit] || li.unit || '',
-      fmtMoney(li.rate),
+      fmtMoney(li.unit_rate),
       fmtMoney(li.total),
     ])
   }
