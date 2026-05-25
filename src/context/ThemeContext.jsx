@@ -16,7 +16,7 @@ function applyThemeAttribute(theme) {
 }
 
 export function ThemeProvider({ children }) {
-  const { user, userProfile, refreshUserProfile } = useAuth();
+  const { user, userProfile, refreshUserProfile, company } = useAuth();
   const [theme, setThemeState] = useState(() => localStorage.getItem('rivetdog-theme') || 'system');
   const [saving, setSaving] = useState(false);
 
@@ -38,6 +38,25 @@ export function ThemeProvider({ children }) {
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);
   }, [theme]);
+
+  // Tenant brand color overrides — applied after data-theme so they survive light/dark toggle
+  useEffect(() => {
+    const root = document.documentElement;
+    if (company?.primary_color) {
+      root.style.setProperty('--color-primary', company.primary_color);
+    } else {
+      root.style.removeProperty('--color-primary');
+    }
+    if (company?.accent_color) {
+      root.style.setProperty('--color-accent', company.accent_color);
+    } else {
+      root.style.removeProperty('--color-accent');
+    }
+    return () => {
+      root.style.removeProperty('--color-primary');
+      root.style.removeProperty('--color-accent');
+    };
+  }, [company?.primary_color, company?.accent_color]);
 
   const setTheme = useCallback(async (next) => {
     const prev = theme;
