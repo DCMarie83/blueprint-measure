@@ -14,16 +14,32 @@ const METHODS = [
 
 const URL_RE = /^https?:\/\/.+/i
 
+const DEFAULT_FORM = {
+  check: { enabled: false, payable_to: '', mailing_address: '' },
+  zelle: { enabled: false, handle: '' },
+  venmo: { enabled: false, handle: '' },
+  cashapp: { enabled: false, handle: '' },
+  ach: { enabled: false, instructions: '' },
+  card_external: { enabled: false, label: 'Pay with Card', url: '' },
+  other: { enabled: false, instructions: '' },
+}
+
 export default function PaymentInstructionsTab() {
   const { paymentInstructions, loading, savePaymentInstructions } = usePaymentInstructions()
-  const [form, setForm] = useState(null)
+  const [form, setForm] = useState(DEFAULT_FORM)
+  const [seeded, setSeeded] = useState(false)
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState('')
   const [errors, setErrors] = useState({})
 
+  // Sync DB data → local form once loading completes.
+  // seeded flag prevents re-overwriting user edits after initial load.
   useEffect(() => {
-    if (paymentInstructions) setForm(structuredClone(paymentInstructions))
-  }, [paymentInstructions])
+    if (!loading && paymentInstructions && !seeded) {
+      setForm(structuredClone(paymentInstructions))
+      setSeeded(true)
+    }
+  }, [loading, paymentInstructions, seeded])
 
   useEffect(() => {
     if (!toast) return
@@ -31,7 +47,7 @@ export default function PaymentInstructionsTab() {
     return () => clearTimeout(t)
   }, [toast])
 
-  if (loading || !form) return <div style={{ color: 'var(--color-text-muted)' }}>Loading…</div>
+  if (loading && !seeded) return <div style={{ color: 'var(--color-text-muted)' }}>Loading…</div>
 
   function update(method, field, value) {
     setForm(prev => ({ ...prev, [method]: { ...prev[method], [field]: value } }))
