@@ -1,6 +1,7 @@
 import { useState, useRef, Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../context/AuthContext'
 import { useAdminData } from '../../context/AdminDataContext'
 import styles from './sections.module.css'
 
@@ -19,7 +20,28 @@ function useTempId() {
 
 export default function UsersSection() {
   const navigate = useNavigate()
+  const { user: authUser } = useAuth()
   const { companies, users, setUsers, userProfiles, setUserProfiles, companyNameFor, profileCompanyIdFor, roleFor, loadAll } = useAdminData()
+  const isSuperAdmin = authUser?.email === 'main@ngautomationhub.com'
+
+  // Orphan detection
+  const [orphans, setOrphans] = useState(null)
+  const [orphanLoading, setOrphanLoading] = useState(false)
+  const [orphanError, setOrphanError] = useState('')
+
+  async function handleDetectOrphans() {
+    setOrphanLoading(true)
+    setOrphanError('')
+    try {
+      const { data, error } = await supabase.rpc('detect_user_orphans')
+      if (error) throw new Error(error.message)
+      setOrphans(data ?? [])
+    } catch (err) {
+      setOrphanError(err.message)
+    } finally {
+      setOrphanLoading(false)
+    }
+  }
 
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
@@ -301,6 +323,52 @@ export default function UsersSection() {
           {Array.from({ length: totalPages }, (_, i) => (
             <button key={i} className={`${styles.pageBtn} ${page === i ? styles.pageBtnActive : ''}`} onClick={() => setPage(i)}>{i + 1}</button>
           ))}
+        </div>
+      )}
+
+      {isSuperAdmin && (
+        <div style={{ marginTop: 32, borderTop: '1px solid var(--color-border)', paddingTop: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+            <h2 className={styles.pageTitle} style={{ margin: 0, fontSize: 16 }}>Orphan Detection</h2>
+            <button className={styles.secondaryBtn} onClick={handleDetectOrphans} disabled={orphanLoading}>
+              {orphanLoading ? 'Scanning…' : 'Detect Orphans'}
+            </button>
+          </div>
+          {orphanError && <p className={styles.fieldError}>{orphanError}</p>}
+          {orphans !== null && (
+            orphans.length === 0 ? (
+              <p style={{ color: 'var(--color-success)', fontSize: 13 }}>No orphans detected</p>
+            ) : (
+              <div className={styles.tableWrap}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th className={styles.th}>Email</th>
+                      <th className={styles.th}>Issue</th>
+                      <th className={styles.th}>Auth</th>
+                      <th className={styles.th}>Public</th>
+                      <th className={styles.th}>Profile</th>
+                      <th className={styles.th}>Profile Co.</th>
+                      <th className={styles.th}>Public Co.</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orphans.map((o, i) => (
+                      <tr key={i} className={styles.tr}>
+                        <td className={styles.td}>{o.email}</td>
+                        <td className={styles.td}><span className={styles.badge} style={{ fontSize: 11 }}>{o.issue}</span></td>
+                        <td className={styles.td}>{o.has_auth_user ? 'Y' : 'N'}</td>
+                        <td className={styles.td}>{o.has_public_user ? 'Y' : 'N'}</td>
+                        <td className={styles.td}>{o.has_profile ? 'Y' : 'N'}</td>
+                        <td className={styles.td} style={{ fontSize: 11 }}>{o.profile_company_id?.slice(0, 8) ?? '—'}</td>
+                        <td className={styles.td} style={{ fontSize: 11 }}>{o.public_user_company_id?.slice(0, 8) ?? '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
+          )}
         </div>
       )}
     </div>

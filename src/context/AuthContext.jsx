@@ -9,6 +9,26 @@ export function AuthProvider({ children }) {
   const [setupComplete, setSetupComplete] = useState(null) // null = unknown, true/false
   const [userProfile, setUserProfile] = useState(null)
   const [userProfileLoading, setUserProfileLoading] = useState(false)
+  const [company, setCompany] = useState(null)
+  const [companyLoading, setCompanyLoading] = useState(false)
+
+  const refreshCompany = useCallback(async (companyId) => {
+    const cid = companyId || userProfile?.company_id
+    if (!cid) return
+    setCompanyLoading(true)
+    try {
+      const { data } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('id', cid)
+        .single()
+      setCompany(data)
+    } catch {
+      // fail open
+    } finally {
+      setCompanyLoading(false)
+    }
+  }, [userProfile?.company_id])
 
   const refreshUserProfile = useCallback(async () => {
     if (!user?.id) return
@@ -46,6 +66,7 @@ export function AuthProvider({ children }) {
       if (!u) {
         setSetupComplete(null)
         setUserProfile(null)
+        setCompany(null)
       }
     })
 
@@ -58,8 +79,17 @@ export function AuthProvider({ children }) {
     refreshUserProfile()
   }, [user?.id, refreshUserProfile])
 
+  // Load company when userProfile loads/changes — separate effect to avoid coupling
+  useEffect(() => {
+    if (!userProfile?.company_id) {
+      setCompany(null)
+      return
+    }
+    refreshCompany(userProfile.company_id)
+  }, [userProfile?.company_id, refreshCompany])
+
   return (
-    <AuthContext.Provider value={{ user, loading, setupComplete, setSetupComplete, userProfile, userProfileLoading, refreshUserProfile }}>
+    <AuthContext.Provider value={{ user, loading, setupComplete, setSetupComplete, userProfile, userProfileLoading, refreshUserProfile, company, companyLoading, refreshCompany }}>
       {children}
     </AuthContext.Provider>
   )

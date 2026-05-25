@@ -50,26 +50,15 @@ const TOOLBAR_COLORS = [
 export default function SessionPage() {
   const { sessionId } = useParams()
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, company } = useAuth()
   const isAdmin = user?.email === ADMIN_EMAIL
   const { session, zones, enabledFeatures, loading, error, saveZone, updateZone, updateZoneLabelOffset, redrawZone, deleteZone, restoreZone, updateSession, refetch } = useSession(sessionId)
   const { deleteSession } = useSessions()
 
   const { formatTime } = useDateFormat()
 
-  // ── Company + plan (for storage limit checks) ───────────────────────────────
-  const [sessionCompany, setSessionCompany] = useState(null)
-  useEffect(() => {
-    if (!user) return
-    async function loadCompany() {
-      const { data: profile } = await supabase.from('user_profiles').select('company_id').eq('user_id', user.id).single()
-      if (!profile?.company_id) return
-      const { data: comp } = await supabase.from('companies').select('plan, plan_key, subscription_status').eq('id', profile.company_id).single()
-      if (comp) setSessionCompany({ ...comp, id: profile.company_id })
-    }
-    loadCompany()
-  }, [user])
-  const companyPlan = useCompanyPlan(sessionCompany)
+  // ── Company plan (for storage limit checks) ─────────────────────────────────
+  const companyPlan = useCompanyPlan(company)
   const storageLimitMb = companyPlan?.unlimited ? null : (companyPlan?.max_storage_gb || 5) * 1024
 
   // ── Blueprint state ──────────────────────────────────────────────────────────
@@ -1567,9 +1556,9 @@ export default function SessionPage() {
           {!blueprintUrl ? (
             <BlueprintUploader sessionId={sessionId} projectId={session?.project_id} onSplitFlowRedirect={handleSplitFlowRedirect} onUploaded={handleUploaded} oldBlueprintType={replacingBlueprintType} onStorageCheck={async (fileSize) => {
               try {
-                if (!sessionCompany?.id) return true
+                if (!company?.id) return true
                 if (storageLimitMb == null) return true // unlimited (pilot)
-                const usage = await getCompanyStorageUsage(sessionCompany.id)
+                const usage = await getCompanyStorageUsage(company.id)
                 const projectedBytes = usage.totalBytes + fileSize
                 if (projectedBytes > storageLimitMb * 1024 * 1024) {
                   alert('Your company has reached its storage limit. Contact your admin to upgrade.')

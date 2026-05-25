@@ -37,7 +37,7 @@ function timeAgo(dateStr) {
 export default function ProjectDetailPage() {
   const { projectId } = useParams()
   const navigate = useNavigate()
-  const { user, userProfile } = useAuth()
+  const { user, userProfile, company } = useAuth()
   const { project, sessions, loading, error, refetch } = useProject(projectId)
   const isAdmin = userProfile?.role === 'contractor_admin' || user?.email === 'main@ngautomationhub.com'
   const { updateProject } = useProjects()
@@ -47,19 +47,8 @@ export default function ProjectDetailPage() {
   const [showAddBlueprint, setShowAddBlueprint] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
 
-  // Company + plan (for storage limit checks)
-  const [pdpCompany, setPdpCompany] = useState(null)
-  useEffect(() => {
-    if (!user) return
-    async function loadCompany() {
-      const { data: profile } = await supabase.from('user_profiles').select('company_id').eq('user_id', user.id).maybeSingle()
-      if (!profile?.company_id) return
-      const { data: comp } = await supabase.from('companies').select('plan, plan_key, subscription_status').eq('id', profile.company_id).maybeSingle()
-      if (comp) setPdpCompany(comp)
-    }
-    loadCompany()
-  }, [user])
-  const companyPlan = useCompanyPlan(pdpCompany)
+  // Company plan (for storage limit checks)
+  const companyPlan = useCompanyPlan(company)
   const storageLimitMb = companyPlan?.unlimited ? null : (companyPlan?.max_storage_gb || 5) * 1024
 
   // Client linking

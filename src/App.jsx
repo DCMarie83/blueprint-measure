@@ -38,11 +38,13 @@ import PortalPage from './pages/PortalPage'
 import AcademyPage from './pages/AcademyPage'
 import ReportsPage from './pages/ReportsPage'
 import PasswordRecoveryHandler from './components/PasswordRecoveryHandler'
+import SubscriptionGate from './components/auth/SubscriptionGate'
 
 const ADMIN_EMAIL = 'main@ngautomationhub.com'
 
 // ProtectedRoute wraps pages that require login + completed setup.
-function ProtectedRoute({ children }) {
+// bypassSubscriptionGate: if true, skip the subscription check (for /settings, /account)
+function ProtectedRoute({ children, bypassSubscriptionGate = false }) {
   const { user, loading, setupComplete } = useAuth()
 
   if (loading) {
@@ -56,7 +58,8 @@ function ProtectedRoute({ children }) {
   if (!user) return <Navigate to="/login" replace />
   if (user.user_metadata?.force_password_change) return <Navigate to="/change-password" replace />
   if (setupComplete === false) return <Navigate to="/register" replace />
-  return <>{children}<FeedbackButton /></>
+  if (bypassSubscriptionGate) return <>{children}<FeedbackButton /></>
+  return <SubscriptionGate>{children}<FeedbackButton /></SubscriptionGate>
 }
 
 // AdminRoute wraps /admin. Requires login AND the hardcoded admin email.
@@ -181,7 +184,7 @@ export default function App() {
       />
       <Route
         path="/settings"
-        element={<ProtectedRoute><SettingsPage /></ProtectedRoute>}
+        element={<ProtectedRoute bypassSubscriptionGate><SettingsPage /></ProtectedRoute>}
       />
       <Route
         path="/jobs"
