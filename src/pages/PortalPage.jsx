@@ -71,11 +71,13 @@ export default function PortalPage() {
     )
   }
 
+  const tenantName = data.company_name || 'Your Contractor'
+
   return (
     <div className={styles.page}>
       <div className={styles.card}>
         <div className={styles.companyHeader}>
-          <h2 className={styles.companyName}>{data.company_name || 'Your Contractor'}</h2>
+          <h2 className={styles.companyName}>{tenantName}</h2>
         </div>
 
         <div className={styles.projectBlock}>
@@ -115,7 +117,7 @@ export default function PortalPage() {
           <p className={styles.contactNote}>
             Have questions? Contact your contractor directly.
           </p>
-          <p className={styles.footer}>Powered by RivetDog</p>
+          <p className={styles.footer}>Powered by RivetDog for {tenantName}</p>
         </div>
       </div>
     </div>

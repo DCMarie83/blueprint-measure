@@ -105,10 +105,27 @@ export default function EstimateDetailPage() {
     if (proj.company_id) {
       const { data: co } = await supabase
         .from('companies')
-        .select('id, name')
+        .select('id, name, logo_url')
         .eq('id', proj.company_id)
         .single()
-      if (co) setCompanyData(co)
+      if (co) {
+        // Pre-fetch logo as data URL for synchronous PDF rendering
+        if (co.logo_url) {
+          try {
+            const res = await fetch(co.logo_url)
+            if (res.ok) {
+              const blob = await res.blob()
+              const reader = new FileReader()
+              const logoData = await new Promise(resolve => {
+                reader.onloadend = () => resolve(reader.result)
+                reader.readAsDataURL(blob)
+              })
+              co.logo_data = logoData
+            }
+          } catch { /* logo fetch failed — proceed without */ }
+        }
+        setCompanyData(co)
+      }
     }
   }
 

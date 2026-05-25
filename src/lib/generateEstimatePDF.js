@@ -65,11 +65,27 @@ export function generateEstimatePDF({ estimate, lineItems, project, client, comp
     let y = margin
 
     // ── Header band ──────────────────────────────────────────
-    // TODO: Add company logo when companies.logo_url is available
-    doc.setFontSize(22)
-    doc.setFont('helvetica', 'bold')
-    doc.setTextColor(...DARK)
-    doc.text(companyName, margin, y + 7)
+    let logoRendered = false
+    if (company?.logo_data) {
+      try {
+        const logoH = 14 // mm — slightly larger since it stands alone
+        const logoW = logoH * 3
+        const fmtMatch = company.logo_data.match(/^data:image\/(\w+);/)
+        const fmt = fmtMatch ? fmtMatch[1].toUpperCase() : 'PNG'
+        if (fmt !== 'SVG' && fmt !== 'SVG+XML') {
+          doc.addImage(company.logo_data, fmt, margin, y - 2, logoW, logoH)
+          logoRendered = true
+        }
+      } catch { /* logo embed failed — fall through to text */ }
+    }
+
+    // Only render company name as text if no logo was rendered
+    if (!logoRendered) {
+      doc.setFontSize(22)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(...DARK)
+      doc.text(companyName, margin, y + 7)
+    }
 
     // Right-aligned: title or estimate number
     doc.setFontSize(13)

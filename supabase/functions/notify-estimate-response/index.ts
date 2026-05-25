@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'RivetDog <noreply@rivetdog.com>',
+        from: `${companyName} via RivetDog <noreply@rivetdog.com>`,
         to: [contractor.email],
         subject: `Estimate ${statusVerb}: ${escapeHtml(estTitle)} from ${escapeHtml(clientName)}`,
         html,
