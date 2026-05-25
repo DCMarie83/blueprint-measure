@@ -136,6 +136,18 @@ export function useInvoiceMutations() {
         if (liErr) throw new Error(liErr.message)
       }
 
+      // Activity log (fire-and-forget)
+      try {
+        const { data: proj } = await supabase.from('projects').select('client_id').eq('id', project_id).single()
+        if (proj?.client_id) {
+          await supabase.from('client_activity').insert({
+            client_id: proj.client_id, company_id: companyId, user_id: user.id,
+            activity_type: 'invoice_created', title: `Invoice ${invNum} created`,
+            is_automated: true, metadata: { invoice_id: invoice.id, invoice_number: invNum },
+          })
+        }
+      } catch { /* activity logging is best-effort */ }
+
       return invoice
     } catch (err) {
       setError(err.message)
@@ -203,6 +215,20 @@ export function useInvoiceMutations() {
     if (err) throw new Error(err.message)
   }
 
+  async function logInvoiceActivity(invoiceId, activityType, title, extraMeta = {}) {
+    try {
+      const { data: inv } = await supabase.from('invoices').select('invoice_number, project_id').eq('id', invoiceId).single()
+      if (!inv) return
+      const { data: proj } = await supabase.from('projects').select('client_id').eq('id', inv.project_id).single()
+      if (!proj?.client_id) return
+      await supabase.from('client_activity').insert({
+        client_id: proj.client_id, company_id: companyId, user_id: user?.id,
+        activity_type: activityType, title, is_automated: true,
+        metadata: { invoice_id: invoiceId, invoice_number: inv.invoice_number, ...extraMeta },
+      })
+    } catch { /* activity logging is best-effort */ }
+  }
+
   async function markPaid(id, { paid_amount, payment_method, payment_notes }) {
     const { error: err } = await supabase.from('invoices').update({
       status: 'paid', paid_at: new Date().toISOString(), paid_amount: Number(paid_amount) || 0,
@@ -210,6 +236,7 @@ export function useInvoiceMutations() {
       updated_at: new Date().toISOString(),
     }).eq('id', id)
     if (err) throw new Error(err.message)
+    logInvoiceActivity(id, 'invoice_paid', 'Invoice paid', { paid_amount: Number(paid_amount) || 0, payment_method })
   }
 
   async function markVoid(id, reason) {
@@ -217,6 +244,7 @@ export function useInvoiceMutations() {
       status: 'void', void_reason: reason || null, updated_at: new Date().toISOString(),
     }).eq('id', id)
     if (err) throw new Error(err.message)
+    logInvoiceActivity(id, 'invoice_voided', 'Invoice voided', { void_reason: reason })
   }
 
   return { createInvoice, updateInvoice, deleteInvoice, markSent, markPaid, markVoid, saving, error }

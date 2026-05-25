@@ -40,6 +40,7 @@ import ReportsPage from './pages/ReportsPage'
 import InvoiceListPage from './pages/InvoiceListPage'
 import InvoiceDetailPage from './pages/InvoiceDetailPage'
 import InvoiceForm from './components/invoices/InvoiceForm'
+import InvoicePortalPage from './pages/InvoicePortalPage'
 import PasswordRecoveryHandler from './components/PasswordRecoveryHandler'
 import SubscriptionGate from './components/auth/SubscriptionGate'
 
@@ -165,6 +166,7 @@ export default function App() {
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/portal/:token" element={<PortalPage />} />
+      <Route path="/portal/invoice/:token" element={<InvoicePortalPage />} />
 
       {/* Registration / setup — only for users who haven't completed setup */}
       <Route

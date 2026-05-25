@@ -214,6 +214,23 @@ Deno.serve(async (req) => {
       .update({ portal_enabled: true })
       .eq('id', project.id)
 
+    // Activity log (fire-and-forget backfill)
+    if (project.client_id) {
+      try {
+        await adminClient.from('client_activity').insert({
+          client_id: project.client_id,
+          company_id: estimate.company_id,
+          user_id: user.id,
+          activity_type: 'estimate_sent',
+          title: `Estimate ${estimate.estimate_number} sent`,
+          is_automated: true,
+          metadata: { estimate_id: estimate.id, estimate_number: estimate.estimate_number, recipient_count: recipients.length },
+        })
+      } catch (err) {
+        console.warn('Failed to log estimate_sent activity:', err)
+      }
+    }
+
     return json({ success: true, recipientCount: recipients.length })
 
   } catch (err) {

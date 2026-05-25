@@ -12,8 +12,14 @@ const TYPE_CONFIG = {
   sms:               { icon: MessageSquare, label: 'SMS' },
   meeting:           { icon: Users,       label: 'Meeting' },
   estimate_sent:     { icon: Send,        label: 'Estimate sent' },
+  estimate_viewed:   { icon: Eye,         label: 'Estimate viewed by client' },
   estimate_accepted: { icon: CheckCircle, label: 'Estimate accepted' },
   estimate_declined: { icon: XCircle,     label: 'Estimate declined' },
+  invoice_created:   { icon: FileText,    label: 'Invoice created' },
+  invoice_sent:      { icon: Send,        label: 'Invoice sent' },
+  invoice_viewed:    { icon: Eye,         label: 'Invoice viewed by client' },
+  invoice_paid:      { icon: CheckCircle, label: 'Invoice paid' },
+  invoice_voided:    { icon: XCircle,     label: 'Invoice voided' },
   portal_accessed:   { icon: Eye,         label: 'Portal accessed' },
 }
 

@@ -92,10 +92,22 @@ export default function InvoiceDetailPage() {
     }
   }
 
-  async function handleMarkSent() {
-    setActionSaving(true); setActionError(null)
-    try { await markSent(id); await refetch() }
-    catch (err) { setActionError(err.message) }
+  const [sendSuccess, setSendSuccess] = useState(false)
+
+  async function handleSendInvoice() {
+    setActionSaving(true); setActionError(null); setSendSuccess(false)
+    try {
+      const pdfData = await fetchPdfData()
+      if (!pdfData) throw new Error('Could not load PDF data')
+      const pdfBase64 = generateInvoicePDF({ invoice, lineItems, project: pdfData.project, client: pdfData.client, company: pdfData.company, returnAs: 'base64' })
+      const { error: fnErr } = await supabase.functions.invoke('send-invoice-email', {
+        body: { invoice_id: id, pdf_base64: pdfBase64 },
+      })
+      if (fnErr) throw new Error(fnErr.message || 'Send failed')
+      setSendSuccess(true)
+      setTimeout(() => setSendSuccess(false), 3000)
+      await refetch()
+    } catch (err) { setActionError(err.message) }
     finally { setActionSaving(false) }
   }
 
@@ -151,19 +163,23 @@ export default function InvoiceDetailPage() {
             <button className={styles.toolBtn} onClick={handleDownloadPDF} disabled={pdfLoading}>
               <Download size={15} /> {pdfLoading ? '…' : 'PDF'}
             </button>
+            {sendSuccess && <span style={{ color: 'var(--color-success)', fontSize: 13, fontWeight: 600 }}>Sent — good boy!</span>}
             {status === 'draft' && (
               <>
                 <button className={styles.toolBtn} onClick={() => navigate(`/invoices/new?edit=${id}`)}>
                   <Edit size={15} /> Edit
                 </button>
-                <button className={styles.actionBtn} onClick={handleMarkSent} disabled={actionSaving}>
-                  <Send size={15} /> Mark Sent
+                <button className={styles.actionBtn} onClick={handleSendInvoice} disabled={actionSaving}>
+                  <Send size={15} /> {actionSaving ? 'Sending…' : 'Send Invoice'}
                 </button>
                 <button className={styles.dangerBtn} onClick={handleDelete}><Trash2 size={15} /> Delete</button>
               </>
             )}
-            {status === 'sent' && (
+            {(status === 'sent' || status === 'viewed') && (
               <>
+                <button className={styles.toolBtn} onClick={handleSendInvoice} disabled={actionSaving}>
+                  <Send size={15} /> {actionSaving ? 'Sending…' : 'Resend'}
+                </button>
                 <button className={styles.actionBtn} onClick={() => { setShowPayForm(true); setPayAmount(String(invoice.total)) }} disabled={actionSaving}>
                   <CheckCircle size={15} /> Mark Paid
                 </button>
