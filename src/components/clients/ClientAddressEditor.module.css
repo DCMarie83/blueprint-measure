@@ -1,0 +1,28 @@
+.section { margin-bottom: 32px; }
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.title { font-size: 16px; font-weight: 600; margin: 0; }
+.addBtn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); color: var(--color-text); font-size: 13px; cursor: pointer; transition: border-color 0.15s; }
+.addBtn:hover { border-color: var(--color-primary); }
+
+.empty { display: flex; align-items: flex-start; gap: 10px; padding: 16px; background: var(--color-surface-2); border-radius: var(--radius-md); color: var(--color-text-muted); font-size: 14px; line-height: 1.5; }
+.muted { color: var(--color-text-muted); font-size: 14px; }
+
+.list { display: flex; flex-direction: column; gap: 8px; }
+
+.card { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+
+.cardIcon { color: var(--color-text-muted); margin-top: 2px; flex-shrink: 0; }
+.cardBody { flex: 1; min-width: 0; }
+.cardLabel { font-size: 11px; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+.cardType { font-size: 12px; color: var(--color-text-muted); text-transform: capitalize; margin-bottom: 4px; }
+.cardLine { font-size: 14px; color: var(--color-text); }
+.cardLine2 { font-size: 14px; color: var(--color-text); }
+.cardNotes { font-size: 12px; color: var(--color-text-muted); margin-top: 4px; }
+
+.cardActions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.primaryBadge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: var(--radius-pill); background: var(--color-primary); color: var(--color-on-primary, #fff); }
+.linkBtn { background: none; border: none; color: var(--color-primary); font-size: 12px; cursor: pointer; padding: 0; }
+.linkBtn:hover { text-decoration: underline; }
+.iconBtn { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: none; border-radius: var(--radius-md); background: none; color: var(--color-text-muted); cursor: pointer; transition: background 0.15s; }
+.iconBtn:hover { background: var(--color-surface-2); }
+.iconBtn:disabled { opacity: 0.4; cursor: not-allowed; }

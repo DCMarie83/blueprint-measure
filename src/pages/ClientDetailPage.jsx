@@ -1,13 +1,21 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Home, Building2, Mail, Phone, MapPin, Tag, FileText, Briefcase, Trash2, Edit, User } from 'lucide-react'
+import { Home, Building2, Mail, Phone, Tag, FileText, Briefcase, Trash2, Edit, User, DollarSign, Clock } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import BackLink from '../components/BackLink'
 import Modal from '../components/ui/Modal'
 import ClientForm from '../components/clients/ClientForm'
+import ClientLogoUpload from '../components/clients/ClientLogoUpload'
+import ClientAddressEditor from '../components/clients/ClientAddressEditor'
 import { useClient } from '../hooks/useClient'
 import { useClients } from '../hooks/useClients'
+import { timeAgo } from '../utils/timeAgo'
 import styles from './ClientDetailPage.module.css'
+
+const fmtCurrency = (val) => {
+  if (val == null) return '$0.00'
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(val))
+}
 
 export default function ClientDetailPage() {
   const { id } = useParams()
@@ -20,7 +28,6 @@ export default function ClientDetailPage() {
 
   async function handleUpdate(payload, newContacts) {
     await updateClient(id, payload)
-    // TODO: contact updates in V2 — for now just update the client row
     setShowEdit(false)
     refetch()
   }
@@ -39,21 +46,33 @@ export default function ClientDetailPage() {
   if (loading) return <div className={styles.page}><AppHeader /><main className={styles.main}><p className={styles.loading}>Loading…</p></main></div>
   if (error || !client) return <div className={styles.page}><AppHeader /><main className={styles.main}><p className={styles.loading}>Client not found.</p></main></div>
 
-  const addr = client.property_address
-  const addrStr = addr ? [addr.street, addr.unit, addr.city, addr.state, addr.zip].filter(Boolean).join(', ') : null
-  const billAddr = client.billing_address
-  const billStr = billAddr ? [billAddr.street, billAddr.unit, billAddr.city, billAddr.state, billAddr.zip].filter(Boolean).join(', ') : null
-
   return (
     <div className={styles.page}>
       <AppHeader />
       <main className={styles.main}>
         <BackLink to="/clients" label="Clients" />
+
+        {/* Header: logo + name + stats */}
         <div className={styles.topRow}>
-          <div className={styles.topLeft}>
-            <span className={styles.typeBadge}>{client.client_type === 'commercial' ? <Building2 size={14} /> : <Home size={14} />} {client.client_type}</span>
-            <h1 className={styles.name}>{client.display_name}</h1>
-            {client.business_name && <div className={styles.bizName}>{client.business_name}</div>}
+          <div className={styles.topLeftRow}>
+            <ClientLogoUpload
+              clientId={id}
+              currentLogoUrl={client.logo_url}
+              clientName={client.display_name}
+              onLogoChange={() => refetch()}
+            />
+            <div className={styles.topLeft}>
+              <span className={styles.typeBadge}>
+                {client.client_type === 'commercial' ? <Building2 size={14} /> : <Home size={14} />} {client.client_type}
+              </span>
+              <h1 className={styles.name}>{client.display_name}</h1>
+              {client.business_name && <div className={styles.bizName}>{client.business_name}</div>}
+              <div className={styles.statsStrip}>
+                <span className={styles.stat}><DollarSign size={14} /> {fmtCurrency(client.lifetime_value)}</span>
+                <span className={styles.statDot}>&middot;</span>
+                <span className={styles.stat}><Clock size={14} /> {client.last_contact_at ? timeAgo(client.last_contact_at) : 'No contact yet'}</span>
+              </div>
+            </div>
           </div>
           <div className={styles.topActions}>
             <button className={styles.editBtn} onClick={() => setShowEdit(true)}><Edit size={14} /> Edit</button>
@@ -71,13 +90,6 @@ export default function ClientDetailPage() {
           </div>
 
           <div className={styles.infoCard}>
-            <h3 className={styles.cardTitle}>Addresses</h3>
-            {addrStr && <div className={styles.infoRow}><MapPin size={14} /> {addrStr}</div>}
-            {billStr && <div className={styles.infoRow}><MapPin size={14} /> <span className={styles.label}>Billing:</span> {billStr}</div>}
-            {!addrStr && !billStr && <div className={styles.muted}>No addresses set</div>}
-          </div>
-
-          <div className={styles.infoCard}>
             <h3 className={styles.cardTitle}>Details</h3>
             {client.property_type && <div className={styles.infoRow}><span className={styles.label}>Property:</span> {client.property_type.replace(/_/g, ' ')}</div>}
             {client.tags?.length > 0 && <div className={styles.infoRow}><Tag size={14} /> {client.tags.map(t => <span key={t} className={styles.tag}>{t}</span>)}</div>}
@@ -85,6 +97,9 @@ export default function ClientDetailPage() {
             {client.notes && <div className={styles.infoRow}><FileText size={14} /> {client.notes}</div>}
           </div>
         </div>
+
+        {/* Addresses — multi-address editor */}
+        <ClientAddressEditor clientId={id} />
 
         {/* Contacts */}
         <section className={styles.section}>
