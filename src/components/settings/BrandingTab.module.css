@@ -231,6 +231,41 @@
   margin-top: 16px;
 }
 
+.sectionHint {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  margin: 0 0 12px;
+}
+
+.themeToggle {
+  display: inline-flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.themeOption {
+  padding: 8px 20px;
+  background: var(--color-surface);
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.themeOption:first-child {
+  border-right: 1px solid var(--color-border);
+}
+
+.themeOptionActive {
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 600;
+}
+
 @media (max-width: 480px) {
   .identityRow {
     flex-direction: column;
