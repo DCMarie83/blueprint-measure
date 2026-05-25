@@ -1,0 +1,35 @@
+.container { max-width: 640px; }
+
+.methodSection { border-bottom: 1px solid var(--color-border); padding: 16px 0; }
+.methodSection:first-child { padding-top: 0; }
+
+.methodHeader { display: flex; justify-content: space-between; align-items: center; }
+.methodLabel { font-size: 14px; font-weight: 600; color: var(--color-text); }
+
+.toggle { position: relative; display: inline-block; cursor: pointer; }
+.toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+.toggleTrack { display: block; width: 40px; height: 22px; border-radius: 11px; background: var(--color-surface-2); border: 1px solid var(--color-border); transition: background 0.15s; position: relative; }
+.toggle input:checked + .toggleTrack { background: var(--color-primary); border-color: var(--color-primary); }
+.toggleThumb { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform 0.15s; }
+.toggle input:checked + .toggleTrack .toggleThumb { transform: translateX(18px); }
+
+.methodBody { padding-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+
+.field { display: flex; flex-direction: column; gap: 4px; }
+.fieldLabel { font-size: 13px; font-weight: 500; color: var(--color-text); }
+.input { padding: 8px 10px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-text); font-size: 14px; font-family: var(--font-body); }
+.input:focus { outline: none; border-color: var(--color-primary); }
+.inputError { border-color: var(--color-danger) !important; }
+.textarea { padding: 8px 10px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-text); font-size: 14px; font-family: var(--font-body); resize: vertical; }
+.textarea:focus { outline: none; border-color: var(--color-primary); }
+.errorText { font-size: 12px; color: var(--color-danger); }
+
+.prefixWrap { display: flex; align-items: center; }
+.prefix { padding: 8px 0 8px 10px; background: var(--color-surface-2); border: 1px solid var(--color-border); border-right: none; border-radius: var(--radius-md) 0 0 var(--radius-md); color: var(--color-text-muted); font-size: 14px; font-weight: 600; line-height: 1; }
+.prefixInput { flex: 1; padding: 8px 10px; border: 1px solid var(--color-border); border-radius: 0 var(--radius-md) var(--radius-md) 0; background: var(--color-surface); color: var(--color-text); font-size: 14px; font-family: var(--font-body); }
+.prefixInput:focus { outline: none; border-color: var(--color-primary); }
+
+.toast { padding: 8px 12px; background: var(--color-success-bg); border: 1px solid var(--color-success-border); border-radius: var(--radius-md); color: var(--color-success); font-size: 13px; margin-top: 16px; }
+.actions { display: flex; justify-content: flex-end; padding-top: 20px; }
+.saveBtn { padding: 9px 24px; background: var(--color-primary); border: none; border-radius: var(--radius-md); color: #fff; font-weight: 600; font-size: 14px; cursor: pointer; }
+.saveBtn:disabled { opacity: 0.5; cursor: not-allowed; }

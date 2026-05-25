@@ -24,6 +24,45 @@ function sanitizeFilename(str) {
   return str.replace(/[^a-zA-Z0-9_\- ]/g, '').replace(/\s+/g, '_')
 }
 
+const PI_ORDER = ['check', 'zelle', 'venmo', 'cashapp', 'ach', 'card_external', 'other']
+
+function renderPaymentInstructions(doc, pi, x, y, primaryRgb, pageWidth, pageHeight, margin, heading = 'Payment Methods') {
+  if (!pi) return y
+  const enabled = PI_ORDER.filter(k => pi[k]?.enabled)
+  if (enabled.length === 0) return y
+
+  if (y > pageHeight - 60) { doc.addPage(); y = margin }
+
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(...primaryRgb)
+  doc.text(heading.toUpperCase(), x, y)
+  y += 6
+
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(...DARK)
+
+  for (const k of enabled) {
+    const d = pi[k]
+    let line = ''
+    if (k === 'check') line = `Check — Payable to: ${d.payable_to || ''}${d.mailing_address ? `  |  Mail to: ${d.mailing_address.replace(/\n/g, ', ')}` : ''}`
+    else if (k === 'zelle') line = `Zelle: ${d.handle || ''}`
+    else if (k === 'venmo') line = `Venmo: @${d.handle || ''}`
+    else if (k === 'cashapp') line = `Cash App: $${d.handle || ''}`
+    else if (k === 'ach') line = `ACH/Wire: ${(d.instructions || '').replace(/\n/g, ', ')}`
+    else if (k === 'card_external') line = `${d.label || 'Pay with Card'}: ${d.url || ''}`
+    else if (k === 'other') line = (d.instructions || '').replace(/\n/g, ', ')
+
+    if (line) {
+      const lines = doc.splitTextToSize(line, pageWidth - margin * 2)
+      doc.text(lines, x, y)
+      y += lines.length * 4 + 2
+    }
+  }
+  return y + 4
+}
+
 /**
  * Generate a branded invoice PDF.
  *
@@ -215,6 +254,9 @@ export function generateInvoicePDF({ invoice, lineItems, project, client, compan
   doc.text('TOTAL', pageWidth - margin - 76, y + 9)
   doc.text(fmtMoney(totalNum), pageWidth - margin - 4, y + 9, { align: 'right' })
   y += 22
+
+  // ── Payment instructions ────────────────────────────────
+  y = renderPaymentInstructions(doc, company?.payment_instructions, margin, y, primaryRgb, pageWidth, pageHeight, margin)
 
   // ── Payment info + Notes + Terms ─────────────────────────
   const showDue = invoice.due_date

@@ -30,6 +30,40 @@ function sanitizeFilename(str) {
   return str.replace(/[^a-zA-Z0-9_\- ]/g, '').replace(/\s+/g, '_')
 }
 
+const PI_ORDER = ['check', 'zelle', 'venmo', 'cashapp', 'ach', 'card_external', 'other']
+
+function renderPaymentInstructions(doc, pi, x, y, primaryRgb, pageWidth, pageHeight, marginVal, heading = 'Payment Methods') {
+  if (!pi) return y
+  const enabled = PI_ORDER.filter(k => pi[k]?.enabled)
+  if (enabled.length === 0) return y
+  if (y > pageHeight - 60) { doc.addPage(); y = marginVal }
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(...primaryRgb)
+  doc.text(heading.toUpperCase(), x, y)
+  y += 6
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(...DARK)
+  for (const k of enabled) {
+    const d = pi[k]
+    let line = ''
+    if (k === 'check') line = `Check — Payable to: ${d.payable_to || ''}${d.mailing_address ? `  |  Mail to: ${d.mailing_address.replace(/\n/g, ', ')}` : ''}`
+    else if (k === 'zelle') line = `Zelle: ${d.handle || ''}`
+    else if (k === 'venmo') line = `Venmo: @${d.handle || ''}`
+    else if (k === 'cashapp') line = `Cash App: $${d.handle || ''}`
+    else if (k === 'ach') line = `ACH/Wire: ${(d.instructions || '').replace(/\n/g, ', ')}`
+    else if (k === 'card_external') line = `${d.label || 'Pay with Card'}: ${d.url || ''}`
+    else if (k === 'other') line = (d.instructions || '').replace(/\n/g, ', ')
+    if (line) {
+      const lines = doc.splitTextToSize(line, pageWidth - marginVal * 2)
+      doc.text(lines, x, y)
+      y += lines.length * 4 + 2
+    }
+  }
+  return y + 4
+}
+
 /**
  * Generate a branded estimate PDF.
  *
@@ -307,6 +341,9 @@ export function generateEstimatePDF({ estimate, lineItems, project, client, comp
         const depositLine = pct != null ? `${depFmt}  (${pct}%)` : depFmt
         doc.text(depositLine, margin, y)
         y += 8
+
+        // Deposit payment methods (only when deposit > 0)
+        y = renderPaymentInstructions(doc, company?.payment_instructions, margin, y, companyPrimaryRgb, pageWidth, pageHeight, margin, 'Deposit Payment Methods')
       }
 
       if (showTerms) {

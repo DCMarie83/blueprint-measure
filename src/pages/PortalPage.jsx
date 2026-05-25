@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import PortalEstimateSection from '../components/portal/PortalEstimateSection'
+import PaymentInstructionsBlock from '../components/invoices/PaymentInstructionsBlock'
 import styles from './PortalPage.module.css'
 
 export default function PortalPage() {
@@ -114,6 +115,11 @@ export default function PortalPage() {
             lineItems={estimateData.line_items || []}
             portalToken={token}
           />
+        )}
+
+        {/* Deposit payment methods (only when deposit > 0) */}
+        {estimateData?.estimate?.deposit_amount > 0 && (
+          <PaymentInstructionsBlock paymentInstructions={data.company_payment_instructions} variant="portal" heading="Deposit Payment Methods" />
         )}
 
         <div className={styles.footerWrap}>

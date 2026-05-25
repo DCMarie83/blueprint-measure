@@ -13,6 +13,31 @@ function json(data: unknown, status = 200) {
   })
 }
 
+const PI_ORDER = ['check', 'zelle', 'venmo', 'cashapp', 'ach', 'card_external', 'other']
+
+function renderPaymentInstructionsHTML(pi: Record<string, any> | null, primaryColor: string): string {
+  if (!pi) return ''
+  const enabled = PI_ORDER.filter(k => pi[k]?.enabled)
+  if (enabled.length === 0) return ''
+  const lines: string[] = []
+  for (const k of enabled) {
+    const d = pi[k]
+    if (k === 'check') lines.push(`<strong>Check</strong> — Payable to: ${escapeHtml(d.payable_to || '')}${d.mailing_address ? `<br/>Mail to: ${escapeHtml(d.mailing_address).replace(/\n/g, '<br/>')}` : ''}`)
+    else if (k === 'zelle') lines.push(`<strong>Zelle:</strong> ${escapeHtml(d.handle || '')}`)
+    else if (k === 'venmo') lines.push(`<strong>Venmo:</strong> @${escapeHtml(d.handle || '')}`)
+    else if (k === 'cashapp') lines.push(`<strong>Cash App:</strong> $${escapeHtml(d.handle || '')}`)
+    else if (k === 'ach') lines.push(`<strong>ACH/Wire:</strong> ${escapeHtml(d.instructions || '').replace(/\n/g, '<br/>')}`)
+    else if (k === 'card_external') lines.push(`<a href="${d.url || '#'}" style="display:inline-block; background:${primaryColor}; color:white; padding:10px 16px; border-radius:6px; text-decoration:none; font-weight:600;">${escapeHtml(d.label || 'Pay with Card')}</a>`)
+    else if (k === 'other') lines.push(escapeHtml(d.instructions || '').replace(/\n/g, '<br/>'))
+  }
+  return `
+    <div style="margin: 20px 0; padding: 16px; background: #f9fafb; border-radius: 8px;">
+      <h3 style="color: ${primaryColor}; font-size: 14px; margin: 0 0 12px; text-transform: uppercase; letter-spacing: 0.5px;">Payment Methods</h3>
+      ${lines.map(l => `<p style="font-size: 14px; color: #1b2426; line-height: 1.6; margin: 0 0 8px;">${l}</p>`).join('')}
+    </div>
+  `
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
@@ -82,7 +107,7 @@ Deno.serve(async (req) => {
 
     const { data: company } = await adminClient
       .from('companies')
-      .select('name, primary_color, logo_url')
+      .select('name, primary_color, logo_url, payment_instructions')
       .eq('id', invoice.company_id)
       .single()
 
@@ -142,6 +167,7 @@ Deno.serve(async (req) => {
         </p>
         ${totalRow}
         ${dueHtml}
+        ${renderPaymentInstructionsHTML(company?.payment_instructions, tenantPrimary)}
         <p style="font-size: 14px; color: #555; line-height: 1.5;">
           View your invoice and download a PDF copy:
         </p>

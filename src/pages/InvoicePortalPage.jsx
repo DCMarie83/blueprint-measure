@@ -4,6 +4,7 @@ import { Download } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { generateInvoicePDF } from '../lib/generateInvoicePDF'
 import InvoiceStatusBadge from '../components/invoices/InvoiceStatusBadge'
+import PaymentInstructionsBlock from '../components/invoices/PaymentInstructionsBlock'
 import styles from './PortalPage.module.css'
 
 const UNIT_LABELS = { sf: 'SF', lf: 'LF', each: 'Each', hour: 'Hour', lump_sum: 'Lump Sum' }
@@ -212,6 +213,9 @@ export default function InvoicePortalPage() {
             </div>
           </div>
         )}
+
+        {/* Payment instructions */}
+        <PaymentInstructionsBlock paymentInstructions={data.company_payment_instructions} variant="portal" />
 
         {/* Download PDF */}
         <div style={{ textAlign: 'center', margin: '24px 0 8px' }}>

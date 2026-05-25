@@ -5,6 +5,7 @@ import ProfileTab from '../components/settings/ProfileTab';
 import PreferencesTab from '../components/settings/PreferencesTab';
 import NotificationsTab from '../components/settings/NotificationsTab';
 import BrandingTab from '../components/settings/BrandingTab';
+import PaymentInstructionsTab from '../components/settings/PaymentInstructionsTab';
 import styles from './SettingsPage.module.css';
 
 const TABS = [
@@ -12,6 +13,7 @@ const TABS = [
   { id: 'preferences', label: 'Preferences' },
   { id: 'notifications', label: 'Notifications' },
   { id: 'branding', label: 'Branding' },
+  { id: 'payments', label: 'Payments' },
 ];
 
 export default function SettingsPage() {
@@ -43,6 +45,7 @@ export default function SettingsPage() {
           {active === 'preferences' && <PreferencesTab />}
           {active === 'notifications' && <NotificationsTab />}
           {active === 'branding' && <BrandingTab />}
+          {active === 'payments' && <PaymentInstructionsTab />}
         </section>
       </div>
     </div>
