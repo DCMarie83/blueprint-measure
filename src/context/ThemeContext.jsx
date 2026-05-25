@@ -20,11 +20,22 @@ export function ThemeProvider({ children }) {
   const [theme, setThemeState] = useState(() => localStorage.getItem('rivetdog-theme') || 'system');
   const [saving, setSaving] = useState(false);
 
+  // Sync theme_preference from user_profiles. If NULL (first load after column added), migrate the
+  // current localStorage value to DB so future loads are authoritative from DB.
   useEffect(() => {
-    if (userProfile?.theme && userProfile.theme !== theme) {
-      setThemeState(userProfile.theme);
+    if (userProfile == null || !user?.id) return;
+    const VALID = ['light', 'dark', 'system'];
+    const dbPref = userProfile.theme_preference;
+    if (dbPref && VALID.includes(dbPref)) {
+      setThemeState(dbPref);
+      localStorage.setItem('rivetdog-theme', dbPref);
+    } else {
+      // Migration: write current local theme to DB so it persists
+      const current = localStorage.getItem('rivetdog-theme') || 'system';
+      supabase.from('user_profiles').update({ theme_preference: current }).eq('user_id', user.id)
+        .then(({ error }) => { if (error) console.warn('Theme migration write failed:', error.message); });
     }
-  }, [userProfile?.theme]);
+  }, [userProfile, user?.id]);
 
   useEffect(() => {
     applyThemeAttribute(theme);
@@ -64,15 +75,18 @@ export function ThemeProvider({ children }) {
     if (!user?.id) return;
     setSaving(true);
     try {
-      await updateUserPrefs(supabase, user.id, { theme: next });
-      await refreshUserProfile?.();
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({ theme_preference: next })
+        .eq('user_id', user.id);
+      if (error) throw error;
     } catch (err) {
       setThemeState(prev);
       console.error('Failed to save theme preference', err);
     } finally {
       setSaving(false);
     }
-  }, [theme, user?.id, refreshUserProfile]);
+  }, [theme, user?.id]);
 
   const value = useMemo(() => ({ theme, setTheme, applyTheme: applyThemeAttribute, saving }), [theme, setTheme, saving]);
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
