@@ -37,6 +37,9 @@ import EstimateDetailPage from './pages/EstimateDetailPage'
 import PortalPage from './pages/PortalPage'
 import AcademyPage from './pages/AcademyPage'
 import ReportsPage from './pages/ReportsPage'
+import InvoiceListPage from './pages/InvoiceListPage'
+import InvoiceDetailPage from './pages/InvoiceDetailPage'
+import InvoiceForm from './components/invoices/InvoiceForm'
 import PasswordRecoveryHandler from './components/PasswordRecoveryHandler'
 import SubscriptionGate from './components/auth/SubscriptionGate'
 
@@ -205,6 +208,18 @@ export default function App() {
       <Route
         path="/estimates/:id"
         element={<ProtectedRoute><EstimateDetailPage /></ProtectedRoute>}
+      />
+      <Route
+        path="/invoices"
+        element={<ProtectedRoute><InvoiceListPage /></ProtectedRoute>}
+      />
+      <Route
+        path="/invoices/new"
+        element={<ProtectedRoute><InvoiceForm /></ProtectedRoute>}
+      />
+      <Route
+        path="/invoices/:id"
+        element={<ProtectedRoute><InvoiceDetailPage /></ProtectedRoute>}
       />
       <Route
         path="/academy"

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Save, Trash2, Plus, Package, Download, Send } from 'lucide-react'
+import { Save, Trash2, Plus, Package, Download, Send, FileText } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import BackLink from '../components/BackLink'
 import ZoneAggregationPanel from '../components/estimates/ZoneAggregationPanel'
@@ -355,6 +355,11 @@ export default function EstimateDetailPage() {
               <button className={styles.saveBtn} onClick={handleSave} disabled={saving}>
                 <Save size={15} /> {saving ? 'Saving...' : 'Save'}
               </button>
+              {estimate?.status === 'accepted' && (
+                <button className={styles.toolBtn} onClick={() => navigate(`/invoices/new?from_estimate=${estimate.id}`)} title="Create invoice from this estimate">
+                  <FileText size={15} /> Create Invoice
+                </button>
+              )}
             </div>
           )}
         </div>
