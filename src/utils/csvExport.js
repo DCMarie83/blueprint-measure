@@ -1,6 +1,5 @@
 // Generates and triggers a CSV download for all zones in a session.
 import { getMaxReach, estimatePaint } from './measurements'
-import { formatSFPrecise, formatLF } from './fractions'
 
 export function exportCSV(session, zones, enabledFeatures = {}) {
   const rows = []
@@ -16,11 +15,11 @@ export function exportCSV(session, zones, enabledFeatures = {}) {
 
   // One row per zone
   zones.forEach(zone => {
-    const result = zone.measurement_type === 'SF'
-      ? formatSFPrecise(zone.result ?? 0)
-      : zone.measurement_type === 'LF'
-      ? formatLF(zone.result ?? 0)
-      : `${Math.round(zone.result ?? 0)} items`
+    // Numeric output for spreadsheet formula compatibility. Type + Unit columns carry the unit.
+    // SF and LF both stored as decimal (LF = decimal feet); round to 2 places. Count = whole number.
+    const result = (zone.measurement_type === 'SF' || zone.measurement_type === 'LF')
+      ? Math.round((zone.result ?? 0) * 100) / 100
+      : Math.round(zone.result ?? 0)
     const unit = zone.measurement_type === 'SF' ? 'sq ft'
                 : zone.measurement_type === 'LF' ? 'lin ft'
                 : 'each'
@@ -65,24 +64,24 @@ export function exportCSV(session, zones, enabledFeatures = {}) {
   const sfRow = Array(colCount).fill('')
   sfRow[0] = 'Total SF'
   const typeIdx = header.indexOf('Type')
-  sfRow[typeIdx] = 'SF'; sfRow[typeIdx + 1] = formatSFPrecise(totalSF); sfRow[typeIdx + 2] = 'sq ft'
+  sfRow[typeIdx] = 'SF'; sfRow[typeIdx + 1] = Math.round(totalSF * 100) / 100; sfRow[typeIdx + 2] = 'sq ft'
   rows.push(sfRow)
 
   const lfRow = Array(colCount).fill('')
   lfRow[0] = 'Total LF'
-  lfRow[typeIdx] = 'LF'; lfRow[typeIdx + 1] = formatLF(totalLF); lfRow[typeIdx + 2] = 'lin ft'
+  lfRow[typeIdx] = 'LF'; lfRow[typeIdx + 1] = Math.round(totalLF * 100) / 100; lfRow[typeIdx + 2] = 'lin ft'
   rows.push(lfRow)
 
   const countRow = Array(colCount).fill('')
   countRow[0] = 'Total Count'
-  countRow[typeIdx] = 'count'; countRow[typeIdx + 1] = Math.round(totalCount) + ' items'; countRow[typeIdx + 2] = 'each'
+  countRow[typeIdx] = 'count'; countRow[typeIdx + 1] = Math.round(totalCount); countRow[typeIdx + 2] = 'each'
   rows.push(countRow)
 
   // Build CSV string
   const csv = rows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n')
 
   // Trigger download
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
