@@ -9,6 +9,7 @@ import { SCALE_OPTIONS, calcPixelsPerFoot } from '../utils/scaleOptions'
 import { parseFeetInches, formatSF, formatLF } from '../utils/fractions'
 import { calculate, calculateSF, calculateCeilingSF, calculateWallSF, rescaleZone } from '../utils/measurements'
 import { exportCSV } from '../utils/csvExport'
+import { exportXLSX } from '../utils/xlsxExport'
 import { downloadPdfWithMeasurements } from '../utils/pdfExport'
 import { detectScaleFromImage } from '../utils/detectScale'
 import { evaluateZoneTest } from '../utils/testEvaluation'
@@ -113,8 +114,9 @@ export default function SessionPage() {
   const [detectingScale, setDetectingScale] = useState(false)
   const [scaleDetectionBanner, setScaleDetectionBanner] = useState(null) // { label }
 
-  // ── PDF download state ────────────────────────────────────────────────────────
+  // ── PDF / Excel download state ────────────────────────────────────────────────
   const [downloadingPdf, setDownloadingPdf] = useState(false)
+  const [downloadingXlsx, setDownloadingXlsx] = useState(false)
 
   // ── Test mode (super admin only) ────────────────────────────────────────────
   const [isTestMode, setIsTestMode] = useState(false)
@@ -905,6 +907,22 @@ export default function SessionPage() {
     exportCSV(session, zones, enabledFeatures)
   }
 
+  async function handleExportXLSX() {
+    if (zones.length === 0) {
+      alert('Nothing to fetch yet.')
+      return
+    }
+    setDownloadingXlsx(true)
+    try {
+      await exportXLSX(session, zones, enabledFeatures, company)
+    } catch (err) {
+      console.error('Excel export failed:', err)
+      alert('Excel export failed: ' + err.message)
+    } finally {
+      setDownloadingXlsx(false)
+    }
+  }
+
   async function handleManualSave() {
     setManualSaving(true)
     setIsSaving(true)
@@ -1458,6 +1476,9 @@ export default function SessionPage() {
               <div className={styles.toolbarScaleMenu}>
                 <button className={styles.toolbarMenuItem} onClick={() => { handleExportCSV(); close() }} disabled={zones.length === 0}>
                   <FileSpreadsheet size={14} /> CSV (all pages)
+                </button>
+                <button className={styles.toolbarMenuItem} onClick={() => { handleExportXLSX(); close() }} disabled={zones.length === 0 || downloadingXlsx}>
+                  <FileSpreadsheet size={14} /> {downloadingXlsx ? 'Exporting…' : 'Excel (all pages)'}
                 </button>
                 <div className={styles.toolbarMenuDivider} />
                 <button className={styles.toolbarMenuItem} onClick={() => { handleDownloadClean(); close() }}>
