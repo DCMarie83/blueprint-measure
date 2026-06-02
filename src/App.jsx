@@ -34,6 +34,7 @@ import ClientsPage from './pages/ClientsPage'
 import ClientDetailPage from './pages/ClientDetailPage'
 import PricingPage from './pages/PricingPage'
 import EstimateDetailPage from './pages/EstimateDetailPage'
+import MaterialOrderBuilderPage from './pages/MaterialOrderBuilderPage'
 import PortalPage from './pages/PortalPage'
 import AcademyPage from './pages/AcademyPage'
 import ReportsPage from './pages/ReportsPage'
@@ -210,6 +211,10 @@ export default function App() {
       <Route
         path="/estimates/:id"
         element={<ProtectedRoute><EstimateDetailPage /></ProtectedRoute>}
+      />
+      <Route
+        path="/materials/:orderId"
+        element={<ProtectedRoute><MaterialOrderBuilderPage /></ProtectedRoute>}
       />
       <Route
         path="/invoices"
