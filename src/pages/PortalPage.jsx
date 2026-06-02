@@ -48,6 +48,18 @@ export default function PortalPage() {
     return () => { cancelled = true }
   }, [token])
 
+  // Enforce portal theme on document root (must be above early returns — Rules of Hooks)
+  useEffect(() => {
+    if (!data) return
+    const theme = data.company_portal_theme || 'light'
+    const previous = document.documentElement.getAttribute('data-theme')
+    document.documentElement.setAttribute('data-theme', theme)
+    return () => {
+      if (previous) document.documentElement.setAttribute('data-theme', previous)
+      else document.documentElement.removeAttribute('data-theme')
+    }
+  }, [data?.company_portal_theme])
+
   if (loading) {
     return (
       <div className={styles.page}>
@@ -71,17 +83,6 @@ export default function PortalPage() {
       </div>
     )
   }
-
-  // Enforce portal theme on document root
-  useEffect(() => {
-    const theme = data?.company_portal_theme || 'light'
-    const previous = document.documentElement.getAttribute('data-theme')
-    document.documentElement.setAttribute('data-theme', theme)
-    return () => {
-      if (previous) document.documentElement.setAttribute('data-theme', previous)
-      else document.documentElement.removeAttribute('data-theme')
-    }
-  }, [data?.company_portal_theme])
 
   const tenantName = data.company_name || 'Your Contractor'
   const tenantLogoUrl = data.company_logo_url || null
