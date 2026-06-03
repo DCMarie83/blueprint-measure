@@ -79,7 +79,7 @@ export default function MaterialOrderBuilderPage() {
   const {
     order, items, stores, loading, saving, error,
     addItem, updateItem, removeItem, updateOrderField,
-    suggestFromMeasurements, saveAll,
+    suggestFromMeasurements, aiSuggest, aiSuggesting, saveAll,
   } = useMaterialOrderBuilder(orderId)
 
   const [notice, setNotice] = useState(null)
@@ -118,6 +118,16 @@ export default function MaterialOrderBuilderPage() {
     setNotice(ok ? 'Saved.' : 'Save failed — see the error above.')
   }
 
+  const handleAiSuggest = async () => {
+    setNotice('Asking AI…')
+    const r = await aiSuggest()
+    if (r?.error) {
+      setNotice(`AI suggestions unavailable: ${r.error} You can still enter products and costs manually.`)
+    } else {
+      setNotice(`AI filled ${r.filled} line${r.filled === 1 ? '' : 's'} and added ${r.added} item${r.added === 1 ? '' : 's'}. Review and adjust — costs are estimates.`)
+    }
+  }
+
   const variant = order.selected_variant || null
   const selectedStore = stores.find(s => s.id === order.store_id) || null
   const shopUrl = selectedStore && selectedStore.integration_type === 'affiliate_deeplink' && selectedStore.affiliate_enabled
@@ -148,6 +158,7 @@ export default function MaterialOrderBuilderPage() {
         {isAdmin && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
             <button onClick={handleSuggest} style={secondaryBtn}>Suggest from measurements</button>
+            <button onClick={handleAiSuggest} disabled={aiSuggesting} style={{ ...secondaryBtn, opacity: aiSuggesting ? 0.6 : 1, cursor: aiSuggesting ? 'default' : 'pointer' }}>{aiSuggesting ? 'Asking AI…' : 'Suggest with AI'}</button>
             <button onClick={() => addItem()} style={secondaryBtn}>+ Add line</button>
           </div>
         )}

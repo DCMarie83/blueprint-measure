@@ -37,6 +37,7 @@ export function useMaterialOrderBuilder(orderId) {
   const [stores, setStores] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [aiSuggesting, setAiSuggesting] = useState(false)
   const [error, setError] = useState(null)
 
   const load = useCallback(async () => {
@@ -117,6 +118,52 @@ export function useMaterialOrderBuilder(orderId) {
     return suggestions.length
   }, [zones])
 
+  const aiSuggest = useCallback(async () => {
+    if (items.length === 0) return { error: 'Add or suggest lines first.' }
+    setAiSuggesting(true)
+    setError(null)
+    try {
+      const payload = items.map(it => ({
+        id: it.id,
+        description: it.description || '',
+        unit: it.unit || '',
+        quantity: Number(it.quantity) || 0,
+      }))
+      const { data, error: fnErr } = await supabase.functions.invoke('suggest-materials', {
+        body: { lines: payload, vertical: 'paint' },
+      })
+      if (fnErr) throw fnErr
+      if (data?.error) throw new Error(data.error)
+      const fills = Array.isArray(data?.fills) ? data.fills : []
+      const additions = Array.isArray(data?.additions) ? data.additions : []
+      const fillMap = new Map(fills.map(f => [f.id, f]))
+      setItems(prev => {
+        const patched = prev.map(it => {
+          const f = fillMap.get(it.id)
+          if (!f) return it
+          return {
+            ...it,
+            product_good: f.product_good ?? it.product_good,
+            product_better: f.product_better ?? it.product_better,
+            product_best: f.product_best ?? it.product_best,
+            cost_good: f.cost_good ?? it.cost_good,
+            cost_better: f.cost_better ?? it.cost_better,
+            cost_best: f.cost_best ?? it.cost_best,
+            ai_suggested: true,
+          }
+        })
+        const added = additions.map(a => toLine({ ...a, ai_suggested: true }, true))
+        return [...patched, ...added]
+      })
+      return { filled: fills.length, added: additions.length }
+    } catch (err) {
+      setError(err.message)
+      return { error: err.message }
+    } finally {
+      setAiSuggesting(false)
+    }
+  }, [items])
+
   const saveAll = useCallback(async () => {
     if (!order) return false
     setSaving(true)
@@ -171,6 +218,6 @@ export function useMaterialOrderBuilder(orderId) {
   return {
     order, items, zones, stores, loading, saving, error,
     addItem, updateItem, removeItem, updateOrderField,
-    suggestFromMeasurements, saveAll, reload: load,
+    suggestFromMeasurements, aiSuggest, aiSuggesting, saveAll, reload: load,
   }
 }
