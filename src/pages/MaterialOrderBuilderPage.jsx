@@ -227,8 +227,13 @@ export default function MaterialOrderBuilderPage() {
               )}
             </div>
           )}
-          {selectedStore && !shopUrl && selectedStore.integration_type === 'affiliate_deeplink' && (
-            <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Shopping link for {selectedStore.name} activates once affiliate approval is complete.</p>
+          {selectedStore && !shopUrl && selectedStore.integration_type === 'affiliate_deeplink' && selectedStore.website_url && (
+            <a href={selectedStore.website_url} target="_blank" rel="noopener noreferrer" style={{ ...primaryBtn, textDecoration: 'none' }}>
+              Shop at {selectedStore.name}
+            </a>
+          )}
+          {selectedStore && !shopUrl && selectedStore.integration_type === 'affiliate_deeplink' && !selectedStore.website_url && (
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>No shopping link available for {selectedStore.name} yet.</p>
           )}
           {selectedStore && !shopUrl && selectedStore.integration_type !== 'affiliate_deeplink' && (
             <button onClick={() => exportMaterialsCsv(order, items, variant)} style={secondaryBtn}>
