@@ -34,6 +34,7 @@ export function useMaterialOrderBuilder(orderId) {
   const [order, setOrder] = useState(null)
   const [items, setItems] = useState([])
   const [zones, setZones] = useState([])
+  const [stores, setStores] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
@@ -74,6 +75,15 @@ export function useMaterialOrderBuilder(orderId) {
       } else {
         setZones([])
       }
+
+      // Active stores for the picker (is_active filter so super-admin sees the same list contractors do).
+      const { data: storeRows, error: storeErr } = await supabase
+        .from('stores')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true })
+      if (storeErr) throw storeErr
+      setStores(storeRows || [])
     } catch (err) {
       setError(err.message)
     } finally {
@@ -114,7 +124,7 @@ export function useMaterialOrderBuilder(orderId) {
     try {
       const { error: updErr } = await supabase
         .from('material_orders')
-        .update({ title: order.title ?? null })
+        .update({ title: order.title ?? null, store_id: order.store_id ?? null, selected_variant: order.selected_variant ?? null })
         .eq('id', order.id)
       if (updErr) throw updErr
 
@@ -159,7 +169,7 @@ export function useMaterialOrderBuilder(orderId) {
   }, [order, items, load])
 
   return {
-    order, items, zones, loading, saving, error,
+    order, items, zones, stores, loading, saving, error,
     addItem, updateItem, removeItem, updateOrderField,
     suggestFromMeasurements, saveAll, reload: load,
   }

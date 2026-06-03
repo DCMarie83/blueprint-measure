@@ -9,13 +9,75 @@ import MaterialLineItemsTable from '../components/materials/MaterialLineItemsTab
 const secondaryBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--color-surface)', color: 'var(--color-text, #1b2426)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }
 const primaryBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 20px', background: 'var(--color-primary)', color: 'var(--color-on-primary, #fff)', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 14, fontWeight: 600 }
 
+const TIER_KEYS = ['good', 'better', 'best']
+const tierLabel = (k) => k.charAt(0).toUpperCase() + k.slice(1)
+
+function money(n) {
+  return '$' + (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+// Per-tier estimated total: sum of quantity x (1 + overage/100) x tier cost.
+function tierTotal(items, tierKey) {
+  return items.reduce((sum, it) => {
+    const qty = Number(it.quantity) || 0
+    const over = Number(it.overage_pct) || 0
+    const cost = Number(it[`cost_${tierKey}`])
+    if (!cost || cost < 0) return sum
+    return sum + qty * (1 + over / 100) * cost
+  }, 0)
+}
+
+// Build the outbound affiliate URL with a per-order sub-id. The affiliate_url
+// (set at approval) may contain a {SUBID} placeholder where the order id goes;
+// otherwise the order id is appended as a `subid` query param.
+function buildShopUrl(store, orderId) {
+  const base = store?.affiliate_url
+  if (!base) return null
+  if (base.includes('{SUBID}')) return base.replace(/\{SUBID\}/g, encodeURIComponent(orderId))
+  try {
+    const u = new URL(base)
+    u.searchParams.set('subid', orderId)
+    return u.toString()
+  } catch {
+    return base
+  }
+}
+
+function exportMaterialsCsv(order, items, tierKey) {
+  const label = tierKey ? tierLabel(tierKey) : 'Selected'
+  const header = ['Description', `Product (${label})`, 'Unit', 'Buy quantity', 'Overage %', 'Est. unit cost', 'Est. line cost']
+  const rows = items.map(it => {
+    const qty = Number(it.quantity) || 0
+    const over = Number(it.overage_pct) || 0
+    const buyQty = qty * (1 + over / 100)
+    const cost = tierKey ? (Number(it[`cost_${tierKey}`]) || 0) : 0
+    const product = tierKey ? (it[`product_${tierKey}`] || '') : ''
+    return [it.description || '', product, it.unit || '', buyQty, over, cost, (buyQty * cost).toFixed(2)]
+  })
+  const csv = [header, ...rows]
+    .map(r => r.map(c => {
+      const s = String(c ?? '')
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+    }).join(','))
+    .join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = (order.title || 'materials-order').replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '.csv'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
 export default function MaterialOrderBuilderPage() {
   const { orderId } = useParams()
   const { user, userProfile } = useAuth()
   const isAdmin = userProfile?.role === 'contractor_admin' || user?.email === 'main@ngautomationhub.com'
 
   const {
-    order, items, loading, saving, error,
+    order, items, stores, loading, saving, error,
     addItem, updateItem, removeItem, updateOrderField,
     suggestFromMeasurements, saveAll,
   } = useMaterialOrderBuilder(orderId)
@@ -56,6 +118,12 @@ export default function MaterialOrderBuilderPage() {
     setNotice(ok ? 'Saved.' : 'Save failed — see the error above.')
   }
 
+  const variant = order.selected_variant || null
+  const selectedStore = stores.find(s => s.id === order.store_id) || null
+  const shopUrl = selectedStore && selectedStore.integration_type === 'affiliate_deeplink' && selectedStore.affiliate_enabled
+    ? buildShopUrl(selectedStore, order.id)
+    : null
+
   return (
     <div>
       <AppHeader />
@@ -90,8 +158,87 @@ export default function MaterialOrderBuilderPage() {
 
         <MaterialLineItemsTable items={items} onUpdate={updateItem} onRemove={removeItem} readOnly={!isAdmin} />
 
+        <div style={{ marginTop: 28, borderTop: '1px solid var(--color-border)', paddingTop: 20 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 14px' }}>Order summary</h3>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
+            <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Buying tier:</span>
+            {TIER_KEYS.map(t => {
+              const active = variant === t
+              return (
+                <button
+                  key={t}
+                  onClick={() => isAdmin && updateOrderField({ selected_variant: active ? null : t })}
+                  disabled={!isAdmin}
+                  style={{
+                    padding: '6px 14px', borderRadius: 'var(--radius-pill, 9999px)', fontSize: 13, fontWeight: 600, cursor: isAdmin ? 'pointer' : 'default',
+                    border: active ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+                    background: active ? 'var(--color-primary)' : 'var(--color-surface)',
+                    color: active ? 'var(--color-on-primary, #fff)' : 'var(--color-text, #1b2426)',
+                  }}
+                >
+                  {tierLabel(t)}
+                </button>
+              )
+            })}
+            {variant && isAdmin && (
+              <button onClick={() => updateOrderField({ selected_variant: null })} style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', fontSize: 12, cursor: 'pointer' }}>Clear</button>
+            )}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 8 }}>
+            {TIER_KEYS.map(t => {
+              const active = variant === t
+              return (
+                <div key={t} style={{ border: active ? '2px solid var(--color-primary)' : '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '12px 14px', background: 'var(--color-surface)' }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 4 }}>{tierLabel(t)}</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text, #1b2426)' }}>{money(tierTotal(items, t))}</div>
+                </div>
+              )
+            })}
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 18px' }}>
+            Estimated totals — verify final price and availability with the retailer.
+          </p>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
+            <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Shop with:</span>
+            <select
+              value={order.store_id || ''}
+              disabled={!isAdmin}
+              onChange={e => updateOrderField({ store_id: e.target.value || null })}
+              style={{ padding: '8px 10px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', background: 'var(--color-bg, #fff)', color: 'var(--color-text, #1b2426)', fontSize: 13, minWidth: 200 }}
+            >
+              <option value="">— Select a store —</option>
+              {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+
+          {!selectedStore && (
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Select a store to shop or export your list.</p>
+          )}
+          {selectedStore && shopUrl && (
+            <div>
+              <a href={shopUrl} target="_blank" rel="noopener noreferrer" style={{ ...primaryBtn, textDecoration: 'none' }}>
+                Shop at {selectedStore.name}
+              </a>
+              {selectedStore.affiliate_disclosure && (
+                <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '8px 0 0', maxWidth: 520 }}>{selectedStore.affiliate_disclosure}</p>
+              )}
+            </div>
+          )}
+          {selectedStore && !shopUrl && selectedStore.integration_type === 'affiliate_deeplink' && (
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Shopping link for {selectedStore.name} activates once affiliate approval is complete.</p>
+          )}
+          {selectedStore && !shopUrl && selectedStore.integration_type !== 'affiliate_deeplink' && (
+            <button onClick={() => exportMaterialsCsv(order, items, variant)} style={secondaryBtn}>
+              {selectedStore.integration_type === 'placeholder' ? `Export for ${selectedStore.name} (CSV)` : 'Export list (CSV)'}
+            </button>
+          )}
+        </div>
+
         {isAdmin && (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24 }}>
             <button onClick={handleSave} disabled={saving} style={{ ...primaryBtn, opacity: saving ? 0.6 : 1, cursor: saving ? 'default' : 'pointer' }}>
               {saving ? 'Saving…' : 'Save order'}
             </button>
