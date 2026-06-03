@@ -23,26 +23,31 @@ Deno.serve(async (req) => {
     const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
     if (!apiKey) return json({ error: 'AI is not configured (missing ANTHROPIC_API_KEY secret).' })
 
-    const { lines, vertical } = await req.json()
+    const { lines, vertical, store } = await req.json()
     if (!Array.isArray(lines) || lines.length === 0) return json({ error: 'No line items provided.' })
 
     const trade = typeof vertical === 'string' && vertical ? vertical : 'paint'
 
-    const system = [
-      `You are a materials estimator for ${trade} contractors.`,
-      'Given material line items (each with id, description, unit, quantity), suggest Good/Better/Best product options with ESTIMATED per-unit costs in USD for each line, and propose any primer and common supplies the job likely needs as additional lines.',
-      'Return ONLY valid JSON, no markdown and no prose, in exactly this shape:',
-      '{"fills":[{"id":"<line id>","product_good":"","product_better":"","product_best":"","cost_good":0,"cost_better":0,"cost_best":0}],"additions":[{"description":"","unit":"","quantity":0,"product_good":"","product_better":"","product_best":"","cost_good":0,"cost_better":0,"cost_best":0}]}',
-      'Rules:',
-      '- Costs are ESTIMATES in USD per unit (e.g. per gallon). Never claim live, current, or retailer-specific prices or availability.',
-      '- For paint, use realistic tiers (contractor-grade, mid-grade, premium).',
-      '- "fills" must contain exactly one entry per input line id, echoing the id back unchanged.',
-      "- \"additions\" are NEW items not already present (e.g. primer, painter's tape, roller covers, drop cloths). Keep them practical and minimal.",
-      '- Use sensible unit conventions (gallon, each, roll).',
-      '- Output JSON only.',
-    ].join('\n')
+    const system = `You are a materials estimator for trade contractors, primarily painting. Given a list of measured material line items, suggest Good/Better/Best product options and ESTIMATED per-unit costs for each line, plus any commonly-needed additional supplies.
 
-    const userMsg = `Trade: ${trade}\nLine items:\n${JSON.stringify(lines)}`
+If a store name is provided, tailor every product suggestion to brands and product lines that store actually carries. Examples: Sherwin-Williams -> its own lines such as ProMar 200, SuperPaint, Emerald. Home Depot -> brands it stocks such as Glidden, Behr, PPG. Lowe's -> brands it stocks such as Valspar, HGTV Home, Sherwin-Williams retail. Match estimated costs to that store's typical retail range. If no store is provided, suggest widely available products with typical estimated costs.
+
+Rules:
+- Costs are ESTIMATES for budgeting only. They are NOT live, current, or guaranteed retailer prices. The contractor verifies final price and availability with the retailer.
+- Tiers: "good" = economy / contractor-grade, "better" = mid-grade, "best" = premium.
+- Use realistic, specific product names (brand + line + sheen where relevant). Do not invent SKUs or claim real-time inventory.
+- Respond with STRICT JSON ONLY. No prose, no markdown code fences.
+
+JSON shape:
+{ "fills": [ { "id": "<exact line id from input>", "product_good": "", "product_better": "", "product_best": "", "cost_good": 0, "cost_better": 0, "cost_best": 0 } ], "additions": [ { "description": "", "unit": "", "quantity": 1, "product_good": "", "product_better": "", "product_best": "", "cost_good": 0, "cost_better": 0, "cost_best": 0 } ] }
+
+"fills" must contain exactly one object per input line id. "additions" are NEW supply lines not already present (e.g., primer, painter's tape, roller covers, brushes, drop cloths) — include only if genuinely useful, otherwise return an empty array.`
+
+    const userMsg = `Vertical: ${trade}
+Store: ${store || 'not specified'}
+
+Line items to fill (use each item's exact id in your "fills" output):
+${JSON.stringify(lines, null, 2)}`
 
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',

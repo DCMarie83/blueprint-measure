@@ -83,6 +83,7 @@ export default function MaterialOrderBuilderPage() {
   } = useMaterialOrderBuilder(orderId)
 
   const [notice, setNotice] = useState(null)
+  const [showAiTip, setShowAiTip] = useState(false)
 
   if (loading) {
     return (
@@ -119,12 +120,17 @@ export default function MaterialOrderBuilderPage() {
   }
 
   const handleAiSuggest = async () => {
-    setNotice('Asking AI…')
+    if (!order?.store_id) {
+      setNotice('Pick a store first so I can suggest products it carries.')
+      return
+    }
+    const storeName = stores.find((s) => s.id === order.store_id)?.name || 'your store'
+    setNotice(`Filling in products and pricing from ${storeName}…`)
     const r = await aiSuggest()
-    if (r?.error) {
-      setNotice(`AI suggestions unavailable: ${r.error} You can still enter products and costs manually.`)
+    if (!r || r.error) {
+      setNotice(`Couldn't fetch suggestions right now — you can enter products and costs by hand.${r?.error ? ` (${r.error})` : ''}`)
     } else {
-      setNotice(`AI filled ${r.filled} line${r.filled === 1 ? '' : 's'} and added ${r.added} item${r.added === 1 ? '' : 's'}. Review and adjust — costs are estimates.`)
+      setNotice(`Nice fetch — ${r.filled} product pick${r.filled === 1 ? '' : 's'} from ${storeName}${r.added ? ` plus ${r.added} extra${r.added === 1 ? '' : 's'}` : ''}. Costs are estimates, so double-check before buying.`)
     }
   }
 
@@ -156,10 +162,55 @@ export default function MaterialOrderBuilderPage() {
         )}
 
         {isAdmin && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>
+              Buying from:
+              <select
+                value={order?.store_id || ''}
+                onChange={(e) => updateOrderField({ store_id: e.target.value || null })}
+                style={{ padding: '8px 10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border, #d4d4d4)', fontSize: 14, background: 'var(--color-surface, #fff)', color: 'var(--color-text)' }}
+              >
+                <option value="">Select a store…</option>
+                {stores.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </label>
+
             <button onClick={handleSuggest} style={secondaryBtn}>Suggest from measurements</button>
-            <button onClick={handleAiSuggest} disabled={aiSuggesting} style={{ ...secondaryBtn, opacity: aiSuggesting ? 0.6 : 1, cursor: aiSuggesting ? 'default' : 'pointer' }}>{aiSuggesting ? 'Asking AI…' : 'Suggest with AI'}</button>
+
+            <span
+              style={{ position: 'relative', display: 'inline-flex' }}
+              onMouseEnter={() => setShowAiTip(true)}
+              onMouseLeave={() => setShowAiTip(false)}
+            >
+              <button
+                onClick={handleAiSuggest}
+                onFocus={() => setShowAiTip(true)}
+                onBlur={() => setShowAiTip(false)}
+                disabled={aiSuggesting}
+                style={{ ...secondaryBtn, opacity: aiSuggesting ? 0.6 : 1, cursor: aiSuggesting ? 'default' : 'pointer' }}
+              >
+                {aiSuggesting ? 'Filling…' : 'Suggest products & pricing'}
+              </button>
+              {showAiTip && (
+                <span
+                  role="tooltip"
+                  style={{
+                    position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 20,
+                    width: 280, padding: '8px 10px', fontSize: 12, lineHeight: 1.4,
+                    background: 'var(--color-text, #1b2426)', color: '#fff',
+                    borderRadius: 'var(--radius-sm)', boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
+                  }}
+                >
+                  Suggests Good/Better/Best products carried at your selected store, with estimated costs. Costs are estimates — confirm before you buy.
+                </span>
+              )}
+            </span>
+
             <button onClick={() => addItem()} style={secondaryBtn}>+ Add line</button>
+
           </div>
         )}
 
@@ -212,21 +263,8 @@ export default function MaterialOrderBuilderPage() {
             Estimated totals — verify final price and availability with the retailer.
           </p>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
-            <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Shop with:</span>
-            <select
-              value={order.store_id || ''}
-              disabled={!isAdmin}
-              onChange={e => updateOrderField({ store_id: e.target.value || null })}
-              style={{ padding: '8px 10px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', background: 'var(--color-bg, #fff)', color: 'var(--color-text, #1b2426)', fontSize: 13, minWidth: 200 }}
-            >
-              <option value="">— Select a store —</option>
-              {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </div>
-
           {!selectedStore && (
-            <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Select a store to shop or export your list.</p>
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Select a store above to shop or export your list.</p>
           )}
           {selectedStore && shopUrl && (
             <div>

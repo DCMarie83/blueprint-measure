@@ -129,8 +129,9 @@ export function useMaterialOrderBuilder(orderId) {
         unit: it.unit || '',
         quantity: Number(it.quantity) || 0,
       }))
+      const storeName = stores.find((s) => s.id === order?.store_id)?.name || null
       const { data, error: fnErr } = await supabase.functions.invoke('suggest-materials', {
-        body: { lines: payload, vertical: 'paint' },
+        body: { lines: payload, vertical: 'paint', store: storeName },
       })
       if (fnErr) throw fnErr
       if (data?.error) throw new Error(data.error)
@@ -162,7 +163,7 @@ export function useMaterialOrderBuilder(orderId) {
     } finally {
       setAiSuggesting(false)
     }
-  }, [items])
+  }, [items, stores, order?.store_id])
 
   const saveAll = useCallback(async () => {
     if (!order) return false
