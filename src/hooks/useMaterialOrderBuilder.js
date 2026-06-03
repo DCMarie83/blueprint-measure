@@ -35,6 +35,7 @@ export function useMaterialOrderBuilder(orderId) {
   const [items, setItems] = useState([])
   const [zones, setZones] = useState([])
   const [stores, setStores] = useState([])
+  const [estimates, setEstimates] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [aiSuggesting, setAiSuggesting] = useState(false)
@@ -85,6 +86,18 @@ export function useMaterialOrderBuilder(orderId) {
         .order('sort_order', { ascending: true })
       if (storeErr) throw storeErr
       setStores(storeRows || [])
+
+      // Project estimates (non-fatal).
+      try {
+        const { data: estData } = await supabase
+          .from('estimates')
+          .select('*')
+          .eq('project_id', ord.project_id)
+          .order('created_at', { ascending: false })
+        setEstimates(estData || [])
+      } catch {
+        setEstimates([])
+      }
     } catch (err) {
       setError(err.message)
     } finally {
@@ -110,13 +123,23 @@ export function useMaterialOrderBuilder(orderId) {
     setOrder(prev => (prev ? { ...prev, ...patch } : prev))
   }, [])
 
-  // Non-destructive: appends suggested lines to whatever's already there.
-  const suggestFromMeasurements = useCallback(() => {
-    const suggestions = estimateMaterials(zones, { vertical: 'paint', defaultOverage: 0 })
-    if (suggestions.length === 0) return 0
-    setItems(prev => [...prev, ...suggestions.map(s => toLine(s, true))])
-    return suggestions.length
-  }, [zones])
+  const seedFromEstimate = async (estimateId) => {
+    if (!estimateId) return { error: 'No estimate selected.' }
+    const { data: lineItems, error: liErr } = await supabase
+      .from('estimate_line_items')
+      .select('source_zone_id')
+      .eq('estimate_id', estimateId)
+      .not('source_zone_id', 'is', null)
+    if (liErr) return { error: liErr.message }
+    const zoneIds = [...new Set((lineItems || []).map((li) => li.source_zone_id))]
+    if (zoneIds.length === 0) {
+      return { error: 'This estimate has no measured zones to build a materials list from.' }
+    }
+    const scopedZones = zones.filter((z) => zoneIds.includes(z.id))
+    const materials = estimateMaterials(scopedZones, { vertical: 'paint' })
+    setItems(materials.map((m, idx) => toLine({ ...m, sort_order: idx }, true)))
+    return { count: materials.length }
+  }
 
   const aiSuggest = useCallback(async () => {
     if (items.length === 0) return { error: 'Add or suggest lines first.' }
@@ -172,7 +195,7 @@ export function useMaterialOrderBuilder(orderId) {
     try {
       const { error: updErr } = await supabase
         .from('material_orders')
-        .update({ title: order.title ?? null, store_id: order.store_id ?? null, selected_variant: order.selected_variant ?? null })
+        .update({ title: order.title ?? null, store_id: order.store_id ?? null, selected_variant: order.selected_variant ?? null, estimate_id: order.estimate_id ?? null })
         .eq('id', order.id)
       if (updErr) throw updErr
 
@@ -217,8 +240,8 @@ export function useMaterialOrderBuilder(orderId) {
   }, [order, items, load])
 
   return {
-    order, items, zones, stores, loading, saving, error,
+    order, items, zones, stores, estimates, loading, saving, error,
     addItem, updateItem, removeItem, updateOrderField,
-    suggestFromMeasurements, aiSuggest, aiSuggesting, saveAll, reload: load,
+    seedFromEstimate, aiSuggest, aiSuggesting, saveAll, reload: load,
   }
 }

@@ -77,9 +77,9 @@ export default function MaterialOrderBuilderPage() {
   const isAdmin = userProfile?.role === 'contractor_admin' || user?.email === 'main@ngautomationhub.com'
 
   const {
-    order, items, stores, loading, saving, error,
+    order, items, stores, estimates, loading, saving, error,
     addItem, updateItem, removeItem, updateOrderField,
-    suggestFromMeasurements, aiSuggest, aiSuggesting, saveAll,
+    seedFromEstimate, aiSuggest, aiSuggesting, saveAll,
   } = useMaterialOrderBuilder(orderId)
 
   const [notice, setNotice] = useState(null)
@@ -108,9 +108,11 @@ export default function MaterialOrderBuilderPage() {
     )
   }
 
-  const handleSuggest = () => {
-    const n = suggestFromMeasurements()
-    setNotice(n > 0 ? `Added ${n} suggested line${n === 1 ? '' : 's'} from measurements.` : 'No paintable measurements found on this job yet.')
+  const estimateLabel = (est) => {
+    const d = est.created_at ? new Date(est.created_at).toLocaleDateString() : ''
+    const v = est.selected_variant ? ` (${est.selected_variant})` : ''
+    const tail = est.id ? ` · ${est.id.slice(0, 4)}` : ''
+    return `Estimate · ${d}${v}${tail}`
   }
 
   const handleSave = async () => {
@@ -120,6 +122,10 @@ export default function MaterialOrderBuilderPage() {
   }
 
   const handleAiSuggest = async () => {
+    if (!order?.estimate_id) {
+      setNotice('Pick an estimate first so the list has something to price.')
+      return
+    }
     if (!order?.store_id) {
       setNotice('Pick a store first so I can suggest products it carries.')
       return
@@ -132,6 +138,25 @@ export default function MaterialOrderBuilderPage() {
     } else {
       setNotice(`Nice fetch — ${r.filled} product pick${r.filled === 1 ? '' : 's'} from ${storeName}${r.added ? ` plus ${r.added} extra${r.added === 1 ? '' : 's'}` : ''}. Costs are estimates, so double-check before buying.`)
     }
+  }
+
+  const handleEstimateChange = async (estimateId) => {
+    updateOrderField({ estimate_id: estimateId || null })
+    if (estimateId && items.length === 0) {
+      setNotice('Building your materials list from the estimate…')
+      const r = await seedFromEstimate(estimateId)
+      if (r?.error) setNotice(r.error)
+      else setNotice(`Built ${r.count} material line${r.count === 1 ? '' : 's'} from the estimate. Pick a store and suggest products to fill in pricing.`)
+    }
+  }
+
+  const handleRebuild = async () => {
+    if (!order?.estimate_id) return
+    if (items.length > 0 && !window.confirm('Rebuild the list from this estimate? This replaces the current line items.')) return
+    setNotice('Rebuilding from the estimate…')
+    const r = await seedFromEstimate(order.estimate_id)
+    if (r?.error) setNotice(r.error)
+    else setNotice(`Rebuilt ${r.count} material line${r.count === 1 ? '' : 's'} from the estimate.`)
   }
 
   const variant = order.selected_variant || null
@@ -165,6 +190,20 @@ export default function MaterialOrderBuilderPage() {
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginBottom: 12 }}>
 
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>
+              Materials for:
+              <select
+                value={order?.estimate_id || ''}
+                onChange={(e) => handleEstimateChange(e.target.value || null)}
+                style={{ padding: '8px 10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border, #d4d4d4)', fontSize: 14, background: 'var(--color-surface, #fff)', color: 'var(--color-text)' }}
+              >
+                <option value="">Select an estimate…</option>
+                {estimates.map((est) => (
+                  <option key={est.id} value={est.id}>{estimateLabel(est)}</option>
+                ))}
+              </select>
+            </label>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>
               Buying from:
               <select
                 value={order?.store_id || ''}
@@ -178,8 +217,6 @@ export default function MaterialOrderBuilderPage() {
               </select>
             </label>
 
-            <button onClick={handleSuggest} style={secondaryBtn}>Suggest from measurements</button>
-
             <span
               style={{ position: 'relative', display: 'inline-flex' }}
               onMouseEnter={() => setShowAiTip(true)}
@@ -189,8 +226,8 @@ export default function MaterialOrderBuilderPage() {
                 onClick={handleAiSuggest}
                 onFocus={() => setShowAiTip(true)}
                 onBlur={() => setShowAiTip(false)}
-                disabled={aiSuggesting}
-                style={{ ...secondaryBtn, opacity: aiSuggesting ? 0.6 : 1, cursor: aiSuggesting ? 'default' : 'pointer' }}
+                disabled={aiSuggesting || !order?.estimate_id}
+                style={{ ...secondaryBtn, opacity: (aiSuggesting || !order?.estimate_id) ? 0.6 : 1, cursor: (aiSuggesting || !order?.estimate_id) ? 'default' : 'pointer' }}
               >
                 {aiSuggesting ? 'Filling…' : 'Suggest products & pricing'}
               </button>
@@ -210,6 +247,15 @@ export default function MaterialOrderBuilderPage() {
             </span>
 
             <button onClick={() => addItem()} style={secondaryBtn}>+ Add line</button>
+
+            {order?.estimate_id && (
+              <button
+                onClick={handleRebuild}
+                style={{ background: 'none', border: 'none', color: 'var(--color-primary, #26464c)', fontSize: 13, textDecoration: 'underline', cursor: 'pointer', padding: 0 }}
+              >
+                Rebuild from estimate
+              </button>
+            )}
 
           </div>
         )}
