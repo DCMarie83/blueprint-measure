@@ -107,6 +107,8 @@ export function useSession(sessionId) {
       measurement_type: zoneData.measurement_type,
       points: zoneData.points,
       result: zoneData.result,
+      deductions: zoneData.deductions ?? [],
+      gross_result: zoneData.gross_result ?? null,
       page_number: zoneData.page_number ?? 1,
     }
 
@@ -146,8 +148,10 @@ export function useSession(sessionId) {
       gross_wall_sf:        updates.gross_wall_sf        ?? null,
       net_wall_sf:          updates.net_wall_sf          ?? null,
     }
-    // Only include result when the caller explicitly provides it (ceiling/wall param edits)
+    // Only include result when the caller explicitly provides it (ceiling/wall param edits, deductions)
     if (updates.result !== undefined) updateData.result = updates.result
+    if (updates.deductions !== undefined) updateData.deductions = updates.deductions
+    if (updates.gross_result !== undefined) updateData.gross_result = updates.gross_result
 
     const { data, error } = await supabase
       .from('zones')
@@ -162,10 +166,12 @@ export function useSession(sessionId) {
 
   // Replaces the drawn points and recalculated result on an existing zone.
   // Called when the contractor retraces a zone. Does not touch text fields.
-  async function redrawZone(zoneId, points, result) {
+  async function redrawZone(zoneId, points, result, grossResult) {
+    const updatePayload = { points, result }
+    if (grossResult !== undefined) updatePayload.gross_result = grossResult
     const { data, error } = await supabase
       .from('zones')
-      .update({ points, result })
+      .update(updatePayload)
       .eq('id', zoneId)
       .select()
       .single()

@@ -66,6 +66,17 @@ function splitSegments(points) {
 
 // ---- Public API ----
 
+// Apply deduction objects to a gross value. Returns net clamped at 0, rounded to 2 decimals.
+// Safe to call unconditionally — returns grossValue unchanged when deductions is empty/missing.
+export function applyDeductions(grossValue, deductions) {
+  if (!Array.isArray(deductions) || deductions.length === 0) return grossValue
+  const totalDeducted = deductions.reduce(
+    (sum, d) => sum + (Number(d?.value) || 0),
+    0
+  )
+  return Math.max(0, +(grossValue - totalDeducted).toFixed(2))
+}
+
 export function calculateSF(points, pixelsPerFoot) {
   const areaPixels = polygonAreaPixels(points)
   const feetPerPixel = 1 / pixelsPerFoot
@@ -307,7 +318,15 @@ export function rescaleZone(zone, newPPF) {
   const updates = { ...zone }
 
   if (zone.measurement_type === 'LF') {
-    updates.result = calculateLF(zone.points, newPPF)
+    const gross = calculateLF(zone.points, newPPF)
+    const deductions = zone.deductions
+    if (Array.isArray(deductions) && deductions.length > 0 && zone.surface_type !== 'Wall') {
+      updates.gross_result = gross
+      updates.result = applyDeductions(gross, deductions)
+    } else {
+      updates.result = gross
+      updates.gross_result = null
+    }
     return updates
   }
 
@@ -338,6 +357,14 @@ export function rescaleZone(zone, newPPF) {
     result = netWallSF
   }
 
-  updates.result = result
+  // General deductions for non-wall SF zones
+  const deductions = zone.deductions
+  if (Array.isArray(deductions) && deductions.length > 0 && zone.surface_type !== 'Wall') {
+    updates.gross_result = result
+    updates.result = applyDeductions(result, deductions)
+  } else {
+    updates.result = result
+    updates.gross_result = null
+  }
   return updates
 }

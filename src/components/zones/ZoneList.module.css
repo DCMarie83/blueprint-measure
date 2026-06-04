@@ -254,6 +254,27 @@
   cursor: not-allowed;
 }
 
+.deductBtn {
+  font-size: 12px;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  padding: 0;
+  opacity: 0.8;
+  transition: opacity 0.15s;
+  cursor: pointer;
+}
+
+.deductBtn:hover:not(:disabled) {
+  opacity: 1;
+  color: var(--color-primary);
+}
+
+.deductBtn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
 /* --- Inline edit form --- */
 .editForm {
   display: flex;

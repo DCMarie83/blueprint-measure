@@ -7,7 +7,7 @@ import { useSessions } from '../hooks/useSessions'
 import { usePdf } from '../hooks/usePdf'
 import { SCALE_OPTIONS, calcPixelsPerFoot } from '../utils/scaleOptions'
 import { parseFeetInches, formatSF, formatLF } from '../utils/fractions'
-import { calculate, calculateSF, calculateCeilingSF, calculateWallSF, rescaleZone } from '../utils/measurements'
+import { calculate, calculateSF, calculateCeilingSF, calculateWallSF, applyDeductions, rescaleZone } from '../utils/measurements'
 import { exportCSV } from '../utils/csvExport'
 import { exportXLSX } from '../utils/xlsxExport'
 import { downloadPdfWithMeasurements } from '../utils/pdfExport'
@@ -472,12 +472,12 @@ export default function SessionPage() {
         const rescaled = rescaleZone(z, newPPF)
         if (rescaled.result === z.result) return null
         count++
-        return { id: z.id, result: rescaled.result, gross_wall_sf: rescaled.gross_wall_sf, net_wall_sf: rescaled.net_wall_sf }
+        return { id: z.id, result: rescaled.result, gross_wall_sf: rescaled.gross_wall_sf, net_wall_sf: rescaled.net_wall_sf, gross_result: rescaled.gross_result }
       })
       .filter(Boolean)
 
     await Promise.all(updates.map(u =>
-      supabase.from('zones').update({ result: u.result, gross_wall_sf: u.gross_wall_sf ?? null, net_wall_sf: u.net_wall_sf ?? null }).eq('id', u.id)
+      supabase.from('zones').update({ result: u.result, gross_wall_sf: u.gross_wall_sf ?? null, net_wall_sf: u.net_wall_sf ?? null, gross_result: u.gross_result ?? null }).eq('id', u.id)
     ))
 
     // Refresh zones from DB to get accurate state
@@ -686,7 +686,14 @@ export default function SessionPage() {
 
     try {
       if (redrawingZoneId) {
-        await redrawZone(redrawingZoneId, drawnPoints, result)
+        // Preserve deductions on redraw: recompute net from new gross
+        const existingZone = zones.find(z => z.id === redrawingZoneId)
+        const deductions = existingZone?.deductions
+        if (Array.isArray(deductions) && deductions.length > 0 && existingZone.surface_type !== 'Wall') {
+          await redrawZone(redrawingZoneId, drawnPoints, applyDeductions(result, deductions), result)
+        } else {
+          await redrawZone(redrawingZoneId, drawnPoints, result, null)
+        }
       } else {
         const saved = await saveZone({
           name: activeZoneMeta.name,
@@ -708,6 +715,8 @@ export default function SessionPage() {
           measurement_type: activeZoneMeta.type,
           points: drawnPoints,
           result,
+          deductions: [],
+          gross_result: null,
           page_number: currentPage,
         })
         if (saved) recordAction({ type: 'add', zone: saved })
@@ -755,7 +764,13 @@ export default function SessionPage() {
 
     try {
       if (redrawingZoneId) {
-        await redrawZone(redrawingZoneId, combinedPoints, result)
+        const existingZone = zones.find(z => z.id === redrawingZoneId)
+        const deductions = existingZone?.deductions
+        if (Array.isArray(deductions) && deductions.length > 0 && existingZone.surface_type !== 'Wall') {
+          await redrawZone(redrawingZoneId, combinedPoints, applyDeductions(result, deductions), result)
+        } else {
+          await redrawZone(redrawingZoneId, combinedPoints, result, null)
+        }
       } else {
         const saved = await saveZone({
           name: activeZoneMeta.name,
@@ -774,6 +789,8 @@ export default function SessionPage() {
           measurement_type: activeZoneMeta.type,
           points: combinedPoints,
           result,
+          deductions: [],
+          gross_result: null,
           page_number: currentPage,
         })
         if (saved) recordAction({ type: 'add', zone: saved })
@@ -814,10 +831,14 @@ export default function SessionPage() {
       let finalUpdates = { ...updates }
       const zone = zones.find(z => z.id === zoneId)
 
+      // If the caller passes deductions/gross_result/result directly (from the
+      // ZoneList deduction UI), trust those values — no recalculation needed.
+      const deductionFieldsProvided = 'deductions' in updates && 'result' in updates
+
       // Only recalculate the stored result when ceiling-specific fields actually
       // changed. Editing name, notes, or coat_count should never silently alter
       // the measurement result.
-      if (zone && pixelsPerFoot && zone.points && zone.measurement_type === 'SF') {
+      if (!deductionFieldsProvided && zone && pixelsPerFoot && zone.points && zone.measurement_type === 'SF') {
         const ceilingParamsChanged =
           updates.surface_type       !== zone.surface_type ||
           updates.ceiling_type       !== zone.ceiling_type ||
@@ -843,7 +864,6 @@ export default function SessionPage() {
             }, zone.points, pixelsPerFoot)
             finalUpdates.result = adjustedSF
           } else if (updates.surface_type !== 'Ceiling' || updates.ceiling_type === 'flat') {
-            // Switched away from a ceiling adjustment — restore the flat SF
             finalUpdates.result = calculateSF(zone.points, pixelsPerFoot)
           }
         }
@@ -862,7 +882,6 @@ export default function SessionPage() {
             finalUpdates.gross_wall_sf = w.grossWallSF
             finalUpdates.net_wall_sf = w.netWallSF
           } else if (zone.wall_height && updates.surface_type !== 'Wall') {
-            // Switched away from wall mode — restore floor SF
             finalUpdates.result = calculateSF(zone.points, pixelsPerFoot)
             finalUpdates.gross_wall_sf = null
             finalUpdates.net_wall_sf = null
