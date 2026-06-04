@@ -8,11 +8,28 @@ import styles from './DashboardPage.module.css'
 const filterLabel = { fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)', marginBottom: 6 }
 const filterInput = { padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', background: 'var(--color-bg)', color: 'var(--color-text)', fontSize: 13 }
 
+const TYPE_PILLS = [
+  { value: 'partners', label: 'Partners' },
+  { value: 'templates', label: 'Templates' },
+  { value: 'guides', label: 'Guides' },
+  { value: 'forms', label: 'Forms' },
+]
+
+const COMING_SOON_COPY = {
+  templates: { title: 'Templates', description: 'Downloadable contract templates, scope-of-work documents, change order forms, and estimate boilerplate. Built specifically for trade contractors — no generic legalese.' },
+  guides: { title: 'Guides', description: 'How-to articles on pricing your work, hiring crew, scaling beyond yourself, dispute resolution, and the business side of running a trade contracting company.' },
+  forms: { title: 'Forms', description: 'Lien releases, waivers, certifications, and the legal paperwork you actually need on every job. State-specific where it matters.' },
+}
+
+const pillBase = { padding: '8px 16px', borderRadius: 9999, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 13, fontWeight: 500, cursor: 'pointer', transition: 'background 0.15s, border-color 0.15s, color 0.15s' }
+const pillActive = { ...pillBase, background: 'var(--color-primary)', color: 'var(--color-on-primary, #fff)', borderColor: 'var(--color-primary)' }
+
 export default function ResourcesPage() {
   const { isSuperAdmin } = useAuth()
   const [categories, setCategories] = useState([])
   const [resources, setResources] = useState([])
   const [loading, setLoading] = useState(true)
+  const [resourceType, setResourceType] = useState('partners')
   const [searchQuery, setSearchQuery] = useState('')
   const [zip, setZip] = useState('')
   const [jumpTo, setJumpTo] = useState('')
@@ -84,8 +101,50 @@ export default function ResourcesPage() {
           <p style={{ fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', margin: '12px 0 0 0' }}>
             Vetted businesses RivetDog contractors actually use. More coming soon.
           </p>
+
+          {/* Resource type pills */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 16 }}>
+            {TYPE_PILLS.map(p => (
+              <button
+                key={p.value}
+                type="button"
+                onClick={() => setResourceType(p.value)}
+                style={resourceType === p.value ? pillActive : pillBase}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
         </div>
 
+        {resourceType !== 'partners' && (() => {
+          const copy = COMING_SOON_COPY[resourceType]
+          return (
+            <div style={{
+              padding: '56px 32px', background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+              borderRadius: 12, textAlign: 'center', maxWidth: 600, margin: '0 auto',
+            }}>
+              <span style={{
+                display: 'inline-block', padding: '4px 14px', borderRadius: 9999,
+                background: '#f27243', color: '#fff', fontSize: 11, fontWeight: 600,
+                letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 20,
+              }}>
+                Coming Soon
+              </span>
+              <h2 style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 12px 0' }}>
+                {copy.title}
+              </h2>
+              <p style={{ fontSize: 14, color: 'var(--color-text-muted)', lineHeight: 1.6, margin: '0 auto 20px auto', maxWidth: 480 }}>
+                {copy.description}
+              </p>
+              <p style={{ fontSize: 12, color: 'var(--color-text-muted)', fontStyle: 'italic', margin: 0 }}>
+                We're building this now. Drop a request via the feedback form if there's something specific you need first.
+              </p>
+            </div>
+          )
+        })()}
+
+        {resourceType === 'partners' && <>
         {/* Filter bar */}
         <div style={{
           background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12,
@@ -177,6 +236,7 @@ export default function ResourcesPage() {
             </section>
           ))
         )}
+        </>}
       </main>
     </div>
   )
