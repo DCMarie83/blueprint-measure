@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import AppHeader from '../components/AppHeader'
@@ -58,12 +58,9 @@ export default function ResourcesPage() {
   }
 
   const q = searchQuery.trim().toLowerCase()
-  const filteredResources = useMemo(() => {
-    if (!q) return resources
-    return resources.filter(r =>
-      r.name.toLowerCase().includes(q) || (r.description || '').toLowerCase().includes(q)
-    )
-  }, [resources, q])
+  const filteredResources = q
+    ? resources.filter(r => r.name.toLowerCase().includes(q) || (r.description || '').toLowerCase().includes(q))
+    : resources
 
   // Group filtered resources by category_id
   const grouped = new Map()
