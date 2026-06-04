@@ -213,144 +213,6 @@ export default function ProjectDetailPage() {
           }}
         />
 
-        {/* Estimates */}
-        <section style={{ marginBottom: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Estimates ({estimates.length})</h3>
-            {isAdmin && (
-              <button
-                onClick={async () => {
-                  try {
-                    const est = await createEstimate(projectId)
-                    navigate(`/estimates/${est.id}`)
-                  } catch (err) {
-                    alert('Failed to create estimate: ' + err.message)
-                  }
-                }}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'var(--color-primary)', color: 'var(--color-on-primary, #fff)', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-              >
-                + Generate Estimate
-              </button>
-            )}
-          </div>
-          {estimates.length === 0 ? (
-            <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>No estimates yet. Click Generate to fetch one.</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {estimates.map(est => (
-                <div
-                  key={est.id}
-                  onClick={() => navigate(`/estimates/${est.id}`)}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', cursor: 'pointer', transition: 'border-color 0.15s' }}
-                >
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ fontWeight: 600, fontSize: 14 }}>{est.title || est.estimate_number}</span>
-                      <span style={{ fontSize: 12, padding: '2px 8px', borderRadius: 9999, background: est.status === 'accepted' ? 'var(--color-success-bg, rgba(74,222,128,0.12))' : est.status === 'declined' ? 'var(--color-danger-bg, rgba(220,38,38,0.08))' : 'var(--color-surface-2)', color: est.status === 'accepted' ? 'var(--color-success)' : est.status === 'declined' ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
-                        {est.status}
-                      </span>
-                    </div>
-                    {est.title && (
-                      <span style={{ fontSize: 11, color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>{est.estimate_number}</span>
-                    )}
-                  </div>
-                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-                    Good ${Number(est.good_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Materials Orders */}
-        <section style={{ marginBottom: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Materials ({materialOrders.length})</h3>
-            {isAdmin && (
-              <button
-                onClick={async () => {
-                  try {
-                    const order = await createMaterialOrder(projectId)
-                    navigate(`/materials/${order.id}`)
-                  } catch (err) {
-                    alert('Failed to create materials order: ' + err.message)
-                  }
-                }}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'var(--color-primary)', color: 'var(--color-on-primary, #fff)', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-              >
-                + New Materials Order
-              </button>
-            )}
-          </div>
-          {materialOrders.length === 0 ? (
-            <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>No materials orders yet. Generate one from your measurements.</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {materialOrders.map(order => {
-                const isEditing = editingOrderId === order.id
-                return (
-                  <div
-                    key={order.id}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 16px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)' }}
-                  >
-                    {isEditing ? (
-                      <input
-                        autoFocus
-                        value={editingTitle}
-                        onChange={(e) => setEditingTitle(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') { e.target.blur() }
-                          if (e.key === 'Escape') { setEditingOrderId(null); setEditingTitle('') }
-                        }}
-                        onBlur={async () => {
-                          const next = editingTitle.trim()
-                          if (next && next !== (order.title || '')) {
-                            try { await updateMaterialOrder(order.id, { title: next }) }
-                            catch (err) { alert('Failed to rename: ' + err.message) }
-                          }
-                          setEditingOrderId(null)
-                          setEditingTitle('')
-                        }}
-                        style={{ flex: 1, fontSize: 14, fontWeight: 600, padding: '6px 10px', border: '1px solid var(--color-primary)', borderRadius: 'var(--radius-sm)', background: 'var(--color-bg, #fff)', color: 'var(--color-text, #1b2426)' }}
-                      />
-                    ) : (
-                      <button
-                        onClick={() => navigate(`/materials/${order.id}`)}
-                        style={{ flex: 1, textAlign: 'left', fontWeight: 600, fontSize: 14, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--color-text, #1b2426)' }}
-                      >
-                        {order.title || 'Untitled order'}
-                      </button>
-                    )}
-                    <span style={{ fontSize: 12, padding: '2px 8px', borderRadius: 9999, background: 'var(--color-surface-2)', color: 'var(--color-text-muted)', textTransform: 'capitalize', whiteSpace: 'nowrap' }}>{order.status}</span>
-                    {isAdmin && !isEditing && (
-                      <>
-                        <button
-                          onClick={() => { setEditingOrderId(order.id); setEditingTitle(order.title || '') }}
-                          style={{ fontSize: 12, background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '4px 6px' }}
-                        >
-                          Rename
-                        </button>
-                        <button
-                          onClick={async () => {
-                            if (window.confirm('Delete this materials order? This cannot be undone.')) {
-                              try { await deleteMaterialOrder(order.id) }
-                              catch (err) { alert('Failed to delete: ' + err.message) }
-                            }
-                          }}
-                          style={{ fontSize: 12, background: 'none', border: 'none', color: 'var(--color-danger, #dc2626)', cursor: 'pointer', padding: '4px 6px' }}
-                        >
-                          Delete
-                        </button>
-                      </>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </section>
-
         {/* Multi-file uploader */}
         <MultiFileUploader
           projectId={projectId}
@@ -449,6 +311,144 @@ export default function ProjectDetailPage() {
                       Delete
                     </button>
                   </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Materials Orders */}
+        <section style={{ marginBottom: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Materials ({materialOrders.length})</h3>
+            {isAdmin && (
+              <button
+                onClick={async () => {
+                  try {
+                    const order = await createMaterialOrder(projectId)
+                    navigate(`/materials/${order.id}`)
+                  } catch (err) {
+                    alert('Failed to create materials order: ' + err.message)
+                  }
+                }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'var(--color-primary)', color: 'var(--color-on-primary, #fff)', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              >
+                + New Materials Order
+              </button>
+            )}
+          </div>
+          {materialOrders.length === 0 ? (
+            <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>No materials orders yet. Generate one from your measurements.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {materialOrders.map(order => {
+                const isEditing = editingOrderId === order.id
+                return (
+                  <div
+                    key={order.id}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 16px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)' }}
+                  >
+                    {isEditing ? (
+                      <input
+                        autoFocus
+                        value={editingTitle}
+                        onChange={(e) => setEditingTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') { e.target.blur() }
+                          if (e.key === 'Escape') { setEditingOrderId(null); setEditingTitle('') }
+                        }}
+                        onBlur={async () => {
+                          const next = editingTitle.trim()
+                          if (next && next !== (order.title || '')) {
+                            try { await updateMaterialOrder(order.id, { title: next }) }
+                            catch (err) { alert('Failed to rename: ' + err.message) }
+                          }
+                          setEditingOrderId(null)
+                          setEditingTitle('')
+                        }}
+                        style={{ flex: 1, fontSize: 14, fontWeight: 600, padding: '6px 10px', border: '1px solid var(--color-primary)', borderRadius: 'var(--radius-sm)', background: 'var(--color-bg, #fff)', color: 'var(--color-text, #1b2426)' }}
+                      />
+                    ) : (
+                      <button
+                        onClick={() => navigate(`/materials/${order.id}`)}
+                        style={{ flex: 1, textAlign: 'left', fontWeight: 600, fontSize: 14, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--color-text, #1b2426)' }}
+                      >
+                        {order.title || 'Untitled order'}
+                      </button>
+                    )}
+                    <span style={{ fontSize: 12, padding: '2px 8px', borderRadius: 9999, background: 'var(--color-surface-2)', color: 'var(--color-text-muted)', textTransform: 'capitalize', whiteSpace: 'nowrap' }}>{order.status}</span>
+                    {isAdmin && !isEditing && (
+                      <>
+                        <button
+                          onClick={() => { setEditingOrderId(order.id); setEditingTitle(order.title || '') }}
+                          style={{ fontSize: 12, background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '4px 6px' }}
+                        >
+                          Rename
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (window.confirm('Delete this materials order? This cannot be undone.')) {
+                              try { await deleteMaterialOrder(order.id) }
+                              catch (err) { alert('Failed to delete: ' + err.message) }
+                            }
+                          }}
+                          style={{ fontSize: 12, background: 'none', border: 'none', color: 'var(--color-danger, #dc2626)', cursor: 'pointer', padding: '4px 6px' }}
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* Estimates */}
+        <section style={{ marginBottom: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Estimates ({estimates.length})</h3>
+            {isAdmin && (
+              <button
+                onClick={async () => {
+                  try {
+                    const est = await createEstimate(projectId)
+                    navigate(`/estimates/${est.id}`)
+                  } catch (err) {
+                    alert('Failed to create estimate: ' + err.message)
+                  }
+                }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'var(--color-primary)', color: 'var(--color-on-primary, #fff)', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              >
+                + Generate Estimate
+              </button>
+            )}
+          </div>
+          {estimates.length === 0 ? (
+            <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>No estimates yet. Click Generate to fetch one.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {estimates.map(est => (
+                <div
+                  key={est.id}
+                  onClick={() => navigate(`/estimates/${est.id}`)}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', cursor: 'pointer', transition: 'border-color 0.15s' }}
+                >
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontWeight: 600, fontSize: 14 }}>{est.title || est.estimate_number}</span>
+                      <span style={{ fontSize: 12, padding: '2px 8px', borderRadius: 9999, background: est.status === 'accepted' ? 'var(--color-success-bg, rgba(74,222,128,0.12))' : est.status === 'declined' ? 'var(--color-danger-bg, rgba(220,38,38,0.08))' : 'var(--color-surface-2)', color: est.status === 'accepted' ? 'var(--color-success)' : est.status === 'declined' ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
+                        {est.status}
+                      </span>
+                    </div>
+                    {est.title && (
+                      <span style={{ fontSize: 11, color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>{est.estimate_number}</span>
+                    )}
+                  </div>
+                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                    Good ${Number(est.good_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </span>
                 </div>
               ))}
             </div>
