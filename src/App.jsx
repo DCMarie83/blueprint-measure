@@ -37,6 +37,7 @@ import EstimateDetailPage from './pages/EstimateDetailPage'
 import MaterialOrderBuilderPage from './pages/MaterialOrderBuilderPage'
 import PortalPage from './pages/PortalPage'
 import AcademyPage from './pages/AcademyPage'
+import ResourcesPage from './pages/ResourcesPage'
 import ReportsPage from './pages/ReportsPage'
 import InvoiceListPage from './pages/InvoiceListPage'
 import InvoiceDetailPage from './pages/InvoiceDetailPage'
@@ -229,6 +230,10 @@ export default function App() {
       <Route
         path="/academy"
         element={<ProtectedRoute><AcademyPage /></ProtectedRoute>}
+      />
+      <Route
+        path="/resources"
+        element={<ProtectedRoute><ResourcesPage /></ProtectedRoute>}
       />
       <Route
         path="/reports"
