@@ -58,7 +58,7 @@ const CEILING_TYPE_LABELS = {
   shed: 'Shed',
 }
 
-export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawingZoneId, enabledFeatures = {}, hiddenZoneIds, onToggleVisibility,
+export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartDeductionMeasure, redrawingZoneId, enabledFeatures = {}, hiddenZoneIds, onToggleVisibility,
   isTestMode, testData = {}, onTestDataChange, onLogTest, pixelsPerFoot }) {
   const [editingId, setEditingId] = useState(null)
   const [editName, setEditName] = useState('')
@@ -93,6 +93,9 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
   const [deductName, setDeductName] = useState('')
   const [deductValue, setDeductValue] = useState('')
   const [deductError, setDeductError] = useState('')
+
+  // Pending canvas-measured deduction meta
+  const [pendingDeductionMeta, setPendingDeductionMeta] = useState(null)
 
   // Deduction working copy for edit form
   const [editDeductions, setEditDeductions] = useState([])
@@ -175,7 +178,14 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
 
       // Include deductions in the payload for non-wall SF/LF zones
       if (canDeductZone) {
-        const cleanDeductions = editDeductions.map(d => ({ id: d.id, name: d.name.trim(), value: Number(d.value) }))
+        const cleanDeductions = editDeductions.map(d => {
+          const base = { id: d.id, name: d.name.trim(), value: Number(d.value), source: d.source || 'manual' }
+          if (base.source === 'canvas' && Array.isArray(d.points)) {
+            base.points = d.points
+            base.page_number = d.page_number
+          }
+          return base
+        })
         const currentGross = zone.gross_result ?? zone.result
         if (cleanDeductions.length > 0) {
           payload.deductions = cleanDeductions
@@ -470,29 +480,45 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                 {(zone.measurement_type === 'SF' || zone.measurement_type === 'LF') && editSurfaceType !== 'Wall' && (
                   <div className={styles.editFinishGroup}>
                     <span style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)', marginBottom: 8, display: 'block' }}>Deductions</span>
-                    {editDeductions.map((d, idx) => (
-                      <div key={d.id} className={styles.editHeightRow} style={{ marginBottom: 4 }}>
-                        <input
-                          className={styles.editInput}
-                          value={d.name}
-                          onChange={e => setEditDeductions(prev => prev.map((x, i) => i === idx ? { ...x, name: e.target.value } : x))}
-                          placeholder="Name"
-                          style={{ flex: 1 }}
-                        />
-                        <input
-                          className={styles.editInput}
-                          type="number" min="0.01" step="0.01"
-                          value={d.value}
-                          onChange={e => setEditDeductions(prev => prev.map((x, i) => i === idx ? { ...x, value: e.target.value } : x))}
-                          style={{ width: 70 }}
-                        />
-                        <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{zone.measurement_type}</span>
-                        <button type="button" className={styles.editBtn}
-                          onClick={() => setEditDeductions(prev => prev.filter((_, i) => i !== idx))}>✕</button>
-                      </div>
-                    ))}
+                    {editDeductions.map((d, idx) => {
+                      const isCanvas = (d.source || 'manual') === 'canvas'
+                      return (
+                        <div key={d.id} className={styles.editHeightRow} style={{ marginBottom: 4 }}>
+                          <input
+                            className={styles.editInput}
+                            value={d.name}
+                            onChange={e => setEditDeductions(prev => prev.map((x, i) => i === idx ? { ...x, name: e.target.value } : x))}
+                            placeholder="Name"
+                            style={{ flex: 1 }}
+                          />
+                          {isCanvas ? (
+                            <span style={{ width: 70, padding: '6px 8px', fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'right' }}>{Number(d.value || 0).toFixed(2)}</span>
+                          ) : (
+                            <input
+                              className={styles.editInput}
+                              type="number" min="0.01" step="0.01"
+                              value={d.value}
+                              onChange={e => setEditDeductions(prev => prev.map((x, i) => i === idx ? { ...x, value: e.target.value } : x))}
+                              style={{ width: 70 }}
+                            />
+                          )}
+                          <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{zone.measurement_type}</span>
+                          {isCanvas && onStartDeductionMeasure && (
+                            <button type="button" className={styles.redrawBtn}
+                              onClick={() => {
+                                const dedId = d.id
+                                onStartDeductionMeasure(zone, ({ value, points, page_number }) => {
+                                  setEditDeductions(prev => prev.map(x => x.id === dedId ? { ...x, value, points, page_number, source: 'canvas' } : x))
+                                })
+                              }}>Redraw</button>
+                          )}
+                          <button type="button" className={styles.editBtn}
+                            onClick={() => setEditDeductions(prev => prev.filter((_, i) => i !== idx))}>✕</button>
+                        </div>
+                      )
+                    })}
                     <button type="button" className={styles.editCoatBtn}
-                      onClick={() => setEditDeductions(prev => [...prev, { id: crypto.randomUUID(), name: '', value: '' }])}>
+                      onClick={() => setEditDeductions(prev => [...prev, { id: crypto.randomUUID(), name: '', value: '', source: 'manual' }])}>
                       + Add deduction
                     </button>
                   </div>
@@ -696,24 +722,42 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                           min="0.01"
                           placeholder="0.00"
                           value={deductValue}
-                          onChange={e => { setDeductValue(e.target.value); setDeductError('') }}
+                          onChange={e => { setDeductValue(e.target.value); setPendingDeductionMeta(null); setDeductError('') }}
                           style={{ width: 80, padding: '6px 8px', fontSize: 13, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', background: 'var(--color-bg)', color: 'var(--color-text)' }}
+                          readOnly={!!pendingDeductionMeta}
                         />
                         <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{zone.measurement_type}</span>
                       </div>
+                      {onStartDeductionMeasure && (
+                        <button
+                          onClick={() => {
+                            onStartDeductionMeasure(zone, ({ value, points, page_number }) => {
+                              setDeductValue(value.toFixed(2))
+                              setPendingDeductionMeta({ source: 'canvas', points, page_number })
+                            })
+                          }}
+                          className={styles.deductBtn}
+                          style={{ fontSize: 12, padding: '6px 10px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', background: 'var(--color-surface)', cursor: 'pointer', color: 'var(--color-text-muted)' }}
+                        >
+                          Measure on blueprint
+                        </button>
+                      )}
                       <button
                         onClick={() => {
                           const trimmed = deductName.trim()
                           if (!trimmed) { setDeductError('Name required.'); return }
                           const val = parseFloat(deductValue)
                           if (!isFinite(val) || val <= 0) { setDeductError('Value must be greater than 0.'); return }
-                          const newDeduction = { id: crypto.randomUUID(), name: trimmed, value: val }
+                          const newDeduction = pendingDeductionMeta?.source === 'canvas'
+                            ? { id: crypto.randomUUID(), name: trimmed, value: val, source: 'canvas', points: pendingDeductionMeta.points, page_number: pendingDeductionMeta.page_number }
+                            : { id: crypto.randomUUID(), name: trimmed, value: val, source: 'manual' }
                           const currentGross = zone.gross_result ?? zone.result
                           const newDeductions = [...(zone.deductions || []), newDeduction]
                           onUpdate(zone.id, { deductions: newDeductions, gross_result: currentGross, result: applyDeductions(currentGross, newDeductions) })
                           setDeductName('')
                           setDeductValue('')
                           setDeductError('')
+                          setPendingDeductionMeta(null)
                           setAddingDeductionZoneId(null)
                         }}
                         style={{ padding: '6px 14px', fontSize: 12, fontWeight: 600, background: 'var(--color-primary)', color: 'var(--color-on-primary, #fff)', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
@@ -721,12 +765,13 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, redrawin
                         Save
                       </button>
                       <button
-                        onClick={() => { setAddingDeductionZoneId(null); setDeductName(''); setDeductValue(''); setDeductError('') }}
+                        onClick={() => { setAddingDeductionZoneId(null); setDeductName(''); setDeductValue(''); setDeductError(''); setPendingDeductionMeta(null) }}
                         style={{ padding: '6px 10px', fontSize: 12, background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}
                       >
                         Cancel
                       </button>
                     </div>
+                    {pendingDeductionMeta && <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 4, fontStyle: 'italic' }}>Measured from blueprint</div>}
                     {deductError && <div style={{ fontSize: 12, color: 'var(--color-danger, #dc2626)', marginTop: 4 }}>{deductError}</div>}
                   </div>
                 )}

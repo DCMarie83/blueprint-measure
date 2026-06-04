@@ -321,8 +321,10 @@ export function rescaleZone(zone, newPPF) {
     const gross = calculateLF(zone.points, newPPF)
     const deductions = zone.deductions
     if (Array.isArray(deductions) && deductions.length > 0 && zone.surface_type !== 'Wall') {
+      const rescaledDeds = rescaleDeductions(deductions, zone.measurement_type, newPPF)
+      updates.deductions = rescaledDeds
       updates.gross_result = gross
-      updates.result = applyDeductions(gross, deductions)
+      updates.result = applyDeductions(gross, rescaledDeds)
     } else {
       updates.result = gross
       updates.gross_result = null
@@ -360,11 +362,24 @@ export function rescaleZone(zone, newPPF) {
   // General deductions for non-wall SF zones
   const deductions = zone.deductions
   if (Array.isArray(deductions) && deductions.length > 0 && zone.surface_type !== 'Wall') {
+    const rescaledDeds = rescaleDeductions(deductions, zone.measurement_type, newPPF)
+    updates.deductions = rescaledDeds
     updates.gross_result = result
-    updates.result = applyDeductions(result, deductions)
+    updates.result = applyDeductions(result, rescaledDeds)
   } else {
     updates.result = result
     updates.gross_result = null
   }
   return updates
+}
+
+// Recompute canvas-measured deduction values using a new pixelsPerFoot.
+// Manual deductions pass through unchanged (their values are scale-independent).
+function rescaleDeductions(deductions, measurementType, newPPF) {
+  return deductions.map(d => {
+    if ((d.source || 'manual') === 'canvas' && Array.isArray(d.points)) {
+      return { ...d, value: calculate(measurementType, d.points, newPPF) }
+    }
+    return d
+  })
 }

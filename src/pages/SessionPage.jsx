@@ -7,7 +7,7 @@ import { useSessions } from '../hooks/useSessions'
 import { usePdf } from '../hooks/usePdf'
 import { SCALE_OPTIONS, calcPixelsPerFoot } from '../utils/scaleOptions'
 import { parseFeetInches, formatSF, formatLF } from '../utils/fractions'
-import { calculate, calculateSF, calculateCeilingSF, calculateWallSF, applyDeductions, rescaleZone } from '../utils/measurements'
+import { calculate, calculateSF, calculateLF, calculateCeilingSF, calculateWallSF, applyDeductions, rescaleZone } from '../utils/measurements'
 import { exportCSV } from '../utils/csvExport'
 import { exportXLSX } from '../utils/xlsxExport'
 import { downloadPdfWithMeasurements } from '../utils/pdfExport'
@@ -96,6 +96,7 @@ export default function SessionPage() {
   const [activeZoneMeta, setActiveZoneMeta] = useState(null)
   const [drawnPoints, setDrawnPoints] = useState([])
   const [redrawingZoneId, setRedrawingZoneId] = useState(null)
+  const [activeDeductionContext, setActiveDeductionContext] = useState(null)
 
   // ── Multi-segment accumulation (LF and count zones only) ─────────────────────
   // After finishing each segment the user can add more disconnected segments that
@@ -647,6 +648,26 @@ export default function SessionPage() {
       return
     }
 
+    // Deduction-measure intercept: route to deduction callback instead of zone save
+    if (activeDeductionContext) {
+      if (activeDeductionContext.measurement_type === 'LF') {
+        // LF deductions enter accumulation mode like normal LF zones
+        setFinishedSegments(prev => [...prev, { points: drawnPoints }])
+        setDrawnPoints([])
+        setIsDrawing(false)
+        setIsAccumulating(true)
+        return
+      }
+      // SF deduction: compute value immediately
+      const value = calculateSF(drawnPoints, pixelsPerFoot)
+      activeDeductionContext.onMeasured({ value, points: [...drawnPoints], page_number: currentPage })
+      setActiveDeductionContext(null)
+      setIsDrawing(false)
+      setActiveZoneMeta(null)
+      setDrawnPoints([])
+      return
+    }
+
     // LF and count zones enter accumulation mode: the finished segment is added
     // to the running list and the user can trace additional disconnected segments
     // before clicking "Done — Save Zone" to finalise.
@@ -729,7 +750,7 @@ export default function SessionPage() {
     setActiveZoneMeta(null)
     setDrawnPoints([])
     setRedrawingZoneId(null)
-  }, [activeZoneMeta, drawnPoints, pixelsPerFoot, saveZone, redrawZone, redrawingZoneId, currentPage])
+  }, [activeZoneMeta, activeDeductionContext, drawnPoints, pixelsPerFoot, saveZone, redrawZone, redrawingZoneId, currentPage])
 
   // Start drawing the next disconnected segment within the same zone.
   function handleAddSegment() {
@@ -743,6 +764,25 @@ export default function SessionPage() {
     if (!activeZoneMeta) return
     if (!pixelsPerFoot) {
       alert('Please set a scale before measuring.')
+      return
+    }
+
+    // Deduction-measure intercept for LF multi-segment finalize
+    if (activeDeductionContext) {
+      const allSegs = drawnPoints.length > 0
+        ? [...finishedSegments, { points: drawnPoints }]
+        : finishedSegments
+      if (allSegs.length === 0) return
+      const combined = []
+      allSegs.forEach((seg, i) => { if (i > 0) combined.push(null); combined.push(...seg.points) })
+      const value = calculateLF(combined, pixelsPerFoot)
+      activeDeductionContext.onMeasured({ value, points: [...combined], page_number: currentPage })
+      setActiveDeductionContext(null)
+      setIsDrawing(false)
+      setIsAccumulating(false)
+      setFinishedSegments([])
+      setActiveZoneMeta(null)
+      setDrawnPoints([])
       return
     }
 
@@ -806,7 +846,16 @@ export default function SessionPage() {
     setActiveZoneMeta(null)
     setDrawnPoints([])
     setRedrawingZoneId(null)
-  }, [activeZoneMeta, finishedSegments, drawnPoints, pixelsPerFoot, saveZone, redrawZone, redrawingZoneId, currentPage])
+  }, [activeZoneMeta, activeDeductionContext, finishedSegments, drawnPoints, pixelsPerFoot, saveZone, redrawZone, redrawingZoneId, currentPage])
+
+  function onStartDeductionMeasure(zone, onMeasured) {
+    setActiveDeductionContext({ zoneId: zone.id, measurement_type: zone.measurement_type, onMeasured })
+    setActiveZoneMeta({ name: '__deduction__', type: zone.measurement_type })
+    setFinishedSegments([])
+    setIsAccumulating(false)
+    setDrawnPoints([])
+    setIsDrawing(true)
+  }
 
   function handleCancelDrawing() {
     setIsDrawing(false)
@@ -815,6 +864,7 @@ export default function SessionPage() {
     setActiveZoneMeta(null)
     setDrawnPoints([])
     setRedrawingZoneId(null)
+    setActiveDeductionContext(null)
   }
 
   function handleToggleZoneVisibility(zoneId) {
@@ -1734,6 +1784,7 @@ export default function SessionPage() {
               onDelete={handleDeleteZone}
               onUpdate={handleUpdateZone}
               onRedraw={handleRedrawZone}
+              onStartDeductionMeasure={onStartDeductionMeasure}
               redrawingZoneId={redrawingZoneId}
               enabledFeatures={enabledFeatures}
               hiddenZoneIds={hiddenZoneIds}
