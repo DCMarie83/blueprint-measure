@@ -171,6 +171,20 @@ export default function RegisterPage() {
             {submitting ? 'Setting up your den...' : 'Complete Setup'}
           </button>
         </form>
+
+        {import.meta.env.VITE_ONBOARDING_CALENDAR_URL && (
+          <p style={{ textAlign: 'center', fontSize: 14, color: 'var(--color-text-muted)', marginTop: 20, lineHeight: 1.5 }}>
+            Want help getting set up?{' '}
+            <a
+              href={import.meta.env.VITE_ONBOARDING_CALENDAR_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: '#f27243', fontWeight: 600, textDecoration: 'underline' }}
+            >
+              Book a free onboarding call
+            </a>
+          </p>
+        )}
       </div>
     </div>
   )

@@ -90,7 +90,13 @@ Deno.serve(async (req) => {
     if (!callerProfile || callerProfile.company_id !== estimate.company_id) {
       return json({ error: 'Forbidden' }, 403)
     }
-    if (callerProfile.role !== 'contractor_admin' && user.email !== 'main@ngautomationhub.com') {
+    const { data: superAdminRow } = await adminClient
+      .from('super_admins')
+      .select('email')
+      .eq('email', user.email)
+      .maybeSingle()
+    const isSuperAdmin = !!superAdminRow
+    if (callerProfile.role !== 'contractor_admin' && !isSuperAdmin) {
       return json({ error: 'Admin access required' }, 403)
     }
 

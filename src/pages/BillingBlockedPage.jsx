@@ -14,11 +14,18 @@ const STATUS_MESSAGES = {
     headline: 'Payment overdue',
     body: 'Your payment is overdue. Your access has been paused until payment is updated.',
   },
+  trial_expired: {
+    headline: 'Your trial has ended',
+    body: 'Your 14-day free trial is over. Book an onboarding call to get set up and activated — we\'ll walk you through everything and get your account live.',
+  },
 }
 
-export default function BillingBlockedPage({ company }) {
-  const status = company?.subscription_status ?? 'suspended'
-  const msg = STATUS_MESSAGES[status] ?? STATUS_MESSAGES.suspended
+const CALENDAR_URL = import.meta.env.VITE_ONBOARDING_CALENDAR_URL
+
+export default function BillingBlockedPage({ company, reason }) {
+  const key = reason || company?.subscription_status || 'suspended'
+  const msg = STATUS_MESSAGES[key] ?? STATUS_MESSAGES.suspended
+  const isTrialExpired = key === 'trial_expired'
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -47,17 +54,33 @@ export default function BillingBlockedPage({ company }) {
           {msg.body}
         </p>
 
-        <Link
-          to="/settings"
-          style={{
-            display: 'inline-block', padding: '12px 32px',
-            background: '#f27243', color: '#fff', borderRadius: 8,
-            fontWeight: 600, fontSize: 15, textDecoration: 'none',
-            marginBottom: 16,
-          }}
-        >
-          Go to Account Settings
-        </Link>
+        {isTrialExpired && CALENDAR_URL ? (
+          <a
+            href={CALENDAR_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'inline-block', padding: '12px 32px',
+              background: '#f27243', color: '#fff', borderRadius: 8,
+              fontWeight: 600, fontSize: 15, textDecoration: 'none',
+              marginBottom: 16,
+            }}
+          >
+            Book your onboarding call
+          </a>
+        ) : (
+          <Link
+            to="/settings"
+            style={{
+              display: 'inline-block', padding: '12px 32px',
+              background: '#f27243', color: '#fff', borderRadius: 8,
+              fontWeight: 600, fontSize: 15, textDecoration: 'none',
+              marginBottom: 16,
+            }}
+          >
+            Go to Account Settings
+          </Link>
+        )}
 
         <div style={{ marginBottom: 24 }}>
           <button

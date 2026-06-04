@@ -51,7 +51,12 @@ Deno.serve(async (req) => {
 
     if (!callerProfile) return json({ error: 'Profile not found' }, 403)
 
-    const isSuperAdmin = caller.email === 'main@ngautomationhub.com'
+    const { data: superAdminRow } = await supabase
+      .from('super_admins')
+      .select('email')
+      .eq('email', caller.email)
+      .maybeSingle()
+    const isSuperAdmin = !!superAdminRow
     const isContractorAdmin = callerProfile.role === 'contractor_admin'
 
     if (!isSuperAdmin && !isContractorAdmin) {

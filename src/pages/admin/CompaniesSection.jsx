@@ -76,6 +76,8 @@ export default function CompaniesSection() {
   const [editingSeatId, setEditingSeatId] = useState(null)
   const [editingSeatVal, setEditingSeatVal] = useState('')
   const [savingSeatId, setSavingSeatId] = useState(null)
+  const [editingStatusId, setEditingStatusId] = useState(null)
+  const [savingStatusId, setSavingStatusId] = useState(null)
 
   // Storage
   const [companyStorage, setCompanyStorage] = useState({})
@@ -173,6 +175,16 @@ export default function CompaniesSection() {
       setCompanies(prev => prev.map(c => c.id === companyId ? { ...c, seat_limit_override: override } : c))
       setEditingSeatId(null)
     } catch (err) { alert('Failed: ' + err.message) } finally { setSavingSeatId(null) }
+  }
+
+  async function handleSaveStatus(companyId, newStatus) {
+    setSavingStatusId(companyId)
+    try {
+      const { error } = await supabase.from('companies').update({ subscription_status: newStatus }).eq('id', companyId)
+      if (error) throw new Error(error.message)
+      setCompanies(prev => prev.map(c => c.id === companyId ? { ...c, subscription_status: newStatus } : c))
+      setEditingStatusId(null)
+    } catch (err) { alert('Failed: ' + err.message) } finally { setSavingStatusId(null) }
   }
 
   // Drawer open — also lazy-load zone counts
@@ -279,8 +291,32 @@ export default function CompaniesSection() {
                     <td className={styles.td}>
                       <CompanyPlanBadge company={company} />
                     </td>
-                    <td className={styles.td}>
-                      <span className={styles.badge} style={{ fontSize: 11 }}>{company.subscription_status ?? 'active'}</span>
+                    <td className={styles.td} data-no-expand>
+                      {editingStatusId === company.id ? (
+                        <select
+                          autoFocus
+                          value={company.subscription_status || 'active'}
+                          onChange={e => handleSaveStatus(company.id, e.target.value)}
+                          onBlur={() => setEditingStatusId(null)}
+                          disabled={savingStatusId === company.id}
+                          style={{ fontSize: 11, padding: '2px 4px' }}
+                        >
+                          {['trialing', 'active', 'past_due', 'suspended', 'canceled', 'paused', 'pilot'].map(s => (
+                            <option key={s} value={s}>{s}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <span className={styles.badge} style={{ fontSize: 11 }}>{company.subscription_status ?? 'active'}</span>
+                          <button className={styles.iconBtn} onClick={() => setEditingStatusId(company.id)} title="Change status">✎</button>
+                          {company.subscription_status === 'trialing' && company.trial_ends_at && (() => {
+                            const msLeft = new Date(company.trial_ends_at).getTime() - Date.now()
+                            if (msLeft <= 0) return <span style={{ fontSize: 10, color: '#dc2626', fontWeight: 600 }}>Expired</span>
+                            const d = Math.ceil(msLeft / (1000 * 60 * 60 * 24))
+                            return <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>{d}d left</span>
+                          })()}
+                        </div>
+                      )}
                     </td>
                     <td className={styles.td} data-no-expand>
                       {editingSeatId === company.id ? (

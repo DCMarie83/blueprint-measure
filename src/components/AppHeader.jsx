@@ -4,6 +4,7 @@ import { Menu, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import Logo from './brand/Logo'
 import UserMenu from './UserMenu'
+import TrialBanner from './TrialBanner'
 import styles from './AppHeader.module.css'
 
 const PRIMARY_NAV = [
@@ -39,6 +40,7 @@ export default function AppHeader({ extras = null }) {
 
   return (
     <>
+      <TrialBanner />
       <header className={styles.header}>
         <div className={styles.left}>
           <Link to="/dashboard" className={styles.logoLink} aria-label={hasTenantLogo ? `${company.name} home` : 'RivetDog home'}>

@@ -3,13 +3,11 @@
 // Runs on Supabase's servers — the service_role key never reaches the browser.
 //
 // Permissions:
-//   super_admin (ADMIN_EMAIL) — all actions, any company
+//   super_admin (checked via super_admins table) — all actions, any company
 //   contractor_admin — invite/create/resend to own company only
 //   contractor_user — rejected (403)
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const ADMIN_EMAIL = 'main@ngautomationhub.com'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -48,8 +46,13 @@ Deno.serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
-    // Resolve caller's role and company
-    const isSuperAdmin = caller.email === ADMIN_EMAIL
+    // Resolve caller's super-admin status via the super_admins table
+    const { data: superAdminRow } = await adminClient
+      .from('super_admins')
+      .select('email')
+      .eq('email', caller.email)
+      .maybeSingle()
+    const isSuperAdmin = !!superAdminRow
     let callerRole: string | null = null
     let callerCompanyId: string | null = null
 

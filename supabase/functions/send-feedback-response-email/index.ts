@@ -1,6 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const ADMIN_EMAIL = 'main@ngautomationhub.com'
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -55,7 +54,12 @@ Deno.serve(async (req) => {
     if (fbErr) throw new Error('feedback fetch: ' + fbErr.message)
 
     // Allow super admin OR same-company caller
-    const isSuperAdmin = caller.email === ADMIN_EMAIL
+    const { data: superAdminRow } = await supabase
+      .from('super_admins')
+      .select('email')
+      .eq('email', caller.email)
+      .maybeSingle()
+    const isSuperAdmin = !!superAdminRow
     if (!isSuperAdmin) {
       const { data: callerProfile } = await supabase
         .from('user_profiles')
