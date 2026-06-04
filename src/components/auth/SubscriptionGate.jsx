@@ -2,11 +2,10 @@ import { useAuth } from '../../context/AuthContext'
 import BillingBlockedPage from '../../pages/BillingBlockedPage'
 
 const GRACE_DAYS = 3
-const SUPER_ADMIN_EMAIL = 'main@ngautomationhub.com'
 
-function isBlocked(user, company) {
+function isBlocked(user, company, isSuperAdmin) {
   if (!user || !company) return false
-  if (user.email === SUPER_ADMIN_EMAIL) return false
+  if (isSuperAdmin) return false
   const status = company.subscription_status
   if (!status) return false
   if (['active', 'trialing', 'pilot', 'paused'].includes(status)) return false
@@ -21,8 +20,8 @@ function isBlocked(user, company) {
 }
 
 export default function SubscriptionGate({ children }) {
-  const { user, company, companyLoading } = useAuth()
+  const { user, company, companyLoading, isSuperAdmin } = useAuth()
   if (companyLoading) return null
-  if (isBlocked(user, company)) return <BillingBlockedPage company={company} />
+  if (isBlocked(user, company, isSuperAdmin)) return <BillingBlockedPage company={company} />
   return children
 }

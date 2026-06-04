@@ -40,7 +40,6 @@ import styles from './SessionPage.module.css'
 // SessionPage is the main working environment.
 // Left sidebar: controls (scale, draw panel, zone list, export)
 // Center: the blueprint canvas
-const ADMIN_EMAIL = 'main@ngautomationhub.com'
 const DEFAULT_TEST_INPUT = { segments: [], countVerified: null, notes: '' }
 const TOOLBAR_COLORS = [
   '#2e8bff', '#22c55e', '#f59e0b', '#ef4444', '#a855f7',
@@ -51,8 +50,8 @@ const TOOLBAR_COLORS = [
 export default function SessionPage() {
   const { sessionId } = useParams()
   const navigate = useNavigate()
-  const { user, company } = useAuth()
-  const isAdmin = user?.email === ADMIN_EMAIL
+  const { user, company, isSuperAdmin } = useAuth()
+  const isAdmin = isSuperAdmin
   const { session, zones, enabledFeatures, loading, error, saveZone, updateZone, updateZoneLabelOffset, redrawZone, deleteZone, restoreZone, updateSession, refetch } = useSession(sessionId)
   const { deleteSession } = useSessions()
 
@@ -1410,7 +1409,7 @@ export default function SessionPage() {
                 pdfPageInfo={pdfPageInfo}
                 isCalibrated={!!pixelsPerFoot}
                 zonesCount={pageZones.length}
-                userEmail={user?.email}
+                isSuperAdmin={isSuperAdmin}
                 onRecalibrate={() => {
                   const input = window.prompt('Enter a known distance on the blueprint (e.g. 12\'6" or 20):')
                   if (input) {

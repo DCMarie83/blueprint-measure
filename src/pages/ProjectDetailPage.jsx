@@ -38,9 +38,9 @@ function timeAgo(dateStr) {
 export default function ProjectDetailPage() {
   const { projectId } = useParams()
   const navigate = useNavigate()
-  const { user, userProfile, company } = useAuth()
+  const { user, userProfile, company, isSuperAdmin } = useAuth()
   const { project, sessions, loading, error, refetch } = useProject(projectId)
-  const isAdmin = userProfile?.role === 'contractor_admin' || user?.email === 'main@ngautomationhub.com'
+  const isAdmin = userProfile?.role === 'contractor_admin' || isSuperAdmin
   const { updateProject } = useProjects()
   const { createSession, updateSession, deleteSession } = useSessions()
   const { formatDate, formatDateTime } = useDateFormat()

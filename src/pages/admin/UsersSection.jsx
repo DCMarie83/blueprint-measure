@@ -20,9 +20,8 @@ function useTempId() {
 
 export default function UsersSection() {
   const navigate = useNavigate()
-  const { user: authUser } = useAuth()
+  const { isSuperAdmin } = useAuth()
   const { companies, users, setUsers, userProfiles, setUserProfiles, companyNameFor, profileCompanyIdFor, roleFor, loadAll } = useAdminData()
-  const isSuperAdmin = authUser?.email === 'main@ngautomationhub.com'
 
   // Orphan detection
   const [orphans, setOrphans] = useState(null)

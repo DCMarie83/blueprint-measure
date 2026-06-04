@@ -1,7 +1,5 @@
 import styles from './ScaleInfoPopover.module.css'
 
-const ADMIN_EMAIL = 'main@ngautomationhub.com'
-
 export default function ScaleInfoPopover({
   scaleLabel,
   pixelsPerFoot,
@@ -9,7 +7,7 @@ export default function ScaleInfoPopover({
   pdfPageInfo,
   isCalibrated,
   zonesCount,
-  userEmail,
+  isSuperAdmin,
   onRecalibrate,
   onRescale,
   onClose,
@@ -54,7 +52,7 @@ export default function ScaleInfoPopover({
         )}
       </div>
 
-      {userEmail === ADMIN_EMAIL && (
+      {isSuperAdmin && (
         <>
           <div className={styles.divider} />
           <div className={styles.diagHeading}>Diagnostics</div>

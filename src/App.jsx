@@ -45,8 +45,6 @@ import InvoicePortalPage from './pages/InvoicePortalPage'
 import PasswordRecoveryHandler from './components/PasswordRecoveryHandler'
 import SubscriptionGate from './components/auth/SubscriptionGate'
 
-const ADMIN_EMAIL = 'main@ngautomationhub.com'
-
 // ProtectedRoute wraps pages that require login + completed setup.
 // bypassSubscriptionGate: if true, skip the subscription check (for /settings, /account)
 function ProtectedRoute({ children, bypassSubscriptionGate = false }) {
@@ -61,17 +59,18 @@ function ProtectedRoute({ children, bypassSubscriptionGate = false }) {
   }
 
   if (!user) return <Navigate to="/login" replace />
+  if (sessionStorage.getItem('bpm_password_recovery_pending') === 'true') return <Navigate to="/change-password" replace />
   if (user.user_metadata?.force_password_change) return <Navigate to="/change-password" replace />
   if (setupComplete === false) return <Navigate to="/register" replace />
   if (bypassSubscriptionGate) return <>{children}<FeedbackButton /></>
   return <SubscriptionGate>{children}<FeedbackButton /></SubscriptionGate>
 }
 
-// AdminRoute wraps /admin. Requires login AND the hardcoded admin email.
+// AdminRoute wraps /admin. Requires login AND super-admin status from the database.
 function AdminRoute({ children }) {
-  const { user, loading, setupComplete } = useAuth()
+  const { user, loading, setupComplete, isSuperAdmin, superAdminChecked } = useAuth()
 
-  if (loading) {
+  if (loading || !superAdminChecked) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
         <div className="spinner" />
@@ -81,7 +80,7 @@ function AdminRoute({ children }) {
 
   if (!user) return <Navigate to="/login" replace />
   if (setupComplete === false) return <Navigate to="/register" replace />
-  if (user.email !== ADMIN_EMAIL) return <Navigate to="/jobs" replace />
+  if (!isSuperAdmin) return <Navigate to="/jobs" replace />
   return children
 }
 
@@ -105,19 +104,18 @@ function RegisterRoute({ children }) {
 // ContractorAdminRoute — requires login + completed setup + contractor_admin or super_admin role.
 // Role check is soft — RLS enforces real access. This just prevents non-admins from seeing the page.
 function ContractorAdminRoute({ children }) {
-  const { user, loading, setupComplete } = useAuth()
+  const { user, loading, setupComplete, isSuperAdmin, superAdminChecked } = useAuth()
   const [allowed, setAllowed] = useState(null)
 
   useEffect(() => {
-    if (!user || loading) return
+    if (!user || loading || !superAdminChecked) return
     async function check() {
-      // Super admin always allowed
-      if (user.email === ADMIN_EMAIL) { setAllowed(true); return }
+      if (isSuperAdmin) { setAllowed(true); return }
       const { data } = await supabase.from('user_profiles').select('role').eq('user_id', user.id).maybeSingle()
       setAllowed(data?.role === 'contractor_admin')
     }
     check()
-  }, [user, loading])
+  }, [user, loading, isSuperAdmin, superAdminChecked])
 
   if (loading || allowed === null) {
     return (

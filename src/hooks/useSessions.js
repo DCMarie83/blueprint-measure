@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext'
 // It fetches sessions for the logged-in user and provides
 // functions to create and delete them.
 export function useSessions() {
-  const { user, userProfile } = useAuth()
+  const { user, userProfile, isSuperAdmin } = useAuth()
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -31,7 +31,7 @@ export function useSessions() {
 
   async function createSession({ description, projectName, projectId }) {
     // Check blueprint limit before creating — skipped for super admin.
-    if (user.email !== 'main@ngautomationhub.com') {
+    if (!isSuperAdmin) {
       const { data: profile } = await supabase
         .from('user_profiles')
         .select('company_id')

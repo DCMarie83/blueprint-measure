@@ -45,8 +45,8 @@ function timeAgo(dateStr) {
 export default function EstimateDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { user, userProfile } = useAuth()
-  const isAdmin = userProfile?.role === 'contractor_admin' || user?.email === 'main@ngautomationhub.com'
+  const { user, userProfile, isSuperAdmin } = useAuth()
+  const isAdmin = userProfile?.role === 'contractor_admin' || isSuperAdmin
 
   const builder = useEstimateBuilder(id)
 

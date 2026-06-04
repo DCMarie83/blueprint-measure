@@ -33,7 +33,9 @@ export default function LoginPage() {
     e.preventDefault()
     setForgotError('')
     setForgotLoading(true)
-    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim())
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
+      redirectTo: `${window.location.origin}/change-password`,
+    })
     if (error) {
       setForgotError(error.message)
     } else {

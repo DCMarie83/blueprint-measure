@@ -6,8 +6,6 @@ import { useDateFormat } from '../../hooks/useDateFormat'
 import BackLink from '../../components/BackLink'
 import styles from './sections.module.css'
 
-const ADMIN_EMAIL = 'main@ngautomationhub.com'
-
 const SEVERITY_COLORS = {
   info: { bg: 'rgba(59,130,246,0.1)', color: '#3b82f6' },
   warning: { bg: 'rgba(245,158,11,0.1)', color: '#f59e0b' },
@@ -41,9 +39,8 @@ export default function UserDetailPage() {
   const { userId } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
-  const { user: currentUser } = useAuth()
+  const { user: currentUser, isSuperAdmin } = useAuth()
   const { formatDate, formatDateTime, formatTime } = useDateFormat()
-  const isSuperAdmin = currentUser?.email === ADMIN_EMAIL
   const [currentUserRole, setCurrentUserRole] = useState(null)
 
   const [profile, setProfile] = useState(null)
@@ -88,7 +85,7 @@ export default function UserDetailPage() {
   // Determine current user's role for link routing
   useEffect(() => {
     if (!currentUser) return
-    if (currentUser.email === ADMIN_EMAIL) { setCurrentUserRole('super_admin'); return }
+    if (isSuperAdmin) { setCurrentUserRole('super_admin'); return }
     async function loadRole() {
       const { data } = await supabase
         .from('user_profiles')

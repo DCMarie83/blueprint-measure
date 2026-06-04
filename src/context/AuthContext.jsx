@@ -11,6 +11,8 @@ export function AuthProvider({ children }) {
   const [userProfileLoading, setUserProfileLoading] = useState(false)
   const [company, setCompany] = useState(null)
   const [companyLoading, setCompanyLoading] = useState(false)
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+  const [superAdminChecked, setSuperAdminChecked] = useState(false)
 
   const refreshCompany = useCallback(async (companyId) => {
     const cid = companyId || userProfile?.company_id
@@ -61,12 +63,17 @@ export function AuthProvider({ children }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       // Listener stays synchronous — no Supabase queries here.
+      if (event === 'PASSWORD_RECOVERY') {
+        sessionStorage.setItem('bpm_password_recovery_pending', 'true')
+      }
       const u = session?.user ?? null
       setUser(u)
       if (!u) {
         setSetupComplete(null)
         setUserProfile(null)
         setCompany(null)
+        setIsSuperAdmin(false)
+        setSuperAdminChecked(false)
       }
     })
 
@@ -88,8 +95,30 @@ export function AuthProvider({ children }) {
     refreshCompany(userProfile.company_id)
   }, [userProfile?.company_id, refreshCompany])
 
+  // Check super-admin status when user changes — separate effect, async RPC call.
+  useEffect(() => {
+    if (!user?.id) {
+      setIsSuperAdmin(false)
+      setSuperAdminChecked(true)
+      return
+    }
+    setSuperAdminChecked(false)
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { data } = await supabase.rpc('is_super_admin')
+        if (!cancelled) setIsSuperAdmin(!!data)
+      } catch {
+        if (!cancelled) setIsSuperAdmin(false)
+      } finally {
+        if (!cancelled) setSuperAdminChecked(true)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [user?.id])
+
   return (
-    <AuthContext.Provider value={{ user, loading, setupComplete, setSetupComplete, userProfile, userProfileLoading, refreshUserProfile, company, companyLoading, refreshCompany }}>
+    <AuthContext.Provider value={{ user, loading, setupComplete, setSetupComplete, userProfile, userProfileLoading, refreshUserProfile, company, companyLoading, refreshCompany, isSuperAdmin, superAdminChecked }}>
       {children}
     </AuthContext.Provider>
   )

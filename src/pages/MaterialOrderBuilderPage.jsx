@@ -73,8 +73,8 @@ function exportMaterialsCsv(order, items, tierKey) {
 
 export default function MaterialOrderBuilderPage() {
   const { orderId } = useParams()
-  const { user, userProfile } = useAuth()
-  const isAdmin = userProfile?.role === 'contractor_admin' || user?.email === 'main@ngautomationhub.com'
+  const { userProfile, isSuperAdmin } = useAuth()
+  const isAdmin = userProfile?.role === 'contractor_admin' || isSuperAdmin
 
   const {
     order, items, stores, estimates, loading, saving, error,

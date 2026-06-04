@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 
 // Loads a single session plus all its zones from the database.
 export function useSession(sessionId) {
-  const { user } = useAuth()
+  const { user, isSuperAdmin } = useAuth()
   const [session, setSession] = useState(null)
   const [zones, setZones] = useState([])
   const [enabledFeatures, setEnabledFeatures] = useState({})
@@ -41,7 +41,7 @@ export function useSession(sessionId) {
     }
 
     // The super admin always gets every feature unlocked, regardless of company flags.
-    if (user.email === 'main@ngautomationhub.com') {
+    if (isSuperAdmin) {
       setEnabledFeatures({
         blueprint_measurement: true,
         multi_page_pdf:     true,

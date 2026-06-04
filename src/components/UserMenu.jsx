@@ -6,8 +6,6 @@ import { useAuth } from '../context/AuthContext'
 import ThemeToggle from './ThemeToggle'
 import styles from './UserMenu.module.css'
 
-const ADMIN_EMAIL = 'main@ngautomationhub.com'
-
 const ROLE_LABELS = {
   super_admin: 'Super Admin',
   contractor_admin: 'Admin',
@@ -15,7 +13,7 @@ const ROLE_LABELS = {
 }
 
 export default function UserMenu() {
-  const { user } = useAuth()
+  const { user, isSuperAdmin } = useAuth()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [role, setRole] = useState(null)
@@ -53,7 +51,6 @@ export default function UserMenu() {
   }
 
   const displayName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'
-  const isSuperAdmin = user.email === ADMIN_EMAIL
   const roleLabel = role ? ROLE_LABELS[role] ?? role : null
 
   return (
