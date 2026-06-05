@@ -156,6 +156,64 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
         lp.x, lp.y, lp.centX, lp.centY)
     })
 
+    // ── 3b. Draw canvas-measured deductions (dashed outline + translucent fill) ──
+    const DEDUCT_COLOR = '#1b2426'
+    visibleZones.forEach(({ zone }) => {
+      if (!Array.isArray(zone.deductions)) return
+      zone.deductions.forEach(ded => {
+        if ((ded.source || 'manual') !== 'canvas') return
+        if (!Array.isArray(ded.points) || ded.points.length < 2) return
+        const nonNull = ded.points.filter(p => p !== null && p !== undefined)
+        if (nonNull.length < 2) return
+
+        ctx.save()
+        const s = transformRef.current.scale
+
+        if (zone.measurement_type === 'SF' && nonNull.length >= 3) {
+          // Filled dashed polygon
+          ctx.beginPath()
+          ctx.moveTo(nonNull[0].x, nonNull[0].y)
+          nonNull.slice(1).forEach(p => ctx.lineTo(p.x, p.y))
+          ctx.closePath()
+          ctx.fillStyle = 'rgba(27, 36, 38, 0.25)'
+          ctx.fill()
+          ctx.strokeStyle = DEDUCT_COLOR
+          ctx.lineWidth = 2 / s
+          ctx.setLineDash([6 / s, 4 / s])
+          ctx.stroke()
+          ctx.setLineDash([])
+        } else if (zone.measurement_type === 'LF') {
+          // Dashed polyline with null-sentinel segment breaks
+          ctx.beginPath()
+          let penDown = false
+          for (const p of ded.points) {
+            if (p === null || p === undefined) { penDown = false }
+            else if (!penDown) { ctx.moveTo(p.x, p.y); penDown = true }
+            else { ctx.lineTo(p.x, p.y) }
+          }
+          ctx.strokeStyle = DEDUCT_COLOR
+          ctx.lineWidth = 2 / s
+          ctx.setLineDash([6 / s, 4 / s])
+          ctx.stroke()
+          ctx.setLineDash([])
+        }
+
+        // Label at centroid
+        const label = ded.name ? (ded.name.length > 14 ? ded.name.slice(0, 14) + '…' : ded.name) : ''
+        if (label && nonNull.length >= 2) {
+          const cx = nonNull.reduce((sum, p) => sum + p.x, 0) / nonNull.length
+          const cy = nonNull.reduce((sum, p) => sum + p.y, 0) / nonNull.length
+          ctx.font = `${12 / s}px Inter, system-ui, sans-serif`
+          ctx.fillStyle = DEDUCT_COLOR
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'middle'
+          ctx.fillText(label, cx, cy)
+        }
+
+        ctx.restore()
+      })
+    })
+
     // Draw active (in-progress) zone — includes finished segments + current points
     if (activeZone && activeZone.points && activeZone.points.some(p => p !== null)) {
       const colorIdx = (activeZone.colorIndex ?? zones.length) % ZONE_COLORS.length

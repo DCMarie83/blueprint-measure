@@ -750,7 +750,7 @@ export default function SessionPage() {
     setActiveZoneMeta(null)
     setDrawnPoints([])
     setRedrawingZoneId(null)
-  }, [activeZoneMeta, activeDeductionContext, drawnPoints, pixelsPerFoot, saveZone, redrawZone, redrawingZoneId, currentPage])
+  }, [activeZoneMeta, activeDeductionContext, drawnPoints, pixelsPerFoot, zones, saveZone, redrawZone, redrawingZoneId, currentPage])
 
   // Start drawing the next disconnected segment within the same zone.
   function handleAddSegment() {
@@ -1705,7 +1705,9 @@ export default function SessionPage() {
         {blueprintUrl && pixelsPerFoot && (
           <div className={styles.section}>
             <div className={styles.sectionTitle}>
-              {isAccumulating && !isDrawing ? 'Adding Segments…'
+              {activeDeductionContext
+                ? (isAccumulating && !isDrawing ? 'Measuring deduction…' : 'Measuring deduction…')
+                : isAccumulating && !isDrawing ? 'Adding Segments…'
                 : isDrawing ? (redrawingZoneId ? 'Redrawing…' : 'Drawing…')
                 : 'Add Zone'}
             </div>
