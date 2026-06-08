@@ -156,13 +156,13 @@ export function formatFeetInches(decimalFeet) {
 }
 
 // ── formatSF ──────────────────────────────────────────────────────────────────
-// Industry-standard display: whole numbers for SF >= 10, one decimal for small values.
-// CSV/PDF exports should use formatSFPrecise() for exact decimal values.
+// Precise 2-decimal display with trailing-zero trimming.
+// 159.55 → "159.55 sq ft", 250 → "250 sq ft", 9.10 → "9.1 sq ft"
 export function formatSF(decimalSF) {
   if (decimalSF == null || isNaN(decimalSF)) return '—'
-  if (decimalSF >= 10) return `${Math.round(decimalSF)} sq ft`
-  if (decimalSF >= 1) return `${decimalSF.toFixed(1)} sq ft`
-  return `${decimalSF.toFixed(1)} sq ft`
+  // toFixed(2) then strip unnecessary trailing zeros / decimal point
+  const num = parseFloat(decimalSF.toFixed(2))
+  return `${num} sq ft`
 }
 
 // Precise decimal SF for exports (CSV, PDF) — preserves 2 decimal places

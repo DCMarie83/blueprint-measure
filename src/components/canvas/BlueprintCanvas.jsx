@@ -472,7 +472,7 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
       if (metaParts.length > 0) labelParts.push(metaParts.join(' · '))
       if (result != null) {
         if (type === 'SF') {
-          labelParts.push(`${result >= 10 ? Math.round(result) : result.toFixed(1)} SF`)
+          labelParts.push(`${parseFloat(result.toFixed(2))} SF`)
         } else if (type === 'count') {
           labelParts.push(`${Math.round(result)} each`)
         } else if (type === 'LF') {

@@ -493,18 +493,20 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                             style={{ flex: 1, minWidth: 0 }}
                           />
                           {isCanvas ? (
-                            <span style={{ width: 48, padding: '6px 2px', fontSize: 12, color: 'var(--color-text-muted)', textAlign: 'right', flexShrink: 0 }}>{Number(d.value || 0).toFixed(1)}</span>
+                            <span style={{ padding: '6px 2px', fontSize: 12, color: 'var(--color-text-muted)', textAlign: 'right', flexShrink: 0, whiteSpace: 'nowrap' }}>{zone.measurement_type === 'LF' ? formatLF(Number(d.value || 0)) : formatSF(Number(d.value || 0))}</span>
                           ) : (
-                            <input
-                              className={styles.editInput}
-                              type="number" min="0.01" step="0.01"
-                              value={d.value}
-                              onChange={e => setEditDeductions(prev => prev.map((x, i) => i === idx ? { ...x, value: e.target.value } : x))}
-                              size={1}
-                              style={{ width: 48, minWidth: 0, flexShrink: 0 }}
-                            />
+                            <>
+                              <input
+                                className={styles.editInput}
+                                type="number" min="0.01" step="0.01"
+                                value={d.value}
+                                onChange={e => setEditDeductions(prev => prev.map((x, i) => i === idx ? { ...x, value: e.target.value } : x))}
+                                size={1}
+                                style={{ width: 48, minWidth: 0, flexShrink: 0 }}
+                              />
+                              <span style={{ fontSize: 11, color: 'var(--color-text-muted)', flexShrink: 0 }}>{zone.measurement_type}</span>
+                            </>
                           )}
-                          <span style={{ fontSize: 11, color: 'var(--color-text-muted)', flexShrink: 0 }}>{zone.measurement_type}</span>
                           <div style={{ display: 'flex', gap: 4, flexShrink: 0, alignItems: 'center' }}>
                             {isCanvas && onStartDeductionMeasure && (
                               <button type="button" className={styles.redrawBtn}
@@ -590,14 +592,13 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                 {isExpanded && (<>
                 {/* Deduction breakdown OR simple result */}
                 {(zone.deductions?.length > 0 && zone.surface_type !== 'Wall') ? (() => {
-                  const unit = zone.measurement_type === 'SF' ? 'SF' : 'LF'
-                  const fmt = (v) => (Number(v) || 0).toFixed(2)
+                  const fmtDed = (v) => zone.measurement_type === 'LF' ? formatLF(Number(v) || 0) : formatSF(Number(v) || 0)
                   return (
                     <div style={{ fontSize: 13, lineHeight: 1.6 }}>
-                      <div style={{ color: 'var(--color-text-muted)' }}>Gross: {fmt(zone.gross_result)} {unit}</div>
+                      <div style={{ color: 'var(--color-text-muted)' }}>Gross: {fmtDed(zone.gross_result)}</div>
                       {zone.deductions.map(d => (
                         <div key={d.id} style={{ paddingLeft: 12, color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span>− {d.name}: {fmt(d.value)} {unit}</span>
+                          <span>− {d.name}: {fmtDed(d.value)}</span>
                           <button
                             onClick={() => {
                               const newDeds = zone.deductions.filter(x => x.id !== d.id)
@@ -614,7 +615,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                           >×</button>
                         </div>
                       ))}
-                      <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--color-text)' }}>Net: {fmt(zone.result)} {unit}</div>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--color-text)' }}>Net: {fmtDed(zone.result)}</div>
                     </div>
                   )
                 })() : (

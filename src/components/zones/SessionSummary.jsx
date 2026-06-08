@@ -23,7 +23,7 @@ export default function SessionSummary({ zones }) {
   // LF: feet-inches format — "12' 6½"" with "linear" label.
   // count: whole number with "items" label.
   const cards = [
-    sfZones.length    > 0 && { label: 'sq ft',  value: totalSF >= 10 ? String(Math.round(totalSF)) : totalSF.toFixed(1), color: TYPE_COLORS.SF },
+    sfZones.length    > 0 && { label: 'sq ft',  value: String(parseFloat(totalSF.toFixed(2))), color: TYPE_COLORS.SF },
     lfZones.length    > 0 && { label: 'linear',  value: formatLF(totalLF),            color: TYPE_COLORS.LF    },
     countZones.length > 0 && { label: 'items',   value: String(Math.round(totalCount)), color: TYPE_COLORS.count },
   ].filter(Boolean)
