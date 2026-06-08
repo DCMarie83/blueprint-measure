@@ -483,27 +483,29 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                     {editDeductions.map((d, idx) => {
                       const isCanvas = (d.source || 'manual') === 'canvas'
                       return (
-                        <div key={d.id} style={{ display: 'flex', flexWrap: 'nowrap', gap: 6, alignItems: 'center', marginBottom: 4, minWidth: 0 }}>
+                        <div key={d.id} style={{ display: 'flex', flexWrap: 'nowrap', gap: 4, alignItems: 'center', marginBottom: 4, minWidth: 0, overflow: 'hidden' }}>
                           <input
                             className={styles.editInput}
                             value={d.name}
                             onChange={e => setEditDeductions(prev => prev.map((x, i) => i === idx ? { ...x, name: e.target.value } : x))}
                             placeholder="Name"
+                            size={1}
                             style={{ flex: 1, minWidth: 0 }}
                           />
                           {isCanvas ? (
-                            <span style={{ width: 56, padding: '6px 4px', fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'right', flexShrink: 0 }}>{Number(d.value || 0).toFixed(2)}</span>
+                            <span style={{ width: 48, padding: '6px 2px', fontSize: 12, color: 'var(--color-text-muted)', textAlign: 'right', flexShrink: 0 }}>{Number(d.value || 0).toFixed(1)}</span>
                           ) : (
                             <input
                               className={styles.editInput}
                               type="number" min="0.01" step="0.01"
                               value={d.value}
                               onChange={e => setEditDeductions(prev => prev.map((x, i) => i === idx ? { ...x, value: e.target.value } : x))}
-                              style={{ width: 56, flexShrink: 0 }}
+                              size={1}
+                              style={{ width: 48, minWidth: 0, flexShrink: 0 }}
                             />
                           )}
                           <span style={{ fontSize: 11, color: 'var(--color-text-muted)', flexShrink: 0 }}>{zone.measurement_type}</span>
-                          <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                          <div style={{ display: 'flex', gap: 4, flexShrink: 0, alignItems: 'center' }}>
                             {isCanvas && onStartDeductionMeasure && (
                               <button type="button" className={styles.redrawBtn}
                                 onClick={() => {

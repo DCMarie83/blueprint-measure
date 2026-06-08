@@ -198,16 +198,23 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
           ctx.setLineDash([])
         }
 
-        // Label at centroid
+        // Label at centroid (SF) or first point (LF)
         const label = ded.name ? (ded.name.length > 14 ? ded.name.slice(0, 14) + '…' : ded.name) : ''
         if (label && nonNull.length >= 2) {
-          const cx = nonNull.reduce((sum, p) => sum + p.x, 0) / nonNull.length
-          const cy = nonNull.reduce((sum, p) => sum + p.y, 0) / nonNull.length
-          ctx.font = `${12 / s}px Inter, system-ui, sans-serif`
-          ctx.fillStyle = DEDUCT_COLOR
-          ctx.textAlign = 'center'
-          ctx.textBaseline = 'middle'
-          ctx.fillText(label, cx, cy)
+          // Bounding-box size check — skip label if shape is too small to fit it
+          const xs = nonNull.map(p => p.x)
+          const ys = nonNull.map(p => p.y)
+          const bboxW = (Math.max(...xs) - Math.min(...xs)) * s
+          const bboxH = (Math.max(...ys) - Math.min(...ys)) * s
+          if (bboxW > 24 || bboxH > 24) {
+            const lx = zone.measurement_type === 'LF' ? nonNull[0].x : nonNull.reduce((sum, p) => sum + p.x, 0) / nonNull.length
+            const ly = zone.measurement_type === 'LF' ? nonNull[0].y : nonNull.reduce((sum, p) => sum + p.y, 0) / nonNull.length
+            ctx.font = `${12 / s}px Inter, system-ui, sans-serif`
+            ctx.fillStyle = DEDUCT_COLOR
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'middle'
+            ctx.fillText(label, lx, ly)
+          }
         }
 
         ctx.restore()

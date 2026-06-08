@@ -642,7 +642,7 @@ export default function SessionPage() {
   }, [isDrawing])
 
   const handleZoneComplete = useCallback(async () => {
-    if (!activeZoneMeta || drawnPoints.length < 1) return
+    if ((!activeZoneMeta && !activeDeductionContext) || drawnPoints.length < 1) return
     if (!pixelsPerFoot) {
       alert('Please set a scale before measuring.')
       return
@@ -761,7 +761,7 @@ export default function SessionPage() {
   // Combine all finished segments (+ any current in-progress points) into one
   // zone record and save it. Called when the user clicks "Done — Save Zone".
   const handleFinalizeZone = useCallback(async () => {
-    if (!activeZoneMeta) return
+    if (!activeZoneMeta && !activeDeductionContext) return
     if (!pixelsPerFoot) {
       alert('Please set a scale before measuring.')
       return
@@ -850,7 +850,8 @@ export default function SessionPage() {
 
   function onStartDeductionMeasure(zone, onMeasured) {
     setActiveDeductionContext({ zoneId: zone.id, measurement_type: zone.measurement_type, onMeasured })
-    setActiveZoneMeta({ name: '__deduction__', type: zone.measurement_type })
+    // Don't set activeZoneMeta — deduction drawing uses activeDeductionContext
+    // as its context instead of the zone-creation sentinel.
     setFinishedSegments([])
     setIsAccumulating(false)
     setDrawnPoints([])
@@ -1320,7 +1321,7 @@ export default function SessionPage() {
   const activeZoneForCanvas = (isDrawing || isAccumulating)
     ? {
         points: activeCanvasPoints,
-        measurement_type: activeZoneMeta?.type,
+        measurement_type: activeZoneMeta?.type ?? activeDeductionContext?.measurement_type,
         color: activeZoneMeta?.color ?? null,
         colorIndex: redrawingZoneIndex >= 0 ? redrawingZoneIndex : pageZones.length,
         redrawingId: redrawingZoneId,
@@ -1329,13 +1330,14 @@ export default function SessionPage() {
 
   // Running total from all completed segments (for ZoneDrawPanel accumulation UI)
   const accumulatedResult = (() => {
-    if (finishedSegments.length === 0 || !pixelsPerFoot || !activeZoneMeta) return 0
+    const drawType = activeZoneMeta?.type ?? activeDeductionContext?.measurement_type
+    if (finishedSegments.length === 0 || !pixelsPerFoot || !drawType) return 0
     const pts = []
     finishedSegments.forEach((seg, i) => {
       if (i > 0) pts.push(null)
       pts.push(...seg.points)
     })
-    return calculate(activeZoneMeta.type, pts, pixelsPerFoot) ?? 0
+    return calculate(drawType, pts, pixelsPerFoot) ?? 0
   })()
 
   // For PDFs: pass the rendered data URL. For images: pass the storage URL directly.
@@ -1375,7 +1377,7 @@ export default function SessionPage() {
               key={t}
               icon={icon}
               label={lbl}
-              active={(isDrawing || isAccumulating) ? activeZoneMeta?.type === t : selectedType === t}
+              active={(isDrawing || isAccumulating) ? (activeZoneMeta?.type ?? activeDeductionContext?.measurement_type) === t : selectedType === t}
               onClick={() => { if (!isDrawing && !isAccumulating) setSelectedType(t) }}
               disabled={isDrawing || isAccumulating}
               size={14}
@@ -1723,7 +1725,7 @@ export default function SessionPage() {
               accumulatedResult={accumulatedResult}
               pointCount={drawnPoints.length}
               onFinish={handleZoneComplete}
-              drawingType={activeZoneMeta?.type}
+              drawingType={activeZoneMeta?.type ?? activeDeductionContext?.measurement_type}
               sfPreview={sfPreview}
               wallPreview={wallPreview}
               enabledFeatures={enabledFeatures}
@@ -1944,7 +1946,7 @@ export default function SessionPage() {
         {/* Drawing hint */}
         {isDrawing && (
           <div className={styles.hint}>
-            {activeZoneMeta?.type === 'count'
+            {(activeZoneMeta?.type ?? activeDeductionContext?.measurement_type) === 'count'
               ? isAccumulating
                 ? `Segment ${finishedSegments.length + 1} — click items · Finish Segment or Done to save`
                 : 'Click each item to count it · Finish Zone to add segments'
