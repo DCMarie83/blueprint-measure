@@ -4,12 +4,13 @@ const STATUS_MAP = {
   draft: { label: 'Draft', className: 'draft' },
   sent: { label: 'Sent', className: 'sent' },
   viewed: { label: 'Viewed', className: 'viewed' },
-  paid: { label: 'Paid', className: 'paid' },
+  partial: { label: 'Partially paid', className: 'partial' },
+  paid: { label: 'Paid in full', className: 'paid' },
   void: { label: 'Void', className: 'void' },
 }
 
 export default function InvoiceStatusBadge({ status, isOverdue }) {
-  if (isOverdue && status === 'sent') {
+  if (isOverdue && (status === 'sent' || status === 'partial')) {
     return <span className={`${styles.badge} ${styles.overdue}`}>Overdue</span>
   }
   const cfg = STATUS_MAP[status] ?? STATUS_MAP.draft

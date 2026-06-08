@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { Download, Send, CheckCircle, XCircle, Edit, Trash2 } from 'lucide-react'
+import { Download, Send, CheckCircle, XCircle, Edit, Trash2, RotateCcw } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import BackLink from '../components/BackLink'
 import InvoiceStatusBadge from '../components/invoices/InvoiceStatusBadge'
@@ -14,8 +14,9 @@ const UNIT_LABELS = { sf: 'SF', lf: 'LF', each: 'Each', hour: 'Hour', lump_sum: 
 const PAYMENT_METHODS = [
   { value: 'cash', label: 'Cash' },
   { value: 'check', label: 'Check' },
+  { value: 'ach', label: 'ACH' },
   { value: 'card', label: 'Card' },
-  { value: 'bank_transfer', label: 'Bank Transfer' },
+  { value: 'venmo', label: 'Venmo' },
   { value: 'other', label: 'Other' },
 ]
 
@@ -29,16 +30,23 @@ function fmtDate(d) {
   return new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
+function fmtDateShort(d) {
+  if (!d) return '—'
+  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
 export default function InvoiceDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { company } = useAuth()
-  const { invoice, lineItems, loading, error, refetch } = useInvoice(id)
-  const { markSent, markPaid, markVoid, deleteInvoice } = useInvoiceMutations()
+  const { invoice, lineItems, payments, loading, error, refetch } = useInvoice(id)
+  const { markSent, markPaidInFull, markVoid, reopenInvoice, recordPayment, deletePayment, deleteInvoice } = useInvoiceMutations()
 
   const [showPayForm, setShowPayForm] = useState(false)
   const [payAmount, setPayAmount] = useState('')
   const [payMethod, setPayMethod] = useState('check')
+  const [payDate, setPayDate] = useState(new Date().toISOString().slice(0, 10))
+  const [payRef, setPayRef] = useState('')
   const [payNotes, setPayNotes] = useState('')
   const [showVoidForm, setShowVoidForm] = useState(false)
   const [voidReason, setVoidReason] = useState('')
@@ -111,13 +119,31 @@ export default function InvoiceDetailPage() {
     finally { setActionSaving(false) }
   }
 
-  async function handleMarkPaid() {
+  async function handleRecordPayment() {
+    const amt = Number(payAmount)
+    if (!amt || amt <= 0) { setActionError('Enter a payment amount.'); return }
     setActionSaving(true); setActionError(null)
     try {
-      await markPaid(id, { paid_amount: payAmount || invoice.total, payment_method: payMethod, payment_notes: payNotes })
+      await recordPayment(id, { amount: amt, payment_method: payMethod, payment_date: payDate, reference_number: payRef, notes: payNotes })
       setShowPayForm(false)
+      setPayAmount(''); setPayMethod('check'); setPayDate(new Date().toISOString().slice(0, 10)); setPayRef(''); setPayNotes('')
       await refetch()
     } catch (err) { setActionError(err.message) }
+    finally { setActionSaving(false) }
+  }
+
+  async function handleMarkPaidInFull() {
+    setActionSaving(true); setActionError(null)
+    try { await markPaidInFull(id); await refetch() }
+    catch (err) { setActionError(err.message) }
+    finally { setActionSaving(false) }
+  }
+
+  async function handleDeletePayment(paymentId) {
+    if (!window.confirm('Remove this payment?')) return
+    setActionSaving(true); setActionError(null)
+    try { await deletePayment(paymentId, id); await refetch() }
+    catch (err) { setActionError(err.message) }
     finally { setActionSaving(false) }
   }
 
@@ -125,6 +151,13 @@ export default function InvoiceDetailPage() {
     if (!voidReason.trim()) { setActionError('Void reason is required.'); return }
     setActionSaving(true); setActionError(null)
     try { await markVoid(id, voidReason); setShowVoidForm(false); await refetch() }
+    catch (err) { setActionError(err.message) }
+    finally { setActionSaving(false) }
+  }
+
+  async function handleReopen() {
+    setActionSaving(true); setActionError(null)
+    try { await reopenInvoice(id); await refetch() }
     catch (err) { setActionError(err.message) }
     finally { setActionSaving(false) }
   }
@@ -140,6 +173,11 @@ export default function InvoiceDetailPage() {
 
   const status = invoice.status
   const overdue = isOverdue(invoice)
+  const total = Number(invoice.total) || 0
+  const paidAmount = Number(invoice.paid_amount) || 0
+  const balanceDue = Math.max(0, total - paidAmount)
+  const isVoid = status === 'void'
+  const canRecordPayment = !isVoid && balanceDue > 0
 
   return (
     <div className={styles.page}>
@@ -163,7 +201,7 @@ export default function InvoiceDetailPage() {
             <button className={styles.toolBtn} onClick={handleDownloadPDF} disabled={pdfLoading}>
               <Download size={15} /> {pdfLoading ? '…' : 'PDF'}
             </button>
-            {sendSuccess && <span style={{ color: 'var(--color-success)', fontSize: 13, fontWeight: 600 }}>Sent — good boy!</span>}
+            {sendSuccess && <span style={{ color: 'var(--color-success)', fontSize: 13, fontWeight: 600 }}>Sent!</span>}
             {status === 'draft' && (
               <>
                 <button className={styles.toolBtn} onClick={() => navigate(`/invoices/new?edit=${id}`)}>
@@ -175,18 +213,25 @@ export default function InvoiceDetailPage() {
                 <button className={styles.dangerBtn} onClick={handleDelete}><Trash2 size={15} /> Delete</button>
               </>
             )}
-            {(status === 'sent' || status === 'viewed') && (
+            {(status === 'sent' || status === 'viewed' || status === 'partial') && (
               <>
                 <button className={styles.toolBtn} onClick={handleSendInvoice} disabled={actionSaving}>
                   <Send size={15} /> {actionSaving ? 'Sending…' : 'Resend'}
                 </button>
-                <button className={styles.actionBtn} onClick={() => { setShowPayForm(true); setPayAmount(String(invoice.total)) }} disabled={actionSaving}>
-                  <CheckCircle size={15} /> Mark Paid
-                </button>
+                {canRecordPayment && (
+                  <button className={styles.actionBtn} onClick={handleMarkPaidInFull} disabled={actionSaving}>
+                    <CheckCircle size={15} /> Mark paid in full
+                  </button>
+                )}
                 <button className={styles.dangerBtn} onClick={() => setShowVoidForm(true)}>
                   <XCircle size={15} /> Void
                 </button>
               </>
+            )}
+            {isVoid && (
+              <button className={styles.toolBtn} onClick={handleReopen} disabled={actionSaving}>
+                <RotateCcw size={15} /> Reopen invoice
+              </button>
             )}
           </div>
         </div>
@@ -222,13 +267,21 @@ export default function InvoiceDetailPage() {
           </table>
         </div>
 
-        {/* Totals */}
+        {/* Totals + Balance */}
         <div className={styles.totals}>
           <div className={styles.totalRow}><span>Subtotal</span><span>{fmtMoney(invoice.subtotal)}</span></div>
           {Number(invoice.adjustment_amount) !== 0 && (
             <div className={styles.totalRow}><span>{invoice.adjustment_label || 'Adjustment'}</span><span>{fmtMoney(invoice.adjustment_amount)}</span></div>
           )}
-          <div className={styles.totalRowGrand}><span>Total</span><span>{fmtMoney(invoice.total)}</span></div>
+          <div className={styles.totalRowGrand}><span>Total</span><span>{fmtMoney(total)}</span></div>
+          {paidAmount > 0 && (
+            <div className={styles.totalRow}><span>Payments received</span><span style={{ color: 'var(--color-success)' }}>−{fmtMoney(paidAmount)}</span></div>
+          )}
+          {balanceDue > 0 ? (
+            <div className={styles.totalRowGrand}><span>Balance due</span><span style={{ color: 'var(--color-danger)' }}>{fmtMoney(balanceDue)}</span></div>
+          ) : total > 0 && status !== 'draft' ? (
+            <div className={styles.totalRowGrand}><span style={{ color: 'var(--color-success)' }}>Paid in full</span><span style={{ color: 'var(--color-success)' }}>{fmtMoney(0)}</span></div>
+          ) : null}
         </div>
 
         {/* Notes + Terms */}
@@ -245,18 +298,58 @@ export default function InvoiceDetailPage() {
           </div>
         )}
 
-        {/* Payment details */}
-        {invoice.paid_at && (
-          <div className={styles.section}>
-            <h3 className={styles.sectionLabel}>Payment Received</h3>
-            <div className={styles.paymentDetails}>
-              <div><strong>Date:</strong> {fmtDate(invoice.paid_at)}</div>
-              <div><strong>Amount:</strong> {fmtMoney(invoice.paid_amount)}</div>
-              {invoice.payment_method && <div><strong>Method:</strong> {invoice.payment_method.replace(/_/g, ' ')}</div>}
-              {invoice.payment_notes && <div><strong>Notes:</strong> {invoice.payment_notes}</div>}
+        {/* Payments section */}
+        <div className={styles.section}>
+          <h3 className={styles.sectionLabel}>Payments</h3>
+          {payments.length === 0 ? (
+            <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>No payments recorded yet.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {payments.map(pmt => (
+                <div key={pmt.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: 'var(--color-surface-2)', borderRadius: 'var(--radius-md)', fontSize: 14 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontWeight: 600, fontFamily: 'var(--font-mono)' }}>{fmtMoney(pmt.amount)}</span>
+                      {pmt.payment_method && <span style={{ fontSize: 12, color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>{pmt.payment_method}</span>}
+                      <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{fmtDateShort(pmt.payment_date)}</span>
+                    </div>
+                    {(pmt.reference_number || pmt.notes) && (
+                      <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                        {pmt.reference_number && <span>Ref: {pmt.reference_number}</span>}
+                        {pmt.reference_number && pmt.notes && <span> · </span>}
+                        {pmt.notes && <span>{pmt.notes}</span>}
+                      </div>
+                    )}
+                  </div>
+                  {!isVoid && (
+                    <button
+                      onClick={() => handleDeletePayment(pmt.id)}
+                      disabled={actionSaving}
+                      style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: 16, padding: '4px 8px', opacity: 0.6, transition: 'opacity 0.15s' }}
+                      onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = 'var(--color-danger)' }}
+                      onMouseLeave={e => { e.currentTarget.style.opacity = '0.6'; e.currentTarget.style.color = 'var(--color-text-muted)' }}
+                      title="Remove payment"
+                    >×</button>
+                  )}
+                </div>
+              ))}
             </div>
-          </div>
-        )}
+          )}
+
+          {/* Record a payment button */}
+          {canRecordPayment && !showPayForm && (
+            <button
+              className={styles.toolBtn}
+              style={{ marginTop: 12 }}
+              onClick={() => { setPayAmount(String(balanceDue.toFixed(2))); setShowPayForm(true) }}
+            >
+              Record a payment
+            </button>
+          )}
+          {isVoid && (
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', margin: '12px 0 0' }}>Reopen this invoice to record payments.</p>
+          )}
+        </div>
 
         {/* Void reason */}
         {invoice.void_reason && (
@@ -266,14 +359,14 @@ export default function InvoiceDetailPage() {
           </div>
         )}
 
-        {/* Mark Paid inline form */}
+        {/* Record Payment inline form */}
         {showPayForm && (
           <div className={styles.inlineForm}>
-            <h3 className={styles.formTitle}>Record Payment</h3>
+            <h3 className={styles.formTitle}>Record a payment</h3>
             <div className={styles.formRow}>
               <label className={styles.formField}>
                 <span>Amount</span>
-                <input type="number" className={styles.formInput} value={payAmount} onChange={e => setPayAmount(e.target.value)} step="0.01" />
+                <input type="number" className={styles.formInput} value={payAmount} onChange={e => setPayAmount(e.target.value)} step="0.01" min="0.01" />
               </label>
               <label className={styles.formField}>
                 <span>Method</span>
@@ -281,14 +374,24 @@ export default function InvoiceDetailPage() {
                   {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                 </select>
               </label>
+              <label className={styles.formField}>
+                <span>Date</span>
+                <input type="date" className={styles.formInput} value={payDate} onChange={e => setPayDate(e.target.value)} />
+              </label>
             </div>
-            <label className={styles.formField}>
-              <span>Notes (optional)</span>
-              <textarea className={styles.formTextarea} value={payNotes} onChange={e => setPayNotes(e.target.value)} rows={2} />
-            </label>
+            <div className={styles.formRow}>
+              <label className={styles.formField}>
+                <span>Reference (optional)</span>
+                <input type="text" className={styles.formInput} value={payRef} onChange={e => setPayRef(e.target.value)} placeholder="Check #, transaction ID" />
+              </label>
+              <label className={styles.formField}>
+                <span>Notes (optional)</span>
+                <input type="text" className={styles.formInput} value={payNotes} onChange={e => setPayNotes(e.target.value)} />
+              </label>
+            </div>
             <div className={styles.formActions}>
               <button className={styles.cancelBtn} onClick={() => setShowPayForm(false)}>Cancel</button>
-              <button className={styles.confirmBtn} onClick={handleMarkPaid} disabled={actionSaving}>{actionSaving ? 'Saving…' : 'Confirm Payment'}</button>
+              <button className={styles.confirmBtn} onClick={handleRecordPayment} disabled={actionSaving}>{actionSaving ? 'Saving…' : 'Save payment'}</button>
             </div>
           </div>
         )}

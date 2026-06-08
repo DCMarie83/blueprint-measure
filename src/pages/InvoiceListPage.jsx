@@ -17,7 +17,7 @@ function fmtDate(d) {
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-const STATUS_FILTERS = ['all', 'draft', 'sent', 'paid', 'void']
+const STATUS_FILTERS = ['all', 'draft', 'sent', 'partial', 'paid', 'void']
 const SORT_OPTIONS = [
   { value: 'recent', label: 'Recent' },
   { value: 'due_date', label: 'Due date' },

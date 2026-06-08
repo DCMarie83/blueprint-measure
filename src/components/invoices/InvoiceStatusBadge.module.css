@@ -11,6 +11,7 @@
 .draft { background: var(--color-neutral-bg); color: var(--color-neutral); }
 .sent { background: var(--color-warning-bg); color: var(--color-warning); }
 .viewed { background: var(--color-info-bg); color: var(--color-info); }
+.partial { background: rgba(245, 158, 11, 0.12); color: #d97706; }
 .paid { background: var(--color-success-bg); color: var(--color-success); }
 .void { background: var(--color-danger-bg); color: var(--color-danger); text-decoration: line-through; }
 .overdue { background: var(--color-danger-bg); color: var(--color-danger); border: 1px solid var(--color-danger-border); }

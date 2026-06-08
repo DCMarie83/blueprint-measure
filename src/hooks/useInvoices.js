@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 
 export function isOverdue(invoice) {
-  if (!invoice || invoice.status !== 'sent') return false
+  if (!invoice || (invoice.status !== 'sent' && invoice.status !== 'partial')) return false
   if (!invoice.due_date) return false
   return new Date(invoice.due_date) < new Date()
 }
@@ -52,6 +52,7 @@ export function useInvoices({ projectId, clientId, status: statusFilter, dateFro
 export function useInvoice(invoiceId) {
   const [invoice, setInvoice] = useState(null)
   const [lineItems, setLineItems] = useState([])
+  const [payments, setPayments] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -69,6 +70,16 @@ export function useInvoice(invoiceId) {
       if (err) throw err
       setInvoice(data)
       setLineItems((data?.invoice_line_items ?? []).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)))
+
+      // Fetch payments
+      const { data: pmts, error: pmtErr } = await supabase
+        .from('invoice_payments')
+        .select('*')
+        .eq('invoice_id', invoiceId)
+        .order('payment_date', { ascending: true })
+        .order('created_at', { ascending: true })
+      if (pmtErr) throw pmtErr
+      setPayments(pmts ?? [])
     } catch (err) {
       setError(err.message)
     } finally {
@@ -78,7 +89,7 @@ export function useInvoice(invoiceId) {
 
   useEffect(() => { fetchInvoice() }, [fetchInvoice])
 
-  return { invoice, lineItems, loading, error, saving, setSaving, refetch: fetchInvoice }
+  return { invoice, lineItems, payments, loading, error, saving, setSaving, refetch: fetchInvoice }
 }
 
 export function useInvoiceMutations() {
@@ -229,14 +240,94 @@ export function useInvoiceMutations() {
     } catch { /* activity logging is best-effort */ }
   }
 
-  async function markPaid(id, { paid_amount, payment_method, payment_notes }) {
-    const { error: err } = await supabase.from('invoices').update({
-      status: 'paid', paid_at: new Date().toISOString(), paid_amount: Number(paid_amount) || 0,
-      payment_method: payment_method || null, payment_notes: payment_notes || null,
+  // ── Compute status from paid total ────────────────────────────────────────
+  // Returns { status, paid_at } to write on the invoice.
+  function computeStatusFromPayments(newPaidAmount, invoice) {
+    const total = Number(invoice.total) || 0
+    if (newPaidAmount >= total && total > 0) {
+      return { status: 'paid', paid_at: invoice.paid_at || new Date().toISOString() }
+    }
+    if (newPaidAmount > 0) {
+      return { status: 'partial', paid_at: null }
+    }
+    // No payments — revert to sent or draft
+    return { status: invoice.sent_at ? 'sent' : 'draft', paid_at: null }
+  }
+
+  // ── Payment functions ─────────────────────────────────────────────────────
+
+  async function recordPayment(invoiceId, { amount, payment_method, payment_date, reference_number, notes }) {
+    // Fetch parent invoice for company_id + status check
+    const { data: inv, error: fetchErr } = await supabase.from('invoices').select('company_id, total, paid_at, sent_at, status').eq('id', invoiceId).single()
+    if (fetchErr) throw new Error(fetchErr.message)
+    if (inv.status === 'void') throw new Error('Cannot record payment on a voided invoice')
+
+    const { error: insErr } = await supabase.from('invoice_payments').insert({
+      invoice_id: invoiceId,
+      company_id: inv.company_id,
+      amount: Number(amount) || 0,
+      payment_method: payment_method || null,
+      payment_date: payment_date || new Date().toISOString().slice(0, 10),
+      reference_number: reference_number || null,
+      notes: notes || null,
+      recorded_by: user?.id,
+    })
+    if (insErr) throw new Error(insErr.message)
+
+    // Recompute cached sum
+    const { data: pmts } = await supabase.from('invoice_payments').select('amount').eq('invoice_id', invoiceId)
+    const newPaidAmount = (pmts ?? []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+    const { status, paid_at } = computeStatusFromPayments(newPaidAmount, inv)
+
+    const { error: updErr } = await supabase.from('invoices').update({
+      paid_amount: newPaidAmount,
+      status,
+      paid_at,
+      payment_method: null,
+      payment_notes: null,
       updated_at: new Date().toISOString(),
-    }).eq('id', id)
-    if (err) throw new Error(err.message)
-    logInvoiceActivity(id, 'invoice_paid', 'Invoice paid', { paid_amount: Number(paid_amount) || 0, payment_method })
+    }).eq('id', invoiceId)
+    if (updErr) throw new Error(updErr.message)
+
+    logInvoiceActivity(invoiceId, 'payment_recorded', `Payment of $${Number(amount).toFixed(2)} recorded`, { amount: Number(amount), payment_method })
+  }
+
+  async function deletePayment(paymentId, invoiceId) {
+    const { error: delErr } = await supabase.from('invoice_payments').delete().eq('id', paymentId)
+    if (delErr) throw new Error(delErr.message)
+
+    // Recompute cached sum
+    const { data: inv } = await supabase.from('invoices').select('total, paid_at, sent_at, status').eq('id', invoiceId).single()
+    const { data: pmts } = await supabase.from('invoice_payments').select('amount').eq('invoice_id', invoiceId)
+    const newPaidAmount = (pmts ?? []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+    const { status, paid_at } = computeStatusFromPayments(newPaidAmount, inv)
+
+    const { error: updErr } = await supabase.from('invoices').update({
+      paid_amount: newPaidAmount,
+      status,
+      paid_at,
+      payment_method: null,
+      payment_notes: null,
+      updated_at: new Date().toISOString(),
+    }).eq('id', invoiceId)
+    if (updErr) throw new Error(updErr.message)
+
+    logInvoiceActivity(invoiceId, 'payment_deleted', 'Payment removed')
+  }
+
+  async function markPaidInFull(invoiceId) {
+    const { data: inv, error: fetchErr } = await supabase.from('invoices').select('total, paid_amount, company_id, sent_at, paid_at, status').eq('id', invoiceId).single()
+    if (fetchErr) throw new Error(fetchErr.message)
+    if (inv.status === 'void') throw new Error('Cannot record payment on a voided invoice')
+
+    const remaining = (Number(inv.total) || 0) - (Number(inv.paid_amount) || 0)
+    if (remaining <= 0) {
+      // Already fully paid — just flip status
+      await supabase.from('invoices').update({ status: 'paid', paid_at: inv.paid_at || new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', invoiceId)
+      return
+    }
+
+    await recordPayment(invoiceId, { amount: remaining, payment_method: null, payment_date: null, reference_number: null, notes: 'Marked paid in full' })
   }
 
   async function markVoid(id, reason) {
@@ -247,5 +338,25 @@ export function useInvoiceMutations() {
     logInvoiceActivity(id, 'invoice_voided', 'Invoice voided', { void_reason: reason })
   }
 
-  return { createInvoice, updateInvoice, deleteInvoice, markSent, markPaid, markVoid, saving, error }
+  async function reopenInvoice(id) {
+    // Recompute status from existing payments
+    const { data: inv, error: fetchErr } = await supabase.from('invoices').select('total, paid_at, sent_at, status').eq('id', id).single()
+    if (fetchErr) throw new Error(fetchErr.message)
+
+    const { data: pmts } = await supabase.from('invoice_payments').select('amount').eq('invoice_id', id)
+    const paidAmount = (pmts ?? []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+    const { status, paid_at } = computeStatusFromPayments(paidAmount, inv)
+
+    const { error: updErr } = await supabase.from('invoices').update({
+      status,
+      paid_at,
+      paid_amount: paidAmount,
+      void_reason: null,
+      updated_at: new Date().toISOString(),
+    }).eq('id', id)
+    if (updErr) throw new Error(updErr.message)
+    logInvoiceActivity(id, 'invoice_reopened', 'Invoice reopened')
+  }
+
+  return { createInvoice, updateInvoice, deleteInvoice, markSent, markPaidInFull, markVoid, reopenInvoice, recordPayment, deletePayment, saving, error }
 }
