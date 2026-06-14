@@ -21,3 +21,6 @@ export const DOMAINS = {
 export const FEATURE_FLAGS = {
   whiteLabel: false,
 };
+
+// Days of full access after trial_ends_at before hard lock.
+export const TRIAL_GRACE_DAYS = 3;
