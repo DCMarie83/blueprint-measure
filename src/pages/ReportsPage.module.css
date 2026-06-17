@@ -1,0 +1,139 @@
+.page { min-height: 100vh; background: var(--color-bg); }
+.main { max-width: 900px; margin: 0 auto; padding: 32px; }
+@media (max-width: 600px) { .main { padding: 16px; } }
+
+.screenHeader { margin-bottom: 8px; }
+.title {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 28px; font-weight: 700; margin: 0;
+}
+
+.placeholder { text-align: center; padding: 60px 20px; }
+
+/* ── Controls (hidden in print) ───────────────────────────────────────── */
+.controls {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  gap: 16px; flex-wrap: wrap; margin: 20px 0;
+}
+
+.dateRow { display: flex; gap: 12px; flex-wrap: wrap; }
+
+.dateLabel {
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: 12px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--color-text-muted);
+}
+
+.dateInput {
+  padding: 8px 10px; font-size: 13px;
+  border: 1px solid var(--color-border); border-radius: var(--radius);
+  background: var(--color-bg); color: var(--color-text); outline: none;
+}
+.dateInput:focus { border-color: var(--color-primary); }
+
+.printBtn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 18px; font-size: 13px; font-weight: 600;
+  background: var(--color-primary); color: white;
+  border: none; border-radius: var(--radius); cursor: pointer;
+  white-space: nowrap;
+}
+.printBtn:hover { opacity: 0.9; }
+
+/* ── Print-only header (hidden on screen) ─────────────────────────────── */
+.printHeader { display: none; }
+
+/* ── Table ────────────────────────────────────────────────────────────── */
+.tableWrap { overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.th {
+  text-align: left; font-size: 12px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--color-text-muted); padding: 10px 12px;
+  border-bottom: 2px solid var(--color-border); white-space: nowrap;
+}
+.td { padding: 10px 12px; border-bottom: 1px solid var(--color-border); }
+.tr { transition: background 0.1s; }
+.tr:hover { background: rgba(255,255,255,0.02); }
+
+.totalsRow { border-top: 2px solid var(--color-border); }
+
+.generatedLine {
+  font-size: 12px; color: var(--color-text-muted);
+  margin-top: 24px; font-style: italic;
+}
+
+.empty { color: var(--color-text-muted); padding: 40px 0; font-size: 14px; text-align: center; }
+
+/* ══ Print stylesheet ═══════════════════════════════════════════════════ */
+@media print {
+  /* Hide app chrome */
+  :global(header),
+  :global(nav),
+  :global(.TrialBanner),
+  .screenHeader,
+  .controls,
+  .printBtn {
+    display: none !important;
+  }
+
+  /* Show print-only header */
+  .printHeader {
+    display: block !important;
+    margin-bottom: 24px;
+  }
+
+  .printCompany {
+    font-size: 20px; font-weight: 700; margin: 0 0 4px;
+    color: #000;
+  }
+
+  .printTitle {
+    font-size: 16px; font-weight: 600; margin: 0 0 4px;
+    color: #333;
+  }
+
+  .printRange {
+    font-size: 12px; color: #666; margin: 0;
+  }
+
+  /* Clean paper styles */
+  .page {
+    min-height: auto !important;
+    background: #fff !important;
+  }
+
+  .main {
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .table {
+    font-size: 11px;
+    color: #000;
+  }
+
+  .th {
+    color: #333;
+    border-bottom: 2px solid #333;
+  }
+
+  .td {
+    border-bottom: 1px solid #ccc;
+    color: #000;
+  }
+
+  .totalsRow {
+    border-top: 2px solid #333;
+  }
+
+  .tr:hover {
+    background: none !important;
+  }
+
+  .generatedLine {
+    color: #666;
+    font-size: 10px;
+  }
+}

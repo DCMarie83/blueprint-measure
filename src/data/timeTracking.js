@@ -178,6 +178,31 @@ export async function deleteTimeEntry(id) {
   if (error) throw error
 }
 
+export async function getPayReport(companyId, { from, to } = {}) {
+  if (!companyId) return []
+  let query = supabase
+    .from('time_entries')
+    .select('hours, crew_member_id, crew_members(name, cost_rate)')
+    .eq('company_id', companyId)
+  if (from) query = query.gte('work_date', from)
+  if (to) query = query.lte('work_date', to)
+  const { data, error } = await query
+  if (error) throw error
+  const byWorker = {}
+  for (const e of (data ?? [])) {
+    const cmId = e.crew_member_id
+    if (!byWorker[cmId]) {
+      const rate = Number(e.crew_members?.cost_rate) || 0
+      byWorker[cmId] = { crewMemberId: cmId, name: e.crew_members?.name || '—', rate, hours: 0, pay: 0 }
+    }
+    byWorker[cmId].hours += Number(e.hours)
+  }
+  const rows = Object.values(byWorker)
+  for (const r of rows) { r.pay = r.hours * r.rate }
+  rows.sort((a, b) => b.pay - a.pay)
+  return rows
+}
+
 export async function getWeekHours(myCrewMemberId) {
   if (!myCrewMemberId) return 0
   const now = new Date()

@@ -188,6 +188,15 @@ export default function TimePage() {
     finally { setRosterSaving(null) }
   }
 
+  async function handleRateSave(cm, value) {
+    setRosterSaving(cm.id)
+    try {
+      await updateCrewMember(cm.id, { cost_rate: value === '' ? null : Number(value) })
+      setAllCrew(prev => prev.map(c => c.id === cm.id ? { ...c, cost_rate: value === '' ? null : Number(value) } : c))
+    } catch (err) { alert('Error: ' + err.message) }
+    finally { setRosterSaving(null) }
+  }
+
   // ── Totals ──────────────────────────────────────────────────────────────
   const myTotal = myEntries.reduce((s, e) => s + Number(e.hours), 0)
 
@@ -446,13 +455,27 @@ export default function TimePage() {
                       <div className={styles.tableWrap}>
                         <table className={styles.table}>
                           <thead><tr>
-                            <th className={styles.th}>Name</th><th className={styles.th}>Type</th>
+                            <th className={styles.th}>Name</th><th className={styles.th}>Rate ($/hr)</th><th className={styles.th}>Type</th>
                             <th className={styles.th}>Status</th><th className={styles.th}></th>
                           </tr></thead>
                           <tbody>
                             {allCrew.map(cm => (
                               <tr key={cm.id} className={styles.tr}>
                                 <td className={styles.td} style={{ fontWeight: 500 }}>{cm.name}</td>
+                                <td className={styles.td}>
+                                  <input
+                                    type="number"
+                                    className={styles.inlineInput}
+                                    style={{ width: 80 }}
+                                    step="0.01"
+                                    min="0"
+                                    placeholder="—"
+                                    defaultValue={cm.cost_rate ?? ''}
+                                    onBlur={e => handleRateSave(cm, e.target.value)}
+                                    onKeyDown={e => { if (e.key === 'Enter') { e.target.blur() } }}
+                                    disabled={rosterSaving === cm.id}
+                                  />
+                                </td>
                                 <td className={styles.td} style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{cm.user_id ? 'Login user' : 'No-login worker'}</td>
                                 <td className={styles.td}>
                                   <span className={cm.is_active ? styles.badgeActive : styles.badgeInactive}>
