@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useCompanyBranding } from '../../hooks/useCompanyBranding'
 import CompanyLogoUpload from './CompanyLogoUpload'
+import { US_STATES } from '../../data/usStates'
 import styles from './BrandingTab.module.css'
 
 const PLATFORM_PRIMARY = '#f27243'
@@ -16,6 +17,9 @@ export default function BrandingTab() {
   const [primaryColor, setPrimaryColor] = useState(PLATFORM_PRIMARY)
   const [accentColor, setAccentColor] = useState(PLATFORM_ACCENT)
   const [portalTheme, setPortalTheme] = useState('light')
+  const [companyCity, setCompanyCity] = useState('')
+  const [companyState, setCompanyState] = useState('')
+  const [companyZip, setCompanyZip] = useState('')
   const [toast, setToast] = useState('')
   const [saveError, setSaveError] = useState(null)
 
@@ -26,6 +30,9 @@ export default function BrandingTab() {
     setPrimaryColor(company.primary_color || PLATFORM_PRIMARY)
     setAccentColor(company.accent_color || PLATFORM_ACCENT)
     setPortalTheme(company.portal_theme || 'light')
+    setCompanyCity(company.city || '')
+    setCompanyState(company.state || '')
+    setCompanyZip(company.zip || '')
   }, [company])
 
   useEffect(() => {
@@ -42,7 +49,10 @@ export default function BrandingTab() {
     name !== (company.name || '') ||
     primaryColor !== (company.primary_color || PLATFORM_PRIMARY) ||
     accentColor !== (company.accent_color || PLATFORM_ACCENT) ||
-    portalTheme !== (company.portal_theme || 'light')
+    portalTheme !== (company.portal_theme || 'light') ||
+    companyCity !== (company.city || '') ||
+    companyState !== (company.state || '') ||
+    companyZip !== (company.zip || '')
   )
 
   const canSave = hasChanges && primaryValid && accentValid && nameValid && !loading
@@ -53,6 +63,9 @@ export default function BrandingTab() {
     setPrimaryColor(company.primary_color || PLATFORM_PRIMARY)
     setAccentColor(company.accent_color || PLATFORM_ACCENT)
     setPortalTheme(company.portal_theme || 'light')
+    setCompanyCity(company.city || '')
+    setCompanyState(company.state || '')
+    setCompanyZip(company.zip || '')
     setSaveError(null)
   }
 
@@ -64,6 +77,9 @@ export default function BrandingTab() {
         primary_color: primaryColor === PLATFORM_PRIMARY ? null : primaryColor,
         accent_color: accentColor === PLATFORM_ACCENT ? null : accentColor,
         portal_theme: portalTheme,
+        city: companyCity || null,
+        state: companyState || null,
+        zip: companyZip || null,
       })
       setToast('Brand saved — looking fetching!')
     } catch (err) {
@@ -86,6 +102,45 @@ export default function BrandingTab() {
               className={`${styles.input} ${!nameValid ? styles.inputError : ''}`}
               value={name}
               onChange={e => setName(e.target.value)}
+            />
+          </label>
+        </div>
+      </div>
+
+      {/* COMPANY LOCATION */}
+      <div className={styles.section}>
+        <h3 className={styles.sectionLabel}>Company Location</h3>
+        <p className={styles.sectionHint}>Your location powers local resources, regional pricing, and bid matching.</p>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <label className={styles.field} style={{ flex: 2, minWidth: 160 }}>
+            <span className={styles.fieldLabel}>City</span>
+            <input
+              className={styles.input}
+              value={companyCity}
+              onChange={e => setCompanyCity(e.target.value)}
+              placeholder="e.g. Columbus"
+            />
+          </label>
+          <label className={styles.field} style={{ flex: 1, minWidth: 140 }}>
+            <span className={styles.fieldLabel}>State</span>
+            <select
+              className={styles.input}
+              value={companyState}
+              onChange={e => setCompanyState(e.target.value)}
+            >
+              <option value="">Not set</option>
+              {US_STATES.map(s => <option key={s.code} value={s.code}>{s.name}</option>)}
+            </select>
+          </label>
+          <label className={styles.field} style={{ flex: 0, minWidth: 100 }}>
+            <span className={styles.fieldLabel}>Zip</span>
+            <input
+              className={styles.input}
+              value={companyZip}
+              onChange={e => setCompanyZip(e.target.value.replace(/[^0-9]/g, '').slice(0, 5))}
+              placeholder="43215"
+              inputMode="numeric"
+              maxLength={5}
             />
           </label>
         </div>

@@ -27,6 +27,7 @@ import FeedbackSection from './pages/admin/FeedbackSection'
 import ErrorsSection from './pages/admin/ErrorsSection'
 import SystemSection from './pages/admin/SystemSection'
 import AcademyAdminPage from './pages/admin/AcademyAdminPage'
+import ResourcesAdminPage from './pages/admin/ResourcesAdminPage'
 import UserDetailPage from './pages/admin/UserDetailPage'
 import TeamPage from './pages/TeamPage'
 import ProjectDetailPage from './pages/ProjectDetailPage'
@@ -290,6 +291,7 @@ export default function App() {
         <Route path="errors" element={<ErrorsSection />} />
         <Route path="system" element={<SystemSection />} />
         <Route path="academy" element={<AcademyAdminPage />} />
+        <Route path="resources" element={<ResourcesAdminPage />} />
       </Route>
       <Route
         path="/accuracy-test"
