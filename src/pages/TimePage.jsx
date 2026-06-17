@@ -7,10 +7,12 @@ import {
   ensureMyCrewMember, createCrewMember, updateCrewMember, deleteCrewMember,
   getMyTimeEntries, getCompanyTimeEntries,
   createTimeEntry, createCrewDayEntries, updateTimeEntry, deleteTimeEntry,
-  summarizePay,
+  summarizePay, paystubRows,
 } from '../data/timeTracking'
 import PayTable from '../components/PayTable'
 import styles from './TimePage.module.css'
+
+const fmtUSD = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
 
 function periodRange(period) {
   const now = new Date()
@@ -239,6 +241,7 @@ export default function TimePage() {
   const visibleTotal = visibleEntries.reduce((s, e) => s + Number(e.hours), 0)
 
   const filterWorkerName = workerFilter === 'all' ? 'All workers' : (crew.find(c => c.id === workerFilter)?.name || 'Worker')
+  const stubs = useMemo(() => paystubRows(visibleEntries, allCrew), [visibleEntries, allCrew])
 
   // ── Export ──────────────────────────────────────────────────────────────
   async function handleExport() {
@@ -481,12 +484,52 @@ export default function TimePage() {
                   )}
                 </section>
 
-                {/* Print-only pay sheet */}
+                {/* Print-only paystubs */}
                 <div className={styles.payPrintArea}>
-                  <h1 className={styles.printCompany}>{company?.name || 'Company'}</h1>
-                  <h2 className={styles.printTitle}>Pay Report</h2>
-                  <p className={styles.printMeta}>{periodLabel(period)} — {filterWorkerName}</p>
-                  <PayTable rows={payRows} />
+                  {stubs.map((stub, idx) => (
+                    <div key={stub.crewMemberId} className={idx > 0 ? styles.stubPageBreak : undefined}>
+                      <div className={styles.stubHeader}>
+                        {company?.logo_url && <img src={company.logo_url} alt="" className={styles.stubLogo} />}
+                        <div className={styles.stubCompanyName}>{company?.name || 'Company'}</div>
+                      </div>
+                      <h2 className={styles.stubTitle}>Pay Statement</h2>
+                      <div className={styles.stubMeta}>
+                        <span><strong>{stub.name}</strong></span>
+                        <span>{periodLabel(period)}</span>
+                      </div>
+                      <table className={styles.stubTable}>
+                        <thead>
+                          <tr>
+                            <th className={styles.stubTh}>Job</th>
+                            <th className={styles.stubTh} style={{ textAlign: 'right' }}>Hours</th>
+                            <th className={styles.stubTh} style={{ textAlign: 'right' }}>Rate</th>
+                            <th className={styles.stubTh} style={{ textAlign: 'right' }}>Pay</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {stub.jobs.map(j => (
+                            <tr key={j.job}>
+                              <td className={styles.stubTd}>{j.job}</td>
+                              <td className={styles.stubTd} style={{ textAlign: 'right' }}>{j.hours.toFixed(2)}</td>
+                              <td className={styles.stubTd} style={{ textAlign: 'right' }}>
+                                {stub.rate > 0 ? fmtUSD.format(stub.rate) : <span className={styles.noRateHint}>$0.00</span>}
+                              </td>
+                              <td className={styles.stubTd} style={{ textAlign: 'right' }}>{fmtUSD.format(j.pay)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className={styles.stubTotalsRow}>
+                            <td className={styles.stubTd} style={{ fontWeight: 700 }}>Total</td>
+                            <td className={styles.stubTd} style={{ textAlign: 'right', fontWeight: 700 }}>{stub.totalHours.toFixed(2)}</td>
+                            <td className={styles.stubTd}></td>
+                            <td className={styles.stubTd} style={{ textAlign: 'right', fontWeight: 700 }}>{fmtUSD.format(stub.totalPay)}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                      <div className={styles.stubFooter}>Powered by RivetDog</div>
+                    </div>
+                  ))}
                   <p className={styles.printGenerated}>Generated {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                 </div>
 

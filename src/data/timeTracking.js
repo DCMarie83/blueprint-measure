@@ -209,6 +209,46 @@ export function summarizePay(entries, crew) {
   return rows
 }
 
+// Per-worker paystub data with job-level breakdown.
+// Returns [{ crewMemberId, name, rate, totalHours, totalPay, jobs: [{ job, hours, pay }] }]
+export function paystubRows(entries, crew) {
+  const rateLookup = {}
+  const nameLookup = {}
+  for (const c of (crew || [])) {
+    rateLookup[c.id] = Number(c.cost_rate) || 0
+    nameLookup[c.id] = c.name
+  }
+  const byWorker = {}
+  for (const e of entries) {
+    const cmId = e.crew_member_id
+    if (!byWorker[cmId]) {
+      byWorker[cmId] = {
+        crewMemberId: cmId,
+        name: e.crew_members?.name || nameLookup[cmId] || '—',
+        rate: rateLookup[cmId] ?? 0,
+        totalHours: 0,
+        totalPay: 0,
+        jobMap: {},
+      }
+    }
+    const w = byWorker[cmId]
+    const jobName = e.projects?.name || '—'
+    if (!w.jobMap[jobName]) w.jobMap[jobName] = 0
+    w.jobMap[jobName] += Number(e.hours)
+    w.totalHours += Number(e.hours)
+  }
+  const result = []
+  for (const w of Object.values(byWorker)) {
+    const jobs = Object.entries(w.jobMap)
+      .map(([job, hours]) => ({ job, hours, pay: hours * w.rate }))
+      .sort((a, b) => b.hours - a.hours)
+    w.totalPay = w.totalHours * w.rate
+    result.push({ crewMemberId: w.crewMemberId, name: w.name, rate: w.rate, totalHours: w.totalHours, totalPay: w.totalPay, jobs })
+  }
+  result.sort((a, b) => b.totalPay - a.totalPay)
+  return result
+}
+
 export async function getPayReport(companyId, { from, to } = {}) {
   if (!companyId) return []
   let query = supabase

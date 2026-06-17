@@ -191,19 +191,26 @@
 /* ── Print-only pay area ──────────────────────────────────────────────── */
 .payPrintArea { display: none; }
 
-.printCompany { font-size: 20px; font-weight: 700; margin: 0 0 4px; }
-.printTitle { font-size: 16px; font-weight: 600; margin: 0 0 4px; }
-.printMeta { font-size: 12px; color: var(--color-text-muted); margin: 0 0 16px; }
-.printGenerated { font-size: 10px; color: var(--color-text-muted); margin-top: 20px; font-style: italic; }
+/* ── Paystub elements (hidden on screen) ──────────────────────────────── */
+.stubHeader { display: none; }
+.stubTitle { display: none; }
+.stubMeta { display: none; }
+.stubTable { display: none; }
+.stubTotalsRow { display: none; }
+.stubFooter { display: none; }
+.stubPageBreak { display: none; }
+.noRateHint { color: var(--color-text-muted); font-style: italic; }
+.printGenerated { font-size: 10px; color: var(--color-text-muted); margin-top: 20px; font-style: italic; display: none; }
 
 @media print {
-  /* Hide everything */
+  /* Hide everything on screen */
   body * { visibility: hidden !important; }
 
-  /* Show only the print area */
+  /* Show only the print area and all descendants */
   .payPrintArea,
   .payPrintArea * {
     visibility: visible !important;
+    display: revert !important;
   }
 
   .payPrintArea {
@@ -214,12 +221,107 @@
     width: 100%;
     padding: 24px;
     background: #fff;
+    color: #000;
   }
 
-  .printCompany { color: #000; }
-  .printTitle { color: #333; }
-  .printMeta { color: #666; }
-  .printGenerated { color: #666; }
+  /* Page break between stubs */
+  .stubPageBreak {
+    page-break-before: always;
+    break-before: page;
+  }
+
+  /* Branded header (mirrors portal pattern) */
+  .stubHeader {
+    text-align: center;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #ccc;
+  }
+
+  .stubLogo {
+    display: block;
+    margin: 0 auto 12px;
+    max-height: 60px;
+    max-width: 200px;
+    object-fit: contain;
+  }
+
+  .stubCompanyName {
+    font-size: 18px;
+    font-weight: 700;
+    color: #000;
+  }
+
+  .stubTitle {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    margin: 0 0 8px;
+  }
+
+  .stubMeta {
+    display: flex !important;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #444;
+    margin: 0 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #ddd;
+  }
+
+  /* Job-detail table */
+  .stubTable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    color: #000;
+    margin-bottom: 8px;
+  }
+
+  .stubTh {
+    text-align: left;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #333;
+    padding: 8px 10px;
+    border-bottom: 2px solid #333;
+    white-space: nowrap;
+  }
+
+  .stubTd {
+    padding: 6px 10px;
+    border-bottom: 1px solid #ccc;
+  }
+
+  .stubTotalsRow {
+    border-top: 2px solid #333;
+  }
+
+  .noRateHint {
+    color: #999;
+    font-style: italic;
+  }
+
+  /* Footer (mirrors portal "Powered by RivetDog") */
+  .stubFooter {
+    text-align: center;
+    font-size: 9px;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 24px;
+    padding-top: 12px;
+    border-top: 1px solid #ddd;
+  }
+
+  .printGenerated {
+    color: #999;
+    font-size: 9px;
+    text-align: center;
+    margin-top: 16px;
+  }
 }
 
 /* ── Empty ────────────────────────────────────────────────────────────── */
