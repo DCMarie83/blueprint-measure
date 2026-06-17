@@ -37,6 +37,7 @@ import PricingPage from './pages/PricingPage'
 import EstimateDetailPage from './pages/EstimateDetailPage'
 import MaterialOrderBuilderPage from './pages/MaterialOrderBuilderPage'
 import PortalPage from './pages/PortalPage'
+import RivetPayLinkPage from './pages/RivetPayLinkPage'
 import AcademyPage from './pages/AcademyPage'
 import TimePage from './pages/TimePage'
 import ResourcesPage from './pages/ResourcesPage'
@@ -169,6 +170,7 @@ export default function App() {
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/portal/:token" element={<PortalPage />} />
       <Route path="/portal/invoice/:token" element={<InvoicePortalPage />} />
+      <Route path="/rivetpay/:token" element={<RivetPayLinkPage />} />
 
       {/* Registration / setup — only for users who haven't completed setup */}
       <Route

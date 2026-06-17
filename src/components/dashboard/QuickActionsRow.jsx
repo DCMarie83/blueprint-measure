@@ -1,17 +1,45 @@
-import { Briefcase, Columns3, BookUser, GraduationCap } from 'lucide-react'
+import { Briefcase, Columns3, BookUser, GraduationCap, Clock, Users } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Modal from '../ui/Modal'
 import NewProjectForm from '../auth/NewProjectForm'
+import { useAuth } from '../../context/AuthContext'
+import { supabase } from '../../lib/supabase'
+import { getWeekHours } from '../../data/timeTracking'
 import { useProjects } from '../../hooks/useProjects'
 import { useSessions } from '../../hooks/useSessions'
 import styles from './QuickActionsRow.module.css'
 
 export default function QuickActionsRow() {
   const navigate = useNavigate()
+  const { user, userProfile, isSuperAdmin } = useAuth()
   const { createProject } = useProjects()
   const { createSession } = useSessions()
   const [showModal, setShowModal] = useState(false)
+
+  const isAdmin = isSuperAdmin || userProfile?.role === 'contractor_admin'
+  const companyId = userProfile?.company_id
+
+  // Week hours for non-admin tile
+  const [weekHours, setWeekHours] = useState(null)
+  useEffect(() => {
+    if (isAdmin || !user?.id || !companyId) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { data: cm } = await supabase
+          .from('crew_members')
+          .select('id')
+          .eq('company_id', companyId)
+          .eq('user_id', user.id)
+          .maybeSingle()
+        if (cancelled || !cm) return
+        const h = await getWeekHours(cm.id)
+        if (!cancelled) setWeekHours(h)
+      } catch { /* ignore */ }
+    })()
+    return () => { cancelled = true }
+  }, [isAdmin, user?.id, companyId])
 
   async function handleCreateProject(fields) {
     const project = await createProject(fields)
@@ -26,6 +54,12 @@ export default function QuickActionsRow() {
     }
     setShowModal(false)
   }
+
+  const timeDesc = isAdmin
+    ? 'Team timesheet & approvals'
+    : weekHours != null && weekHours > 0
+      ? `${weekHours.toFixed(1)} hrs this week`
+      : 'Log your hours'
 
   const cards = [
     {
@@ -51,6 +85,12 @@ export default function QuickActionsRow() {
       label: 'RivetDog Academy',
       desc: 'Training videos & tutorials',
       onClick: () => navigate('/academy'),
+    },
+    {
+      icon: isAdmin ? Users : Clock,
+      label: isAdmin ? 'Manage Time' : 'Log Time',
+      desc: timeDesc,
+      onClick: () => navigate('/time'),
     },
   ]
 

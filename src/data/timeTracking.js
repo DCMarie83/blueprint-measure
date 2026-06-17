@@ -291,3 +291,41 @@ export async function getWeekHours(myCrewMemberId) {
   if (error) throw error
   return (data ?? []).reduce((sum, r) => sum + Number(r.hours), 0)
 }
+
+// ── Punch submissions (RivetPay Link) ────────────────────────────────────
+
+export async function getPendingPunches(companyId) {
+  if (!companyId) return []
+  const { data, error } = await supabase
+    .from('time_punch_submissions')
+    .select('*, crew_members(name), projects(name)')
+    .eq('company_id', companyId)
+    .in('status', ['submitted', 'open'])
+    .order('status', { ascending: true })
+    .order('clock_in_at', { ascending: false })
+  if (error) throw error
+  return data ?? []
+}
+
+export async function approvePunch(id) {
+  const { data, error } = await supabase.rpc('rivetpay_approve_submission', { p_id: id })
+  if (error) throw error
+  if (!data?.ok) throw new Error(data?.error || 'Approval failed')
+  return data
+}
+
+export async function rejectPunch(id) {
+  const { error } = await supabase
+    .from('time_punch_submissions')
+    .update({ status: 'rejected' })
+    .eq('id', id)
+  if (error) throw error
+}
+
+export async function closeOpenPunch(id, hours) {
+  const { error } = await supabase
+    .from('time_punch_submissions')
+    .update({ hours: Number(hours), clock_out_at: new Date().toISOString(), status: 'submitted' })
+    .eq('id', id)
+  if (error) throw error
+}

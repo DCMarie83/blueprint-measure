@@ -324,5 +324,78 @@
   }
 }
 
+/* ── Approval section ─────────────────────────────────────────────────── */
+.approvalSection {
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg); padding: 20px; margin-bottom: 20px;
+}
+
+.punchBadge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 20px; padding: 0 6px;
+  font-size: 11px; font-weight: 700;
+  background: #ef4444; color: #fff;
+  border-radius: 10px; margin-left: 4px;
+}
+
+.approveBtn {
+  padding: 4px 12px; font-size: 12px; font-weight: 600;
+  background: #22c55e; color: white;
+  border: none; border-radius: var(--radius); cursor: pointer;
+  margin-right: 4px;
+}
+.approveBtn:disabled { opacity: 0.5; }
+
+.locLink {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 12px; color: var(--color-primary);
+  text-decoration: none;
+}
+.locLink:hover { text-decoration: underline; }
+
+.noLocBadge {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 12px; font-weight: 600;
+  color: #f59e0b; background: rgba(245,158,11,0.1);
+  padding: 2px 8px; border-radius: 4px;
+}
+
+/* ── Share link modal ─────────────────────────────────────────────────── */
+.modalBackdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 300; padding: 24px;
+}
+
+.shareModal {
+  background: var(--color-surface); border-radius: 12px; padding: 24px;
+  max-width: 420px; width: 100%; max-height: 90vh; overflow-y: auto;
+}
+
+.shareUrlRow {
+  display: flex; gap: 8px; margin-bottom: 16px;
+}
+
+.shareUrlInput {
+  flex: 1; padding: 8px 10px; font-size: 12px;
+  border: 1px solid var(--color-border); border-radius: var(--radius);
+  background: var(--color-bg); color: var(--color-text); outline: none;
+  font-family: monospace;
+}
+
+.copyBtn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 8px 14px; font-size: 12px; font-weight: 600;
+  background: var(--color-primary); color: white;
+  border: none; border-radius: var(--radius); cursor: pointer;
+  white-space: nowrap;
+}
+
+.qrImg {
+  display: block; margin: 0 auto;
+  width: 200px; height: 200px;
+  border-radius: 8px; border: 1px solid var(--color-border);
+}
+
 /* ── Empty ────────────────────────────────────────────────────────────── */
 .empty { color: var(--color-text-muted); padding: 20px 0; font-size: 13px; }

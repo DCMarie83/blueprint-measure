@@ -1,0 +1,240 @@
+.page {
+  min-height: 100vh;
+  background: var(--color-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 36px 28px;
+  max-width: 440px;
+  width: 100%;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.loading {
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 15px;
+  padding: 40px 0;
+}
+
+/* ── Branding ─────────────────────────────────────────────────────────── */
+.companyName {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-primary);
+  text-align: center;
+  margin: 0 0 6px;
+}
+
+.workerGreeting {
+  font-size: 16px;
+  color: var(--color-text);
+  text-align: center;
+  margin: 0 0 24px;
+  font-weight: 500;
+}
+
+.footer {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  opacity: 0.6;
+  text-align: center;
+  margin: 28px 0 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ── Error / not found ────────────────────────────────────────────────── */
+.errorTitle {
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--color-text);
+  margin: 0 0 8px;
+}
+
+.errorText {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  text-align: center;
+  margin: 0 0 24px;
+}
+
+/* ── Terms ────────────────────────────────────────────────────────────── */
+.termsBox {
+  background: var(--color-surface-2);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  text-align: center;
+}
+
+.termsText {
+  font-size: 14px;
+  color: var(--color-text);
+  line-height: 1.6;
+  margin: 0 0 16px;
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────────── */
+.primaryBtn {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.primaryBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+.primaryBtn:hover:not(:disabled) { opacity: 0.9; }
+
+.clockInBtn {
+  composes: primaryBtn;
+  background: #22c55e;
+  font-size: 20px;
+  padding: 18px;
+  margin-top: 12px;
+}
+
+.clockOutBtn {
+  composes: primaryBtn;
+  background: #ef4444;
+  font-size: 20px;
+  padding: 18px;
+  margin-top: 16px;
+}
+
+.linkBtn {
+  display: block;
+  margin: 12px auto 0;
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* ── Clock state boxes ────────────────────────────────────────────────── */
+.clockInBox {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.clockedInBox {
+  text-align: center;
+  padding: 20px;
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  border-radius: var(--radius-lg);
+}
+
+.statusLabel {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #22c55e;
+  margin-bottom: 6px;
+}
+
+.jobLabel {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.sinceLabel {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+/* ── Form inputs ──────────────────────────────────────────────────────── */
+.jobSelect, .formInput, .descInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  font-size: 15px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text);
+  outline: none;
+}
+.jobSelect:focus, .formInput:focus, .descInput:focus {
+  border-color: var(--color-primary);
+}
+
+/* ── Messages ─────────────────────────────────────────────────────────── */
+.inlineError {
+  font-size: 13px;
+  color: #ef4444;
+  margin: 4px 0 0;
+  text-align: center;
+}
+
+.successBox {
+  text-align: center;
+  padding: 20px;
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  border-radius: var(--radius-lg);
+  margin-bottom: 16px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #22c55e;
+}
+
+.successMsg {
+  font-size: 13px;
+  color: #22c55e;
+  margin: 8px 0 0;
+  text-align: center;
+}
+
+/* ── Manual ───────────────────────────────────────────────────────────── */
+.manualSection {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border);
+}
+
+.manualToggle {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+  padding: 6px 0;
+}
+.manualToggle:hover { color: var(--color-text); }
+
+.manualForm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+/* ── Mobile ───────────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .card { padding: 28px 20px; }
+}
