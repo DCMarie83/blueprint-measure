@@ -1,8 +1,8 @@
 import { useEffect } from 'react'
-import { X, Bookmark, BookmarkCheck } from 'lucide-react'
+import { X, Bookmark, BookmarkCheck, MessageCircleQuestion } from 'lucide-react'
 import styles from './VideoModal.module.css'
 
-export default function VideoModal({ video, onClose, isBookmarked, onToggleBookmark }) {
+export default function VideoModal({ video, onClose, isBookmarked, onToggleBookmark, onAskQuestion }) {
   useEffect(() => {
     function onKey(e) {
       if (e.key === 'Escape') {
@@ -43,12 +43,19 @@ export default function VideoModal({ video, onClose, isBookmarked, onToggleBookm
             </div>
           </div>
           <p className={styles.description}>{video.description}</p>
-          <button className={styles.bookmarkBtn} onClick={onToggleBookmark}>
-            {isBookmarked
-              ? <><BookmarkCheck size={16} fill="currentColor" /> Bookmarked</>
-              : <><Bookmark size={16} /> Bookmark</>
-            }
-          </button>
+          <div className={styles.actions}>
+            <button className={styles.bookmarkBtn} onClick={onToggleBookmark}>
+              {isBookmarked
+                ? <><BookmarkCheck size={16} fill="currentColor" /> Bookmarked</>
+                : <><Bookmark size={16} /> Bookmark</>
+              }
+            </button>
+            {onAskQuestion && (
+              <button className={styles.askBtn} onClick={onAskQuestion}>
+                <MessageCircleQuestion size={16} /> Ask about this lesson
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

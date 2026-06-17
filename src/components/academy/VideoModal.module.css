@@ -98,7 +98,13 @@
   margin: 0 0 16px;
 }
 
-.bookmarkBtn {
+.actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.bookmarkBtn, .askBtn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -112,6 +118,6 @@
   cursor: pointer;
   transition: background 0.15s;
 }
-.bookmarkBtn:hover {
+.bookmarkBtn:hover, .askBtn:hover {
   background: var(--color-surface);
 }
