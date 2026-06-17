@@ -8,6 +8,7 @@ import StatsTiles from '../components/dashboard/StatsTiles'
 import RecentActivity from '../components/dashboard/RecentActivity'
 import ContinueWorking from '../components/dashboard/ContinueWorking'
 import TipsPanel from '../components/dashboard/TipsPanel'
+import TimeWeekTile from '../components/dashboard/TimeWeekTile'
 import Logo from '../components/brand/Logo'
 import styles from './DashboardPage.module.css'
 
@@ -40,6 +41,7 @@ export default function DashboardPage() {
             </div>
             <GreetingStrip firstName={firstName} />
             <QuickActionsRow />
+            <TimeWeekTile />
             {isNewUser && checklist && !checklist.allComplete && (
               <GettingStartedChecklist checklist={checklist} />
             )}

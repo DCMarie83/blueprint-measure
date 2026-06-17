@@ -1,0 +1,46 @@
+.tile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--color-stat-bg);
+  border: 1px solid var(--color-button-border);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.icon { color: var(--color-primary); }
+
+.label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-stat-text);
+}
+
+.value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-stat-text);
+}
+
+.logBtn {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+
+.logBtn:hover { opacity: 0.9; }

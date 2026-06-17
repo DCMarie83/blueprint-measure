@@ -1,0 +1,187 @@
+.page { min-height: 100vh; background: var(--color-bg); }
+.main { max-width: 1100px; margin: 0 auto; padding: 32px; }
+@media (max-width: 600px) { .main { padding: 16px; } }
+
+.header { margin-bottom: 8px; }
+.title {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 28px; font-weight: 700; margin: 0;
+}
+
+/* ── Tabs ──────────────────────────────────────────────────────────────── */
+.tabRow {
+  display: flex; gap: 4px; margin: 20px 0 24px;
+  border-bottom: 1px solid var(--color-border);
+}
+.tab {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 10px 18px; font-size: 14px; font-weight: 500;
+  background: none; border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--color-text-muted); cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.tab:hover { color: var(--color-text); }
+.tabActive { color: var(--color-primary); border-bottom-color: var(--color-primary); }
+
+/* ── Add form ─────────────────────────────────────────────────────────── */
+.addForm {
+  display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg); padding: 16px; margin-bottom: 20px;
+}
+
+.formInput {
+  padding: 8px 10px; font-size: 13px;
+  border: 1px solid var(--color-border); border-radius: var(--radius);
+  background: var(--color-bg); color: var(--color-text); outline: none;
+}
+.formInput:focus { border-color: var(--color-primary); }
+
+.addBtn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 18px; font-size: 13px; font-weight: 600;
+  background: var(--color-primary); color: white;
+  border: none; border-radius: var(--radius); cursor: pointer;
+  white-space: nowrap;
+}
+.addBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+.addBtn:hover:not(:disabled) { opacity: 0.9; }
+
+/* ── Crew-day form ────────────────────────────────────────────────────── */
+.crewDayForm {
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg); padding: 20px; margin-bottom: 20px;
+}
+.crewDayTitle { font-size: 16px; font-weight: 600; margin: 0 0 12px; }
+.crewDayHeader { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.crewDayGrid { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.crewDayRow {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+}
+.crewDayName {
+  font-size: 13px; font-weight: 500; min-width: 140px;
+  color: var(--color-text);
+}
+@media (max-width: 600px) {
+  .crewDayRow { flex-direction: column; align-items: stretch; gap: 6px; }
+  .crewDayName { min-width: auto; }
+}
+
+/* ── Period filter ────────────────────────────────────────────────────── */
+.filterRow { display: flex; gap: 8px; margin-bottom: 24px; }
+
+.chip {
+  padding: 8px 14px; border-radius: var(--radius-pill);
+  border: 1px solid var(--color-button-border);
+  background: var(--color-surface-2); color: var(--color-text);
+  font-size: 13px; cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.chip:hover { background: var(--color-surface); }
+.chipActive {
+  background: var(--color-primary); color: var(--color-on-primary);
+  border-color: var(--color-primary);
+}
+
+/* ── Sections ─────────────────────────────────────────────────────────── */
+.section { margin-bottom: 32px; }
+.sectionHeader {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 12px; flex-wrap: wrap; gap: 8px;
+}
+.sectionTitle {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 18px; font-weight: 600; margin: 0;
+}
+.totalBadge {
+  font-size: 14px; font-weight: 700; color: var(--color-primary);
+  background: rgba(46, 139, 255, 0.1); padding: 4px 12px;
+  border-radius: var(--radius-pill);
+}
+
+/* ── Totals summary ───────────────────────────────────────────────────── */
+.totalsRow {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+  margin-bottom: 24px;
+}
+@media (max-width: 600px) { .totalsRow { grid-template-columns: 1fr; } }
+
+.totalsCard {
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg); padding: 16px;
+}
+.totalsTitle {
+  font-size: 13px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--color-text-muted); margin: 0 0 10px;
+}
+.totalsLine {
+  display: flex; justify-content: space-between;
+  font-size: 13px; padding: 4px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.totalsLine:last-child { border-bottom: none; }
+
+/* ── Export button ────────────────────────────────────────────────────── */
+.exportBtn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; font-size: 12px; font-weight: 600;
+  background: none; color: var(--color-text-muted);
+  border: 1px solid var(--color-border); border-radius: var(--radius);
+  cursor: pointer; white-space: nowrap;
+}
+.exportBtn:hover { color: var(--color-text); border-color: var(--color-text-muted); }
+
+/* ── Table ────────────────────────────────────────────────────────────── */
+.tableWrap { overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.th {
+  text-align: left; font-size: 12px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--color-text-muted); padding: 10px 12px;
+  border-bottom: 1px solid var(--color-border); white-space: nowrap;
+}
+.td { padding: 10px 12px; border-bottom: 1px solid var(--color-border); vertical-align: middle; }
+.tr { transition: background 0.1s; }
+.tr:hover { background: rgba(255,255,255,0.02); }
+
+/* ── Inline edit ──────────────────────────────────────────────────────── */
+.inlineInput {
+  padding: 5px 8px; font-size: 13px;
+  border: 1px solid var(--color-border); border-radius: var(--radius);
+  background: var(--color-bg); color: var(--color-text); outline: none;
+}
+.saveBtn {
+  padding: 4px 12px; font-size: 12px; font-weight: 600;
+  background: var(--color-primary); color: white;
+  border: none; border-radius: var(--radius); cursor: pointer; margin-right: 4px;
+}
+.saveBtn:disabled { opacity: 0.5; }
+.cancelBtn {
+  padding: 4px 8px; font-size: 12px;
+  background: none; border: none; color: var(--color-text-muted); cursor: pointer;
+}
+
+.iconBtn {
+  background: none; border: none;
+  color: var(--color-text-muted); cursor: pointer;
+  padding: 4px 6px; font-size: 13px;
+}
+.iconBtn:hover { color: var(--color-text); }
+
+/* ── Badges ───────────────────────────────────────────────────────────── */
+.badgeActive {
+  font-size: 12px; font-weight: 600; padding: 2px 7px; border-radius: 4px;
+  background: rgba(34, 197, 94, 0.1); color: #22c55e;
+}
+.badgeInactive {
+  font-size: 12px; font-weight: 600; padding: 2px 7px; border-radius: 4px;
+  background: rgba(239, 68, 68, 0.1); color: #ef4444;
+}
+
+/* ── Crew roster ──────────────────────────────────────────────────────── */
+.rosterWrap { margin-top: 12px; }
+.rosterAdd { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+
+/* ── Empty ────────────────────────────────────────────────────────────── */
+.empty { color: var(--color-text-muted); padding: 20px 0; font-size: 13px; }
