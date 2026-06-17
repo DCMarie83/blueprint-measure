@@ -103,6 +103,9 @@ export default function TimePage() {
   const [punchAction, setPunchAction] = useState(null) // id being acted on
   const [closeHours, setCloseHours] = useState({})
 
+  // Timesheet collapse
+  const [timesheetOpen, setTimesheetOpen] = useState(false)
+
   // Link share modal
   const [shareCm, setShareCm] = useState(null)
   const [shareQr, setShareQr] = useState(null)
@@ -499,17 +502,10 @@ export default function TimePage() {
                               <td className={styles.td}>
                                 {p.source === 'manual' ? (
                                   <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>manual</span>
+                                ) : p.clock_out_lat ? (
+                                  <a href={`https://www.google.com/maps?q=${p.clock_out_lat},${p.clock_out_lng}`} target="_blank" rel="noopener noreferrer" className={styles.locLink}><MapPin size={10} /> loc</a>
                                 ) : (
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                                    <span style={{ fontSize: 11 }}>In: {p.clock_in_lat ? (
-                                      <a href={`https://www.google.com/maps?q=${p.clock_in_lat},${p.clock_in_lng}`} target="_blank" rel="noopener noreferrer" className={styles.locLink}><MapPin size={10} /> loc</a>
-                                    ) : <span className={styles.noLocBadge}><AlertTriangle size={10} /> No location</span>}</span>
-                                    {p.clock_out_at && (
-                                      <span style={{ fontSize: 11 }}>Out: {p.clock_out_lat ? (
-                                        <a href={`https://www.google.com/maps?q=${p.clock_out_lat},${p.clock_out_lng}`} target="_blank" rel="noopener noreferrer" className={styles.locLink}><MapPin size={10} /> loc</a>
-                                      ) : <span className={styles.noLocBadge}><AlertTriangle size={10} /> No location</span>}</span>
-                                    )}
-                                  </div>
+                                  <span className={styles.noLocBadge}><AlertTriangle size={10} /> No location</span>
                                 )}
                               </td>
                               <td className={styles.td} style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{p.source}</td>
@@ -529,7 +525,7 @@ export default function TimePage() {
                         <div className={styles.tableWrap}><table className={styles.table}>
                           <thead><tr>
                             <th className={styles.th}>Worker</th><th className={styles.th}>Job</th><th className={styles.th}>Since</th>
-                            <th className={styles.th}>Elapsed</th><th className={styles.th}></th>
+                            <th className={styles.th}>Loc</th><th className={styles.th}>Elapsed</th><th className={styles.th}></th>
                           </tr></thead>
                           <tbody>
                             {openPunches.map(p => {
@@ -539,6 +535,11 @@ export default function TimePage() {
                                   <td className={styles.td} style={{ fontWeight: 500 }}>{p.crew_members?.name || '—'}</td>
                                   <td className={styles.td}>{p.projects?.name || '—'}</td>
                                   <td className={styles.td}>{fmtLocalTime(p.clock_in_at)}</td>
+                                  <td className={styles.td}>
+                                    {p.clock_in_lat ? (
+                                      <a href={`https://www.google.com/maps?q=${p.clock_in_lat},${p.clock_in_lng}`} target="_blank" rel="noopener noreferrer" className={styles.locLink}><MapPin size={10} /> loc</a>
+                                    ) : <span className={styles.noLocBadge}><AlertTriangle size={10} /> No location</span>}
+                                  </td>
                                   <td className={styles.td}>
                                     <span style={{ fontWeight: 600, color: elapsed > 10 ? '#ef4444' : 'var(--color-text)' }}>
                                       {elapsed.toFixed(1)} hrs
@@ -610,19 +611,26 @@ export default function TimePage() {
                 )}
 
                 <section className={styles.section}>
-                  <div className={styles.sectionHeader}>
-                    <h2 className={styles.sectionTitle}>Team Timesheet</h2>
+                  <div className={styles.sectionHeader} style={{ cursor: 'pointer' }} onClick={() => setTimesheetOpen(v => !v)}>
+                    <h2 className={styles.sectionTitle}>
+                      Team Timesheet {timesheetOpen ? '▾' : '▸'}
+                      <span style={{ fontWeight: 400, fontSize: 13, color: 'var(--color-text-muted)', marginLeft: 8 }}>
+                        {visibleEntries.length} {visibleEntries.length === 1 ? 'entry' : 'entries'}
+                      </span>
+                    </h2>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                       <span className={styles.totalBadge}>{visibleTotal.toFixed(2)} hrs</span>
-                      <button className={styles.exportBtn} onClick={handleExport}><Download size={14} /> Export</button>
-                      <button className={styles.exportBtn} onClick={() => window.print()}><Printer size={14} /> Print</button>
+                      <button className={styles.exportBtn} onClick={e => { e.stopPropagation(); handleExport() }}><Download size={14} /> Export</button>
+                      <button className={styles.exportBtn} onClick={e => { e.stopPropagation(); window.print() }}><Printer size={14} /> Print</button>
                     </div>
                   </div>
-                  {visibleEntries.length === 0 ? <p className={styles.empty}>No entries for this period{workerFilter !== 'all' ? ' and worker' : ''}.</p> : (
-                    <div className={styles.tableWrap}><table className={styles.table}>
-                      <thead><tr><th className={styles.th}>Worker</th><th className={styles.th}>Date</th><th className={styles.th}>Job</th><th className={styles.th}>Hours</th><th className={styles.th}>Notes</th><th className={styles.th}></th></tr></thead>
-                      <tbody>{visibleEntries.map(e => renderEntry(e, true))}</tbody>
-                    </table></div>
+                  {timesheetOpen && (
+                    visibleEntries.length === 0 ? <p className={styles.empty}>No entries for this period{workerFilter !== 'all' ? ' and worker' : ''}.</p> : (
+                      <div className={styles.tableWrap}><table className={styles.table}>
+                        <thead><tr><th className={styles.th}>Worker</th><th className={styles.th}>Date</th><th className={styles.th}>Job</th><th className={styles.th}>Hours</th><th className={styles.th}>Notes</th><th className={styles.th}></th></tr></thead>
+                        <tbody>{visibleEntries.map(e => renderEntry(e, true))}</tbody>
+                      </table></div>
+                    )
                   )}
                 </section>
 

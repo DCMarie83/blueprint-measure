@@ -36,31 +36,27 @@
   gap: 16px;
 }
 
-.chipGroup {
+.searchWrap {
   display: flex;
+  align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  flex: 1;
+  min-width: 200px;
+  max-width: 400px;
 }
 
-.chip {
-  padding: 8px 14px;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--color-button-border);
-  background: var(--color-surface-2);
+.searchInput {
+  flex: 1;
+  border: none;
+  background: transparent;
   color: var(--color-text);
   font-size: 13px;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
-}
-
-.chip:hover {
-  background: var(--color-surface);
-}
-
-.chipActive {
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-  border-color: var(--color-primary);
+  outline: none;
 }
 
 .bookmarkFilter {
@@ -231,6 +227,61 @@
   background: rgba(245, 158, 11, 0.15);
   color: #f59e0b;
   font-weight: 600;
+}
+
+/* ── Sections + modules ───────────────────────────────────────────────────── */
+
+.featuredSection {
+  background: color-mix(in srgb, var(--color-primary) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 15%, transparent);
+  border-radius: var(--radius-lg);
+  padding: 24px 20px;
+  margin-bottom: 32px;
+}
+
+.normalSection {
+  margin-bottom: 32px;
+}
+
+.featuredHeading {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin: 0 0 20px;
+}
+
+.sectionHeading {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 20px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.moduleBlock {
+  margin-bottom: 24px;
+}
+
+.moduleBlock:last-child {
+  margin-bottom: 0;
+}
+
+.moduleHeading {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0 0 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.moduleDesc {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin: 0 0 12px;
+  line-height: 1.4;
 }
 
 /* ── Tabs ─────────────────────────────────────────────────────────────────── */

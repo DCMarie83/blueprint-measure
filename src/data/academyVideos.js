@@ -21,12 +21,16 @@ export function extractYouTubeId(input) {
 
 // ── Public queries (authenticated users) ─────────────────────────────────
 
-export async function getAcademyModules() {
-  const { data, error } = await supabase
+export async function getAcademyModules({ isAdmin } = {}) {
+  let query = supabase
     .from('academy_modules')
     .select('*')
     .eq('is_active', true)
     .order('sort_order', { ascending: true })
+  if (!isAdmin) {
+    query = query.eq('audience', 'all')
+  }
+  const { data, error } = await query
   if (error) throw error
   return data ?? []
 }

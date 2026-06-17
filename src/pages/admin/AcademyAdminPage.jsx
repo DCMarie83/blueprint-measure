@@ -7,7 +7,7 @@ import {
 import { supabase } from '../../lib/supabase'
 import styles from './sections.module.css'
 
-const EMPTY_MODULE = { title: '', description: '', sort_order: 0, is_active: true }
+const EMPTY_MODULE = { title: '', description: '', sort_order: 0, is_active: true, audience: 'all', module_group: 'core' }
 const EMPTY_VIDEO = { module_id: '', title: '', description: '', youtube_id: '', duration: '', audience: 'all', trade_vertical: 'all', sort_order: 0, is_active: true }
 
 export default function AcademyAdminPage() {
@@ -75,6 +75,8 @@ export default function AcademyAdminPage() {
           description: moduleModal.description || null,
           sort_order: parseInt(moduleModal.sort_order) || 0,
           is_active: moduleModal.is_active,
+          audience: moduleModal.audience || 'all',
+          module_group: moduleModal.module_group || 'core',
         })
       } else {
         await createModule({
@@ -82,6 +84,8 @@ export default function AcademyAdminPage() {
           description: moduleModal.description || null,
           sort_order: parseInt(moduleModal.sort_order) || 0,
           is_active: moduleModal.is_active,
+          audience: moduleModal.audience || 'all',
+          module_group: moduleModal.module_group || 'core',
         })
       }
       setModuleModal(null)
@@ -368,6 +372,23 @@ export default function AcademyAdminPage() {
             <div className={styles.formField} style={{ marginBottom: 12 }}>
               <label className={styles.formLabel}>Description</label>
               <textarea className={styles.formInput} style={{ minHeight: 60, resize: 'vertical' }} value={moduleModal.description ?? ''} onChange={e => setModuleModal(m => ({ ...m, description: e.target.value }))} />
+            </div>
+            <div className={styles.formGrid}>
+              <div className={styles.formField}>
+                <label className={styles.formLabel}>Audience</label>
+                <select className={styles.formSelect} value={moduleModal.audience || 'all'} onChange={e => setModuleModal(m => ({ ...m, audience: e.target.value }))}>
+                  <option value="all">All users</option>
+                  <option value="admin">Admin only</option>
+                </select>
+              </div>
+              <div className={styles.formField}>
+                <label className={styles.formLabel}>Section</label>
+                <select className={styles.formSelect} value={moduleModal.module_group || 'core'} onChange={e => setModuleModal(m => ({ ...m, module_group: e.target.value }))}>
+                  <option value="start_here">Start Here</option>
+                  <option value="core">Core</option>
+                  <option value="advanced">Advanced</option>
+                </select>
+              </div>
             </div>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, marginBottom: 12, cursor: 'pointer' }}>
               <input type="checkbox" checked={moduleModal.is_active} onChange={e => setModuleModal(m => ({ ...m, is_active: e.target.checked }))} />
