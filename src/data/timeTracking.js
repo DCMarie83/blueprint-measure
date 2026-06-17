@@ -322,6 +322,15 @@ export async function rejectPunch(id) {
   if (error) throw error
 }
 
+export async function sendRivetPayLinkEmail(crewMemberId, email) {
+  const { data, error } = await supabase.functions.invoke('send-rivetpay-link', {
+    body: { crewMemberId, email },
+  })
+  if (error) throw new Error(error.message || 'Send failed')
+  if (!data?.ok) throw new Error(data?.error || 'Send failed')
+  return data
+}
+
 export async function closeOpenPunch(id, hours) {
   const { error } = await supabase
     .from('time_punch_submissions')

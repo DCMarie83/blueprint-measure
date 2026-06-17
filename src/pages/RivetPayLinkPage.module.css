@@ -82,6 +82,18 @@
   margin: 0 0 16px;
 }
 
+/* ── In-app browser nudge ─────────────────────────────────────────────── */
+.inAppBanner {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text);
+  margin-bottom: 16px;
+}
+
 /* ── Buttons ──────────────────────────────────────────────────────────── */
 .primaryBtn {
   display: block;

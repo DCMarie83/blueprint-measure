@@ -9,6 +9,7 @@ import {
   createTimeEntry, createCrewDayEntries, updateTimeEntry, deleteTimeEntry,
   summarizePay, paystubRows,
   getPendingPunches, approvePunch, rejectPunch, closeOpenPunch,
+  sendRivetPayLinkEmail,
 } from '../data/timeTracking'
 import PayTable from '../components/PayTable'
 import styles from './TimePage.module.css'
@@ -106,6 +107,9 @@ export default function TimePage() {
   const [shareCm, setShareCm] = useState(null)
   const [shareQr, setShareQr] = useState(null)
   const [copied, setCopied] = useState(false)
+  const [shareEmail, setShareEmail] = useState('')
+  const [emailSending, setEmailSending] = useState(false)
+  const [emailMsg, setEmailMsg] = useState('')
 
   // ── Load ────────────────────────────────────────────────────────────────
   const loadData = useCallback(async () => {
@@ -244,6 +248,9 @@ export default function TimePage() {
     setShareCm(cm)
     setCopied(false)
     setShareQr(null)
+    setShareEmail(cm.email || '')
+    setEmailSending(false)
+    setEmailMsg('')
     try {
       const QRCode = (await import('qrcode')).default
       const url = `${window.location.origin}/rivetpay/${cm.link_token}`
@@ -257,6 +264,29 @@ export default function TimePage() {
     const url = `${window.location.origin}/rivetpay/${shareCm.link_token}`
     try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000) }
     catch { alert('Copy failed — select and copy manually.') }
+  }
+
+  async function handleSendLinkEmail() {
+    const trimmed = shareEmail.trim()
+    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setEmailMsg('Enter a valid email address.')
+      return
+    }
+    setEmailSending(true)
+    setEmailMsg('')
+    try {
+      if (shareCm && trimmed !== (shareCm.email || '')) {
+        await updateCrewMember(shareCm.id, { email: trimmed })
+        setAllCrew(prev => prev.map(c => c.id === shareCm.id ? { ...c, email: trimmed } : c))
+        setShareCm(prev => prev ? { ...prev, email: trimmed } : prev)
+      }
+      await sendRivetPayLinkEmail(shareCm.id, trimmed)
+      setEmailMsg('Sent ✓')
+    } catch (err) {
+      setEmailMsg('Error: ' + (err.message || 'Send failed'))
+    } finally {
+      setEmailSending(false)
+    }
   }
 
   // ── Punch actions ───────────────────────────────────────────────────────
@@ -467,12 +497,19 @@ export default function TimePage() {
                               </td>
                               <td className={styles.td} style={{ fontWeight: 600 }}>{p.hours ? Number(p.hours).toFixed(2) : '—'}</td>
                               <td className={styles.td}>
-                                {p.clock_in_lat ? (
-                                  <a href={`https://www.google.com/maps?q=${p.clock_in_lat},${p.clock_in_lng}`} target="_blank" rel="noopener noreferrer" className={styles.locLink} title="View on map">
-                                    <MapPin size={12} /> location
-                                  </a>
+                                {p.source === 'manual' ? (
+                                  <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>manual</span>
                                 ) : (
-                                  <span className={styles.noLocBadge}><AlertTriangle size={12} /> No location</span>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                    <span style={{ fontSize: 11 }}>In: {p.clock_in_lat ? (
+                                      <a href={`https://www.google.com/maps?q=${p.clock_in_lat},${p.clock_in_lng}`} target="_blank" rel="noopener noreferrer" className={styles.locLink}><MapPin size={10} /> loc</a>
+                                    ) : <span className={styles.noLocBadge}><AlertTriangle size={10} /> No location</span>}</span>
+                                    {p.clock_out_at && (
+                                      <span style={{ fontSize: 11 }}>Out: {p.clock_out_lat ? (
+                                        <a href={`https://www.google.com/maps?q=${p.clock_out_lat},${p.clock_out_lng}`} target="_blank" rel="noopener noreferrer" className={styles.locLink}><MapPin size={10} /> loc</a>
+                                      ) : <span className={styles.noLocBadge}><AlertTriangle size={10} /> No location</span>}</span>
+                                    )}
+                                  </div>
                                 )}
                               </td>
                               <td className={styles.td} style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{p.source}</td>
@@ -680,6 +717,27 @@ export default function TimePage() {
               </button>
             </div>
             {shareQr && <img src={shareQr} alt="QR code" className={styles.qrImg} />}
+            <div className={styles.emailSection}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 6 }}>Email the link</div>
+              <div className={styles.shareUrlRow}>
+                <input
+                  type="email"
+                  className={styles.shareUrlInput}
+                  style={{ fontFamily: 'inherit' }}
+                  placeholder="worker@email.com"
+                  value={shareEmail}
+                  onChange={e => { setShareEmail(e.target.value); setEmailMsg('') }}
+                />
+                <button className={styles.copyBtn} onClick={handleSendLinkEmail} disabled={emailSending}>
+                  {emailSending ? 'Sending…' : 'Send'}
+                </button>
+              </div>
+              {emailMsg && (
+                <p style={{ fontSize: 12, margin: '4px 0 0', color: emailMsg.startsWith('Error') || emailMsg.startsWith('Enter') ? '#ef4444' : '#22c55e' }}>
+                  {emailMsg}
+                </p>
+              )}
+            </div>
             <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '12px 0 0', textAlign: 'center' }}>
               Text or email this link to {shareCm.name}, or show them the QR to clock in.
             </p>

@@ -14,6 +14,11 @@ function getLocation() {
   })
 }
 
+function isInAppBrowser() {
+  const ua = navigator.userAgent || ''
+  return /WhatsApp|Instagram|FBAN|FBAV|FB_IAB|Line\/|Snapchat|Twitter|; wv\)/i.test(ua)
+}
+
 function fmtTime(iso) {
   if (!iso) return ''
   return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
@@ -201,6 +206,12 @@ export default function RivetPayLinkPage() {
       <div className={styles.card}>
         <h2 className={styles.companyName}>{data.company_name}</h2>
         <p className={styles.workerGreeting}>Hi, {data.worker_name}</p>
+
+        {isInAppBrowser() && (
+          <div className={styles.inAppBanner}>
+            This works best in your phone's browser. Tap the ••• or Share menu and choose <strong>Open in Safari</strong> or <strong>Open in Chrome</strong>.
+          </div>
+        )}
 
         {clockedOutMsg && (
           <div className={styles.successBox}>
