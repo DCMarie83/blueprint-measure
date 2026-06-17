@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Pencil, Trash2, Clock, Plus, Download, UserPlus, Users } from 'lucide-react'
+import { Pencil, Trash2, Clock, Plus, Download, Printer, UserPlus, Users } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -7,7 +7,9 @@ import {
   ensureMyCrewMember, createCrewMember, updateCrewMember, deleteCrewMember,
   getMyTimeEntries, getCompanyTimeEntries,
   createTimeEntry, createCrewDayEntries, updateTimeEntry, deleteTimeEntry,
+  summarizePay,
 } from '../data/timeTracking'
+import PayTable from '../components/PayTable'
 import styles from './TimePage.module.css'
 
 function periodRange(period) {
@@ -27,6 +29,11 @@ function periodRange(period) {
   return {}
 }
 
+function periodLabel(period) {
+  const r = periodRange(period)
+  return r.from ? `${r.from} to ${r.to}` : 'All time'
+}
+
 export default function TimePage() {
   const { user, userProfile, company, isSuperAdmin } = useAuth()
   const companyId = userProfile?.company_id || company?.id
@@ -41,6 +48,10 @@ export default function TimePage() {
   const [teamEntries, setTeamEntries] = useState([])
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState('week')
+
+  // Team filters
+  const [workerFilter, setWorkerFilter] = useState('all')
+  const [sortBy, setSortBy] = useState('date')
 
   // Single-entry form
   const [formProject, setFormProject] = useState('')
@@ -97,7 +108,6 @@ export default function TimePage() {
         ])
         setTeamEntries(team)
         setAllCrew(all)
-        // Init crew-day rows from active crew
         setCdRows(crewList.map(c => ({ crewMemberId: c.id, name: c.name, hours: '', notes: '' })))
       }
     } catch (err) {
@@ -197,21 +207,38 @@ export default function TimePage() {
     finally { setRosterSaving(null) }
   }
 
-  // ── Totals ──────────────────────────────────────────────────────────────
+  // ── Derived data ───────────────────────────────────────────────────────
   const myTotal = myEntries.reduce((s, e) => s + Number(e.hours), 0)
 
-  const { perJob, perWorker, teamTotal } = useMemo(() => {
-    const pj = {}, pw = {}
-    let total = 0
-    for (const e of teamEntries) {
-      const jName = e.projects?.name || '—'
-      const wName = e.crew_members?.name || '—'
-      pj[jName] = (pj[jName] || 0) + Number(e.hours)
-      pw[wName] = (pw[wName] || 0) + Number(e.hours)
-      total += Number(e.hours)
+  const visibleEntries = useMemo(() => {
+    let filtered = teamEntries
+    if (workerFilter !== 'all') {
+      filtered = filtered.filter(e => e.crew_member_id === workerFilter)
     }
-    return { perJob: pj, perWorker: pw, teamTotal: total }
-  }, [teamEntries])
+    if (sortBy === 'job') {
+      filtered = [...filtered].sort((a, b) => {
+        const ja = (a.projects?.name || '').toLowerCase()
+        const jb = (b.projects?.name || '').toLowerCase()
+        if (ja !== jb) return ja.localeCompare(jb)
+        return b.work_date.localeCompare(a.work_date)
+      })
+    }
+    return filtered
+  }, [teamEntries, workerFilter, sortBy])
+
+  const perJob = useMemo(() => {
+    const pj = {}
+    for (const e of visibleEntries) {
+      const name = e.projects?.name || '—'
+      pj[name] = (pj[name] || 0) + Number(e.hours)
+    }
+    return pj
+  }, [visibleEntries])
+
+  const payRows = useMemo(() => summarizePay(visibleEntries, allCrew), [visibleEntries, allCrew])
+  const visibleTotal = visibleEntries.reduce((s, e) => s + Number(e.hours), 0)
+
+  const filterWorkerName = workerFilter === 'all' ? 'All workers' : (crew.find(c => c.id === workerFilter)?.name || 'Worker')
 
   // ── Export ──────────────────────────────────────────────────────────────
   async function handleExport() {
@@ -219,46 +246,54 @@ export default function TimePage() {
     const wb = new ExcelJS.Workbook()
     const ws = wb.addWorksheet('Time Entries')
 
-    // Header
     ws.getCell(1, 1).value = company?.name || 'Time Export'
     ws.getCell(1, 1).font = { bold: true, size: 16 }
     const range = periodRange(period)
-    ws.getCell(2, 1).value = range.from ? `${range.from} to ${range.to}` : 'All time'
+    const scopeLabel = workerFilter !== 'all' ? filterWorkerName : 'All workers'
+    ws.getCell(2, 1).value = `${range.from ? `${range.from} to ${range.to}` : 'All time'} — ${scopeLabel}`
     ws.getCell(2, 1).font = { size: 10, italic: true, color: { argb: 'FF666666' } }
 
-    const headers = ['Worker', 'Date', 'Job', 'Hours', 'Notes']
+    const headers = ['Worker', 'Date', 'Job', 'Hours', 'Rate', 'Pay', 'Notes']
     const hRow = ws.getRow(4)
     const hFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1B2426' } }
     const hFont = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 }
-    headers.forEach((h, i) => {
-      const c = hRow.getCell(i + 1)
-      c.value = h; c.font = hFont; c.fill = hFill
-    })
+    headers.forEach((h, i) => { const c = hRow.getCell(i + 1); c.value = h; c.font = hFont; c.fill = hFill })
     ws.getColumn(1).width = 22; ws.getColumn(2).width = 12; ws.getColumn(3).width = 26
-    ws.getColumn(4).width = 10; ws.getColumn(5).width = 30
+    ws.getColumn(4).width = 10; ws.getColumn(5).width = 12; ws.getColumn(6).width = 12; ws.getColumn(7).width = 30
     ws.views = [{ state: 'frozen', ySplit: 4, xSplit: 0 }]
 
+    const rateMap = {}
+    for (const c of allCrew) rateMap[c.id] = Number(c.cost_rate) || 0
+
     let row = 5
-    for (const e of teamEntries) {
+    let totalPay = 0
+    for (const e of visibleEntries) {
       const r = ws.getRow(row++)
+      const rate = rateMap[e.crew_member_id] || 0
+      const hrs = Number(e.hours)
+      const pay = hrs * rate
+      totalPay += pay
       r.getCell(1).value = e.crew_members?.name || '—'
       r.getCell(2).value = e.work_date
       r.getCell(3).value = e.projects?.name || '—'
-      const hc = r.getCell(4); hc.value = Number(e.hours); hc.numFmt = '0.00'
-      r.getCell(5).value = e.notes || ''
+      const hc = r.getCell(4); hc.value = hrs; hc.numFmt = '0.00'
+      const rc = r.getCell(5); rc.value = rate; rc.numFmt = '$#,##0.00'
+      const pc = r.getCell(6); pc.value = pay; pc.numFmt = '$#,##0.00'
+      r.getCell(7).value = e.notes || ''
     }
 
     row++
-    ws.getCell(row, 1).value = 'TOTAL'
-    ws.getCell(row, 1).font = { bold: true }
-    const tc = ws.getCell(row, 4); tc.value = teamTotal; tc.numFmt = '0.00'; tc.font = { bold: true }
+    ws.getCell(row, 1).value = 'TOTAL'; ws.getCell(row, 1).font = { bold: true }
+    const tc = ws.getCell(row, 4); tc.value = visibleTotal; tc.numFmt = '0.00'; tc.font = { bold: true }
+    const tpc = ws.getCell(row, 6); tpc.value = totalPay; tpc.numFmt = '$#,##0.00'; tpc.font = { bold: true }
 
     const buffer = await wb.xlsx.writeBuffer()
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `time-entries-${range.from || 'all'}.xlsx`
+    const slug = workerFilter !== 'all' ? filterWorkerName.replace(/\s+/g, '-').toLowerCase() : 'all'
+    a.download = `time-${slug}-${range.from || 'all'}.xlsx`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -306,7 +341,6 @@ export default function TimePage() {
     )
   }
 
-  // ── Periods pills ───────────────────────────────────────────────────────
   const periodPills = (
     <div className={styles.filterRow}>
       {[{ v: 'week', l: 'This Week' }, { v: 'month', l: 'This Month' }, { v: 'all', l: 'All' }].map(p => (
@@ -323,7 +357,6 @@ export default function TimePage() {
           <h1 className={styles.title}><Clock size={24} /> Time</h1>
         </div>
 
-        {/* Tabs */}
         <div className={styles.tabRow}>
           <button className={`${styles.tab} ${tab === 'my' ? styles.tabActive : ''}`} onClick={() => setTab('my')}>My Time</button>
           {isAdmin && <button className={`${styles.tab} ${tab === 'team' ? styles.tabActive : ''}`} onClick={() => setTab('team')}><Users size={14} /> Team</button>}
@@ -344,9 +377,7 @@ export default function TimePage() {
                   <input type="text" className={styles.formInput} style={{ flex: 1, minWidth: 120 }} placeholder="Notes (optional)" value={formNotes} onChange={e => setFormNotes(e.target.value)} />
                   <button type="submit" className={styles.addBtn} disabled={submitting}>{submitting ? 'Saving…' : '+ Log Time'}</button>
                 </form>
-
                 {periodPills}
-
                 <section className={styles.section}>
                   <div className={styles.sectionHeader}>
                     <h2 className={styles.sectionTitle}>My Time</h2>
@@ -396,8 +427,20 @@ export default function TimePage() {
 
                 {periodPills}
 
-                {/* Per-job + per-worker totals */}
-                {teamEntries.length > 0 && (
+                {/* Worker filter + sort */}
+                <div className={styles.teamControls}>
+                  <select className={styles.formInput} value={workerFilter} onChange={e => setWorkerFilter(e.target.value)}>
+                    <option value="all">All workers</option>
+                    {crew.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                  <select className={styles.formInput} value={sortBy} onChange={e => setSortBy(e.target.value)}>
+                    <option value="date">Sort: Date</option>
+                    <option value="job">Sort: Job</option>
+                  </select>
+                </div>
+
+                {/* By Job hours + Pay summary */}
+                {visibleEntries.length > 0 && (
                   <div className={styles.totalsRow}>
                     <div className={styles.totalsCard}>
                       <h4 className={styles.totalsTitle}>By Job</h4>
@@ -406,10 +449,8 @@ export default function TimePage() {
                       ))}
                     </div>
                     <div className={styles.totalsCard}>
-                      <h4 className={styles.totalsTitle}>By Worker</h4>
-                      {Object.entries(perWorker).sort((a, b) => b[1] - a[1]).map(([name, hrs]) => (
-                        <div key={name} className={styles.totalsLine}><span>{name}</span><span>{hrs.toFixed(2)}</span></div>
-                      ))}
+                      <h4 className={styles.totalsTitle}>Pay</h4>
+                      <PayTable rows={payRows} />
                     </div>
                   </div>
                 )}
@@ -418,13 +459,14 @@ export default function TimePage() {
                 <section className={styles.section}>
                   <div className={styles.sectionHeader}>
                     <h2 className={styles.sectionTitle}>Team Timesheet</h2>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <span className={styles.totalBadge}>{teamTotal.toFixed(2)} hrs</span>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <span className={styles.totalBadge}>{visibleTotal.toFixed(2)} hrs</span>
                       <button className={styles.exportBtn} onClick={handleExport} title="Export"><Download size={14} /> Export</button>
+                      <button className={styles.exportBtn} onClick={() => window.print()} title="Print pay sheet"><Printer size={14} /> Print</button>
                     </div>
                   </div>
-                  {teamEntries.length === 0 ? (
-                    <p className={styles.empty}>No team entries for this period.</p>
+                  {visibleEntries.length === 0 ? (
+                    <p className={styles.empty}>No entries for this period{workerFilter !== 'all' ? ' and worker' : ''}.</p>
                   ) : (
                     <div className={styles.tableWrap}>
                       <table className={styles.table}>
@@ -433,11 +475,20 @@ export default function TimePage() {
                           <th className={styles.th}>Job</th><th className={styles.th}>Hours</th>
                           <th className={styles.th}>Notes</th><th className={styles.th}></th>
                         </tr></thead>
-                        <tbody>{teamEntries.map(e => renderEntry(e, true))}</tbody>
+                        <tbody>{visibleEntries.map(e => renderEntry(e, true))}</tbody>
                       </table>
                     </div>
                   )}
                 </section>
+
+                {/* Print-only pay sheet */}
+                <div className={styles.payPrintArea}>
+                  <h1 className={styles.printCompany}>{company?.name || 'Company'}</h1>
+                  <h2 className={styles.printTitle}>Pay Report</h2>
+                  <p className={styles.printMeta}>{periodLabel(period)} — {filterWorkerName}</p>
+                  <PayTable rows={payRows} />
+                  <p className={styles.printGenerated}>Generated {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                </div>
 
                 {/* Crew roster */}
                 <section className={styles.section}>

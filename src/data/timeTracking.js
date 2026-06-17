@@ -178,6 +178,37 @@ export async function deleteTimeEntry(id) {
   if (error) throw error
 }
 
+// Pure helper: build pay summary from entries + crew roster.
+// entries: [{ crew_member_id, hours, crew_members?: { name } }]
+// crew: [{ id, name, cost_rate }]
+// Returns [{ crewMemberId, name, rate, hours, pay }] sorted by pay desc.
+export function summarizePay(entries, crew) {
+  const rateLookup = {}
+  const nameLookup = {}
+  for (const c of (crew || [])) {
+    rateLookup[c.id] = Number(c.cost_rate) || 0
+    nameLookup[c.id] = c.name
+  }
+  const byWorker = {}
+  for (const e of entries) {
+    const cmId = e.crew_member_id
+    if (!byWorker[cmId]) {
+      byWorker[cmId] = {
+        crewMemberId: cmId,
+        name: e.crew_members?.name || nameLookup[cmId] || '—',
+        rate: rateLookup[cmId] ?? 0,
+        hours: 0,
+        pay: 0,
+      }
+    }
+    byWorker[cmId].hours += Number(e.hours)
+  }
+  const rows = Object.values(byWorker)
+  for (const r of rows) { r.pay = r.hours * r.rate }
+  rows.sort((a, b) => b.pay - a.pay)
+  return rows
+}
+
 export async function getPayReport(companyId, { from, to } = {}) {
   if (!companyId) return []
   let query = supabase
@@ -188,19 +219,16 @@ export async function getPayReport(companyId, { from, to } = {}) {
   if (to) query = query.lte('work_date', to)
   const { data, error } = await query
   if (error) throw error
-  const byWorker = {}
+  // Use summarizePay with entries themselves as crew source (they carry crew_members join)
+  const crewFromEntries = []
+  const seen = new Set()
   for (const e of (data ?? [])) {
-    const cmId = e.crew_member_id
-    if (!byWorker[cmId]) {
-      const rate = Number(e.crew_members?.cost_rate) || 0
-      byWorker[cmId] = { crewMemberId: cmId, name: e.crew_members?.name || '—', rate, hours: 0, pay: 0 }
+    if (!seen.has(e.crew_member_id)) {
+      seen.add(e.crew_member_id)
+      crewFromEntries.push({ id: e.crew_member_id, name: e.crew_members?.name || '—', cost_rate: e.crew_members?.cost_rate })
     }
-    byWorker[cmId].hours += Number(e.hours)
   }
-  const rows = Object.values(byWorker)
-  for (const r of rows) { r.pay = r.hours * r.rate }
-  rows.sort((a, b) => b.pay - a.pay)
-  return rows
+  return summarizePay(data ?? [], crewFromEntries)
 }
 
 export async function getWeekHours(myCrewMemberId) {

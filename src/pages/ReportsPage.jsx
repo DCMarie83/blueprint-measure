@@ -3,9 +3,8 @@ import { BarChart3, Printer } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import { useAuth } from '../context/AuthContext'
 import { getPayReport } from '../data/timeTracking'
+import PayTable from '../components/PayTable'
 import styles from './ReportsPage.module.css'
-
-const fmtUSD = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
 
 function firstOfMonth() {
   const d = new Date()
@@ -39,9 +38,6 @@ export default function ReportsPage() {
     return () => { cancelled = true }
   }, [companyId, isAdmin, from, to])
 
-  const totalHours = rows.reduce((s, r) => s + r.hours, 0)
-  const totalPay = rows.reduce((s, r) => s + r.pay, 0)
-
   if (!isAdmin) {
     return (
       <div className={styles.page}>
@@ -65,7 +61,6 @@ export default function ReportsPage() {
           <h1 className={styles.title}><BarChart3 size={24} /> Reports</h1>
         </div>
 
-        {/* Controls (hidden in print) */}
         <div className={styles.controls}>
           <div className={styles.dateRow}>
             <label className={styles.dateLabel}>
@@ -82,7 +77,6 @@ export default function ReportsPage() {
           </button>
         </div>
 
-        {/* Print-only header */}
         <div className={styles.printHeader}>
           <h1 className={styles.printCompany}>{company?.name || 'Company'}</h1>
           <h2 className={styles.printTitle}>Pay Report</h2>
@@ -94,40 +88,7 @@ export default function ReportsPage() {
         ) : rows.length === 0 ? (
           <div className={styles.empty}>No time entries in this period.</div>
         ) : (
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th className={styles.th}>Worker</th>
-                  <th className={styles.th} style={{ textAlign: 'right' }}>Hours</th>
-                  <th className={styles.th} style={{ textAlign: 'right' }}>Rate ($/hr)</th>
-                  <th className={styles.th} style={{ textAlign: 'right' }}>Pay</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map(r => (
-                  <tr key={r.crewMemberId} className={styles.tr}>
-                    <td className={styles.td}>{r.name}</td>
-                    <td className={styles.td} style={{ textAlign: 'right' }}>{r.hours.toFixed(2)}</td>
-                    <td className={styles.td} style={{ textAlign: 'right' }}>
-                      {r.rate > 0 ? fmtUSD.format(r.rate) : (
-                        <span style={{ color: 'var(--color-text-muted)' }}>$0.00 <small style={{ fontStyle: 'italic' }}>no rate set</small></span>
-                      )}
-                    </td>
-                    <td className={styles.td} style={{ textAlign: 'right', fontWeight: 600 }}>{fmtUSD.format(r.pay)}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className={styles.totalsRow}>
-                  <td className={styles.td} style={{ fontWeight: 700 }}>Total</td>
-                  <td className={styles.td} style={{ textAlign: 'right', fontWeight: 700 }}>{totalHours.toFixed(2)}</td>
-                  <td className={styles.td}></td>
-                  <td className={styles.td} style={{ textAlign: 'right', fontWeight: 700 }}>{fmtUSD.format(totalPay)}</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+          <PayTable rows={rows} />
         )}
 
         <p className={styles.generatedLine}>Generated {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
