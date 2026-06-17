@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Pencil, Trash2, Clock, Plus, Download, Printer, UserPlus, Users, Link2, Copy, Check, AlertTriangle, MapPin } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import AppHeader from '../components/AppHeader'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -54,6 +55,7 @@ function hoursSince(iso) {
 }
 
 export default function TimePage() {
+  const navigate = useNavigate()
   const { user, userProfile, company, isSuperAdmin } = useAuth()
   const companyId = userProfile?.company_id || company?.id
   const isAdmin = isSuperAdmin || userProfile?.role === 'contractor_admin'
@@ -672,7 +674,9 @@ export default function TimePage() {
                         <tbody>
                           {allCrew.map(cm => (
                             <tr key={cm.id} className={styles.tr}>
-                              <td className={styles.td} style={{ fontWeight: 500 }}>{cm.name}</td>
+                              <td className={styles.td} style={{ fontWeight: 500 }}>
+                                <button className={styles.iconBtn} style={{ fontWeight: 500, color: 'var(--color-primary)' }} onClick={() => navigate(`/time/crew/${cm.id}`)}>{cm.name}</button>
+                              </td>
                               <td className={styles.td}>
                                 <input type="number" className={styles.inlineInput} style={{ width: 80 }} step="0.01" min="0" placeholder="—"
                                   defaultValue={cm.cost_rate ?? ''} onBlur={e => handleRateSave(cm, e.target.value)}

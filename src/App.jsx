@@ -40,6 +40,7 @@ import PortalPage from './pages/PortalPage'
 import RivetPayLinkPage from './pages/RivetPayLinkPage'
 import AcademyPage from './pages/AcademyPage'
 import TimePage from './pages/TimePage'
+import CrewMemberPage from './pages/CrewMemberPage'
 import ResourcesPage from './pages/ResourcesPage'
 import ReportsPage from './pages/ReportsPage'
 import InvoiceListPage from './pages/InvoiceListPage'
@@ -234,6 +235,10 @@ export default function App() {
       <Route
         path="/time"
         element={<ProtectedRoute><TimePage /></ProtectedRoute>}
+      />
+      <Route
+        path="/time/crew/:id"
+        element={<ContractorAdminRoute><CrewMemberPage /></ContractorAdminRoute>}
       />
       <Route
         path="/academy"

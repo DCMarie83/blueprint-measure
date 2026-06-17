@@ -26,6 +26,26 @@ export async function getAllCrewMembers(companyId) {
   return data ?? []
 }
 
+export async function getCrewMemberById(id) {
+  const { data, error } = await supabase
+    .from('crew_members')
+    .select('*')
+    .eq('id', id)
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function getCrewMemberPunches(crewMemberId) {
+  const { data, error } = await supabase
+    .from('time_punch_submissions')
+    .select('id, clock_in_at, clock_in_lat, clock_in_lng, clock_out_at, clock_out_lat, clock_out_lng, hours, status, source, created_at, projects(name)')
+    .eq('crew_member_id', crewMemberId)
+    .order('clock_in_at', { ascending: false })
+  if (error) throw error
+  return data ?? []
+}
+
 export async function ensureMyCrewMember(companyId, userId, fullName) {
   if (!companyId || !userId) return null
   const { data: existing } = await supabase
