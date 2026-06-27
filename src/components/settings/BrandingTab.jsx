@@ -17,9 +17,12 @@ export default function BrandingTab() {
   const [primaryColor, setPrimaryColor] = useState(PLATFORM_PRIMARY)
   const [accentColor, setAccentColor] = useState(PLATFORM_ACCENT)
   const [portalTheme, setPortalTheme] = useState('light')
+  const [addressLine1, setAddressLine1] = useState('')
+  const [addressLine2, setAddressLine2] = useState('')
   const [companyCity, setCompanyCity] = useState('')
   const [companyState, setCompanyState] = useState('')
   const [companyZip, setCompanyZip] = useState('')
+  const [businessPhone, setBusinessPhone] = useState('')
   const [toast, setToast] = useState('')
   const [saveError, setSaveError] = useState(null)
 
@@ -30,9 +33,12 @@ export default function BrandingTab() {
     setPrimaryColor(company.primary_color || PLATFORM_PRIMARY)
     setAccentColor(company.accent_color || PLATFORM_ACCENT)
     setPortalTheme(company.portal_theme || 'light')
+    setAddressLine1(company.address_line1 || '')
+    setAddressLine2(company.address_line2 || '')
     setCompanyCity(company.city || '')
     setCompanyState(company.state || '')
     setCompanyZip(company.zip || '')
+    setBusinessPhone(company.business_phone || '')
   }, [company])
 
   useEffect(() => {
@@ -50,9 +56,12 @@ export default function BrandingTab() {
     primaryColor !== (company.primary_color || PLATFORM_PRIMARY) ||
     accentColor !== (company.accent_color || PLATFORM_ACCENT) ||
     portalTheme !== (company.portal_theme || 'light') ||
+    addressLine1 !== (company.address_line1 || '') ||
+    addressLine2 !== (company.address_line2 || '') ||
     companyCity !== (company.city || '') ||
     companyState !== (company.state || '') ||
-    companyZip !== (company.zip || '')
+    companyZip !== (company.zip || '') ||
+    businessPhone !== (company.business_phone || '')
   )
 
   const canSave = hasChanges && primaryValid && accentValid && nameValid && !loading
@@ -63,9 +72,12 @@ export default function BrandingTab() {
     setPrimaryColor(company.primary_color || PLATFORM_PRIMARY)
     setAccentColor(company.accent_color || PLATFORM_ACCENT)
     setPortalTheme(company.portal_theme || 'light')
+    setAddressLine1(company.address_line1 || '')
+    setAddressLine2(company.address_line2 || '')
     setCompanyCity(company.city || '')
     setCompanyState(company.state || '')
     setCompanyZip(company.zip || '')
+    setBusinessPhone(company.business_phone || '')
     setSaveError(null)
   }
 
@@ -77,9 +89,12 @@ export default function BrandingTab() {
         primary_color: primaryColor === PLATFORM_PRIMARY ? null : primaryColor,
         accent_color: accentColor === PLATFORM_ACCENT ? null : accentColor,
         portal_theme: portalTheme,
+        address_line1: addressLine1 || null,
+        address_line2: addressLine2 || null,
         city: companyCity || null,
         state: companyState || null,
         zip: companyZip || null,
+        business_phone: businessPhone || null,
       })
       setToast('Brand saved — looking fetching!')
     } catch (err) {
@@ -111,37 +126,37 @@ export default function BrandingTab() {
       <div className={styles.section}>
         <h3 className={styles.sectionLabel}>Company Location</h3>
         <p className={styles.sectionHint}>Your location powers local resources, regional pricing, and bid matching.</p>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+          <label className={styles.field} style={{ flex: 2, minWidth: 200 }}>
+            <span className={styles.fieldLabel}>Street</span>
+            <input className={styles.input} value={addressLine1} onChange={e => setAddressLine1(e.target.value)} placeholder="123 Main St" />
+          </label>
+          <label className={styles.field} style={{ flex: 1, minWidth: 120 }}>
+            <span className={styles.fieldLabel}>Suite / Unit</span>
+            <input className={styles.input} value={addressLine2} onChange={e => setAddressLine2(e.target.value)} placeholder="Suite 200" />
+          </label>
+        </div>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
           <label className={styles.field} style={{ flex: 2, minWidth: 160 }}>
             <span className={styles.fieldLabel}>City</span>
-            <input
-              className={styles.input}
-              value={companyCity}
-              onChange={e => setCompanyCity(e.target.value)}
-              placeholder="e.g. Columbus"
-            />
+            <input className={styles.input} value={companyCity} onChange={e => setCompanyCity(e.target.value)} placeholder="e.g. Columbus" />
           </label>
           <label className={styles.field} style={{ flex: 1, minWidth: 140 }}>
             <span className={styles.fieldLabel}>State</span>
-            <select
-              className={styles.input}
-              value={companyState}
-              onChange={e => setCompanyState(e.target.value)}
-            >
+            <select className={styles.input} value={companyState} onChange={e => setCompanyState(e.target.value)}>
               <option value="">Not set</option>
               {US_STATES.map(s => <option key={s.code} value={s.code}>{s.name}</option>)}
             </select>
           </label>
           <label className={styles.field} style={{ flex: 0, minWidth: 100 }}>
             <span className={styles.fieldLabel}>Zip</span>
-            <input
-              className={styles.input}
-              value={companyZip}
-              onChange={e => setCompanyZip(e.target.value.replace(/[^0-9]/g, '').slice(0, 5))}
-              placeholder="43215"
-              inputMode="numeric"
-              maxLength={5}
-            />
+            <input className={styles.input} value={companyZip} onChange={e => setCompanyZip(e.target.value.replace(/[^0-9]/g, '').slice(0, 5))} placeholder="43215" inputMode="numeric" maxLength={5} />
+          </label>
+        </div>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <label className={styles.field} style={{ flex: 1, minWidth: 180 }}>
+            <span className={styles.fieldLabel}>Business phone</span>
+            <input className={styles.input} value={businessPhone} onChange={e => setBusinessPhone(e.target.value)} placeholder="(614) 555-0100" type="tel" />
           </label>
         </div>
       </div>

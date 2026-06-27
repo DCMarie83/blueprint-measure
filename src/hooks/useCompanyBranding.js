@@ -77,7 +77,7 @@ export function useCompanyBranding() {
     }
   }
 
-  async function updateBranding({ name, primary_color, accent_color, portal_theme, state, city, zip }) {
+  async function updateBranding({ name, primary_color, accent_color, portal_theme, state, city, zip, address_line1, address_line2, business_phone }) {
     if (!companyId) throw new Error('No company context')
     setLoading(true)
     setError(null)
@@ -90,6 +90,9 @@ export function useCompanyBranding() {
       if (state !== undefined) patch.state = state || null
       if (city !== undefined) patch.city = city || null
       if (zip !== undefined) patch.zip = zip || null
+      if (address_line1 !== undefined) patch.address_line1 = address_line1 || null
+      if (address_line2 !== undefined) patch.address_line2 = address_line2 || null
+      if (business_phone !== undefined) patch.business_phone = business_phone || null
 
       const { error: err } = await supabase
         .from('companies')

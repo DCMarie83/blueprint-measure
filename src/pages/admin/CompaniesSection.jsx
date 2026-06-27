@@ -281,9 +281,12 @@ export default function CompaniesSection() {
                             <button className={styles.inlineCancelBtn} onClick={() => setEditingNameId(null)}>✕</button>
                           </div>
                         ) : (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                             <span style={{ fontWeight: 600 }}>{company.name}</span>
                             <button className={styles.iconBtn} onClick={() => { setEditingNameId(company.id); setEditingNameVal(company.name) }} title="Edit">✎</button>
+                            {company.wants_branding_quote && (
+                              <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4, background: 'rgba(242,114,67,0.12)', color: '#f27243' }}>Branding lead</span>
+                            )}
                           </div>
                         )}
                       </div>
