@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { TRIAL_GRACE_DAYS } from '../lib/config'
 
@@ -33,7 +34,16 @@ export default function TrialBanner() {
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, flexWrap: 'wrap',
         padding: '10px 16px', background: '#7c2d12', color: '#fff', fontSize: 13, fontWeight: 600,
       }}>
-        <span>Your trial has ended — book a call to keep your account. {urgency}.</span>
+        <span>Your trial has ended — subscribe to keep your account. {urgency}.</span>
+        <Link
+          to="/subscribe"
+          style={{
+            padding: '4px 14px', background: '#f27243', color: '#fff', borderRadius: 6,
+            fontWeight: 700, fontSize: 13, textDecoration: 'none',
+          }}
+        >
+          Subscribe
+        </Link>
         {CALENDAR_URL && (
           <a
             href={CALENDAR_URL}
@@ -61,6 +71,15 @@ export default function TrialBanner() {
       padding: '8px 16px', background: '#26464c', color: '#fff', fontSize: 13, fontWeight: 500,
     }}>
       <span>{label}</span>
+      <Link
+        to="/subscribe"
+        style={{
+          padding: '4px 14px', background: '#f27243', color: '#fff', borderRadius: 6,
+          fontWeight: 600, fontSize: 13, textDecoration: 'none',
+        }}
+      >
+        Subscribe
+      </Link>
       {CALENDAR_URL && (
         <a
           href={CALENDAR_URL}

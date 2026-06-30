@@ -54,32 +54,46 @@ export default function BillingBlockedPage({ company, reason }) {
           {msg.body}
         </p>
 
-        {isTrialExpired && CALENDAR_URL ? (
-          <a
-            href={CALENDAR_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: 'inline-block', padding: '12px 32px',
-              background: '#f27243', color: '#fff', borderRadius: 8,
-              fontWeight: 600, fontSize: 15, textDecoration: 'none',
-              marginBottom: 16,
-            }}
-          >
-            Book your onboarding call
-          </a>
-        ) : (
-          <Link
-            to="/settings"
-            style={{
-              display: 'inline-block', padding: '12px 32px',
-              background: '#f27243', color: '#fff', borderRadius: 8,
-              fontWeight: 600, fontSize: 15, textDecoration: 'none',
-              marginBottom: 16,
-            }}
-          >
-            Go to Account Settings
-          </Link>
+        <Link
+          to="/subscribe"
+          style={{
+            display: 'inline-block', padding: '12px 32px',
+            background: '#f27243', color: '#fff', borderRadius: 8,
+            fontWeight: 600, fontSize: 15, textDecoration: 'none',
+            marginBottom: 16,
+          }}
+        >
+          {isTrialExpired ? 'Subscribe' : 'Reactivate'}
+        </Link>
+
+        {isTrialExpired && CALENDAR_URL && (
+          <div style={{ marginBottom: 16 }}>
+            <a
+              href={CALENDAR_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                color: 'var(--color-primary)', fontSize: 14,
+                textDecoration: 'underline',
+              }}
+            >
+              Or book your onboarding call
+            </a>
+          </div>
+        )}
+
+        {!isTrialExpired && (
+          <div style={{ marginBottom: 16 }}>
+            <Link
+              to="/settings"
+              style={{
+                color: 'var(--color-primary)', fontSize: 14,
+                textDecoration: 'underline',
+              }}
+            >
+              Go to Account Settings
+            </Link>
+          </div>
         )}
 
         <div style={{ marginBottom: 24 }}>

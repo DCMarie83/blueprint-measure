@@ -51,6 +51,9 @@ import InvoiceForm from './components/invoices/InvoiceForm'
 import InvoicePortalPage from './pages/InvoicePortalPage'
 import PasswordRecoveryHandler from './components/PasswordRecoveryHandler'
 import SubscriptionGate from './components/auth/SubscriptionGate'
+import SubscribePage from './pages/SubscribePage'
+import BillingSuccessPage from './pages/BillingSuccessPage'
+import BillingCancelPage from './pages/BillingCancelPage'
 
 // ProtectedRoute wraps pages that require login + completed setup.
 // bypassSubscriptionGate: if true, skip the subscription check (for /settings, /account)
@@ -197,6 +200,18 @@ export default function App() {
       <Route
         path="/settings"
         element={<ProtectedRoute bypassSubscriptionGate><SettingsPage /></ProtectedRoute>}
+      />
+      <Route
+        path="/subscribe"
+        element={<ProtectedRoute bypassSubscriptionGate><SubscribePage /></ProtectedRoute>}
+      />
+      <Route
+        path="/billing/success"
+        element={<ProtectedRoute bypassSubscriptionGate><BillingSuccessPage /></ProtectedRoute>}
+      />
+      <Route
+        path="/billing/cancel"
+        element={<ProtectedRoute bypassSubscriptionGate><BillingCancelPage /></ProtectedRoute>}
       />
       <Route
         path="/jobs"
