@@ -38,7 +38,6 @@ export default function PlansSection() {
       annual_price: plan.annual_price ?? '',
       max_seats: plan.max_seats ?? '',
       max_storage_gb: plan.max_storage_gb ?? '',
-      max_signups: plan.max_signups ?? '',
       trial_days: plan.trial_days ?? 0,
       is_active: plan.is_active ?? true,
       is_intro_tier: plan.is_intro_tier ?? false,
@@ -67,7 +66,6 @@ export default function PlansSection() {
         annual_price: editState.annual_price === '' ? null : parseFloat(editState.annual_price),
         max_seats: editState.max_seats === '' ? null : parseInt(editState.max_seats),
         max_storage_gb: editState.max_storage_gb === '' ? null : parseInt(editState.max_storage_gb),
-        max_signups: editState.max_signups === '' ? null : parseInt(editState.max_signups),
         trial_days: parseInt(editState.trial_days) || 0,
         is_active: editState.is_active,
         is_intro_tier: editState.is_intro_tier,
@@ -120,9 +118,6 @@ export default function PlansSection() {
                 </span>
                 {plan.is_intro_tier && <span className={styles.pill}>Intro</span>}
                 {count > 0 && <span className={styles.pill}>{count} companies</span>}
-                {plan.max_signups != null && (
-                  <span className={styles.pill}>{plan.signup_count ?? 0}/{plan.max_signups} signups</span>
-                )}
               </div>
               <span style={{ color: 'var(--color-text-muted)' }}>{isExp ? '▾' : '▸'}</span>
             </div>
@@ -137,10 +132,6 @@ export default function PlansSection() {
                   <div className={styles.planField}>
                     <span className={styles.planFieldLabel}>Plan Key</span>
                     <input className={styles.planFieldInput} value={plan.key} disabled />
-                  </div>
-                  <div className={styles.planField}>
-                    <span className={styles.planFieldLabel}>Signup Count</span>
-                    <input className={styles.planFieldInput} value={plan.signup_count ?? 0} disabled />
                   </div>
                 </div>
 
@@ -167,10 +158,6 @@ export default function PlansSection() {
                   <div className={styles.planField}>
                     <span className={styles.planFieldLabel}>Max Storage (GB)</span>
                     <input className={styles.planFieldInput} type="number" value={editState.max_storage_gb} onChange={e => updateField('max_storage_gb', e.target.value)} placeholder="Empty = unlimited" />
-                  </div>
-                  <div className={styles.planField}>
-                    <span className={styles.planFieldLabel}>Max Signups</span>
-                    <input className={styles.planFieldInput} type="number" value={editState.max_signups} onChange={e => updateField('max_signups', e.target.value)} placeholder="Empty = unlimited" />
                   </div>
                 </div>
 

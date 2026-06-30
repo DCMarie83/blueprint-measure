@@ -40,6 +40,13 @@ export default function FoundersSection() {
   }, 0)
   const statesFoundersFull = rows.filter(r => r.founders && r.founders.signup_count >= r.founders.max_signups).length
 
+  const totalEBClaimed = rows.reduce((s, r) => s + (r.earlyBirds?.signup_count ?? 0), 0)
+  const totalEBRemaining = rows.reduce((s, r) => {
+    if (!r.earlyBirds) return s
+    return s + Math.max(0, r.earlyBirds.max_signups - r.earlyBirds.signup_count)
+  }, 0)
+  const statesEBFull = rows.filter(r => r.earlyBirds && r.earlyBirds.signup_count >= r.earlyBirds.max_signups).length
+
   const displayed = onlyWithSignups
     ? rows.filter(r => (r.founders?.signup_count ?? 0) > 0 || (r.earlyBirds?.signup_count ?? 0) > 0)
     : rows
@@ -78,7 +85,19 @@ export default function FoundersSection() {
         </div>
         <div className={styles.quickStatItem}>
           <span className={styles.quickStatValue}>{statesFoundersFull}</span>
-          <span className={styles.quickStatLabel}>States Full</span>
+          <span className={styles.quickStatLabel}>Founders States Full</span>
+        </div>
+        <div className={styles.quickStatItem}>
+          <span className={styles.quickStatValue}>{totalEBClaimed}</span>
+          <span className={styles.quickStatLabel}>Early Birds Claimed</span>
+        </div>
+        <div className={styles.quickStatItem}>
+          <span className={styles.quickStatValue}>{totalEBRemaining}</span>
+          <span className={styles.quickStatLabel}>Early Birds Remaining</span>
+        </div>
+        <div className={styles.quickStatItem}>
+          <span className={styles.quickStatValue}>{statesEBFull}</span>
+          <span className={styles.quickStatLabel}>Early Birds States Full</span>
         </div>
       </div>
 
@@ -94,8 +113,8 @@ export default function FoundersSection() {
           <thead>
             <tr>
               <th className={styles.th}>State</th>
-              <th className={styles.th}>Founders (used / cap)</th>
-              <th className={styles.th}>Early Birds (used / cap)</th>
+              <th className={styles.th}>Founders (used / cap / remaining)</th>
+              <th className={styles.th}>Early Birds (used / cap / remaining)</th>
             </tr>
           </thead>
           <tbody>
@@ -105,6 +124,9 @@ export default function FoundersSection() {
                   {r.state}
                   {r.founders && r.founders.signup_count >= r.founders.max_signups && (
                     <span className={styles.pill} style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}>Full</span>
+                  )}
+                  {r.earlyBirds && r.earlyBirds.signup_count >= r.earlyBirds.max_signups && (
+                    <span className={styles.pill} style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}>EB Full</span>
                   )}
                 </td>
                 <td className={styles.td}>
@@ -129,9 +151,12 @@ function QuotaCell({ quota, savedId, onCapChange }) {
   const [localCap, setLocalCap] = useState(null)
   const inputRef = useRef(null)
 
-  if (!quota) return <span style={{ color: 'var(--color-text-muted)' }}>—</span>
+  if (!quota) {
+    return <span style={{ color: 'var(--color-text-muted)' }}>0 / 0 / 0</span>
+  }
 
   const displayCap = localCap !== null ? localCap : quota.max_signups
+  const remaining = Math.max(0, (localCap !== null ? parseInt(localCap, 10) || 0 : quota.max_signups) - quota.signup_count)
 
   function handleBlur() {
     const parsed = parseInt(localCap, 10)
@@ -154,6 +179,7 @@ function QuotaCell({ quota, savedId, onCapChange }) {
         onBlur={handleBlur}
         onKeyDown={e => { if (e.key === 'Enter') inputRef.current?.blur() }}
       />
+      <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>/ {remaining} left</span>
       {savedId === quota.id && <span style={{ color: '#22c55e', fontSize: 12, fontWeight: 600 }}>Saved</span>}
     </span>
   )
