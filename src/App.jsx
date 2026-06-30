@@ -28,6 +28,7 @@ import ErrorsSection from './pages/admin/ErrorsSection'
 import SystemSection from './pages/admin/SystemSection'
 import AcademyAdminPage from './pages/admin/AcademyAdminPage'
 import ResourcesAdminPage from './pages/admin/ResourcesAdminPage'
+import FoundersSection from './pages/admin/FoundersSection'
 import UserDetailPage from './pages/admin/UserDetailPage'
 import TeamPage from './pages/TeamPage'
 import ProjectDetailPage from './pages/ProjectDetailPage'
@@ -292,6 +293,7 @@ export default function App() {
         <Route path="system" element={<SystemSection />} />
         <Route path="academy" element={<AcademyAdminPage />} />
         <Route path="resources" element={<ResourcesAdminPage />} />
+        <Route path="founders" element={<FoundersSection />} />
       </Route>
       <Route
         path="/accuracy-test"

@@ -86,6 +86,10 @@ export function useCompanyPlan(company) {
     }
   }
   const plan = plans.find(p => p.key === company.plan_key)
-  if (plan) return plan
+  if (plan) return {
+    ...plan,
+    monthly_price: company.locked_price_monthly ?? plan.monthly_price,
+    annual_price: company.locked_price_annual ?? plan.annual_price,
+  }
   return GRANDFATHER_DEFAULTS
 }

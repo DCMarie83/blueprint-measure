@@ -64,7 +64,7 @@ export default function AccountPage() {
       if (profile?.company_id) {
         const { data: c } = await supabase
           .from('companies')
-          .select('name, plan, plan_key, subscription_status')
+          .select('name, plan, plan_key, subscription_status, locked_price_monthly, locked_price_annual')
           .eq('id', profile.company_id)
           .single()
         companyData = c
