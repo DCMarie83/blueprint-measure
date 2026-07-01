@@ -82,7 +82,7 @@ export default function InvoiceForm({ existingInvoice, existingLineItems }) {
       setEstimateBanner(`Creating invoice from estimate ${est.estimate_number}`)
       setTitle(est.title || '')
       // Convert estimate line items → invoice line items using the selected variant or 'better' fallback
-      const variant = est.selected_variant || 'better'
+      const variant = est.accepted_variant || est.selected_variant || 'better'
       const rateField = `rate_${variant}`
       const totalField = `total_${variant}`
       const items = (est.estimate_line_items ?? [])
@@ -95,6 +95,7 @@ export default function InvoiceForm({ existingInvoice, existingLineItems }) {
           unit: li.unit || 'each',
           quantity: Number(li.quantity) || 0,
           rate: Number(li[rateField]) || 0,
+          source_estimate_line_item_id: li.id,
         }))
       if (items.length > 0) setLineItems(items)
     })()

@@ -58,6 +58,7 @@ export default function PortalEstimateSection({ estimate, lineItems, portalToken
         p_estimate_id: estimate.id,
         p_portal_token: portalToken,
         p_typed_name: typedName,
+        p_accepted_variant: lockedVariant || selectedVariant,
       })
       if (rpcErr) throw rpcErr
       setResponseStatus('accepted')

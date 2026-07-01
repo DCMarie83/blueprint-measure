@@ -142,6 +142,7 @@ export function useInvoiceMutations() {
           unit_rate: Number(li.rate) || 0,
           total: (Number(li.quantity) || 0) * (Number(li.rate) || 0),
           sort_order: i,
+          source_estimate_line_item_id: li.source_estimate_line_item_id ?? null,
         }))
         const { error: liErr } = await supabase.from('invoice_line_items').insert(rows)
         if (liErr) throw new Error(liErr.message)
