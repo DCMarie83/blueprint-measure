@@ -19,6 +19,7 @@ import { useClients } from '../hooks/useClients'
 import { useEstimates } from '../hooks/useEstimates'
 import { useMaterialOrders } from '../hooks/useMaterialOrders'
 import { useDateFormat } from '../hooks/useDateFormat'
+import ExpensesSection from '../components/expenses/ExpensesSection'
 import { BRAND } from '../lib/config'
 import styles from './DashboardPage.module.css'
 
@@ -404,6 +405,9 @@ export default function ProjectDetailPage() {
             </div>
           )}
         </section>
+
+        {/* Expenses */}
+        <ExpensesSection projectId={projectId} companyId={company?.id} isAdmin={isAdmin} />
 
         {/* Estimates */}
         <section style={{ marginBottom: 24 }}>
