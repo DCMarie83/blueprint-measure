@@ -291,6 +291,59 @@ export async function getPayReport(companyId, { from, to } = {}) {
   return summarizePay(data ?? [], crewFromEntries)
 }
 
+// Per-worker pay statement data with day-by-day entries and job breakdown.
+export async function getPayStatementData(companyId, crewMemberId, { from, to } = {}) {
+  if (!companyId || !crewMemberId) return { data: null, error: 'Missing companyId or crewMemberId' }
+  try {
+    const [{ data: crew, error: crewErr }, entriesResult] = await Promise.all([
+      supabase.from('crew_members').select('id, name, cost_rate').eq('id', crewMemberId).single(),
+      (async () => {
+        let q = supabase.from('time_entries').select('work_date, hours, cost_rate, projects(name)')
+          .eq('company_id', companyId).eq('crew_member_id', crewMemberId)
+          .order('work_date', { ascending: true })
+        if (from) q = q.gte('work_date', from)
+        if (to) q = q.lte('work_date', to)
+        return q
+      })(),
+    ])
+    if (crewErr) throw crewErr
+    if (entriesResult.error) throw entriesResult.error
+
+    const entries = (entriesResult.data ?? []).map(e => ({
+      work_date: e.work_date,
+      jobName: e.projects?.name || 'No job',
+      hours: Number(e.hours) || 0,
+      cost_rate: Number(e.cost_rate) || 0,
+    }))
+
+    const jobMap = {}
+    let totalHours = 0, totalPay = 0
+    for (const e of entries) {
+      const pay = e.hours * e.cost_rate
+      totalHours += e.hours
+      totalPay += pay
+      if (!jobMap[e.jobName]) jobMap[e.jobName] = { jobName: e.jobName, hours: 0, pay: 0 }
+      jobMap[e.jobName].hours += e.hours
+      jobMap[e.jobName].pay += pay
+    }
+    const byJob = Object.values(jobMap).sort((a, b) => b.hours - a.hours)
+
+    return {
+      data: {
+        worker: { id: crew.id, name: crew.name, rate: Number(crew.cost_rate) || 0 },
+        period: { from, to },
+        entries,
+        byJob,
+        totalHours,
+        totalPay,
+      },
+      error: null,
+    }
+  } catch (err) {
+    return { data: null, error: err.message || String(err) }
+  }
+}
+
 export async function getWeekHours(myCrewMemberId) {
   if (!myCrewMemberId) return 0
   const now = new Date()

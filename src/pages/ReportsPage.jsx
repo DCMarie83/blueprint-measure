@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react'
 import { BarChart3, Printer } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import { useAuth } from '../context/AuthContext'
-import { getPayReport } from '../data/timeTracking'
+import { getPayReport, getPayStatementData } from '../data/timeTracking'
 import { getJobCostingRows, getJobCostingDetail } from '../data/jobCosting'
+import { generatePayStatementPDF } from '../lib/generatePayStatementPDF'
 import { fmtMoney } from '../utils/formatMoney'
 import PayTable from '../components/PayTable'
 import styles from './ReportsPage.module.css'
@@ -32,6 +33,7 @@ export default function ReportsPage() {
   // Pay report state
   const [payRows, setPayRows] = useState([])
   const [payLoading, setPayLoading] = useState(false)
+  const [downloadingId, setDownloadingId] = useState(null)
 
   // Job costing state
   const [costingRows, setCostingRows] = useState([])
@@ -87,6 +89,43 @@ export default function ReportsPage() {
     return () => { cancelled = true }
   }, [companyId, detailProjectId])
 
+  async function handleDownloadStatement(crewMemberId) {
+    setDownloadingId(crewMemberId)
+    try {
+      const { data: stmtData, error: stmtErr } = await getPayStatementData(companyId, crewMemberId, { from, to })
+      if (stmtErr || !stmtData) { alert(stmtErr || 'Could not load pay data'); return }
+
+      // Pre-fetch company logo
+      let companyData = { name: company?.name, primary_color: company?.primary_color, address_line1: company?.address_line1, address_line2: company?.address_line2, city: company?.city, state: company?.state, zip: company?.zip, business_phone: company?.business_phone }
+      if (company?.logo_url) {
+        try {
+          const res = await fetch(company.logo_url)
+          if (res.ok) {
+            const blob = await res.blob()
+            const reader = new FileReader()
+            const logoData = await new Promise(resolve => { reader.onloadend = () => resolve(reader.result); reader.readAsDataURL(blob) })
+            companyData.logo_data = logoData
+          }
+        } catch { /* skip logo */ }
+      }
+
+      const pdf = generatePayStatementPDF({ ...stmtData, company: companyData, returnAs: 'blob' })
+      const url = URL.createObjectURL(pdf)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `PayStatement_${stmtData.worker.name.replace(/\s+/g, '_')}_${from}_to_${to}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('Pay statement download:', err)
+      alert('Failed to generate pay statement')
+    } finally {
+      setDownloadingId(null)
+    }
+  }
+
   if (!isAdmin) {
     return (
       <div className={styles.page}>
@@ -134,7 +173,7 @@ export default function ReportsPage() {
         {view === 'pay' && (
           payLoading ? <div className={styles.empty}>Loading...</div>
           : payRows.length === 0 ? <div className={styles.empty}>No time entries in this period.</div>
-          : <PayTable rows={payRows} />
+          : <PayTable rows={payRows} onDownloadStatement={handleDownloadStatement} downloadingId={downloadingId} />
         )}
 
         {/* JOB COSTING */}
