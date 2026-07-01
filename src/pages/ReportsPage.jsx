@@ -467,6 +467,15 @@ function MarginCell({ amount, pct, large }) {
   )
 }
 
+function Stat({ label, value }) {
+  return (
+    <div style={{ minWidth: 120 }}>
+      <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)', marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 18, fontWeight: 700 }}>{value}</div>
+    </div>
+  )
+}
+
 function SectionCard({ title, subtitle, children }) {
   return (
     <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg, 8px)', padding: '16px 20px', marginBottom: 16 }}>
