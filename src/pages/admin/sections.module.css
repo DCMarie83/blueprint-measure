@@ -237,6 +237,11 @@
 .submitBtn:disabled { opacity: 0.5; }
 .fieldError { font-size: 12px; color: #fca5a5; margin: 4px 0 0; }
 
+.modalText { font-size: 14px; color: var(--color-text); margin-bottom: 12px; }
+.modalField { display: flex; flex-direction: column; gap: 4px; margin-bottom: 16px; }
+.actionsList { display: flex; flex-direction: column; gap: 10px; }
+.rowActions { display: flex; gap: 6px; }
+
 /* ── Inline edit ─────────────────────────────────────────────────────────── */
 
 .inlineEdit { display: flex; gap: 6px; align-items: center; }

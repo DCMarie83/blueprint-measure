@@ -32,3 +32,6 @@
 .emptyState h2 { color: var(--color-text); margin: 16px 0 8px; }
 .emptyState p { margin-bottom: 20px; }
 .empty { text-align: center; padding: 60px 20px; color: var(--color-text-muted); }
+.headerActions { display: flex; gap: 8px; }
+.importBtn { background: none; border: 1px solid var(--color-border); color: var(--color-text-muted); }
+.importBtn:hover { border-color: var(--color-text-muted); color: var(--color-text); }

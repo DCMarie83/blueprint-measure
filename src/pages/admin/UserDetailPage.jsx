@@ -317,7 +317,7 @@ export default function UserDetailPage() {
           {!isTargetSuperAdmin && (
             <div className={styles.sectionCard} style={{ marginTop: 16 }}>
               <div className={styles.sectionCardTitle}>Admin Actions</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div className={styles.actionsList}>
                 {profile?.company_id && (
                   <button className={styles.addBtn} onClick={() => setShowEnterAccount(true)}>
                     Enter Account

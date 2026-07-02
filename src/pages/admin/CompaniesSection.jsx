@@ -293,7 +293,7 @@ export default function CompaniesSection() {
                             <span style={{ fontWeight: 600 }}>{company.name}</span>
                             <button className={styles.iconBtn} onClick={() => { setEditingNameId(company.id); setEditingNameVal(company.name) }} title="Edit">✎</button>
                             {company.wants_branding_quote && (
-                              <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4, background: 'rgba(242,114,67,0.12)', color: '#f27243' }}>Branding lead</span>
+                              <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4, background: 'rgba(242,114,67,0.12)', color: 'var(--color-primary)' }}>Branding lead</span>
                             )}
                           </div>
                         )}
@@ -322,7 +322,7 @@ export default function CompaniesSection() {
                           <button className={styles.iconBtn} onClick={() => setEditingStatusId(company.id)} title="Change status">✎</button>
                           {company.subscription_status === 'trialing' && company.trial_ends_at && (() => {
                             const msLeft = new Date(company.trial_ends_at).getTime() - Date.now()
-                            if (msLeft <= 0) return <span style={{ fontSize: 10, color: '#dc2626', fontWeight: 600 }}>Expired</span>
+                            if (msLeft <= 0) return <span style={{ fontSize: 10, color: 'var(--color-danger)', fontWeight: 600 }}>Expired</span>
                             const d = Math.ceil(msLeft / (1000 * 60 * 60 * 24))
                             return <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>{d}d left</span>
                           })()}
@@ -356,12 +356,14 @@ export default function CompaniesSection() {
                       </div>
                     </td>
                     <td className={styles.td} data-no-expand>
-                      <button className={styles.secondaryBtn} style={{ marginRight: 6 }} onClick={() => setEnterAccountTarget(company)}>
-                        Enter
-                      </button>
-                      <button className={styles.deleteBtn} onClick={() => handleDelete(company)} disabled={deletingId === company.id}>
-                        {deletingId === company.id ? '…' : 'Delete'}
-                      </button>
+                      <div className={styles.rowActions}>
+                        <button className={styles.secondaryBtn} onClick={() => setEnterAccountTarget(company)}>
+                          Enter
+                        </button>
+                        <button className={styles.deleteBtn} onClick={() => handleDelete(company)} disabled={deletingId === company.id}>
+                          {deletingId === company.id ? '…' : 'Delete'}
+                        </button>
+                      </div>
                     </td>
                     <td className={styles.td} style={{ cursor: 'pointer', textAlign: 'center' }} onClick={() => handleOpenDrawer(company.id)}>
                       <ChevronRight size={16} style={{ color: 'var(--color-text-muted)' }} />

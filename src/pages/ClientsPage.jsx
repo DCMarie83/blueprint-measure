@@ -68,8 +68,8 @@ export default function ClientsPage() {
             <h1 className={styles.title}>Clients</h1>
             <p className={styles.subtitle}>Manage your residential and commercial clients</p>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className={styles.newBtn} onClick={() => setShowImport(true)} style={{ background: 'none', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}><Upload size={16} /> Import</button>
+          <div className={styles.headerActions}>
+            <button className={`${styles.newBtn} ${styles.importBtn}`} onClick={() => setShowImport(true)}><Upload size={16} /> Import</button>
             <button className={styles.newBtn} onClick={() => setShowCreate(true)}><Plus size={16} /> New Client</button>
           </div>
         </div>
