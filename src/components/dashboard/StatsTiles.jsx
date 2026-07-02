@@ -2,6 +2,7 @@ import styles from './StatsTiles.module.css';
 
 const TILE_CONFIG = [
   { key: 'activeJobs', label: 'Active Jobs' },
+  { key: 'clientCount', label: 'Clients' },
   { key: 'blueprintsThisWeek', label: 'Blueprints This Week' },
   { key: 'jobsThisMonth', label: 'Jobs This Month' },
   { key: 'teamMembers', label: 'Team Members' },
