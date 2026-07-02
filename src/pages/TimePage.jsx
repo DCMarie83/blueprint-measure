@@ -71,6 +71,8 @@ export default function TimePage() {
   const [teamEntries, setTeamEntries] = useState([])
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState('week')
+  const [from, setFrom] = useState(() => periodRange('week').from || '')
+  const [to, setTo] = useState(() => periodRange('week').to || '')
 
   const [workerFilter, setWorkerFilter] = useState('all')
   const [sortBy, setSortBy] = useState('date')
@@ -126,7 +128,9 @@ export default function TimePage() {
       const myCm = await ensureMyCrewMember(companyId, user.id, userProfile?.full_name)
       setMyCrewId(myCm?.id || null)
 
-      const range = periodRange(period)
+      const range = {}
+      if (from) range.from = from
+      if (to) range.to = to
       const [projs, crewList] = await Promise.all([
         getActiveProjects(companyId),
         getCrewMembers(companyId),
@@ -155,7 +159,7 @@ export default function TimePage() {
     } finally {
       setLoading(false)
     }
-  }, [user, companyId, userProfile?.full_name, period, isAdmin])
+  }, [user, companyId, userProfile?.full_name, from, to, isAdmin])
 
   useEffect(() => { loadData() }, [loadData])
 
@@ -358,9 +362,8 @@ export default function TimePage() {
     const ws = wb.addWorksheet('Time Entries')
     ws.getCell(1, 1).value = company?.name || 'Time Export'
     ws.getCell(1, 1).font = { bold: true, size: 16 }
-    const range = periodRange(period)
     const scopeLabel = workerFilter !== 'all' ? filterWorkerName : 'All workers'
-    ws.getCell(2, 1).value = `${range.from ? `${range.from} to ${range.to}` : 'All time'} — ${scopeLabel}`
+    ws.getCell(2, 1).value = `${from ? `${from} to ${to}` : 'All time'} — ${scopeLabel}`
     ws.getCell(2, 1).font = { size: 10, italic: true, color: { argb: 'FF666666' } }
     const headers = ['Worker', 'Date', 'Job', 'Hours', 'Rate', 'Pay', 'Notes']
     const hRow = ws.getRow(4)
@@ -420,11 +423,41 @@ export default function TimePage() {
     )
   }
 
+  function handlePeriodClick(v) {
+    setPeriod(v)
+    if (v === 'all') {
+      setFrom('')
+      setTo('')
+    } else {
+      const r = periodRange(v)
+      setFrom(r.from || '')
+      setTo(r.to || '')
+    }
+  }
+
+  function handleFromChange(e) {
+    setFrom(e.target.value)
+    setPeriod('custom')
+  }
+
+  function handleToChange(e) {
+    setTo(e.target.value)
+    setPeriod('custom')
+  }
+
   const periodPills = (
     <div className={styles.filterRow}>
       {[{ v: 'week', l: 'This Week' }, { v: 'month', l: 'This Month' }, { v: 'all', l: 'All' }].map(p => (
-        <button key={p.v} className={`${styles.chip} ${period === p.v ? styles.chipActive : ''}`} onClick={() => setPeriod(p.v)}>{p.l}</button>
+        <button key={p.v} className={`${styles.chip} ${period === p.v ? styles.chipActive : ''}`} onClick={() => handlePeriodClick(p.v)}>{p.l}</button>
       ))}
+      <div className={styles.dateRow}>
+        <label className={styles.dateLabel}>From
+          <input type="date" className={styles.dateInput} value={from} onChange={handleFromChange} disabled={period === 'all'} />
+        </label>
+        <label className={styles.dateLabel}>To
+          <input type="date" className={styles.dateInput} value={to} onChange={handleToChange} disabled={period === 'all'} />
+        </label>
+      </div>
     </div>
   )
 
@@ -644,7 +677,7 @@ export default function TimePage() {
                     <div key={stub.crewMemberId} className={idx > 0 ? styles.stubPageBreak : undefined}>
                       <div className={styles.stubHeader}>{company?.logo_url && <img src={company.logo_url} alt="" className={styles.stubLogo} />}<div className={styles.stubCompanyName}>{company?.name || 'Company'}</div></div>
                       <h2 className={styles.stubTitle}>Pay Statement</h2>
-                      <div className={styles.stubMeta}><span><strong>{stub.name}</strong></span><span>{periodLabel(period)}</span></div>
+                      <div className={styles.stubMeta}><span><strong>{stub.name}</strong></span><span>{from ? `${from} to ${to}` : 'All time'}</span></div>
                       <table className={styles.stubTable}><thead><tr><th className={styles.stubTh}>Job</th><th className={styles.stubTh} style={{ textAlign: 'right' }}>Hours</th><th className={styles.stubTh} style={{ textAlign: 'right' }}>Rate</th><th className={styles.stubTh} style={{ textAlign: 'right' }}>Pay</th></tr></thead>
                         <tbody>{stub.jobs.map(j => (<tr key={j.job}><td className={styles.stubTd}>{j.job}</td><td className={styles.stubTd} style={{ textAlign: 'right' }}>{j.hours.toFixed(2)}</td><td className={styles.stubTd} style={{ textAlign: 'right' }}>{stub.rate > 0 ? fmtUSD.format(stub.rate) : <span className={styles.noRateHint}>$0.00</span>}</td><td className={styles.stubTd} style={{ textAlign: 'right' }}>{fmtUSD.format(j.pay)}</td></tr>))}</tbody>
                         <tfoot><tr className={styles.stubTotalsRow}><td className={styles.stubTd} style={{ fontWeight: 700 }}>Total</td><td className={styles.stubTd} style={{ textAlign: 'right', fontWeight: 700 }}>{stub.totalHours.toFixed(2)}</td><td className={styles.stubTd}></td><td className={styles.stubTd} style={{ textAlign: 'right', fontWeight: 700 }}>{fmtUSD.format(stub.totalPay)}</td></tr></tfoot>
