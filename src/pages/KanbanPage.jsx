@@ -16,6 +16,7 @@ import JobsListView from '../components/jobs/JobsListView'
 import JobsFilterBar from '../components/jobs/JobsFilterBar'
 import { useOpportunities } from '../hooks/useOpportunities'
 import { useProjects } from '../hooks/useProjects'
+import { useEstimates } from '../hooks/useEstimates'
 import { useClients } from '../hooks/useClients'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -95,6 +96,7 @@ export default function KanbanPage() {
   const navigate = useNavigate()
   const { columns, loading, error, moveProject, refetch } = useOpportunities()
   const { createProject } = useProjects()
+  const { createEstimate } = useEstimates()
   const { clients } = useClients()
   const { userProfile } = useAuth()
   const [view, setView] = useViewPreference('jobs', 'kanban')
@@ -178,9 +180,18 @@ export default function KanbanPage() {
     if (result?.error) alert('Could not move card: ' + result.error)
   }
 
-  async function handleCreateJob(payload) {
-    await createProject(payload)
+  async function handleCreateJob(payload, buildMethod) {
+    const project = await createProject(payload)
     setShowNewJob(false)
+    if (buildMethod === 'manual') {
+      try {
+        const est = await createEstimate(project.id)
+        navigate(`/estimates/${est.id}`)
+      } catch {
+        navigate(`/project/${project.id}`)
+      }
+      return
+    }
     await refetch()
   }
 

@@ -8,6 +8,7 @@ export default function NewProjectForm({ onCreate, onCancel }) {
   const { clients } = useClients()
   const [name, setName] = useState('')
   const [address, setAddress] = useState('')
+  const [buildMethod, setBuildMethod] = useState('blueprint') // 'blueprint' | 'manual'
   const [clientMode, setClientMode] = useState('skip')
   const [selectedClientId, setSelectedClientId] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -29,7 +30,7 @@ export default function NewProjectForm({ onCreate, onCancel }) {
         clientId = newClient.id
       }
 
-      await onCreate({ name: name.trim(), address: address.trim() || null, clientId })
+      await onCreate({ name: name.trim(), address: address.trim() || null, clientId }, buildMethod)
     } catch (err) {
       setError(err.message)
       setLoading(false)
@@ -79,6 +80,40 @@ export default function NewProjectForm({ onCreate, onCancel }) {
           onChange={e => setAddress(e.target.value)}
           placeholder="e.g. 123 Main St"
         />
+      </div>
+
+      <div className={styles.field}>
+        <label>How do you want to build this estimate?</label>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 10, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: 3 }}>
+          <button
+            type="button"
+            onClick={() => setBuildMethod('blueprint')}
+            style={{
+              flex: 1, padding: '10px 10px', fontSize: 13, fontWeight: 500, border: 'none',
+              borderRadius: 'var(--radius-md)', cursor: 'pointer', textAlign: 'center',
+              background: buildMethod === 'blueprint' ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'var(--color-bg)',
+              color: buildMethod === 'blueprint' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+              transition: 'background 0.15s, color 0.15s',
+            }}
+          >
+            <div style={{ fontWeight: 600 }}>Measure a Blueprint</div>
+            <div style={{ fontSize: 11, marginTop: 2, opacity: 0.8 }}>Upload plans and measure to scale</div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setBuildMethod('manual')}
+            style={{
+              flex: 1, padding: '10px 10px', fontSize: 13, fontWeight: 500, border: 'none',
+              borderRadius: 'var(--radius-md)', cursor: 'pointer', textAlign: 'center',
+              background: buildMethod === 'manual' ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'var(--color-bg)',
+              color: buildMethod === 'manual' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+              transition: 'background 0.15s, color 0.15s',
+            }}
+          >
+            <div style={{ fontWeight: 600 }}>Enter Measurements Manually</div>
+            <div style={{ fontSize: 11, marginTop: 2, opacity: 0.8 }}>Type in your own measurements & line items</div>
+          </button>
+        </div>
       </div>
 
       <div className={styles.field}>

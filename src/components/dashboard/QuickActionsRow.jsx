@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabase'
 import { getWeekHours } from '../../data/timeTracking'
 import { useProjects } from '../../hooks/useProjects'
 import { useSessions } from '../../hooks/useSessions'
+import { useEstimates } from '../../hooks/useEstimates'
 import styles from './QuickActionsRow.module.css'
 
 export default function QuickActionsRow() {
@@ -15,6 +16,7 @@ export default function QuickActionsRow() {
   const { user, userProfile, isSuperAdmin } = useAuth()
   const { createProject } = useProjects()
   const { createSession } = useSessions()
+  const { createEstimate } = useEstimates()
   const [showModal, setShowModal] = useState(false)
 
   const isAdmin = isSuperAdmin || userProfile?.role === 'contractor_admin'
@@ -41,8 +43,19 @@ export default function QuickActionsRow() {
     return () => { cancelled = true }
   }, [isAdmin, user?.id, companyId])
 
-  async function handleCreateProject(fields) {
+  async function handleCreateProject(fields, buildMethod) {
     const project = await createProject(fields)
+    if (buildMethod === 'manual') {
+      try {
+        const est = await createEstimate(project.id)
+        setShowModal(false)
+        navigate(`/estimates/${est.id}`)
+      } catch {
+        setShowModal(false)
+        navigate(`/project/${project.id}`)
+      }
+      return
+    }
     try {
       const session = await createSession({
         projectId: project.id,
