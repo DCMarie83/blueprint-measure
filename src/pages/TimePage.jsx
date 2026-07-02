@@ -3,6 +3,7 @@ import { Pencil, Trash2, Clock, Plus, Download, Printer, UserPlus, Users, Link2,
 import { useNavigate } from 'react-router-dom'
 import AppHeader from '../components/AppHeader'
 import { useAuth } from '../context/AuthContext'
+import { useEffectiveCompany } from '../hooks/useEffectiveCompany'
 import {
   getActiveProjects, getCrewMembers, getAllCrewMembers,
   ensureMyCrewMember, createCrewMember, updateCrewMember, deleteCrewMember,
@@ -57,7 +58,8 @@ function hoursSince(iso) {
 export default function TimePage() {
   const navigate = useNavigate()
   const { user, userProfile, company, isSuperAdmin } = useAuth()
-  const companyId = userProfile?.company_id || company?.id
+  const { companyId: effectiveCompanyId } = useEffectiveCompany()
+  const companyId = effectiveCompanyId
   const isAdmin = isSuperAdmin || userProfile?.role === 'contractor_admin'
 
   const [tab, setTab] = useState('my')

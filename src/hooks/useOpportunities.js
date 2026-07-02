@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useEffectiveCompany } from './useEffectiveCompany'
 
 export function useOpportunities() {
-  const { user, userProfile } = useAuth()
+  const { user } = useAuth()
+  const { companyId } = useEffectiveCompany()
   const [columns, setColumns] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-
-  const companyId = userProfile?.company_id
 
   const fetchBoard = useCallback(async () => {
     if (!user || !companyId) return

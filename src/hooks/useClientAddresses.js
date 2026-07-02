@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
-import { useAuth } from '../context/AuthContext'
+import { useEffectiveCompany } from './useEffectiveCompany'
 
 export function useClientAddresses(clientId) {
-  const { userProfile } = useAuth()
-  const companyId = userProfile?.company_id
+  const { companyId } = useEffectiveCompany()
   const [addresses, setAddresses] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)

@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useEffectiveCompany } from './useEffectiveCompany'
 
 export function useProjects() {
-  const { user, userProfile } = useAuth()
+  const { user } = useAuth()
+  const { companyId } = useEffectiveCompany()
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -52,7 +54,6 @@ export function useProjects() {
   }, [fetchProjects])
 
   async function createProject({ name, address, clientId }) {
-    const companyId = userProfile?.company_id
     if (!companyId) throw new Error('No company assigned. Contact support.')
 
     // Fetch the first kanban column for this company

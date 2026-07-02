@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { BarChart3, Printer } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import { useAuth } from '../context/AuthContext'
+import { useEffectiveCompany } from '../hooks/useEffectiveCompany'
 import { getPayReport, getPayStatementData } from '../data/timeTracking'
 import { getJobCostingRows, getJobCostingDetail } from '../data/jobCosting'
 import { generatePayStatementPDF } from '../lib/generatePayStatementPDF'
@@ -52,8 +53,8 @@ async function fetchCompanyWithLogo(company) {
 // ── Main component ──────────────────────────────────────────────────────
 
 export default function ReportsPage() {
-  const { userProfile, company, isSuperAdmin } = useAuth()
-  const companyId = userProfile?.company_id || company?.id
+  const { isSuperAdmin } = useAuth()
+  const { companyId, company } = useEffectiveCompany()
   const isAdmin = isSuperAdmin || userProfile?.role === 'contractor_admin'
 
   const [view, setView] = useState('pay') // 'pay' | 'costing'

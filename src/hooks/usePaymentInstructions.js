@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useEffectiveCompany } from './useEffectiveCompany'
 
 const DEFAULT_INSTRUCTIONS = {
   check: { enabled: false, payable_to: '', mailing_address: '' },
@@ -13,8 +14,8 @@ const DEFAULT_INSTRUCTIONS = {
 }
 
 export function usePaymentInstructions() {
-  const { company, refreshCompany } = useAuth()
-  const companyId = company?.id
+  const { refreshCompany } = useAuth()
+  const { companyId } = useEffectiveCompany()
   const [paymentInstructions, setPaymentInstructions] = useState(DEFAULT_INSTRUCTIONS)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)

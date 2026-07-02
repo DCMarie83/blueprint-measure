@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useEffectiveCompany } from './useEffectiveCompany'
 
 const MAX_SIZE_BYTES = 5 * 1024 * 1024
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 const BUCKET = 'company-logos'
 
 export function useCompanyBranding() {
-  const { company, refreshCompany } = useAuth()
-  const companyId = company?.id
+  const { refreshCompany } = useAuth()
+  const { companyId } = useEffectiveCompany()
   const [uploading, setUploading] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)

@@ -29,6 +29,7 @@ import SystemSection from './pages/admin/SystemSection'
 import AcademyAdminPage from './pages/admin/AcademyAdminPage'
 import ResourcesAdminPage from './pages/admin/ResourcesAdminPage'
 import FoundersSection from './pages/admin/FoundersSection'
+import ImpersonationLogSection from './pages/admin/ImpersonationLogSection'
 import UserDetailPage from './pages/admin/UserDetailPage'
 import TeamPage from './pages/TeamPage'
 import ProjectDetailPage from './pages/ProjectDetailPage'
@@ -50,6 +51,7 @@ import InvoiceDetailPage from './pages/InvoiceDetailPage'
 import InvoiceForm from './components/invoices/InvoiceForm'
 import InvoicePortalPage from './pages/InvoicePortalPage'
 import PasswordRecoveryHandler from './components/PasswordRecoveryHandler'
+import ImpersonationBanner from './components/ImpersonationBanner'
 import SubscriptionGate from './components/auth/SubscriptionGate'
 import SubscribePage from './pages/SubscribePage'
 import BillingSuccessPage from './pages/BillingSuccessPage'
@@ -160,6 +162,7 @@ export default function App() {
 
   return (
     <>
+    <ImpersonationBanner />
     <RouteBreadcrumbs />
     <PasswordRecoveryHandler />
     <Routes>
@@ -309,6 +312,7 @@ export default function App() {
         <Route path="academy" element={<AcademyAdminPage />} />
         <Route path="resources" element={<ResourcesAdminPage />} />
         <Route path="founders" element={<FoundersSection />} />
+        <Route path="impersonation-log" element={<ImpersonationLogSection />} />
       </Route>
       <Route
         path="/accuracy-test"

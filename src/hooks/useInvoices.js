@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useEffectiveCompany } from './useEffectiveCompany'
 
 export function isOverdue(invoice) {
   if (!invoice || (invoice.status !== 'sent' && invoice.status !== 'partial')) return false
@@ -9,8 +10,7 @@ export function isOverdue(invoice) {
 }
 
 export function useInvoices({ projectId, clientId, status: statusFilter, dateFrom, dateTo } = {}) {
-  const { company } = useAuth()
-  const companyId = company?.id
+  const { companyId } = useEffectiveCompany()
   const [invoices, setInvoices] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -93,8 +93,8 @@ export function useInvoice(invoiceId) {
 }
 
 export function useInvoiceMutations() {
-  const { user, company } = useAuth()
-  const companyId = company?.id
+  const { user } = useAuth()
+  const { companyId } = useEffectiveCompany()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
 

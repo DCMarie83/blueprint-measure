@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
+import { ImpersonationProvider } from './context/ImpersonationContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { PlansProvider } from './context/PlansContext'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -57,11 +58,13 @@ createRoot(document.getElementById('root')).render(
     <ErrorBoundary>
       <BrowserRouter>
         <AuthProvider>
-          <PlansProvider>
-            <ThemeProvider>
-              <App />
-            </ThemeProvider>
-          </PlansProvider>
+          <ImpersonationProvider>
+            <PlansProvider>
+              <ThemeProvider>
+                <App />
+              </ThemeProvider>
+            </PlansProvider>
+          </ImpersonationProvider>
         </AuthProvider>
       </BrowserRouter>
     </ErrorBoundary>

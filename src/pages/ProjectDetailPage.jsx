@@ -6,6 +6,7 @@ import { useProject } from '../hooks/useProject'
 import { useProjects } from '../hooks/useProjects'
 import { useSessions } from '../hooks/useSessions'
 import { useCompanyPlan } from '../lib/plans'
+import { useEffectiveCompany } from '../hooks/useEffectiveCompany'
 import Modal from '../components/ui/Modal'
 import NewSessionForm from '../components/auth/NewSessionForm'
 import MultiFileUploader from '../components/canvas/MultiFileUploader'
@@ -39,7 +40,8 @@ function timeAgo(dateStr) {
 export default function ProjectDetailPage() {
   const { projectId } = useParams()
   const navigate = useNavigate()
-  const { user, userProfile, company, isSuperAdmin } = useAuth()
+  const { user, userProfile, isSuperAdmin } = useAuth()
+  const { company } = useEffectiveCompany()
   const { project, sessions, loading, error, refetch } = useProject(projectId)
   const isAdmin = userProfile?.role === 'contractor_admin' || isSuperAdmin
   const { updateProject } = useProjects()

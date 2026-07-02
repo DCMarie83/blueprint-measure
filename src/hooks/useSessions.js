@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useEffectiveCompany } from './useEffectiveCompany'
 
 // This hook handles all database operations for sessions.
 // It fetches sessions for the logged-in user and provides
 // functions to create and delete them.
 export function useSessions() {
-  const { user, userProfile, isSuperAdmin } = useAuth()
+  const { user, isSuperAdmin } = useAuth()
+  const { companyId: effectiveCompanyId } = useEffectiveCompany()
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -32,13 +34,7 @@ export function useSessions() {
   async function createSession({ description, projectName, projectId }) {
     // Check blueprint limit before creating — skipped for super admin.
     if (!isSuperAdmin) {
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('company_id')
-        .eq('user_id', user.id)
-        .single()
-
-      const companyId = profile?.company_id
+      const companyId = effectiveCompanyId
       let blueprintLimit = null
       if (companyId) {
         const { data: comp } = await supabase
@@ -78,7 +74,7 @@ export function useSessions() {
     // If no projectId supplied, auto-create a project (legacy 1:1 flow)
     let resolvedProjectId = projectId
     if (!resolvedProjectId) {
-      const companyId = userProfile?.company_id
+      const companyId = effectiveCompanyId
       let kanbanColumnId = null
 
       if (companyId) {

@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Clock } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import { supabase } from '../../lib/supabase'
 import { getWeekHours } from '../../data/timeTracking'
 import styles from './TimeWeekTile.module.css'
 
 export default function TimeWeekTile() {
-  const { user, userProfile } = useAuth()
-  const companyId = userProfile?.company_id
+  const { user } = useAuth()
+  const { companyId } = useEffectiveCompany()
   const [hours, setHours] = useState(null)
 
   useEffect(() => {

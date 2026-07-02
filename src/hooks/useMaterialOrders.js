@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useEffectiveCompany } from './useEffectiveCompany'
 
 // List + create + delete for material orders on a project.
 // Mirrors useEstimates. The single-order builder hook comes in the next pass.
 export function useMaterialOrders(projectId) {
-  const { user, userProfile } = useAuth()
-  const companyId = userProfile?.company_id
+  const { user } = useAuth()
+  const { companyId } = useEffectiveCompany()
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)

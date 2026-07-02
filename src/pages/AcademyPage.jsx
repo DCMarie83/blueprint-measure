@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Bookmark, BookmarkCheck, GraduationCap, Search, MessageCircleQuestion, Send } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import { useAuth } from '../context/AuthContext'
+import { useEffectiveCompany } from '../hooks/useEffectiveCompany'
 import {
   getAcademyModules, getAcademyVideos,
   getPublishedQuestions, getMyQuestions, submitQuestion,
@@ -15,6 +16,7 @@ const SECTION_LABELS = { start_here: 'Start Here', core: 'Core', advanced: 'Adva
 
 export default function AcademyPage() {
   const { user, userProfile, company, isSuperAdmin } = useAuth()
+  const { companyId: effectiveCompanyId } = useEffectiveCompany()
   const { isBookmarked, toggle, count } = useAcademyBookmarks()
 
   const [tab, setTab] = useState('lessons')
@@ -133,11 +135,11 @@ export default function AcademyPage() {
 
   async function handleAskSubmit(e) {
     e.preventDefault()
-    if (!askText.trim() || !userProfile?.company_id) return
+    if (!askText.trim() || !effectiveCompanyId) return
     setAskSubmitting(true)
     try {
       await submitQuestion({
-        companyId: userProfile.company_id,
+        companyId: effectiveCompanyId,
         question: askText.trim(),
         videoId: askRelated || askVideoId || null,
         notifyMethod: askNotify,

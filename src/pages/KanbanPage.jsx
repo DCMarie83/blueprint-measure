@@ -19,6 +19,7 @@ import { useProjects } from '../hooks/useProjects'
 import { useEstimates } from '../hooks/useEstimates'
 import { useClients } from '../hooks/useClients'
 import { useAuth } from '../context/AuthContext'
+import { useEffectiveCompany } from '../hooks/useEffectiveCompany'
 import { supabase } from '../lib/supabase'
 import { useViewPreference } from '../hooks/useViewPreference'
 import styles from './KanbanPage.module.css'
@@ -111,19 +112,21 @@ export default function KanbanPage() {
   const [clientFilter, setClientFilter] = useState('all')
   const [teamMembers, setTeamMembers] = useState([])
 
+  const { companyId: effectiveCompanyId } = useEffectiveCompany()
+
   useEffect(() => {
-    if (!userProfile?.company_id) return
+    if (!effectiveCompanyId) return
     let cancelled = false
     ;(async () => {
       const { data } = await supabase
         .from('user_profiles')
         .select('user_id, full_name, email')
-        .eq('company_id', userProfile.company_id)
+        .eq('company_id', effectiveCompanyId)
         .is('deleted_at', null)
       if (!cancelled) setTeamMembers(data ?? [])
     })()
     return () => { cancelled = true }
-  }, [userProfile?.company_id])
+  }, [effectiveCompanyId])
 
   // Filter options
   const statusOptions = columns.map(c => ({ value: c.id, label: c.name }))

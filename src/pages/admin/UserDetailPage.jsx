@@ -2,7 +2,10 @@ import { useState, useEffect, useCallback, Fragment } from 'react'
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
+import { useImpersonation } from '../../context/ImpersonationContext'
 import { useDateFormat } from '../../hooks/useDateFormat'
+import Modal from '../../components/ui/Modal'
+import EnterAccountModal from '../../components/admin/EnterAccountModal'
 import BackLink from '../../components/BackLink'
 import styles from './sections.module.css'
 
@@ -40,8 +43,10 @@ export default function UserDetailPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user: currentUser, isSuperAdmin } = useAuth()
+  const { startImpersonation } = useImpersonation()
   const { formatDate, formatDateTime, formatTime } = useDateFormat()
   const [currentUserRole, setCurrentUserRole] = useState(null)
+  const [showEnterAccount, setShowEnterAccount] = useState(false)
 
   const [profile, setProfile] = useState(null)
   const [companies, setCompanies] = useState([])
@@ -313,6 +318,11 @@ export default function UserDetailPage() {
             <div className={styles.sectionCard} style={{ marginTop: 16 }}>
               <div className={styles.sectionCardTitle}>Admin Actions</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {profile?.company_id && (
+                  <button className={styles.addBtn} onClick={() => setShowEnterAccount(true)}>
+                    Enter Account
+                  </button>
+                )}
                 {profile?.deleted_at ? (
                   /* Deleted user — only show Restore */
                   <button
@@ -458,6 +468,21 @@ export default function UserDetailPage() {
         <div style={{ position: 'fixed', bottom: 24, right: 24, background: '#1e293b', color: '#e2e8f0', padding: '12px 20px', borderRadius: 8, fontSize: 13, zIndex: 9999, boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
           {toast}
         </div>
+      )}
+
+      {/* Enter account modal */}
+      {showEnterAccount && profile?.company_id && (
+        <Modal title="Enter Account" onClose={() => setShowEnterAccount(false)}>
+          <EnterAccountModal
+            companyName={companies.find(c => c.id === profile.company_id)?.name || 'this account'}
+            onCancel={() => setShowEnterAccount(false)}
+            onConfirm={async (notes) => {
+              await startImpersonation(profile.company_id, { targetUserId: userId, notes })
+              setShowEnterAccount(false)
+              navigate('/dashboard')
+            }}
+          />
+        </Modal>
       )}
     </div>
   )

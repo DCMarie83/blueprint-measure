@@ -9,6 +9,7 @@ import { getWeekHours } from '../../data/timeTracking'
 import { useProjects } from '../../hooks/useProjects'
 import { useSessions } from '../../hooks/useSessions'
 import { useEstimates } from '../../hooks/useEstimates'
+import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import styles from './QuickActionsRow.module.css'
 
 export default function QuickActionsRow() {
@@ -20,7 +21,7 @@ export default function QuickActionsRow() {
   const [showModal, setShowModal] = useState(false)
 
   const isAdmin = isSuperAdmin || userProfile?.role === 'contractor_admin'
-  const companyId = userProfile?.company_id
+  const { companyId } = useEffectiveCompany()
 
   // Week hours for non-admin tile
   const [weekHours, setWeekHours] = useState(null)

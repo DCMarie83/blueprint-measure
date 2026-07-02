@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
+import Modal from '../../components/ui/Modal'
+import EnterAccountModal from '../../components/admin/EnterAccountModal'
+import { useImpersonation } from '../../context/ImpersonationContext'
 import { supabase } from '../../lib/supabase'
 import { useAdminData } from '../../context/AdminDataContext'
 import { FEATURE_KEYS, useCompanyPlan, GRANDFATHER_DEFAULTS } from '../../lib/plans'
@@ -78,6 +81,11 @@ export default function CompaniesSection() {
   const [savingSeatId, setSavingSeatId] = useState(null)
   const [editingStatusId, setEditingStatusId] = useState(null)
   const [savingStatusId, setSavingStatusId] = useState(null)
+
+  // Impersonation
+  const navigate = useNavigate()
+  const { startImpersonation } = useImpersonation()
+  const [enterAccountTarget, setEnterAccountTarget] = useState(null) // company object
 
   // Storage
   const [companyStorage, setCompanyStorage] = useState({})
@@ -348,6 +356,9 @@ export default function CompaniesSection() {
                       </div>
                     </td>
                     <td className={styles.td} data-no-expand>
+                      <button className={styles.secondaryBtn} style={{ marginRight: 6 }} onClick={() => setEnterAccountTarget(company)}>
+                        Enter
+                      </button>
                       <button className={styles.deleteBtn} onClick={() => handleDelete(company)} disabled={deletingId === company.id}>
                         {deletingId === company.id ? '…' : 'Delete'}
                       </button>
@@ -382,6 +393,21 @@ export default function CompaniesSection() {
           zonesLoading={!!loadingZoneCount[drawerCompanyId]}
           onClose={() => setDrawerCompanyId(null)}
         />
+      )}
+
+      {/* Enter account modal */}
+      {enterAccountTarget && (
+        <Modal title="Enter Account" onClose={() => setEnterAccountTarget(null)}>
+          <EnterAccountModal
+            companyName={enterAccountTarget.name}
+            onCancel={() => setEnterAccountTarget(null)}
+            onConfirm={async (notes) => {
+              await startImpersonation(enterAccountTarget.id, { notes })
+              setEnterAccountTarget(null)
+              navigate('/dashboard')
+            }}
+          />
+        </Modal>
       )}
     </div>
   )

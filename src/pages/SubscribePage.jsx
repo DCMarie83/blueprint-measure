@@ -1,12 +1,15 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useEffectiveCompany } from '../hooks/useEffectiveCompany'
+import { useImpersonation } from '../context/ImpersonationContext'
 import { useCompanyPlan } from '../lib/plans'
 import { supabase } from '../lib/supabase'
 import AppHeader from '../components/AppHeader'
 
 export default function SubscribePage() {
-  const { company } = useAuth()
+  const { company } = useEffectiveCompany()
+  const { isImpersonating } = useImpersonation()
   const companyPlan = useCompanyPlan(company)
   const [term, setTerm] = useState('monthly')
   const [loading, setLoading] = useState(false)
@@ -148,21 +151,29 @@ export default function SubscribePage() {
             </div>
           )}
 
-          <button
-            onClick={handleSubscribe}
-            disabled={loading}
-            style={{
-              width: '100%', padding: '14px 0', fontSize: 16, fontWeight: 700, cursor: loading ? 'wait' : 'pointer',
-              background: '#f27243', color: '#fff', border: 'none', borderRadius: 8,
-              opacity: loading ? 0.6 : 1,
-            }}
-          >
-            {loading ? 'Redirecting to checkout...' : 'Subscribe'}
-          </button>
+          {isImpersonating ? (
+            <p style={{ color: 'var(--color-text-muted)', fontSize: 13, padding: '12px 0' }}>
+              Billing actions are unavailable while impersonating.
+            </p>
+          ) : (
+            <>
+              <button
+                onClick={handleSubscribe}
+                disabled={loading}
+                style={{
+                  width: '100%', padding: '14px 0', fontSize: 16, fontWeight: 700, cursor: loading ? 'wait' : 'pointer',
+                  background: '#f27243', color: '#fff', border: 'none', borderRadius: 8,
+                  opacity: loading ? 0.6 : 1,
+                }}
+              >
+                {loading ? 'Redirecting to checkout...' : 'Subscribe'}
+              </button>
 
-          <p style={{ color: 'var(--color-text-muted)', fontSize: 12, marginTop: 20 }}>
-            Secure checkout powered by Chargebee. Cancel anytime.
-          </p>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: 12, marginTop: 20 }}>
+                Secure checkout powered by Chargebee. Cancel anytime.
+              </p>
+            </>
+          )}
         </div>
       </div>
     </>

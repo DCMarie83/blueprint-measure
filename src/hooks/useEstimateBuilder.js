@@ -1,14 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { useAuth } from '../context/AuthContext'
+import { useEffectiveCompany } from './useEffectiveCompany'
 
 /**
  * useEstimateBuilder — manages line items, zone aggregation, and totals
  * for the estimate builder page.
  */
 export function useEstimateBuilder(estimateId) {
-  const { userProfile } = useAuth()
-  const companyId = userProfile?.company_id
+  const { companyId } = useEffectiveCompany()
 
   const [estimate, setEstimate] = useState(null)
   const [lineItems, setLineItems] = useState([])

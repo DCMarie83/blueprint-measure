@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
 import AppHeader from '../AppHeader'
 import BackLink from '../BackLink'
-import { useAuth } from '../../context/AuthContext'
+import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import { useInvoiceMutations } from '../../hooks/useInvoices'
 import { supabase } from '../../lib/supabase'
 import styles from './InvoiceForm.module.css'
@@ -38,8 +38,7 @@ export default function InvoiceForm({ existingInvoice, existingLineItems }) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const fromEstimateId = searchParams.get('from_estimate')
-  const { company } = useAuth()
-  const companyId = company?.id
+  const { companyId } = useEffectiveCompany()
   const { createInvoice, updateInvoice, saving, error: mutError } = useInvoiceMutations()
   const isEdit = !!existingInvoice
 

@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
-import { useAuth } from '../../context/AuthContext'
+import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import { useClients } from '../../hooks/useClients'
 import { parseImportFile } from '../../utils/clientImportParser'
 import { importClients } from '../../utils/clientImportWriter'
@@ -28,8 +28,7 @@ const TARGET_FIELDS = [
 const STEPS = ['Upload', 'Map', 'Review', 'Import']
 
 export default function ClientImportModal({ onClose, onImported }) {
-  const { userProfile } = useAuth()
-  const companyId = userProfile?.company_id
+  const { companyId } = useEffectiveCompany()
   const { clients, createClient } = useClients()
 
   const [step, setStep] = useState(0)
