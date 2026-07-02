@@ -1,26 +1,38 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
+import { useImpersonation } from '../../context/ImpersonationContext'
 import { supabase } from '../../lib/supabase'
 import { logError } from '../../lib/logError'
 import styles from './ContinueWorking.module.css'
 
 export default function ContinueWorking() {
   const { user } = useAuth()
+  const { companyId } = useEffectiveCompany()
+  const { isImpersonating } = useImpersonation()
   const navigate = useNavigate()
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!user) return
+    if (isImpersonating && !companyId) return
     let cancelled = false
 
     async function load() {
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from('sessions')
           .select('id, description, updated_at, project_id, projects(name)')
-          .eq('user_id', user.id)
+
+        if (isImpersonating) {
+          query = query.eq('company_id', companyId)
+        } else {
+          query = query.eq('user_id', user.id)
+        }
+
+        const { data, error } = await query
           .order('updated_at', { ascending: false })
           .limit(5)
 
@@ -36,7 +48,7 @@ export default function ContinueWorking() {
 
     load()
     return () => { cancelled = true }
-  }, [user])
+  }, [user, isImpersonating, companyId])
 
   if (loading || sessions.length === 0) return null
 

@@ -2,11 +2,13 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useEffectiveCompany } from './useEffectiveCompany'
+import { useImpersonation } from '../context/ImpersonationContext'
 import { DASHBOARD_TIPS } from '../data/dashboardTips'
 
 export function useDashboardData() {
   const { user, userProfile } = useAuth()
   const { companyId } = useEffectiveCompany()
+  const { isImpersonating } = useImpersonation()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [data, setData] = useState(null)
@@ -21,7 +23,7 @@ export function useDashboardData() {
       const [companyRes, projectsRes, sessionsRes, profilesRes, columnsRes] = await Promise.all([
         supabase.from('companies').select('created_at, trade_vertical').eq('id', companyId).single(),
         supabase.from('projects').select('id, name, address, status, created_at, updated_at, kanban_column_id, sessions(id, created_at)').eq('company_id', companyId).is('deleted_at', null).order('updated_at', { ascending: false }),
-        supabase.from('sessions').select('id, project_name, project_id, created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20),
+        supabase.from('sessions').select('id, project_name, project_id, created_at').eq(isImpersonating ? 'company_id' : 'user_id', isImpersonating ? companyId : user.id).order('created_at', { ascending: false }).limit(20),
         supabase.from('user_profiles').select('user_id').eq('company_id', companyId).is('deleted_at', null),
         supabase.from('kanban_columns').select('id, name, position').eq('company_id', companyId).order('position', { ascending: true }),
       ])
@@ -128,7 +130,7 @@ export function useDashboardData() {
     } finally {
       setLoading(false)
     }
-  }, [user, companyId, userProfile?.full_name])
+  }, [user, companyId, isImpersonating, userProfile?.full_name])
 
   useEffect(() => { fetch() }, [fetch])
 

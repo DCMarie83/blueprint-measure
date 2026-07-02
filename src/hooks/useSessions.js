@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useEffectiveCompany } from './useEffectiveCompany'
+import { useImpersonation } from '../context/ImpersonationContext'
 
 // This hook handles all database operations for sessions.
 // It fetches sessions for the logged-in user and provides
@@ -9,23 +10,28 @@ import { useEffectiveCompany } from './useEffectiveCompany'
 export function useSessions() {
   const { user, isSuperAdmin } = useAuth()
   const { companyId: effectiveCompanyId } = useEffectiveCompany()
+  const { isImpersonating } = useImpersonation()
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
   const fetchSessions = useCallback(async () => {
     if (!user) return
+    if (isImpersonating && !effectiveCompanyId) return
     setLoading(true)
-    const { data, error } = await supabase
-      .from('sessions')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
+
+    let query = supabase.from('sessions').select('*')
+    if (isImpersonating) {
+      query = query.eq('company_id', effectiveCompanyId)
+    } else {
+      query = query.eq('user_id', user.id)
+    }
+    const { data, error } = await query.order('created_at', { ascending: false })
 
     if (error) setError(error.message)
     else setSessions(data)
     setLoading(false)
-  }, [user])
+  }, [user, isImpersonating, effectiveCompanyId])
 
   useEffect(() => {
     fetchSessions()
