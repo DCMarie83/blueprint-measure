@@ -85,6 +85,26 @@
   background: var(--color-bg);
 }
 
+.cellSelect {
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+.cellSelect:hover {
+  border-color: var(--color-text-muted);
+}
+.cellSelect:focus {
+  border-color: var(--color-primary);
+}
+
 .cellNumber {
   text-align: right;
   font-family: var(--font-mono);

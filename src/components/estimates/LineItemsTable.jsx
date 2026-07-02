@@ -98,7 +98,7 @@ function GroupRows({ category, items, onUpdate, onRemove, readOnly }) {
               <span className={styles.unitLabel}>{UNIT_LABELS[li.unit] || li.unit}</span>
             ) : (
               <select
-                className={styles.cellInput}
+                className={styles.cellSelect}
                 value={li.unit || 'sf'}
                 onChange={e => onUpdate(li.id, { unit: e.target.value })}
               >
