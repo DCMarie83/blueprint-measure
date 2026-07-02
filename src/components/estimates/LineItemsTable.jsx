@@ -94,7 +94,21 @@ function GroupRows({ category, items, onUpdate, onRemove, readOnly }) {
             )}
           </td>
           <td className={styles.tdUnit}>
-            <span className={styles.unitLabel}>{UNIT_LABELS[li.unit] || li.unit}</span>
+            {readOnly ? (
+              <span className={styles.unitLabel}>{UNIT_LABELS[li.unit] || li.unit}</span>
+            ) : (
+              <select
+                className={styles.cellInput}
+                value={li.unit || 'sf'}
+                onChange={e => onUpdate(li.id, { unit: e.target.value })}
+              >
+                <option value="sf">SF</option>
+                <option value="lf">LF</option>
+                <option value="each">Each</option>
+                <option value="hour">Hour</option>
+                <option value="lump_sum">Lump Sum</option>
+              </select>
+            )}
           </td>
           <td className={styles.tdQty}>
             {readOnly ? (
