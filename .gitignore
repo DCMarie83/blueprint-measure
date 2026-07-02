@@ -11,3 +11,4 @@ dist/
 # Editor
 .DS_Store
 .vscode/
+.claude/
