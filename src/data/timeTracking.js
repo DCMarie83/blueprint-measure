@@ -199,14 +199,14 @@ export async function deleteTimeEntry(id) {
 }
 
 // Pure helper: build pay summary from entries + crew roster.
-// entries: [{ crew_member_id, hours, crew_members?: { name } }]
-// crew: [{ id, name, cost_rate }]
-// Returns [{ crewMemberId, name, rate, hours, pay }] sorted by pay desc.
+// Uses the per-entry cost_rate snapshot (not the crew member's current rate)
+// so the report matches historical pay statements.
+// entries: [{ crew_member_id, hours, cost_rate, crew_members?: { name } }]
+// crew: [{ id, name }]  (name fallback only)
+// Returns [{ crewMemberId, name, rate (blended), hours, pay }] sorted by pay desc.
 export function summarizePay(entries, crew) {
-  const rateLookup = {}
   const nameLookup = {}
   for (const c of (crew || [])) {
-    rateLookup[c.id] = Number(c.cost_rate) || 0
     nameLookup[c.id] = c.name
   }
   const byWorker = {}
@@ -216,26 +216,27 @@ export function summarizePay(entries, crew) {
       byWorker[cmId] = {
         crewMemberId: cmId,
         name: e.crew_members?.name || nameLookup[cmId] || '—',
-        rate: rateLookup[cmId] ?? 0,
         hours: 0,
         pay: 0,
       }
     }
-    byWorker[cmId].hours += Number(e.hours)
+    const h = Number(e.hours) || 0
+    const entryPay = h * (Number(e.cost_rate) || 0)
+    byWorker[cmId].hours += h
+    byWorker[cmId].pay += entryPay
   }
   const rows = Object.values(byWorker)
-  for (const r of rows) { r.pay = r.hours * r.rate }
+  for (const r of rows) { r.rate = r.hours > 0 ? r.pay / r.hours : 0 }
   rows.sort((a, b) => b.pay - a.pay)
   return rows
 }
 
 // Per-worker paystub data with job-level breakdown.
-// Returns [{ crewMemberId, name, rate, totalHours, totalPay, jobs: [{ job, hours, pay }] }]
+// Uses per-entry cost_rate snapshot for pay, with blended display rate.
+// Returns [{ crewMemberId, name, rate (blended), totalHours, totalPay, jobs: [{ job, hours, pay }] }]
 export function paystubRows(entries, crew) {
-  const rateLookup = {}
   const nameLookup = {}
   for (const c of (crew || [])) {
-    rateLookup[c.id] = Number(c.cost_rate) || 0
     nameLookup[c.id] = c.name
   }
   const byWorker = {}
@@ -245,25 +246,28 @@ export function paystubRows(entries, crew) {
       byWorker[cmId] = {
         crewMemberId: cmId,
         name: e.crew_members?.name || nameLookup[cmId] || '—',
-        rate: rateLookup[cmId] ?? 0,
         totalHours: 0,
         totalPay: 0,
         jobMap: {},
       }
     }
     const w = byWorker[cmId]
+    const h = Number(e.hours) || 0
+    const entryPay = h * (Number(e.cost_rate) || 0)
     const jobName = e.projects?.name || '—'
-    if (!w.jobMap[jobName]) w.jobMap[jobName] = 0
-    w.jobMap[jobName] += Number(e.hours)
-    w.totalHours += Number(e.hours)
+    if (!w.jobMap[jobName]) w.jobMap[jobName] = { hours: 0, pay: 0 }
+    w.jobMap[jobName].hours += h
+    w.jobMap[jobName].pay += entryPay
+    w.totalHours += h
+    w.totalPay += entryPay
   }
   const result = []
   for (const w of Object.values(byWorker)) {
+    const rate = w.totalHours > 0 ? w.totalPay / w.totalHours : 0
     const jobs = Object.entries(w.jobMap)
-      .map(([job, hours]) => ({ job, hours, pay: hours * w.rate }))
+      .map(([job, { hours, pay }]) => ({ job, hours, pay }))
       .sort((a, b) => b.hours - a.hours)
-    w.totalPay = w.totalHours * w.rate
-    result.push({ crewMemberId: w.crewMemberId, name: w.name, rate: w.rate, totalHours: w.totalHours, totalPay: w.totalPay, jobs })
+    result.push({ crewMemberId: w.crewMemberId, name: w.name, rate, totalHours: w.totalHours, totalPay: w.totalPay, jobs })
   }
   result.sort((a, b) => b.totalPay - a.totalPay)
   return result
@@ -273,7 +277,7 @@ export async function getPayReport(companyId, { from, to } = {}) {
   if (!companyId) return []
   let query = supabase
     .from('time_entries')
-    .select('hours, crew_member_id, crew_members(name, cost_rate)')
+    .select('hours, cost_rate, crew_member_id, crew_members(name, cost_rate)')
     .eq('company_id', companyId)
   if (from) query = query.gte('work_date', from)
   if (to) query = query.lte('work_date', to)
