@@ -31,7 +31,7 @@
 }
 
 .thDesc { min-width: 180px; }
-.thUnit { width: 60px; text-align: center; }
+.thUnit { width: 90px; text-align: center; }
 .thQty { width: 80px; text-align: right; }
 .thRate { width: 90px; text-align: right; }
 .thTotal { width: 100px; text-align: right; }
