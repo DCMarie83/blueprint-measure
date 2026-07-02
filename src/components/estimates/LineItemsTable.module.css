@@ -105,6 +105,10 @@
   border-color: var(--color-primary);
 }
 
+.mutedDash {
+  color: var(--color-text-muted);
+}
+
 .cellNumber {
   text-align: right;
   font-family: var(--font-mono);

@@ -110,9 +110,9 @@ export function useEstimateBuilder(estimateId) {
       rate_good: item.rate_good ?? 0,
       rate_better: item.rate_better ?? 0,
       rate_best: item.rate_best ?? 0,
-      total_good: (item.quantity ?? 0) * (item.rate_good ?? 0),
-      total_better: (item.quantity ?? 0) * (item.rate_better ?? 0),
-      total_best: (item.quantity ?? 0) * (item.rate_best ?? 0),
+      total_good: item.unit === 'lump_sum' ? (item.rate_good ?? 0) : (item.quantity ?? 0) * (item.rate_good ?? 0),
+      total_better: item.unit === 'lump_sum' ? (item.rate_good ?? 0) : (item.quantity ?? 0) * (item.rate_better ?? 0),
+      total_best: item.unit === 'lump_sum' ? (item.rate_good ?? 0) : (item.quantity ?? 0) * (item.rate_best ?? 0),
       source_zone_id: item.source_zone_id || null,
       source_zone_name: item.source_zone_name || null,
       source_measurement_type: item.source_measurement_type || null,
@@ -128,10 +128,26 @@ export function useEstimateBuilder(estimateId) {
     setLineItems(prev => prev.map(li => {
       if (li.id !== id) return li
       const updated = { ...li, ...patch }
-      // Recompute totals when qty or rate changes
-      updated.total_good = (updated.quantity ?? 0) * (updated.rate_good ?? 0)
-      updated.total_better = (updated.quantity ?? 0) * (updated.rate_better ?? 0)
-      updated.total_best = (updated.quantity ?? 0) * (updated.rate_best ?? 0)
+
+      // If switching INTO lump_sum, seed the flat amount from the current Good total
+      if (patch.unit === 'lump_sum' && li.unit !== 'lump_sum') {
+        const seed = updated.total_good ?? 0
+        updated.quantity = 1
+        updated.rate_good = seed
+        updated.rate_better = seed
+        updated.rate_best = seed
+      }
+
+      if (updated.unit === 'lump_sum') {
+        updated.quantity = 1
+        updated.total_good = updated.rate_good ?? 0
+        updated.total_better = updated.rate_good ?? 0
+        updated.total_best = updated.rate_good ?? 0
+      } else {
+        updated.total_good = (updated.quantity ?? 0) * (updated.rate_good ?? 0)
+        updated.total_better = (updated.quantity ?? 0) * (updated.rate_better ?? 0)
+        updated.total_best = (updated.quantity ?? 0) * (updated.rate_best ?? 0)
+      }
       return updated
     }))
     dirty.current = true
