@@ -190,6 +190,10 @@ export function useMaterialOrderBuilder(orderId) {
 
   const saveAll = useCallback(async () => {
     if (!order) return false
+    if (items.length > 0 && !order.selected_variant) {
+      setError('Pick a pricing tier (Good / Better / Best) before saving this order.')
+      return false
+    }
     setSaving(true)
     setError(null)
     try {
