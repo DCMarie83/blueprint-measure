@@ -19,6 +19,7 @@
     "jspdf-autotable": "^5.0.7",
     "libphonenumber-js": "^1.13.1",
     "lucide-react": "^1.11.0",
+    "papaparse": "^5.5.4",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^4.7.76",
     "qrcode": "^1.5.4",

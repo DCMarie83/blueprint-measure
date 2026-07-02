@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Building2, Search, Plus, X } from 'lucide-react'
+import { Building2, Search, Plus, Upload, X } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import Modal from '../components/ui/Modal'
 import ClientForm from '../components/clients/ClientForm'
+import ClientImportModal from '../components/clients/ClientImportModal'
 import ClientListView from '../components/clients/ClientListView'
 import ClientSortDropdown from '../components/clients/ClientSortDropdown'
 import { useClients } from '../hooks/useClients'
@@ -34,8 +35,9 @@ function sortClients(clients, key) {
 
 export default function ClientsPage() {
   const navigate = useNavigate()
-  const { clients, loading, error, createClient } = useClients()
+  const { clients, loading, error, createClient, refetch } = useClients()
   const [showCreate, setShowCreate] = useState(false)
+  const [showImport, setShowImport] = useState(false)
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
   const [sortKey, setSortKey] = useState('recent_activity')
@@ -66,7 +68,10 @@ export default function ClientsPage() {
             <h1 className={styles.title}>Clients</h1>
             <p className={styles.subtitle}>Manage your residential and commercial clients</p>
           </div>
-          <button className={styles.newBtn} onClick={() => setShowCreate(true)}><Plus size={16} /> New Client</button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className={styles.newBtn} onClick={() => setShowImport(true)} style={{ background: 'none', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}><Upload size={16} /> Import</button>
+            <button className={styles.newBtn} onClick={() => setShowCreate(true)}><Plus size={16} /> New Client</button>
+          </div>
         </div>
 
         <div className={styles.filterRow}>
@@ -112,6 +117,12 @@ export default function ClientsPage() {
       {showCreate && (
         <Modal title="New Client" onClose={() => setShowCreate(false)}>
           <ClientForm onSubmit={handleCreate} onCancel={() => setShowCreate(false)} />
+        </Modal>
+      )}
+
+      {showImport && (
+        <Modal title="Import Clients" onClose={() => setShowImport(false)}>
+          <ClientImportModal onClose={() => setShowImport(false)} onImported={refetch} />
         </Modal>
       )}
     </div>
