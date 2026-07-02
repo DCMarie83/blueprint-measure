@@ -5,6 +5,8 @@ import { useAuth } from '../context/AuthContext'
 import { getPayReport, getPayStatementData } from '../data/timeTracking'
 import { getJobCostingRows, getJobCostingDetail } from '../data/jobCosting'
 import { generatePayStatementPDF } from '../lib/generatePayStatementPDF'
+import { generateJobCostingPDF } from '../lib/generateJobCostingPDF'
+import { exportJobCostingXLSX } from '../utils/jobCostingXLSX'
 import { fmtMoney } from '../utils/formatMoney'
 import PayTable from '../components/PayTable'
 import styles from './ReportsPage.module.css'
@@ -20,6 +22,34 @@ function fmtPct(val) {
 }
 
 const CAT_LABELS = { material: 'Material', labor: 'Labor', subcontractor: 'Subcontractor', equipment: 'Equipment', permit: 'Permit', other: 'Other' }
+
+// ── Logo pre-fetch helper ───────────────────────────────────────────────
+
+async function fetchCompanyWithLogo(company) {
+  const data = {
+    name: company?.name,
+    primary_color: company?.primary_color,
+    address_line1: company?.address_line1,
+    address_line2: company?.address_line2,
+    city: company?.city,
+    state: company?.state,
+    zip: company?.zip,
+    business_phone: company?.business_phone,
+  }
+  if (company?.logo_url) {
+    try {
+      const res = await fetch(company.logo_url)
+      if (res.ok) {
+        const blob = await res.blob()
+        const reader = new FileReader()
+        data.logo_data = await new Promise(resolve => { reader.onloadend = () => resolve(reader.result); reader.readAsDataURL(blob) })
+      }
+    } catch { /* skip logo */ }
+  }
+  return data
+}
+
+// ── Main component ──────────────────────────────────────────────────────
 
 export default function ReportsPage() {
   const { userProfile, company, isSuperAdmin } = useAuth()
@@ -43,6 +73,8 @@ export default function ReportsPage() {
   const [detailProjectId, setDetailProjectId] = useState(null)
   const [detail, setDetail] = useState(null)
   const [detailLoading, setDetailLoading] = useState(false)
+  const [costingSubView, setCostingSubView] = useState('portfolio') // 'portfolio' | 'summary'
+  const [exporting, setExporting] = useState(null) // 'pdf' | 'xlsx' | null
 
   // Pay report fetch
   useEffect(() => {
@@ -89,40 +121,60 @@ export default function ReportsPage() {
     return () => { cancelled = true }
   }, [companyId, detailProjectId])
 
+  // ── Pay statement download ────────────────────────────────
+
   async function handleDownloadStatement(crewMemberId) {
     setDownloadingId(crewMemberId)
     try {
       const { data: stmtData, error: stmtErr } = await getPayStatementData(companyId, crewMemberId, { from, to })
       if (stmtErr || !stmtData) { alert(stmtErr || 'Could not load pay data'); return }
-
-      // Pre-fetch company logo
-      let companyData = { name: company?.name, primary_color: company?.primary_color, address_line1: company?.address_line1, address_line2: company?.address_line2, city: company?.city, state: company?.state, zip: company?.zip, business_phone: company?.business_phone }
-      if (company?.logo_url) {
-        try {
-          const res = await fetch(company.logo_url)
-          if (res.ok) {
-            const blob = await res.blob()
-            const reader = new FileReader()
-            const logoData = await new Promise(resolve => { reader.onloadend = () => resolve(reader.result); reader.readAsDataURL(blob) })
-            companyData.logo_data = logoData
-          }
-        } catch { /* skip logo */ }
-      }
-
+      const companyData = await fetchCompanyWithLogo(company)
       const pdf = generatePayStatementPDF({ ...stmtData, company: companyData, returnAs: 'blob' })
-      const url = URL.createObjectURL(pdf)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `PayStatement_${stmtData.worker.name.replace(/\s+/g, '_')}_${from}_to_${to}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      triggerBlobDownload(pdf, `PayStatement_${stmtData.worker.name.replace(/\s+/g, '_')}_${from}_to_${to}.pdf`)
     } catch (err) {
       console.error('Pay statement download:', err)
       alert('Failed to generate pay statement')
     } finally {
       setDownloadingId(null)
+    }
+  }
+
+  // ── Job costing exports ───────────────────────────────────
+
+  function computeTotals() {
+    return costingRows.reduce((t, r) => ({
+      quoted: t.quoted + r.quoted,
+      billed: t.billed + r.billed,
+      collected: t.collected + r.collected,
+      totalCost: t.totalCost + r.totalCost,
+    }), { quoted: 0, billed: 0, collected: 0, totalCost: 0 })
+  }
+
+  async function handleExportPDF() {
+    setExporting('pdf')
+    try {
+      const companyData = await fetchCompanyWithLogo(company)
+      const totals = computeTotals()
+      const pdf = generateJobCostingPDF({ rows: costingRows, totals, period: { from, to }, company: companyData, returnAs: 'blob' })
+      triggerBlobDownload(pdf, `JobCosting_${from}_to_${to}.pdf`)
+    } catch (err) {
+      console.error('Job costing PDF:', err)
+      alert('Failed to generate PDF')
+    } finally {
+      setExporting(null)
+    }
+  }
+
+  async function handleExportXLSX() {
+    setExporting('xlsx')
+    try {
+      const totals = computeTotals()
+      await exportJobCostingXLSX({ rows: costingRows, totals, period: { from, to }, company })
+    } catch (err) {
+      console.error('Job costing XLSX:', err)
+      alert('Failed to generate Excel file')
+    } finally {
+      setExporting(null)
     }
   }
 
@@ -160,7 +212,19 @@ export default function ReportsPage() {
             <label className={styles.dateLabel}>From<input type="date" className={styles.dateInput} value={from} onChange={e => setFrom(e.target.value)} /></label>
             <label className={styles.dateLabel}>To<input type="date" className={styles.dateInput} value={to} onChange={e => setTo(e.target.value)} /></label>
           </div>
-          <button className={styles.printBtn} onClick={() => window.print()}><Printer size={14} /> Print</button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+            <button className={styles.printBtn} onClick={() => window.print()}><Printer size={14} /> Print</button>
+            {view === 'costing' && !detailProjectId && costingRows.length > 0 && (
+              <>
+                <button className={styles.printBtn} onClick={handleExportPDF} disabled={!!exporting} style={{ opacity: exporting === 'pdf' ? 0.5 : 1 }}>
+                  {exporting === 'pdf' ? 'Generating...' : 'Export PDF'}
+                </button>
+                <button className={styles.printBtn} onClick={handleExportXLSX} disabled={!!exporting} style={{ opacity: exporting === 'xlsx' ? 0.5 : 1 }}>
+                  {exporting === 'xlsx' ? 'Generating...' : 'Export Excel'}
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         <div className={styles.printHeader}>
@@ -178,14 +242,26 @@ export default function ReportsPage() {
 
         {/* JOB COSTING */}
         {view === 'costing' && !detailProjectId && (
-          <CostingPortfolio
-            rows={costingRows}
-            loading={costingLoading}
-            sortCol={sortCol}
-            sortAsc={sortAsc}
-            onSort={(col) => { if (col === sortCol) setSortAsc(!sortAsc); else { setSortCol(col); setSortAsc(col === 'project_name') } }}
-            onSelectProject={setDetailProjectId}
-          />
+          <>
+            {/* Portfolio / Period Summary toggle */}
+            <div style={{ display: 'flex', gap: 0, marginBottom: 16, borderRadius: 'var(--radius)', overflow: 'hidden', border: '1px solid var(--color-border)', width: 'fit-content' }}>
+              <button onClick={() => setCostingSubView('portfolio')} style={{ padding: '6px 16px', fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: costingSubView === 'portfolio' ? 'var(--color-surface)' : 'var(--color-bg)', color: costingSubView === 'portfolio' ? 'var(--color-text)' : 'var(--color-text-muted)' }}>Portfolio</button>
+              <button onClick={() => setCostingSubView('summary')} style={{ padding: '6px 16px', fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: costingSubView === 'summary' ? 'var(--color-surface)' : 'var(--color-bg)', color: costingSubView === 'summary' ? 'var(--color-text)' : 'var(--color-text-muted)' }}>Period Summary</button>
+            </div>
+
+            {costingSubView === 'portfolio' ? (
+              <CostingPortfolio
+                rows={costingRows}
+                loading={costingLoading}
+                sortCol={sortCol}
+                sortAsc={sortAsc}
+                onSort={(col) => { if (col === sortCol) setSortAsc(!sortAsc); else { setSortCol(col); setSortAsc(col === 'project_name') } }}
+                onSelectProject={setDetailProjectId}
+              />
+            ) : (
+              <PeriodSummary rows={costingRows} loading={costingLoading} />
+            )}
+          </>
         )}
 
         {view === 'costing' && detailProjectId && (
@@ -200,6 +276,19 @@ export default function ReportsPage() {
       </main>
     </div>
   )
+}
+
+// ── Blob download helper ────────────────────────────────────────────────
+
+function triggerBlobDownload(blob, filename) {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 }
 
 // ── Portfolio table ─────────────────────────────────────────────────────
@@ -309,6 +398,78 @@ function CostingPortfolio({ rows, loading, sortCol, sortAsc, onSort, onSelectPro
         </table>
       </div>
     </>
+  )
+}
+
+// ── Period Summary (P&L roll-up) ────────────────────────────────────────
+
+function PeriodSummary({ rows, loading }) {
+  if (loading) return <div className={styles.empty}>Loading...</div>
+  if (rows.length === 0) return <div className={styles.empty}>No jobs with financial activity in this period.</div>
+
+  const totQuoted = rows.reduce((s, r) => s + r.quoted, 0)
+  const totBilled = rows.reduce((s, r) => s + r.billed, 0)
+  const totCollected = rows.reduce((s, r) => s + r.collected, 0)
+  const totLabor = rows.reduce((s, r) => s + r.laborCost, 0)
+  const totMaterials = rows.reduce((s, r) => s + r.materialsCost, 0)
+  const totExpenses = rows.reduce((s, r) => s + r.expensesCost, 0)
+  const totCost = totLabor + totMaterials + totExpenses
+  const estMargin = totQuoted - totCost
+  const estPct = totQuoted > 0 ? (estMargin / totQuoted) * 100 : null
+  const actMargin = totCollected - totCost
+  const actPct = totCollected > 0 ? (actMargin / totCollected) * 100 : null
+  const hasIncomplete = rows.some(r => r.hasIncompleteData)
+
+  return (
+    <div style={{ maxWidth: 560 }}>
+      {hasIncomplete && (
+        <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 'var(--radius)', padding: '10px 16px', marginBottom: 16, fontSize: 13, color: 'var(--color-warning, #f59e0b)' }}>
+          Some jobs have incomplete cost data — totals may be understated.
+        </div>
+      )}
+
+      {/* Revenue */}
+      <SectionCard title="Revenue">
+        <PLRow label="Quoted" value={totQuoted} />
+        <PLRow label="Billed" value={totBilled} />
+        <PLRow label="Collected" value={totCollected} bold />
+      </SectionCard>
+
+      {/* Cost */}
+      <SectionCard title="Cost">
+        <PLRow label="Labor" value={totLabor} />
+        <PLRow label="Materials" value={totMaterials} />
+        <PLRow label="Expenses" value={totExpenses} />
+        <div style={{ borderTop: '1px solid var(--color-border)', marginTop: 8, paddingTop: 8 }}>
+          <PLRow label="Total Cost" value={totCost} bold />
+        </div>
+      </SectionCard>
+
+      {/* Profit */}
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
+        <div style={{ flex: 1, minWidth: 200, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg, 8px)', padding: '16px 20px' }}>
+          <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)', marginBottom: 6 }}>Estimated Profit</div>
+          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 2 }}>Quoted minus cost</div>
+          <MarginCell amount={estMargin} pct={estPct} large />
+        </div>
+        <div style={{ flex: 1, minWidth: 200, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg, 8px)', padding: '16px 20px' }}>
+          <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)', marginBottom: 6 }}>Actual Profit</div>
+          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 2 }}>Collected minus cost</div>
+          <MarginCell amount={actMargin} pct={actPct} large />
+        </div>
+      </div>
+
+      <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Across {rows.length} job{rows.length !== 1 ? 's' : ''} with activity in this period.</p>
+    </div>
+  )
+}
+
+function PLRow({ label, value, bold }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', fontSize: 14, fontWeight: bold ? 700 : 400 }}>
+      <span>{label}</span>
+      <span>{fmtMoney(value)}</span>
+    </div>
   )
 }
 
