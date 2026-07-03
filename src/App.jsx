@@ -54,8 +54,16 @@ import PasswordRecoveryHandler from './components/PasswordRecoveryHandler'
 import ImpersonationBanner from './components/ImpersonationBanner'
 import SubscriptionGate from './components/auth/SubscriptionGate'
 import SubscribePage from './pages/SubscribePage'
+import CheckoutUnavailable from './pages/CheckoutUnavailable'
 import BillingSuccessPage from './pages/BillingSuccessPage'
 import BillingCancelPage from './pages/BillingCancelPage'
+import { usePlatformSettings } from './context/PlatformSettingsContext'
+
+function SubscribeGate() {
+  const { getSetting, loading } = usePlatformSettings()
+  if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}><div className="spinner" /></div>
+  return getSetting('subscribe_button_enabled', false) ? <SubscribePage /> : <CheckoutUnavailable />
+}
 
 // ProtectedRoute wraps pages that require login + completed setup.
 // bypassSubscriptionGate: if true, skip the subscription check (for /settings, /account)
@@ -206,7 +214,7 @@ export default function App() {
       />
       <Route
         path="/subscribe"
-        element={<ProtectedRoute bypassSubscriptionGate><SubscribePage /></ProtectedRoute>}
+        element={<ProtectedRoute bypassSubscriptionGate><SubscribeGate /></ProtectedRoute>}
       />
       <Route
         path="/billing/success"

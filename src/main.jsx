@@ -5,6 +5,7 @@ import { AuthProvider } from './context/AuthContext'
 import { ImpersonationProvider } from './context/ImpersonationContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { PlansProvider } from './context/PlansContext'
+import { PlatformSettingsProvider } from './context/PlatformSettingsContext'
 import ErrorBoundary from './components/ErrorBoundary'
 import App from './App'
 import './styles/global.css'
@@ -58,13 +59,15 @@ createRoot(document.getElementById('root')).render(
     <ErrorBoundary>
       <BrowserRouter>
         <AuthProvider>
-          <ImpersonationProvider>
-            <PlansProvider>
-              <ThemeProvider>
-                <App />
-              </ThemeProvider>
-            </PlansProvider>
-          </ImpersonationProvider>
+          <PlatformSettingsProvider>
+            <ImpersonationProvider>
+              <PlansProvider>
+                <ThemeProvider>
+                  <App />
+                </ThemeProvider>
+              </PlansProvider>
+            </ImpersonationProvider>
+          </PlatformSettingsProvider>
         </AuthProvider>
       </BrowserRouter>
     </ErrorBoundary>
