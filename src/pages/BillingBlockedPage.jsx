@@ -2,21 +2,35 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 const STATUS_MESSAGES = {
+  trial_expired: {
+    headline: 'Your free trial has ended',
+    body: 'Your 14-day free trial is over. Subscribe now to keep your account and all your data.',
+    cta: 'Subscribe now',
+    ctaTo: '/subscribe',
+  },
+  past_due: {
+    headline: "Your payment didn't go through",
+    body: 'We were unable to process your most recent payment. Please update your payment method to restore access.',
+    cta: 'Update payment',
+    ctaTo: '/subscribe',
+  },
+  paused: {
+    headline: 'Your subscription is paused',
+    body: 'Your subscription is currently paused. Resume to restore full access to your account.',
+    cta: 'Resume subscription',
+    ctaTo: '/subscribe',
+  },
   suspended: {
     headline: 'Subscription suspended',
-    body: 'Your subscription is suspended. Please update your payment method to restore access.',
+    body: 'Your subscription has been suspended. Please resubscribe to continue using RivetDog.',
+    cta: 'Resubscribe',
+    ctaTo: '/subscribe',
   },
   canceled: {
     headline: 'Subscription canceled',
-    body: 'Your subscription has been canceled. Please reactivate to continue using RivetDog.',
-  },
-  past_due: {
-    headline: 'Payment overdue',
-    body: 'Your payment is overdue. Your access has been paused until payment is updated.',
-  },
-  trial_expired: {
-    headline: 'Your trial has ended',
-    body: 'Your 14-day free trial is over. Book an onboarding call to get set up and activated — we\'ll walk you through everything and get your account live.',
+    body: 'Your subscription has been canceled. Resubscribe to continue using RivetDog.',
+    cta: 'Resubscribe',
+    ctaTo: '/subscribe',
   },
 }
 
@@ -55,15 +69,15 @@ export default function BillingBlockedPage({ company, reason }) {
         </p>
 
         <Link
-          to="/subscribe"
+          to={msg.ctaTo}
           style={{
             display: 'inline-block', padding: '12px 32px',
-            background: '#f27243', color: '#fff', borderRadius: 8,
+            background: 'var(--color-primary)', color: '#fff', borderRadius: 8,
             fontWeight: 600, fontSize: 15, textDecoration: 'none',
             marginBottom: 16,
           }}
         >
-          {isTrialExpired ? 'Subscribe' : 'Reactivate'}
+          {msg.cta}
         </Link>
 
         {isTrialExpired && CALENDAR_URL && (

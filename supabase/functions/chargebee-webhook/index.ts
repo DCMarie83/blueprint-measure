@@ -68,6 +68,11 @@ Deno.serve(async (req) => {
     if (subId) {
       updatePayload.chargebee_subscription_id = subId;
     }
+    // On activation, clear stale trial fields
+    if (newStatus === 'active') {
+      updatePayload.trial_enabled = false;
+      updatePayload.trial_ends_at = null;
+    }
 
     const { error } = await supabase
       .from('companies')

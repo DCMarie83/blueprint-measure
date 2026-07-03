@@ -85,6 +85,7 @@ Deno.serve(async (req) => {
     params.set('customer[id]', company.id)
     params.set('customer[email]', user.email ?? '')
     params.set('customer[company]', company.name ?? '')
+    params.set('subscription[trial_end]', '0')
     params.set('redirect_url', `${appUrl}/billing/success`)
     params.set('cancel_url', `${appUrl}/billing/cancel`)
 
