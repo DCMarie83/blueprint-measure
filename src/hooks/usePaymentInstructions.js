@@ -14,7 +14,7 @@ const DEFAULT_INSTRUCTIONS = {
 }
 
 export function usePaymentInstructions() {
-  const { refreshCompany } = useAuth()
+  const { company, refreshCompany } = useAuth()
   const { companyId } = useEffectiveCompany()
   const [paymentInstructions, setPaymentInstructions] = useState(DEFAULT_INSTRUCTIONS)
   const [loading, setLoading] = useState(true)

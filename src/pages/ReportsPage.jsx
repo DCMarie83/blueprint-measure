@@ -53,7 +53,7 @@ async function fetchCompanyWithLogo(company) {
 // ── Main component ──────────────────────────────────────────────────────
 
 export default function ReportsPage() {
-  const { isSuperAdmin } = useAuth()
+  const { userProfile, isSuperAdmin } = useAuth()
   const { companyId, company } = useEffectiveCompany()
   const isAdmin = isSuperAdmin || userProfile?.role === 'contractor_admin'
 
