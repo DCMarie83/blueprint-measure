@@ -1,8 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { TRIAL_GRACE_DAYS } from '../lib/config'
-
-const CALENDAR_URL = import.meta.env.VITE_ONBOARDING_CALENDAR_URL
+import { TRIAL_GRACE_DAYS, ONBOARDING_CALENDAR_URL } from '../lib/config'
 
 export default function TrialBanner() {
   const { company } = useAuth()
@@ -44,9 +42,9 @@ export default function TrialBanner() {
         >
           Subscribe
         </Link>
-        {CALENDAR_URL && (
+        {ONBOARDING_CALENDAR_URL && (
           <a
-            href={CALENDAR_URL}
+            href={ONBOARDING_CALENDAR_URL}
             target="_blank"
             rel="noopener noreferrer"
             style={{
@@ -80,9 +78,9 @@ export default function TrialBanner() {
       >
         Subscribe
       </Link>
-      {CALENDAR_URL && (
+      {ONBOARDING_CALENDAR_URL && (
         <a
-          href={CALENDAR_URL}
+          href={ONBOARDING_CALENDAR_URL}
           target="_blank"
           rel="noopener noreferrer"
           style={{

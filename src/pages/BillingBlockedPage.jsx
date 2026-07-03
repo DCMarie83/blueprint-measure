@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { ONBOARDING_CALENDAR_URL } from '../lib/config'
 
 const STATUS_MESSAGES = {
   trial_expired: {
@@ -34,7 +35,7 @@ const STATUS_MESSAGES = {
   },
 }
 
-const CALENDAR_URL = import.meta.env.VITE_ONBOARDING_CALENDAR_URL
+const CALENDAR_URL = ONBOARDING_CALENDAR_URL
 
 export default function BillingBlockedPage({ company, reason }) {
   const key = reason || company?.subscription_status || 'suspended'

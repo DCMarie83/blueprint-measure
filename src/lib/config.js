@@ -24,3 +24,6 @@ export const FEATURE_FLAGS = {
 
 // Days of full access after trial_ends_at before hard lock.
 export const TRIAL_GRACE_DAYS = 3;
+
+// GHL onboarding booking calendar (public link).
+export const ONBOARDING_CALENDAR_URL = 'https://api.leadconnectorhq.com/widget/booking/JqBPdsARvHo9H7xbnu0q';

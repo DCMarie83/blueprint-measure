@@ -8,6 +8,7 @@ import {
   getPublishedQuestions, getMyQuestions, submitQuestion,
 } from '../data/academyVideos'
 import { useAcademyBookmarks } from '../hooks/useAcademyBookmarks'
+import { ONBOARDING_CALENDAR_URL } from '../lib/config'
 import VideoModal from '../components/academy/VideoModal'
 import styles from './AcademyPage.module.css'
 
@@ -196,6 +197,18 @@ export default function AcademyPage() {
         <div className={styles.header}>
           <h1 className={styles.title}>RivetDog Academy</h1>
           <p className={styles.subtitle}>Training videos and Q&A to help you get the most out of RivetDog.</p>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 16px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', marginBottom: 16, fontSize: 14 }}>
+          <span style={{ color: 'var(--color-text-muted)' }}>New to RivetDog? Book your free 30-minute onboarding call.</span>
+          <a
+            href={ONBOARDING_CALENDAR_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: '#f27243', fontWeight: 600, textDecoration: 'underline', whiteSpace: 'nowrap' }}
+          >
+            Book now
+          </a>
         </div>
 
         {/* Tabs */}

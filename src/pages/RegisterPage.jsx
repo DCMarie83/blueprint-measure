@@ -4,7 +4,7 @@ import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input'
 import 'react-phone-number-input/style.css'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import { BRAND } from '../lib/config'
+import { BRAND, ONBOARDING_CALENDAR_URL } from '../lib/config'
 import Logo from '../components/brand/Logo'
 import styles from './RegisterPage.module.css'
 
@@ -172,11 +172,11 @@ export default function RegisterPage() {
           </button>
         </form>
 
-        {import.meta.env.VITE_ONBOARDING_CALENDAR_URL && (
+        {ONBOARDING_CALENDAR_URL && (
           <p style={{ textAlign: 'center', fontSize: 14, color: 'var(--color-text-muted)', marginTop: 20, lineHeight: 1.5 }}>
             Want help getting set up?{' '}
             <a
-              href={import.meta.env.VITE_ONBOARDING_CALENDAR_URL}
+              href={ONBOARDING_CALENDAR_URL}
               target="_blank"
               rel="noopener noreferrer"
               style={{ color: '#f27243', fontWeight: 600, textDecoration: 'underline' }}
