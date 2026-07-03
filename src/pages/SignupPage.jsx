@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { BRAND } from '../lib/config'
 import Logo from '../components/brand/Logo'
 import { US_STATES } from '../data/usStates'
+import { TRADES, DEFAULT_TRADE } from '../constants/trades'
 import styles from './LoginPage.module.css'
 
 const selectStyle = {
@@ -23,7 +24,7 @@ export default function SignupPage() {
 
   // Business
   const [companyName, setCompanyName] = useState('')
-  const [tradeVertical, setTradeVertical] = useState('painting')
+  const [tradeVertical, setTradeVertical] = useState(DEFAULT_TRADE)
   const [addressLine1, setAddressLine1] = useState('')
   const [addressLine2, setAddressLine2] = useState('')
   const [city, setCity] = useState('')
@@ -167,7 +168,9 @@ export default function SignupPage() {
             <div className={styles.field}>
               <label htmlFor="tradeVertical">Trade</label>
               <select id="tradeVertical" value={tradeVertical} onChange={e => setTradeVertical(e.target.value)} style={selectStyle}>
-                <option value="painting">Painting</option>
+                {TRADES.map(t => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
               </select>
             </div>
           </div>
