@@ -5,7 +5,24 @@ import { BRAND } from '../lib/config'
 import Logo from '../components/brand/Logo'
 import { US_STATES } from '../data/usStates'
 import { TRADES, DEFAULT_TRADE } from '../constants/trades'
+import { Check, Ruler, Clock, FileText, LayoutDashboard, Receipt, TrendingUp } from 'lucide-react'
 import styles from './LoginPage.module.css'
+
+const OFFER_ITEMS = [
+  '$79.99/mo founders rate',
+  'All features + white-label',
+  '2 seats + 5 GB storage',
+  'Cancel anytime',
+]
+
+const FEATURES = [
+  { icon: Ruler, label: 'Blueprint takeoff', desc: 'Measure straight off the plans — no printing, no manual scaling' },
+  { icon: Clock, label: 'Crew time tracking', desc: 'Clock in and out from the field — location captured, hours ready for payroll' },
+  { icon: FileText, label: 'Smart estimating', desc: 'Good / Better / Best estimates your client picks from' },
+  { icon: LayoutDashboard, label: 'Client portal', desc: 'Clients view, accept, and pay — all in one branded link' },
+  { icon: Receipt, label: 'Invoicing', desc: 'Turn accepted estimates into invoices in a click' },
+  { icon: TrendingUp, label: 'Job costing', desc: 'See real profit per job — labor, materials, overhead' },
+]
 
 const selectStyle = {
   background: 'var(--color-bg)', border: '1px solid var(--color-border)',
@@ -120,10 +137,29 @@ export default function SignupPage() {
   }
 
   return (
-    <div className={styles.page}>
+    <div className={styles.page} style={{ flexDirection: 'column', gap: 32 }}>
       <div className={styles.card} style={{ maxWidth: 520 }}>
         <div className={styles.logo}><Logo variant="full" /></div>
-        <h1 className={styles.title}>Create your account</h1>
+
+        {/* ── Offer band ─────────────────────────────────────────── */}
+        <div style={{ marginBottom: 24 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: '#26464c', margin: '0 0 6px' }}>
+            Founders pricing — $79.99/mo for trade contractors.
+          </h1>
+          <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
+            14-day free trial. No credit card. Cancel anytime.
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px' }}>
+            {OFFER_ITEMS.map(item => (
+              <span key={item} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'var(--color-text)' }}>
+                <Check size={16} style={{ color: '#26464c', flexShrink: 0 }} />
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <h2 style={{ fontSize: 18, fontWeight: 600, margin: '0 0 20px', color: 'var(--color-text)' }}>Create your account</h2>
 
         <form className={styles.form} onSubmit={handleSubmit}>
 
@@ -244,6 +280,27 @@ export default function SignupPage() {
         <p className={styles.footer}>
           Already have an account?{' '}
           <Link to="/login" style={{ color: 'var(--color-primary)', fontWeight: 500 }}>Sign in</Link>
+        </p>
+      </div>
+
+      {/* ── Features strip ───────────────────────────────────────── */}
+      <div style={{ width: '100%', maxWidth: 720, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20 }}>
+        {FEATURES.map(f => (
+          <div key={f.label} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <f.icon size={24} style={{ color: '#f27243' }} />
+            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>{f.label}</span>
+            <span style={{ fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>{f.desc}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Testimonial ──────────────────────────────────────────── */}
+      <div style={{ width: '100%', maxWidth: 520, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg, 12px)', padding: '24px 28px', textAlign: 'center' }}>
+        <p style={{ fontSize: 15, fontStyle: 'italic', lineHeight: 1.6, color: 'var(--color-text)', margin: '0 0 12px' }}>
+          "I finished a takeoff for a commercial roof. I was impressed at how easy it was to complete. The tools are simple and easy to navigate and I found no bugs."
+        </p>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-muted)', margin: 0 }}>
+          — Matt Harmon, ACI Contractors
         </p>
       </div>
     </div>
