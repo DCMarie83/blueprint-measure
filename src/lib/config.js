@@ -25,5 +25,8 @@ export const FEATURE_FLAGS = {
 // Days of full access after trial_ends_at before hard lock.
 export const TRIAL_GRACE_DAYS = 3;
 
+// Google Ads global tag ID (public — used for conversion events later).
+export const GOOGLE_ADS_TAG_ID = 'AW-18297721330';
+
 // GHL onboarding booking calendar (public link).
 export const ONBOARDING_CALENDAR_URL = 'https://api.leadconnectorhq.com/widget/booking/JqBPdsARvHo9H7xbnu0q';
