@@ -32,9 +32,12 @@ export default function SubscribeRecurly() {
   const [subscriptionId, setSubscriptionId] = useState(null)
   const [cardMounted, setCardMounted] = useState(false)
 
-  // Configure Recurly + mount card element
+  // Configure Recurly + mount card element.
+  // Depends on `company` so the effect retries after the form mounts
+  // (cardRef is null while the spinner renders for company === null).
   useEffect(() => {
-    if (!recurlyReady || !window.recurly || cardMounted) return
+    if (!recurlyReady || !window.recurly || cardMounted || !company) return
+    if (!cardRef.current) return
     try {
       const r = window.recurly
       r.configure(RECURLY_PUBLIC_KEY)
@@ -42,16 +45,14 @@ export default function SubscribeRecurly() {
 
       const elements = r.Elements()
       const card = elements.CardElement()
-      if (cardRef.current) {
-        card.attach(cardRef.current)
-        cardElement.current = card
-        setCardMounted(true)
-      }
+      card.attach(cardRef.current)
+      cardElement.current = card
+      setCardMounted(true)
     } catch (err) {
       setStatus('error')
       setMessage('Failed to initialize Recurly: ' + err.message)
     }
-  }, [recurlyReady, cardMounted])
+  }, [recurlyReady, cardMounted, company])
 
   const callCheckout = useCallback(async (billingToken, threeDSResult) => {
     setStatus('submitting')
@@ -114,6 +115,19 @@ export default function SubscribeRecurly() {
     e.preventDefault()
     if (!recurlyInstance.current || !company) return
 
+    // Client-side AVS field validation before tokenizing
+    const form = formRef.current
+    const missing = []
+    if (!form.querySelector('[data-recurly="address1"]')?.value?.trim()) missing.push('Address')
+    if (!form.querySelector('[data-recurly="city"]')?.value?.trim()) missing.push('City')
+    if (!form.querySelector('[data-recurly="postal_code"]')?.value?.trim()) missing.push('Postal code')
+    if (!form.querySelector('[data-recurly="country"]')?.value?.trim()) missing.push('Country')
+    if (missing.length > 0) {
+      setStatus('error')
+      setMessage('Missing billing address fields: ' + missing.join(', '))
+      return
+    }
+
     setStatus('tokenizing')
     setMessage('Tokenizing card...')
 
@@ -175,6 +189,52 @@ export default function SubscribeRecurly() {
                   required
                   style={{ width: 'calc(50% - 6px)', padding: '10px 12px', fontSize: 14, border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', background: 'var(--color-bg)', color: 'var(--color-text)', outline: 'none', boxSizing: 'border-box' }}
                 />
+              </div>
+
+              {/* Billing address (AVS required by Authorize.Net) */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--color-text-muted)', marginBottom: 6 }}>
+                  Billing address
+                </label>
+                <input
+                  type="text"
+                  data-recurly="address1"
+                  placeholder="Street address"
+                  required
+                  style={{ width: '100%', marginBottom: 8, padding: '10px 12px', fontSize: 14, border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', background: 'var(--color-bg)', color: 'var(--color-text)', outline: 'none', boxSizing: 'border-box' }}
+                />
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    type="text"
+                    data-recurly="city"
+                    placeholder="City"
+                    required
+                    style={{ flex: 2, padding: '10px 12px', fontSize: 14, border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', background: 'var(--color-bg)', color: 'var(--color-text)', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                  <input
+                    type="text"
+                    data-recurly="state"
+                    placeholder="State"
+                    style={{ flex: 1, padding: '10px 12px', fontSize: 14, border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', background: 'var(--color-bg)', color: 'var(--color-text)', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  <input
+                    type="text"
+                    data-recurly="postal_code"
+                    placeholder="Postal code"
+                    required
+                    style={{ flex: 1, padding: '10px 12px', fontSize: 14, border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', background: 'var(--color-bg)', color: 'var(--color-text)', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                  <input
+                    type="text"
+                    data-recurly="country"
+                    placeholder="Country"
+                    defaultValue="US"
+                    required
+                    style={{ flex: 1, padding: '10px 12px', fontSize: 14, border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', background: 'var(--color-bg)', color: 'var(--color-text)', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
               </div>
 
               <div style={{ marginBottom: 16 }}>
