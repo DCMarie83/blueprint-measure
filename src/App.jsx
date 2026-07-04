@@ -53,17 +53,16 @@ import InvoicePortalPage from './pages/InvoicePortalPage'
 import PasswordRecoveryHandler from './components/PasswordRecoveryHandler'
 import ImpersonationBanner from './components/ImpersonationBanner'
 import SubscriptionGate from './components/auth/SubscriptionGate'
-import SubscribePage from './pages/SubscribePage'
-import SubscribeRecurly from './pages/SubscribeRecurly'
+import RecurlyCheckout from './pages/RecurlyCheckout'
 import BillingSuccessPage from './pages/BillingSuccessPage'
 import BillingCancelPage from './pages/BillingCancelPage'
 
 // ProtectedRoute wraps pages that require login + completed setup.
-// bypassSubscriptionGate: if true, skip the subscription check (for /settings, /account)
+// bypassSubscriptionGate: if true, skip the subscription check (for /settings, /account, /subscribe)
 function ProtectedRoute({ children, bypassSubscriptionGate = false }) {
-  const { user, loading, setupComplete } = useAuth()
+  const { user, loading, setupComplete, company, companyLoading, isSuperAdmin } = useAuth()
 
-  if (loading) {
+  if (loading || companyLoading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
         <div className="spinner" />
@@ -75,6 +74,17 @@ function ProtectedRoute({ children, bypassSubscriptionGate = false }) {
   if (sessionStorage.getItem('bpm_password_recovery_pending') === 'true') return <Navigate to="/change-password" replace />
   if (user.user_metadata?.force_password_change) return <Navigate to="/change-password" replace />
   if (setupComplete === false) return <Navigate to="/register" replace />
+
+  // Card-required gate: new trialing signups without a Recurly subscription
+  // must add a card before accessing the app. bypassSubscriptionGate routes
+  // (like /subscribe itself) are exempt so the checkout page can render.
+  if (!bypassSubscriptionGate && !isSuperAdmin && company
+    && company.card_required === true
+    && company.subscription_status === 'trialing'
+    && !company.recurly_subscription_id) {
+    return <Navigate to="/subscribe" replace />
+  }
+
   if (bypassSubscriptionGate) return <>{children}<FeedbackButton /></>
   return <SubscriptionGate>{children}<FeedbackButton /></SubscriptionGate>
 }
@@ -207,11 +217,11 @@ export default function App() {
       />
       <Route
         path="/subscribe"
-        element={<ProtectedRoute bypassSubscriptionGate><SubscribePage /></ProtectedRoute>}
+        element={<ProtectedRoute bypassSubscriptionGate><RecurlyCheckout /></ProtectedRoute>}
       />
       <Route
         path="/subscribe-recurly"
-        element={<ProtectedRoute bypassSubscriptionGate><SubscribeRecurly /></ProtectedRoute>}
+        element={<Navigate to="/subscribe" replace />}
       />
       <Route
         path="/billing/success"

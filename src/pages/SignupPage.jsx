@@ -124,7 +124,7 @@ export default function SignupPage() {
           <div className={styles.logo}><Logo variant="full" /></div>
           <h1 className={styles.title}>Check your email</h1>
           <div className={styles.successBox}>
-            We sent a confirmation link to <strong>{email}</strong>. Click the link to activate your account.
+            We sent a confirmation link to <strong>{email}</strong>. Click the link to activate your account, then you'll add a card to start your free trial.
           </div>
           <button className={styles.btn} style={{ marginTop: 16 }} onClick={handleResend} disabled={resending}>
             {resending ? 'Resending…' : 'Resend confirmation email'}
@@ -147,7 +147,7 @@ export default function SignupPage() {
             Founders pricing — $79.99/mo for trade contractors.
           </h1>
           <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
-            14-day free trial. No credit card. Cancel anytime.
+            14-day free trial. Cancel anytime.
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px' }}>
             {OFFER_ITEMS.map(item => (

@@ -10,6 +10,7 @@ const RECURLY_HEADERS = {
   'Authorization': 'Basic ' + btoa(RECURLY_API_KEY + ':'),
   'Accept': 'application/vnd.recurly.v2021-02-25',
   'Content-Type': 'application/json',
+  'Accept-Language': 'en-US',
 };
 
 const CORS = {
@@ -155,6 +156,7 @@ Deno.serve(async (req) => {
       .update({
         recurly_account_code: companyId,
         recurly_subscription_id: subscription.id || subscription.uuid,
+        awaiting_recurly_card: false,
       })
       .eq('id', companyId);
 
