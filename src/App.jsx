@@ -54,6 +54,7 @@ import PasswordRecoveryHandler from './components/PasswordRecoveryHandler'
 import ImpersonationBanner from './components/ImpersonationBanner'
 import SubscriptionGate from './components/auth/SubscriptionGate'
 import SubscribePage from './pages/SubscribePage'
+import SubscribeRecurly from './pages/SubscribeRecurly'
 import BillingSuccessPage from './pages/BillingSuccessPage'
 import BillingCancelPage from './pages/BillingCancelPage'
 
@@ -207,6 +208,10 @@ export default function App() {
       <Route
         path="/subscribe"
         element={<ProtectedRoute bypassSubscriptionGate><SubscribePage /></ProtectedRoute>}
+      />
+      <Route
+        path="/subscribe-recurly"
+        element={<ProtectedRoute bypassSubscriptionGate><SubscribeRecurly /></ProtectedRoute>}
       />
       <Route
         path="/billing/success"

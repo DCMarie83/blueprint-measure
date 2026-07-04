@@ -28,5 +28,8 @@ export const TRIAL_GRACE_DAYS = 3;
 // Google Ads global tag ID (public — used for conversion events later).
 export const GOOGLE_ADS_TAG_ID = 'AW-18297721330';
 
+// Recurly public key (browser-safe, Recurly.js).
+export const RECURLY_PUBLIC_KEY = 'ewr1-5FyjbrwzjnEJiFBVHibzyZ';
+
 // GHL onboarding booking calendar (public link).
 export const ONBOARDING_CALENDAR_URL = 'https://api.leadconnectorhq.com/widget/booking/JqBPdsARvHo9H7xbnu0q';
