@@ -40,6 +40,7 @@ export default function ProfileTab() {
   const [cancelling, setCancelling] = useState(false)
   const [cancelToast, setCancelToast] = useState('')
   const [cancelReason, setCancelReason] = useState('')
+  const [reactivating, setReactivating] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
@@ -301,9 +302,43 @@ export default function ProfileTab() {
                 <p style={{ color: 'var(--color-text-muted)', marginBottom: 8 }}>
                   Your cancellation is confirmed. You'll keep full access until the end of your current billing period.
                 </p>
-                <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 16 }}>
                   Canceled on {new Date(company.canceled_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
                 </p>
+                <button
+                  onClick={async () => {
+                    setReactivating(true)
+                    try {
+                      const { data, error } = await supabase.functions.invoke('recurly-reactivate', {
+                        body: { company_id: companyId },
+                      })
+                      if (error) throw new Error(error.message || 'Reactivation failed')
+                      if (data?.error) throw new Error(data.error)
+                      // Refresh company data so canceled state clears
+                      const { data: c } = await supabase
+                        .from('companies')
+                        .select('name, plan, plan_key, subscription_status, locked_price_monthly, locked_price_annual, canceled_at')
+                        .eq('id', companyId)
+                        .single()
+                      if (c) setCompany(c)
+                      setCancelToast('Your subscription is active again.')
+                      setTimeout(() => setCancelToast(''), 5000)
+                    } catch (err) {
+                      alert('Failed to reactivate: ' + err.message)
+                    } finally {
+                      setReactivating(false)
+                    }
+                  }}
+                  disabled={reactivating}
+                  style={{
+                    padding: '10px 20px', fontSize: 14, fontWeight: 600,
+                    background: '#f27243', color: '#fff', border: 'none', borderRadius: 'var(--radius)',
+                    cursor: reactivating ? 'wait' : 'pointer',
+                    opacity: reactivating ? 0.6 : 1,
+                  }}
+                >
+                  {reactivating ? 'Reactivating…' : 'Reactivate Subscription'}
+                </button>
               </div>
             ) : cancelToast ? (
               <div className={styles.cancelToast}>{cancelToast}</div>

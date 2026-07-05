@@ -121,6 +121,23 @@ Deno.serve(async (req) => {
       return new Response('ignored: ' + eventType, { status: 200 });
     }
 
+    // Guard: reactivated/updated events should NOT flip a trialing company to active
+    // (that would clear trial fields prematurely). Only payment-driven events convert trial→paid.
+    const REACTIVATE_EVENTS = new Set(['reactivated_account_notification', 'updated_subscription_notification']);
+    if (newStatus === 'active' && REACTIVATE_EVENTS.has(eventType)) {
+      const { data: current } = await supabase
+        .from('companies')
+        .select('subscription_status')
+        .eq('id', companyId)
+        .single();
+      if (current?.subscription_status === 'trialing') {
+        // Clear canceled_at (reactivation) but preserve trial state
+        await supabase.from('companies').update({ canceled_at: null, cancel_reason: null }).eq('id', companyId);
+        await logEvent(supabase, { eventType, companyId, subId, newStatus: null, processed: true, error: null, rawPayload });
+        return new Response('ok', { status: 200 });
+      }
+    }
+
     // 7. Build update payload for status-changing events
     const updatePayload: Record<string, unknown> = { subscription_status: newStatus };
     if (subId) {
