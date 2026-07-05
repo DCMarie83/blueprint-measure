@@ -1,6 +1,6 @@
 // Recurly webhook edge function — mirrors chargebee-webhook structure.
 // HTTP Basic Auth verification, maps Recurly notification types to subscription_status.
-// Logs ALL events to recurly_webhook_events. Sends cancel email via Resend on cancel.
+// Logs ALL events to recurly_webhook_events. Sends cancel/reactivation emails via Resend.
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
@@ -134,6 +134,9 @@ Deno.serve(async (req) => {
         // Clear canceled_at (reactivation) but preserve trial state
         await supabase.from('companies').update({ canceled_at: null, cancel_reason: null }).eq('id', companyId);
         await logEvent(supabase, { eventType, companyId, subId, newStatus: null, processed: true, error: null, rawPayload });
+        if (eventType === 'reactivated_account_notification' && RESEND_API_KEY) {
+          await sendReactivateEmail(supabase, companyId);
+        }
         return new Response('ok', { status: 200 });
       }
     }
@@ -176,6 +179,11 @@ Deno.serve(async (req) => {
 
     // 9. Log successful event
     await logEvent(supabase, { eventType, companyId, subId, newStatus, processed: true, error: null, rawPayload });
+
+    // 10. Send reactivation confirmation email
+    if (eventType === 'reactivated_account_notification' && RESEND_API_KEY) {
+      await sendReactivateEmail(supabase, companyId);
+    }
 
     return new Response('ok', { status: 200 });
 
@@ -273,6 +281,62 @@ async function sendCancelEmail(supabase: ReturnType<typeof createClient>, compan
     });
   } catch (emailErr) {
     console.error('[recurly-webhook] Cancel email failed:', emailErr);
+    // Non-fatal — don't fail the webhook response
+  }
+}
+
+async function sendReactivateEmail(supabase: ReturnType<typeof createClient>, companyId: string) {
+  try {
+    const { data: company } = await supabase
+      .from('companies')
+      .select('name')
+      .eq('id', companyId)
+      .single();
+
+    const { data: owner } = await supabase
+      .from('user_profiles')
+      .select('email')
+      .eq('company_id', companyId)
+      .limit(1)
+      .single();
+
+    if (!owner?.email) {
+      console.warn('[recurly-webhook] No owner email for reactivation notification, company:', companyId);
+      return;
+    }
+
+    const companyName = company?.name || 'your company';
+
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'RivetDog <hello@rivetdog.com>',
+        to: owner.email,
+        subject: 'Your RivetDog subscription is active again',
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
+            <h2 style="color: #26464c; margin: 0 0 16px;">Subscription reactivated</h2>
+            <p style="font-size: 15px; color: #1b2426; line-height: 1.6;">
+              The subscription for <strong>${escapeHtml(companyName)}</strong> has been reactivated. Billing will continue as normal on your regular billing cycle.
+            </p>
+            <p style="font-size: 15px; color: #1b2426; line-height: 1.6;">
+              You have full access to all features. No further action is needed.
+            </p>
+            <p style="font-size: 14px; color: #555; line-height: 1.6; margin-top: 24px;">
+              Questions? Contact us at <a href="mailto:hello@rivetdog.com" style="color: #f27243;">hello@rivetdog.com</a>.
+            </p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;">
+            <p style="font-size: 11px; color: #999; text-align: center;">RivetDog | NG Automation Hub</p>
+          </div>
+        `,
+      }),
+    });
+  } catch (emailErr) {
+    console.error('[recurly-webhook] Reactivation email failed:', emailErr);
     // Non-fatal — don't fail the webhook response
   }
 }
