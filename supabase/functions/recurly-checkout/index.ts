@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
     // 4. Resolve company + locked price
     const { data: company, error: compErr } = await adminClient
       .from('companies')
-      .select('id, name, locked_price_monthly')
+      .select('id, name, locked_price_monthly, canceled_at, recurly_account_code')
       .eq('id', companyId)
       .single();
     if (compErr || !company) return json({ error: 'Company not found' }, 404);
@@ -127,12 +127,19 @@ Deno.serve(async (req) => {
 
     // 8. Create subscription with lifetime-lock price override
     const unitAmount = Number(company.locked_price_monthly);
-    const subBody = {
+    const isReturning = company.canceled_at != null || company.recurly_account_code != null;
+    const subBody: Record<string, unknown> = {
       plan_code: 'founders-monthly',
       account: { code: companyId },
       currency: 'USD',
       unit_amount: unitAmount,
     };
+    // Skip trial for returning subscribers — billing starts immediately.
+    // Recurly v3 subscription create accepts trial_ends_at as an ISO 8601 timestamp;
+    // setting it to now effectively skips the plan's configured trial.
+    if (isReturning) {
+      subBody.trial_ends_at = new Date().toISOString();
+    }
 
     const subRes = await recurlyFetch('/subscriptions', 'POST', subBody);
 
