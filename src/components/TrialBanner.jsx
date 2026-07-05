@@ -18,9 +18,13 @@ export default function TrialBanner() {
 
   const msLeftTrial = trialEnd - now
   const isGrace = msLeftTrial <= 0
+  const hasSubscription = !!company.recurly_subscription_id
 
   if (isGrace) {
-    // Grace window: trial ended, lock approaching
+    // Subscribed users in grace: payment is auto-processing, no CTA needed
+    if (hasSubscription) return null
+
+    // Grandfathered no-card trial in grace: need to subscribe
     const msUntilLock = graceCutoff - now
     const daysUntilLock = Math.ceil(msUntilLock / (1000 * 60 * 60 * 24))
     const urgency = daysUntilLock <= 1
@@ -69,22 +73,25 @@ export default function TrialBanner() {
       padding: '8px 16px', background: '#26464c', color: '#fff', fontSize: 13, fontWeight: 500,
     }}>
       <span>{label}</span>
-      <Link
-        to="/subscribe"
-        style={{
-          padding: '4px 14px', background: '#f27243', color: '#fff', borderRadius: 6,
-          fontWeight: 600, fontSize: 13, textDecoration: 'none',
-        }}
-      >
-        Subscribe
-      </Link>
+      {!hasSubscription && (
+        <Link
+          to="/subscribe"
+          style={{
+            padding: '4px 14px', background: '#f27243', color: '#fff', borderRadius: 6,
+            fontWeight: 600, fontSize: 13, textDecoration: 'none',
+          }}
+        >
+          Subscribe
+        </Link>
+      )}
       {ONBOARDING_CALENDAR_URL && (
         <a
           href={ONBOARDING_CALENDAR_URL}
           target="_blank"
           rel="noopener noreferrer"
           style={{
-            color: '#f27243', fontWeight: 600, textDecoration: 'underline',
+            color: hasSubscription ? '#a7c4c9' : '#f27243',
+            fontWeight: 600, textDecoration: 'underline',
             fontSize: 13,
           }}
         >
