@@ -57,7 +57,7 @@ export default function ProfileTab() {
       if (profile?.company_id) {
         const { data: c } = await supabase
           .from('companies')
-          .select('name, plan, plan_key, subscription_status, locked_price_monthly, locked_price_annual')
+          .select('name, plan, plan_key, subscription_status, locked_price_monthly, locked_price_annual, canceled_at')
           .eq('id', profile.company_id)
           .single()
         companyData = c
@@ -295,7 +295,17 @@ export default function ProfileTab() {
         </button>
         {dangerOpen && (
           <div className={styles.dangerContent}>
-            {cancelToast ? (
+            {company?.canceled_at && !['active', 'pilot'].includes(company?.subscription_status) ? (
+              <div style={{ fontSize: 14, lineHeight: 1.6 }}>
+                <p style={{ fontWeight: 600, color: 'var(--color-text)', marginBottom: 8 }}>Subscription canceled</p>
+                <p style={{ color: 'var(--color-text-muted)', marginBottom: 8 }}>
+                  Your cancellation is confirmed. You'll keep full access until the end of your current billing period.
+                </p>
+                <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                  Canceled on {new Date(company.canceled_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                </p>
+              </div>
+            ) : cancelToast ? (
               <div className={styles.cancelToast}>{cancelToast}</div>
             ) : !cancelConfirm ? (
               <button className={styles.cancelSubBtn} onClick={() => setCancelConfirm(true)}>Cancel My Subscription</button>

@@ -9,6 +9,9 @@ const WEBHOOK_PASSWORD = Deno.env.get('RECURLY_WEBHOOK_PASSWORD')!;
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 
 // Recurly v3 webhook notification types → our subscription_status values.
+// NOTE: canceled_subscription_notification is handled SEPARATELY (cancel-at-period-end
+// means access continues — we record canceled_at but don't change subscription_status
+// until the subscription actually expires).
 const STATUS_MAP: Record<string, string> = {
   // Active
   'new_subscription_notification': 'active',
@@ -19,11 +22,13 @@ const STATUS_MAP: Record<string, string> = {
   // Past due
   'failed_payment_notification': 'past_due',
   'past_due_subscription_renewal_notification': 'past_due',
-  // Canceled / expired
-  'canceled_subscription_notification': 'canceled',
+  // Expired (period ended — NOW lock access)
   'expired_subscription_notification': 'canceled',
   'subscription_expired_notification': 'canceled',
 };
+
+// Events that signal a pending cancel (access continues until period end).
+const CANCEL_PENDING_EVENTS = new Set(['canceled_subscription_notification']);
 
 Deno.serve(async (req) => {
   if (req.method !== 'POST') {
@@ -80,12 +85,43 @@ Deno.serve(async (req) => {
       return new Response('no company id', { status: 200 });
     }
 
+    // 6. Handle cancel-pending events (cancel at period end — access continues)
+    if (CANCEL_PENDING_EVENTS.has(eventType)) {
+      // Write canceled_at only (do NOT change subscription_status — user keeps access)
+      const { data: existing } = await supabase
+        .from('companies')
+        .select('canceled_at')
+        .eq('id', companyId)
+        .single();
+
+      if (!existing?.canceled_at) {
+        const { error } = await supabase
+          .from('companies')
+          .update({ canceled_at: new Date().toISOString() })
+          .eq('id', companyId);
+        if (error) {
+          console.error('[recurly-webhook] DB error (cancel pending):', error.message, { companyId, eventType });
+          await logEvent(supabase, { eventType, companyId, subId, newStatus: null, processed: false, error: error.message, rawPayload });
+          return new Response('db error', { status: 500 });
+        }
+      }
+
+      await logEvent(supabase, { eventType, companyId, subId, newStatus: null, processed: true, error: null, rawPayload });
+
+      // Send cancel confirmation email
+      if (RESEND_API_KEY) {
+        await sendCancelEmail(supabase, companyId);
+      }
+
+      return new Response('ok', { status: 200 });
+    }
+
     if (!newStatus) {
       await logEvent(supabase, { eventType, companyId, subId, newStatus: null, processed: false, error: null, rawPayload });
       return new Response('ignored: ' + eventType, { status: 200 });
     }
 
-    // 6. Build update payload
+    // 7. Build update payload for status-changing events
     const updatePayload: Record<string, unknown> = { subscription_status: newStatus };
     if (subId) {
       updatePayload.recurly_subscription_id = subId;
@@ -97,9 +133,8 @@ Deno.serve(async (req) => {
       updatePayload.trial_ends_at = null;
     }
 
-    // On cancel, record canceled_at if not already set
+    // On expiry (period ended), record canceled_at if not already set
     if (newStatus === 'canceled') {
-      // Only set if not already set (the cancel edge fn may have set it already)
       const { data: existing } = await supabase
         .from('companies')
         .select('canceled_at')
@@ -110,7 +145,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 7. Update company
+    // 8. Update company
     const { error } = await supabase
       .from('companies')
       .update(updatePayload)
@@ -122,13 +157,8 @@ Deno.serve(async (req) => {
       return new Response('db error', { status: 500 });
     }
 
-    // 8. Log successful event
+    // 9. Log successful event
     await logEvent(supabase, { eventType, companyId, subId, newStatus, processed: true, error: null, rawPayload });
-
-    // 9. Send cancel confirmation email
-    if (newStatus === 'canceled' && RESEND_API_KEY) {
-      await sendCancelEmail(supabase, companyId);
-    }
 
     return new Response('ok', { status: 200 });
 
