@@ -6,10 +6,13 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const RECURLY_API_KEY = Deno.env.get('RECURLY_API_KEY')!;
 const RECURLY_BASE = 'https://v3.recurly.com';
+// Accept-Language EXPLICITLY pinned — Deno's fetch injects 'Accept-Language: *'
+// when unset, and Recurly rejects '*'. Do NOT remove this header.
 const RECURLY_HEADERS = {
   'Authorization': 'Basic ' + btoa(RECURLY_API_KEY + ':'),
   'Accept': 'application/vnd.recurly.v2021-02-25',
   'Content-Type': 'application/json',
+  'Accept-Language': 'en-US',
 };
 
 const CORS = {
