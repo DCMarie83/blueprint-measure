@@ -84,6 +84,41 @@ export default function CompanyDrawer({
             )}
           </section>
 
+          {/* Billing */}
+          <section className={styles.section}>
+            <h3 className={styles.sectionTitle}>Billing</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>Status</span>
+                <span style={{ fontWeight: 600 }}>{company.subscription_status ?? 'unknown'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>Recurly Sub ID</span>
+                <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 11 }}>{company.recurly_subscription_id || '—'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>Recurly Account</span>
+                <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 11 }}>{company.recurly_account_code || '—'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>Status Changed</span>
+                <span>{company.subscription_status_changed_at ? formatDate(company.subscription_status_changed_at) : '—'}</span>
+              </div>
+              {company.canceled_at && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--color-text-muted)' }}>Canceled At</span>
+                  <span style={{ color: '#ef4444' }}>{formatDate(company.canceled_at)}</span>
+                </div>
+              )}
+              {company.cancel_reason && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--color-text-muted)' }}>Cancel Reason</span>
+                  <span style={{ maxWidth: 200, textAlign: 'right' }}>{company.cancel_reason}</span>
+                </div>
+              )}
+            </div>
+          </section>
+
           {/* Feature Flags */}
           <section className={styles.section}>
             <h3 className={styles.sectionTitle}>Feature Flags</h3>

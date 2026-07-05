@@ -25,6 +25,7 @@ export default function ProfileTab() {
   const [profileToast, setProfileToast] = useState('')
 
   const [company, setCompany] = useState(null)
+  const [companyId, setCompanyId] = useState(null)
   const [role, setRole] = useState('')
 
   const [smsConsent, setSmsConsent] = useState(false)
@@ -38,6 +39,7 @@ export default function ProfileTab() {
   const [cancelConfirm, setCancelConfirm] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const [cancelToast, setCancelToast] = useState('')
+  const [cancelReason, setCancelReason] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
@@ -67,6 +69,7 @@ export default function ProfileTab() {
         setRole(profile.role ?? '')
         setSmsConsent(profile.sms_consent ?? false)
         setSmsConsentAt(profile.sms_consent_at ?? null)
+        setCompanyId(profile.company_id ?? null)
       }
       if (companyData) {
         setCompany(companyData)
@@ -149,16 +152,17 @@ export default function ProfileTab() {
   async function handleCancelSubscription() {
     setCancelling(true)
     try {
-      const { error } = await supabase
-        .from('user_profiles')
-        .update({ subscription_cancel_requested_at: new Date().toISOString() })
-        .eq('user_id', user.id)
-      if (error) throw new Error(error.message)
+      const { data, error } = await supabase.functions.invoke('recurly-cancel', {
+        body: { company_id: companyId, reason: cancelReason.trim() || undefined },
+      })
+      if (error) throw new Error(error.message || 'Cancellation failed')
+      if (data?.error) throw new Error(data.error)
       setCancelConfirm(false)
-      setCancelToast('Cancellation requested — we\'ll be in touch shortly')
-      setTimeout(() => setCancelToast(''), 5000)
+      setCancelReason('')
+      setCancelToast('Your subscription has been canceled. You will retain access until the end of your current billing period.')
+      setTimeout(() => setCancelToast(''), 8000)
     } catch (err) {
-      alert('Failed to request cancellation: ' + err.message)
+      alert('Failed to cancel: ' + err.message)
     } finally {
       setCancelling(false)
     }
@@ -301,10 +305,17 @@ export default function ProfileTab() {
                   Cancel your subscription? Your account stays active until the end of your current
                   billing period. After that, your account becomes read-only. You can resubscribe anytime.
                 </p>
+                <textarea
+                  value={cancelReason}
+                  onChange={e => setCancelReason(e.target.value)}
+                  placeholder="Optional: why are you canceling? (helps us improve)"
+                  rows={2}
+                  style={{ width: '100%', marginBottom: 12, padding: '8px 10px', fontSize: 13, border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', background: 'var(--color-bg)', color: 'var(--color-text)', resize: 'vertical', outline: 'none', boxSizing: 'border-box' }}
+                />
                 <div className={styles.deleteActions}>
-                  <button className={styles.cancelBtn} onClick={() => setCancelConfirm(false)}>Keep Subscription</button>
+                  <button className={styles.cancelBtn} onClick={() => { setCancelConfirm(false); setCancelReason('') }}>Keep Subscription</button>
                   <button className={styles.confirmCancelBtn} onClick={handleCancelSubscription} disabled={cancelling}>
-                    {cancelling ? 'Processing…' : 'Confirm Cancellation'}
+                    {cancelling ? 'Canceling…' : 'Confirm Cancellation'}
                   </button>
                 </div>
               </div>
@@ -327,8 +338,7 @@ export default function ProfileTab() {
               </div>
             )}
             <p className={styles.dangerFootnote}>
-              Subscription billing will be wired to Stripe in a future update.
-              For now, cancel requests are queued for manual review.
+              Cancellation takes effect at the end of your current billing period.
             </p>
           </div>
         )}

@@ -10,7 +10,6 @@ const RECURLY_HEADERS = {
   'Authorization': 'Basic ' + btoa(RECURLY_API_KEY + ':'),
   'Accept': 'application/vnd.recurly.v2021-02-25',
   'Content-Type': 'application/json',
-  'Accept-Language': 'en-US',
 };
 
 const CORS = {
