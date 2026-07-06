@@ -28,6 +28,9 @@ const NARRATIVE = [
   { step: '4', title: 'Get Paid', desc: 'Invoice from the accepted estimate. Clients pay through their portal.', icon: DollarSign },
 ]
 
+const FOUNDERS_PLAN_NAME = 'Founders Promotion' // must match plan_name the RPC returns for the founders tier
+const FOUNDER_GIFT_LINE = 'Plus a special thank-you gift after 90 days as an active subscriber.' // EDIT: finalize swag copy
+
 function DemoCard({ id, label }) {
   const [playing, setPlaying] = useState(false);
   return (
@@ -216,7 +219,7 @@ export default function SignupPage() {
       <div className={s.hero}>
         <div className={s.heroLeft}>
           <h1 className={s.heroH1}>
-            First 25 painters in every state lock $79.99/mo — for life.
+            First 25 trade pros in every state lock $79.99/mo — for life.
           </h1>
           <p className={s.heroSub}>
             The field OS built by a contractor's developer. Measure, estimate, track, and get paid — priced like the small business you actually are.
@@ -244,33 +247,66 @@ export default function SignupPage() {
               <p className={s.scarcitySub} style={{ marginTop: 12 }}>Checking availability...</p>
             )}
 
-            {!scarcityLoading && heroState && scarcity && scarcity.spots_remaining > 0 && (
-              <>
-                <p className={s.scarcityLine}>
-                  Only {scarcity.spots_remaining} founder {scarcity.spots_remaining === 1 ? 'spot' : 'spots'} left in {stateName}
-                </p>
-                <p className={s.scarcitySub}>
-                  After the first {scarcity.spots_total}, it's {scarcity.next_tier_name} at ${scarcity.next_tier_price}/mo — your rate stays locked.
-                </p>
-              </>
-            )}
+            {(() => {
+              if (scarcityLoading || !heroState) return null
+              if (!scarcity) {
+                // Neutral fallback — no quota row for this state
+                return (
+                  <p className={s.scarcityLine}>
+                    Founder pricing available — $79.99/mo. Cancel anytime.
+                  </p>
+                )
+              }
+              const isFoundersTier = scarcity.plan_name === FOUNDERS_PLAN_NAME
 
-            {!scarcityLoading && heroState && scarcity && scarcity.spots_remaining === 0 && (
-              <>
-                <p className={s.scarcityLine}>
-                  Founder spots in {stateName} are full
-                </p>
-                <p className={s.scarcitySub}>
-                  Join {scarcity.next_tier_name} at ${scarcity.next_tier_price}/mo.
-                </p>
-              </>
-            )}
+              // Branch A — Founders tier, completely open
+              if (isFoundersTier && scarcity.spots_remaining === scarcity.spots_total) {
+                return (
+                  <>
+                    <p className={s.scarcityLine}>Claim founder #1 in {stateName}</p>
+                    <p className={s.scarcitySub}>
+                      Be the first trade pro in your state to lock ${scarcity.monthly_price}/mo for life. {FOUNDER_GIFT_LINE}
+                    </p>
+                  </>
+                )
+              }
 
-            {!scarcityLoading && heroState && !scarcity && (
-              <p className={s.scarcityLine}>
-                Founder pricing available — $79.99/mo. Cancel anytime.
-              </p>
-            )}
+              // Branch B — Founders tier, partially claimed
+              if (isFoundersTier && scarcity.spots_remaining > 0) {
+                return (
+                  <>
+                    <p className={s.scarcityLine}>
+                      Only {scarcity.spots_remaining} founder {scarcity.spots_remaining === 1 ? 'spot' : 'spots'} left in {stateName}
+                    </p>
+                    <p className={s.scarcitySub}>
+                      After the first {scarcity.spots_total}, it's {scarcity.next_tier_name} at ${scarcity.next_tier_price}/mo — your rate stays locked.
+                    </p>
+                  </>
+                )
+              }
+
+              // Branch C — Founders full, now showing a non-founders tier with room
+              if (!isFoundersTier && scarcity.spots_remaining > 0) {
+                return (
+                  <>
+                    <p className={s.scarcityLine}>Founder spots in {stateName} are full</p>
+                    <p className={s.scarcitySub}>
+                      {scarcity.spots_remaining} {scarcity.plan_name} {scarcity.spots_remaining === 1 ? 'spot' : 'spots'} left at ${scarcity.monthly_price}/mo — still locked for life.
+                    </p>
+                  </>
+                )
+              }
+
+              // Branch D — This tier is full (spots_remaining === 0)
+              return (
+                <>
+                  <p className={s.scarcityLine}>{scarcity.plan_name} in {stateName} is full</p>
+                  <p className={s.scarcitySub}>
+                    Join {scarcity.next_tier_name} at ${scarcity.next_tier_price}/mo.
+                  </p>
+                </>
+              )
+            })()}
           </div>
 
           {/* ── Demo videos (inside hero left column) ────────────── */}
@@ -462,7 +498,7 @@ export default function SignupPage() {
           <div className={s.faqItem}>
             <p className={s.faqQ}>What does "locked for life" mean?</p>
             <p className={s.faqA}>
-              The first 25 painters in each state lock the $79.99/mo founder rate permanently on the base plan. As we grow, new signups pay more — your rate never changes.
+              The first 25 trade pros in each state lock the $79.99/mo founder rate permanently on the base plan. As we grow, new signups pay more — your rate never changes.
             </p>
           </div>
         </div>
