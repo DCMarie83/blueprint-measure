@@ -97,7 +97,16 @@ Deno.serve(async (req) => {
       }
       const { data, error } = await adminClient.auth.admin.listUsers({ perPage: 1000 })
       if (error) throw error
-      return json({ users: data.users })
+
+      // Cross-reference with user_profiles to exclude soft-deleted users
+      const { data: deletedProfiles } = await adminClient
+        .from('user_profiles')
+        .select('user_id')
+        .not('deleted_at', 'is', null)
+      const deletedIds = new Set((deletedProfiles ?? []).map((p: { user_id: string }) => p.user_id))
+
+      const users = (data.users ?? []).filter((u: { id: string }) => !deletedIds.has(u.id))
+      return json({ users })
     }
 
     // ── invite ────────────────────────────────────────────────────────────────

@@ -142,11 +142,19 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'restore') {
+      // Clear soft-delete flag
       const { error: updErr } = await supabase
         .from('user_profiles')
         .update({ deleted_at: null })
         .eq('user_id', target_user_id)
       if (updErr) return json({ error: updErr.message }, 500)
+
+      // Un-ban so the user can log in again
+      const { error: banErr } = await supabase.auth.admin.updateUserById(target_user_id, {
+        ban_duration: 'none',
+      })
+      if (banErr) return json({ error: banErr.message }, 500)
+
       return json({ ok: true })
     }
 
@@ -157,6 +165,11 @@ Deno.serve(async (req) => {
         .update({ deleted_at: new Date().toISOString() })
         .eq('user_id', target_user_id)
       if (updErr) return json({ error: updErr.message }, 500)
+
+      // Ban the auth user so they cannot log back in
+      await supabase.auth.admin.updateUserById(target_user_id, {
+        ban_duration: '876000h', // ~100 years — effectively permanent, reversible via restore
+      })
 
       // Sign user out everywhere
       await supabase.auth.admin.signOut(target_user_id, 'global')

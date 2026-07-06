@@ -172,11 +172,13 @@ export default function UserDetailPage() {
         showToast('Account reactivated')
       } else if (action === 'soft_delete') {
         setProfile(prev => ({ ...prev, deleted_at: new Date().toISOString() }))
+        setAuthInfo(prev => ({ ...prev, banned_until: 'deleted' }))
         setConfirmDelete(false)
-        showToast('User deleted (soft)')
+        showToast('User deleted and banned from login')
       } else if (action === 'restore') {
         setProfile(prev => ({ ...prev, deleted_at: null }))
-        showToast('User restored')
+        setAuthInfo(prev => ({ ...prev, banned_until: null }))
+        showToast('User restored and login re-enabled')
       }
     } catch (err) {
       showToast(`Action failed: ${err.message}`)

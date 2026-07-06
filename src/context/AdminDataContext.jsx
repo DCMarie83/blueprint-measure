@@ -21,7 +21,7 @@ export function AdminDataProvider({ children }) {
         { data: sessionsData, error: sessionsErr },
       ] = await Promise.all([
         supabase.from('companies').select('*').order('created_at', { ascending: true }),
-        supabase.from('user_profiles').select('*'),
+        supabase.from('user_profiles').select('*').is('deleted_at', null),
         supabase.from('sessions').select('id, user_id, created_at, blueprint_url'),
       ])
 
