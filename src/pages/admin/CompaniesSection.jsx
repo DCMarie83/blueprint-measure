@@ -82,6 +82,9 @@ export default function CompaniesSection() {
   const [editingStatusId, setEditingStatusId] = useState(null)
   const [savingStatusId, setSavingStatusId] = useState(null)
 
+  // Internal toggle
+  const [togglingInternalId, setTogglingInternalId] = useState(null)
+
   // Impersonation
   const navigate = useNavigate()
   const { startImpersonation } = useImpersonation()
@@ -195,6 +198,19 @@ export default function CompaniesSection() {
     } catch (err) { alert('Failed: ' + err.message) } finally { setSavingStatusId(null) }
   }
 
+  async function handleToggleInternal(company) {
+    const next = !company.is_internal
+    setTogglingInternalId(company.id)
+    try {
+      const { data, error } = await supabase.functions.invoke('mark-company-internal', {
+        body: { company_id: company.id, internal: next },
+      })
+      if (error) throw new Error(error.message)
+      if (data?.error) throw new Error(data.error)
+      setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, is_internal: next } : c))
+    } catch (err) { alert('Failed: ' + err.message) } finally { setTogglingInternalId(null) }
+  }
+
   // Drawer open — also lazy-load zone counts
   function handleOpenDrawer(companyId) {
     setDrawerCompanyId(companyId)
@@ -295,6 +311,18 @@ export default function CompaniesSection() {
                             {company.wants_branding_quote && (
                               <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4, background: 'rgba(242,114,67,0.12)', color: 'var(--color-primary)' }}>Branding lead</span>
                             )}
+                            {company.is_internal && (
+                              <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4, background: 'rgba(139,92,246,0.15)', color: '#8b5cf6' }}>Internal</span>
+                            )}
+                            <button
+                              className={styles.iconBtn}
+                              onClick={() => handleToggleInternal(company)}
+                              disabled={togglingInternalId === company.id}
+                              title={company.is_internal ? 'Unmark internal' : 'Mark as internal'}
+                              style={{ fontSize: 11 }}
+                            >
+                              {togglingInternalId === company.id ? '…' : company.is_internal ? '⊘' : '⊙'}
+                            </button>
                           </div>
                         )}
                       </div>
