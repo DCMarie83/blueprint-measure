@@ -28,6 +28,40 @@ const NARRATIVE = [
   { step: '4', title: 'Get Paid', desc: 'Invoice from the accepted estimate. Clients pay through their portal.', icon: DollarSign },
 ]
 
+function DemoCard({ id, label }) {
+  const [playing, setPlaying] = useState(false);
+  return (
+    <div className={s.demoCard}>
+      <span className={s.demoLabel}>{label}</span>
+      <div className={s.demoVideo}>
+        {playing ? (
+          <iframe
+            src={`https://www.youtube.com/embed/${id}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
+            allow="autoplay; encrypted-media; picture-in-picture"
+            allowFullScreen
+            title={label}
+          />
+        ) : (
+          <button
+            type="button"
+            className={s.demoPoster}
+            onClick={() => setPlaying(true)}
+            aria-label={`Play ${label} demo`}
+          >
+            <img
+              src={`https://img.youtube.com/vi/${id}/maxresdefault.jpg`}
+              onError={(e) => { e.currentTarget.src = `https://img.youtube.com/vi/${id}/hqdefault.jpg`; }}
+              alt={`${label} demo`}
+              loading="lazy"
+            />
+            <span className={s.demoPlay} aria-hidden="true">▶</span>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function SignupPage() {
   const formRef = useRef(null)
 
@@ -238,6 +272,16 @@ export default function SignupPage() {
               </p>
             )}
           </div>
+
+          {/* ── Demo videos (inside hero left column) ────────────── */}
+          <div className={s.heroDemos}>
+            <h2 className={s.heroDemosTitle}>See it work</h2>
+            <div className={s.heroDemoGrid}>
+              {DEMOS.map(d => (
+                <DemoCard key={d.id} id={d.id} label={d.label} />
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* ── Form card (RIGHT column) ────────────────────────── */}
@@ -368,27 +412,6 @@ export default function SignupPage() {
             Already have an account?{' '}
             <Link to="/login" style={{ color: 'var(--color-primary)', fontWeight: 500 }}>Sign in</Link>
           </p>
-        </div>
-      </div>
-
-      {/* ── 3. DEMO STRIP ───────────────────────────────────────── */}
-      <div className={s.strip}>
-        <h2 className={s.stripTitle}>See it work</h2>
-        <div className={s.demoGrid}>
-          {DEMOS.map(d => (
-            <div key={d.id} className={s.demoCard}>
-              <span className={s.demoLabel}>{d.label}</span>
-              <div className={s.demoVideo}>
-                <iframe
-                  src={`https://www.youtube.com/embed/${d.id}?autoplay=1&mute=1&loop=1&playlist=${d.id}&controls=0&modestbranding=1&showinfo=0&rel=0&iv_load_policy=3&disablekb=1&fs=0&playsinline=1&enablejsapi=1`}
-                  allow="autoplay; encrypted-media; picture-in-picture"
-                  loading="lazy"
-                  title={d.label}
-                />
-              </div>
-              <span className={s.demoCaption}>{d.caption}</span>
-            </div>
-          ))}
         </div>
       </div>
 
