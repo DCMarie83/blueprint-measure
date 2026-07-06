@@ -66,7 +66,8 @@ Deno.serve(async (req) => {
     // 1. Query-param secret gate
     const url = new URL(req.url);
     const secret = url.searchParams.get('secret');
-    if (!secret || secret !== WEBHOOK_SECRET) {
+    const expected = Deno.env.get('RECURLY_WEBHOOK_SECRET');
+    if (!secret || secret !== expected) {
       return new Response('Unauthorized', { status: 401 });
     }
 
