@@ -1,14 +1,15 @@
-// Recurly webhook edge function — mirrors chargebee-webhook structure.
-// HTTP Basic Auth verification, maps Recurly notification types to subscription_status.
+// Recurly webhook edge function.
+// Auth: query-param secret (Recurly sends Basic Auth in the Authorization header,
+// which collides with Supabase's gateway Bearer requirement — so we use ?secret= instead).
+// Body: Recurly sends XML. Parsed via lightweight regex extraction.
 // Logs ALL events to recurly_webhook_events. Sends cancel/reactivation emails via Resend.
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const WEBHOOK_USER = Deno.env.get('RECURLY_WEBHOOK_USER')!;
-const WEBHOOK_PASSWORD = Deno.env.get('RECURLY_WEBHOOK_PASSWORD')!;
+const WEBHOOK_SECRET = Deno.env.get('RECURLY_WEBHOOK_SECRET')!;
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 
-// Recurly v3 webhook notification types → our subscription_status values.
+// Recurly notification types → our subscription_status values.
 // NOTE: canceled_subscription_notification is handled SEPARATELY (cancel-at-period-end
 // means access continues — we record canceled_at but don't change subscription_status
 // until the subscription actually expires).
@@ -30,6 +31,26 @@ const STATUS_MAP: Record<string, string> = {
 // Events that signal a pending cancel (access continues until period end).
 const CANCEL_PENDING_EVENTS = new Set(['canceled_subscription_notification']);
 
+// ── XML extraction helpers (lightweight regex — no external dependency) ──
+
+function xmlTag(xml: string, tag: string): string | undefined {
+  const re = new RegExp(`<${tag}>([^<]*)</${tag}>`);
+  return re.exec(xml)?.[1]?.trim() || undefined;
+}
+
+function xmlRootElement(xml: string): string {
+  const match = /^[\s\S]*?<(\w+)[\s>]/.exec(xml);
+  return match?.[1] ?? 'unknown';
+}
+
+function parseRecurlyXml(xml: string) {
+  const eventType = xmlRootElement(xml);
+  const accountCode = xmlTag(xml, 'account_code');
+  const subscriptionUuid = xmlTag(xml, 'uuid');
+  const subscriptionState = xmlTag(xml, 'state');
+  return { eventType, accountCode, subscriptionUuid, subscriptionState };
+}
+
 Deno.serve(async (req) => {
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
@@ -39,55 +60,41 @@ Deno.serve(async (req) => {
   let companyId: string | undefined;
   let subId: string | undefined;
   let newStatus: string | undefined;
-  let rawPayload: unknown;
+  let rawPayload: string | undefined;
 
   try {
-    // 1. Basic-auth gate
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Basic ')) {
+    // 1. Query-param secret gate
+    const url = new URL(req.url);
+    const secret = url.searchParams.get('secret');
+    if (!secret || secret !== WEBHOOK_SECRET) {
       return new Response('Unauthorized', { status: 401 });
     }
 
-    const providedToken = authHeader.slice(6);
-    const expectedToken = btoa(WEBHOOK_USER + ':' + WEBHOOK_PASSWORD);
+    // 2. Parse XML body
+    const xmlBody = await req.text();
+    rawPayload = xmlBody;
+    const parsed = parseRecurlyXml(xmlBody);
+    eventType = parsed.eventType;
+    companyId = parsed.accountCode;
+    subId = parsed.subscriptionUuid;
 
-    if (providedToken !== expectedToken) {
-      return new Response('Unauthorized', { status: 401 });
-    }
-
-    // 2. Parse body — Recurly v3 webhooks send JSON
-    const body = await req.json();
-    rawPayload = body;
-    eventType = body.event_type ?? '';
-    const subscription = body.subscription ?? body.account?.subscription;
-    const account = body.account;
-
-    // 3. Resolve company ID from account.code
-    companyId =
-      account?.code ??
-      subscription?.account?.code ??
-      body.account_code;
-
-    subId = subscription?.id ?? subscription?.uuid;
-
-    // 4. Service-role client
+    // 3. Service-role client
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // 5. Map event to status
+    // 4. Map event to status
     newStatus = STATUS_MAP[eventType];
 
     if (!companyId) {
-      console.warn('[recurly-webhook] No company id in event:', eventType);
-      await logEvent(supabase, { eventType, companyId: null, subId, newStatus, processed: false, error: 'no company id', rawPayload });
-      return new Response('no company id', { status: 200 });
+      console.warn('[recurly-webhook] No account_code in event:', eventType);
+      await logEvent(supabase, { eventType, companyId: null, subId, newStatus, processed: false, error: 'no account_code', rawPayload });
+      return new Response('no account_code', { status: 200 });
     }
 
-    // 6. Handle cancel-pending events (cancel at period end — access continues)
+    // 5. Handle cancel-pending events (cancel at period end — access continues)
     if (CANCEL_PENDING_EVENTS.has(eventType)) {
-      // Write canceled_at only (do NOT change subscription_status — user keeps access)
       const { data: existing } = await supabase
         .from('companies')
         .select('canceled_at')
@@ -108,7 +115,6 @@ Deno.serve(async (req) => {
 
       await logEvent(supabase, { eventType, companyId, subId, newStatus: null, processed: true, error: null, rawPayload });
 
-      // Send cancel confirmation email
       if (RESEND_API_KEY) {
         await sendCancelEmail(supabase, companyId);
       }
@@ -122,7 +128,6 @@ Deno.serve(async (req) => {
     }
 
     // Guard: reactivated/updated events should NOT flip a trialing company to active
-    // (that would clear trial fields prematurely). Only payment-driven events convert trial→paid.
     const REACTIVATE_EVENTS = new Set(['reactivated_account_notification', 'updated_subscription_notification']);
     if (newStatus === 'active' && REACTIVATE_EVENTS.has(eventType)) {
       const { data: current } = await supabase
@@ -131,7 +136,6 @@ Deno.serve(async (req) => {
         .eq('id', companyId)
         .single();
       if (current?.subscription_status === 'trialing') {
-        // Clear canceled_at (reactivation) but preserve trial state
         await supabase.from('companies').update({ canceled_at: null, cancel_reason: null }).eq('id', companyId);
         await logEvent(supabase, { eventType, companyId, subId, newStatus: null, processed: true, error: null, rawPayload });
         if (eventType === 'reactivated_account_notification' && RESEND_API_KEY) {
@@ -141,19 +145,17 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 7. Build update payload for status-changing events
+    // 6. Build update payload for status-changing events
     const updatePayload: Record<string, unknown> = { subscription_status: newStatus };
     if (subId) {
       updatePayload.recurly_subscription_id = subId;
     }
 
-    // On activation, clear stale trial fields
     if (newStatus === 'active') {
       updatePayload.trial_enabled = false;
       updatePayload.trial_ends_at = null;
     }
 
-    // On expiry (period ended), record canceled_at if not already set
     if (newStatus === 'canceled') {
       const { data: existing } = await supabase
         .from('companies')
@@ -165,7 +167,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 8. Update company
+    // 7. Update company
     const { error } = await supabase
       .from('companies')
       .update(updatePayload)
@@ -177,10 +179,10 @@ Deno.serve(async (req) => {
       return new Response('db error', { status: 500 });
     }
 
-    // 9. Log successful event
+    // 8. Log successful event
     await logEvent(supabase, { eventType, companyId, subId, newStatus, processed: true, error: null, rawPayload });
 
-    // 10. Send reactivation confirmation email
+    // 9. Send reactivation confirmation email
     if (eventType === 'reactivated_account_notification' && RESEND_API_KEY) {
       await sendReactivateEmail(supabase, companyId);
     }
@@ -189,7 +191,6 @@ Deno.serve(async (req) => {
 
   } catch (err) {
     console.error('[recurly-webhook] Unexpected error:', err);
-    // Best-effort log
     try {
       const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
       await logEvent(supabase, { eventType, companyId, subId, newStatus, processed: false, error: String(err), rawPayload });
@@ -207,7 +208,7 @@ interface LogParams {
   newStatus: string | null | undefined;
   processed: boolean;
   error: string | null;
-  rawPayload: unknown;
+  rawPayload: string | unknown;
 }
 
 async function logEvent(supabase: ReturnType<typeof createClient>, p: LogParams) {
@@ -230,7 +231,6 @@ async function logEvent(supabase: ReturnType<typeof createClient>, p: LogParams)
 
 async function sendCancelEmail(supabase: ReturnType<typeof createClient>, companyId: string) {
   try {
-    // Get company name + owner email
     const { data: company } = await supabase
       .from('companies')
       .select('name')
@@ -281,7 +281,6 @@ async function sendCancelEmail(supabase: ReturnType<typeof createClient>, compan
     });
   } catch (emailErr) {
     console.error('[recurly-webhook] Cancel email failed:', emailErr);
-    // Non-fatal — don't fail the webhook response
   }
 }
 
@@ -337,7 +336,6 @@ async function sendReactivateEmail(supabase: ReturnType<typeof createClient>, co
     });
   } catch (emailErr) {
     console.error('[recurly-webhook] Reactivation email failed:', emailErr);
-    // Non-fatal — don't fail the webhook response
   }
 }
 
