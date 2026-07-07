@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from './context/AuthContext'
 import { supabase } from './lib/supabase'
 import { addBreadcrumb } from './lib/breadcrumbs'
+import { useConversionTracker } from './hooks/useConversionTracker'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
 import TermsPage from './pages/TermsPage'
@@ -61,6 +62,7 @@ import BillingCancelPage from './pages/BillingCancelPage'
 // bypassSubscriptionGate: if true, skip the subscription check (for /settings, /account, /subscribe)
 function ProtectedRoute({ children, bypassSubscriptionGate = false }) {
   const { user, loading, setupComplete, company, companyLoading, isSuperAdmin } = useAuth()
+  useConversionTracker()
 
   if (loading || companyLoading) {
     return (

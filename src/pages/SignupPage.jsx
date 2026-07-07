@@ -68,6 +68,19 @@ function DemoCard({ id, label }) {
 export default function SignupPage() {
   const formRef = useRef(null)
 
+  // ── UTM capture on landing ─────────────────────────────────
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const utms = {}
+    for (const key of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term']) {
+      const val = params.get(key)
+      if (val) utms[key] = val
+    }
+    if (Object.keys(utms).length > 0) {
+      localStorage.setItem('rivetdog_utms', JSON.stringify(utms))
+    }
+  }, [])
+
   // ── Account state (UNCHANGED) ──────────────────────────────
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')

@@ -28,6 +28,9 @@ export const TRIAL_GRACE_DAYS = 3;
 // Google Ads global tag ID (public — used for conversion events later).
 export const GOOGLE_ADS_TAG_ID = 'AW-18297721330';
 
+// Google Ads signup_completed conversion label (the string after AW-18297721330/).
+export const GOOGLE_ADS_SIGNUP_CONVERSION_LABEL = 'REPLACE_WITH_LABEL';
+
 // Recurly public key (browser-safe, Recurly.js).
 export const RECURLY_PUBLIC_KEY = 'ewr1-5FyjbrwzjnEJiFBVHibzyZ';
 
