@@ -102,10 +102,17 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Update the company's is_internal flag
+    // Update the company's is_internal flag + clear founding_member_number when marking internal.
+    // On restore (true→false), founding_member_number stays NULL — the number may have been
+    // reassigned to a real signup by handle_new_user, so restoring it would collide on the
+    // UNIQUE(state, founding_member_number) constraint.
+    const companyUpdate: Record<string, unknown> = { is_internal: internal }
+    if (internal) {
+      companyUpdate.founding_member_number = null
+    }
     const { error: updErr } = await supabase
       .from('companies')
-      .update({ is_internal: internal })
+      .update(companyUpdate)
       .eq('id', companyId)
     if (updErr) return json({ error: 'Failed to update company: ' + updErr.message }, 500)
 
