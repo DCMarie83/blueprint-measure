@@ -128,9 +128,12 @@ Deno.serve(async (req) => {
       return new Response('ignored: ' + eventType, { status: 200 });
     }
 
-    // Guard: reactivated/updated events should NOT flip a trialing company to active
-    const REACTIVATE_EVENTS = new Set(['reactivated_account_notification', 'updated_subscription_notification']);
-    if (newStatus === 'active' && REACTIVATE_EVENTS.has(eventType)) {
+    // Guard: these events should NOT flip a trialing company to active.
+    // new_subscription fires when the card-bearing sub is created (with trial) — trial must continue.
+    // reactivated/updated fire on mid-trial reactivation — trial must be preserved.
+    // Only successful_payment (the real first charge ~14d later) converts trialing→active.
+    const TRIAL_SAFE_EVENTS = new Set(['new_subscription_notification', 'reactivated_account_notification', 'updated_subscription_notification']);
+    if (newStatus === 'active' && TRIAL_SAFE_EVENTS.has(eventType)) {
       const { data: current } = await supabase
         .from('companies')
         .select('subscription_status')

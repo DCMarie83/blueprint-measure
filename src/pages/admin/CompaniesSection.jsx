@@ -346,7 +346,12 @@ export default function CompaniesSection() {
                         </select>
                       ) : (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <span className={styles.badge} style={{ fontSize: 11 }}>{company.subscription_status ?? 'active'}</span>
+                          <span className={styles.badge} style={{ fontSize: 11 }}>
+                            {company.subscription_status ?? 'active'}
+                            {company.subscription_status === 'trialing' && !company.recurly_subscription_id && (
+                              <span style={{ fontWeight: 400, opacity: 0.7 }}> (no card)</span>
+                            )}
+                          </span>
                           <button className={styles.iconBtn} onClick={() => setEditingStatusId(company.id)} title="Change status">✎</button>
                           {company.subscription_status === 'trialing' && company.trial_ends_at && (() => {
                             const msLeft = new Date(company.trial_ends_at).getTime() - Date.now()
