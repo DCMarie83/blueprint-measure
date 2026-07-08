@@ -305,6 +305,9 @@ export default function UserDetailPage() {
               {/* Read-only fields */}
               <ProfileField label="Email Consent" value={profile?.email_consent ? 'Yes' : 'No'} />
               <ProfileField label="SMS Consent" value={profile?.sms_consent ? `Yes (${profile.sms_consent_at ? formatDate(profile.sms_consent_at) : '-'})` : 'No'} />
+              <ProfileField label="Timezone" value={profile?.timezone || '—'} />
+              <ProfileField label="Language" value={profile?.language || '—'} />
+              <ProfileField label="Units" value={profile?.measurement_units || '—'} />
               <ProfileField label="Cancel Requested" value={profile?.subscription_cancel_requested_at ? formatDateTime(profile.subscription_cancel_requested_at) : '-'} />
               <ProfileField label="Created" value={profile?.created_at ? formatDateTime(profile.created_at) : '-'} />
               <ProfileField label="Setup Completed" value={profile?.setup_completed_at ? formatDateTime(profile.setup_completed_at) : 'Setup incomplete'} />

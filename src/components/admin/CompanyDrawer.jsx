@@ -22,6 +22,9 @@ export default function CompanyDrawer({
   if (!company) return null
 
   const flags = company.features ?? {}
+  const fmt = (v) => v != null && v !== '' ? String(v) : '—'
+  const fmtBool = (v) => v === true ? 'Yes' : v === false ? 'No' : '—'
+  const fmtPrice = (v) => v != null ? `$${Number(v).toFixed(2)}` : '—'
 
   return (
     <div className={styles.backdrop} onClick={onClose}>
@@ -116,6 +119,130 @@ export default function CompanyDrawer({
                   <span style={{ maxWidth: 200, textAlign: 'right' }}>{company.cancel_reason}</span>
                 </div>
               )}
+            </div>
+          </section>
+
+          {/* Contact & Location */}
+          <section className={styles.section}>
+            <h3 className={styles.sectionTitle}>Contact & Location</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
+              {[
+                ['Address', [company.address_line1, company.address_line2].filter(Boolean).join(', ') || '—'],
+                ['City', fmt(company.city)],
+                ['State', fmt(company.state)],
+                ['Zip', fmt(company.zip)],
+                ['Business Phone', fmt(company.business_phone)],
+                ['Billing Email', fmt(company.billing_email)],
+              ].map(([label, val]) => (
+                <div key={label} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--color-text-muted)' }}>{label}</span>
+                  <span style={{ textAlign: 'right', maxWidth: 200 }}>{val}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Business */}
+          <section className={styles.section}>
+            <h3 className={styles.sectionTitle}>Business</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>Trade Vertical</span>
+                <span>{fmt(company.trade_vertical)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>Created</span>
+                <span>{company.created_at ? formatDate(company.created_at) : '—'}</span>
+              </div>
+            </div>
+          </section>
+
+          {/* Founder & Pricing */}
+          <section className={styles.section}>
+            <h3 className={styles.sectionTitle}>Founder & Pricing</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>Plan Key</span>
+                <span>{fmt(company.plan_key)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>Founder #</span>
+                <span>{company.founding_member_number != null ? `#${company.founding_member_number}` : '—'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>Locked Monthly</span>
+                <span>{fmtPrice(company.locked_price_monthly)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>Locked Annual</span>
+                <span>{fmtPrice(company.locked_price_annual)}</span>
+              </div>
+            </div>
+          </section>
+
+          {/* Attribution */}
+          <section className={styles.section}>
+            <h3 className={styles.sectionTitle}>Attribution</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
+              {[
+                ['UTM Source', fmt(company.utm_source)],
+                ['UTM Medium', fmt(company.utm_medium)],
+                ['UTM Campaign', fmt(company.utm_campaign)],
+                ['UTM Content', fmt(company.utm_content)],
+                ['UTM Term', fmt(company.utm_term)],
+                ['Conversion Fired', company.conversion_fired_at ? formatDate(company.conversion_fired_at) : '—'],
+              ].map(([label, val]) => (
+                <div key={label} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--color-text-muted)' }}>{label}</span>
+                  <span>{val}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Trial */}
+          <section className={styles.section}>
+            <h3 className={styles.sectionTitle}>Trial</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>Trial Enabled</span>
+                <span>{fmtBool(company.trial_enabled)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>Trial Started</span>
+                <span>{company.trial_started_at ? formatDate(company.trial_started_at) : '—'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>Trial Ends</span>
+                <span>{company.trial_ends_at ? formatDate(company.trial_ends_at) : '—'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>Trial Days</span>
+                <span>{company.trial_duration_days ?? '—'}</span>
+              </div>
+            </div>
+          </section>
+
+          {/* Flags */}
+          <section className={styles.section}>
+            <h3 className={styles.sectionTitle}>Flags</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>Card Required</span>
+                <span>{fmtBool(company.card_required)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>Awaiting Card</span>
+                <span>{fmtBool(company.awaiting_recurly_card)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>Internal</span>
+                <span>{fmtBool(company.is_internal)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>Branding Quote</span>
+                <span>{fmtBool(company.wants_branding_quote)}</span>
+              </div>
             </div>
           </section>
 
