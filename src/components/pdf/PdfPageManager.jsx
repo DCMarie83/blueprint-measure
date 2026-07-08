@@ -1,10 +1,13 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import styles from './PdfPageManager.module.css'
 
 // Modal for naming and hiding/unhiding PDF pages.
 // page_metadata shape: { "1": { name: "First Floor", hidden: false }, ... }
-export default function PdfPageManager({ pageCount, thumbnails, initialMetadata, renderPage, onSave, onCancel }) {
+// Auto-saves on every name blur/Enter and hide toggle — no explicit Save button needed.
+export default function PdfPageManager({ pageCount, thumbnails, initialMetadata, renderPage, onAutoSave, onClose }) {
   const [metadata, setMetadata] = useState({})
+  const [saved, setSaved] = useState(false)
+  const savedTimer = useRef(null)
 
   // Lightbox state
   const [lightboxPage, setLightboxPage] = useState(null)
@@ -25,6 +28,18 @@ export default function PdfPageManager({ pageCount, thumbnails, initialMetadata,
     setMetadata(init)
   }, [pageCount, initialMetadata])
 
+  function showSavedIndicator() {
+    setSaved(true)
+    clearTimeout(savedTimer.current)
+    savedTimer.current = setTimeout(() => setSaved(false), 1500)
+  }
+
+  function persistMetadata(updated) {
+    setMetadata(updated)
+    onAutoSave(updated)
+    showSavedIndicator()
+  }
+
   function handleNameChange(pageNum, value) {
     setMetadata(prev => ({
       ...prev,
@@ -32,15 +47,17 @@ export default function PdfPageManager({ pageCount, thumbnails, initialMetadata,
     }))
   }
 
-  function handleToggleHidden(pageNum) {
-    setMetadata(prev => ({
-      ...prev,
-      [String(pageNum)]: { ...prev[String(pageNum)], hidden: !prev[String(pageNum)]?.hidden },
-    }))
+  function handleNameBlur() {
+    // Persist the current metadata state on blur (covers both blur and Enter→blur)
+    persistMetadata(metadata)
   }
 
-  function handleSave() {
-    onSave(metadata)
+  function handleToggleHidden(pageNum) {
+    const updated = {
+      ...metadata,
+      [String(pageNum)]: { ...metadata[String(pageNum)], hidden: !metadata[String(pageNum)]?.hidden },
+    }
+    persistMetadata(updated)
   }
 
   // Lightbox handlers
@@ -73,12 +90,15 @@ export default function PdfPageManager({ pageCount, thumbnails, initialMetadata,
     return () => window.removeEventListener('keydown', onKey, true)
   }, [lightboxPage])
 
+  // Cleanup timer on unmount
+  useEffect(() => () => clearTimeout(savedTimer.current), [])
+
   return (
-    <div className={styles.backdrop} onClick={onCancel}>
+    <div className={styles.backdrop} onClick={onClose}>
       <div className={styles.modal} onClick={e => e.stopPropagation()}>
         <div className={styles.header}>
           <h2 className={styles.title}>Manage Pages</h2>
-          <p className={styles.subtitle}>Name your pages and hide any you don't need for this takeoff. Click a thumbnail to zoom in.</p>
+          <p className={styles.subtitle}>Name your pages and hide any you don't need for this takeoff. Changes save automatically. Click a thumbnail to zoom in.</p>
         </div>
 
         <div className={styles.grid}>
@@ -107,6 +127,7 @@ export default function PdfPageManager({ pageCount, thumbnails, initialMetadata,
                   className={styles.nameInput}
                   value={meta.name}
                   onChange={e => handleNameChange(pageNum, e.target.value)}
+                  onBlur={handleNameBlur}
                   placeholder={`Page ${pageNum}`}
                   onKeyDown={e => { if (e.key === 'Enter') e.target.blur() }}
                 />
@@ -122,8 +143,8 @@ export default function PdfPageManager({ pageCount, thumbnails, initialMetadata,
         </div>
 
         <div className={styles.footer}>
-          <button className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-          <button className={styles.saveBtn} onClick={handleSave}>Save & Continue</button>
+          {saved && <span style={{ fontSize: 12, color: 'var(--color-success, #22c55e)', fontWeight: 600 }}>Saved ✓</span>}
+          <button className={styles.saveBtn} onClick={onClose}>Done</button>
         </div>
       </div>
 

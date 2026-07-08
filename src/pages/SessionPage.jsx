@@ -409,10 +409,10 @@ export default function SessionPage() {
     }
   }
 
-  // Save page metadata (names + hidden flags) to the session record
-  async function handleSavePageMetadata(metadata) {
+  // Persist page metadata (names + hidden flags) to the session record.
+  // Used by both auto-save (from PdfPageManager) and any remaining manual save paths.
+  async function persistPageMetadata(metadata) {
     setPageMetadata(metadata)
-    setShowPageManager(false)
     setIsSaving(true)
     setSaveError(false)
     try {
@@ -1978,8 +1978,8 @@ export default function SessionPage() {
           thumbnails={thumbnails}
           initialMetadata={pageMetadata}
           renderPage={renderPage}
-          onSave={handleSavePageMetadata}
-          onCancel={() => setShowPageManager(false)}
+          onAutoSave={persistPageMetadata}
+          onClose={() => setShowPageManager(false)}
         />
       )}
 

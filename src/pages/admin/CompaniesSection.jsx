@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabase'
 import { useAdminData } from '../../context/AdminDataContext'
 import { FEATURE_KEYS, useCompanyPlan, GRANDFATHER_DEFAULTS } from '../../lib/plans'
 import CompanyDrawer from '../../components/admin/CompanyDrawer'
+import { US_STATES } from '../../data/usStates'
 import styles from './sections.module.css'
 
 const FEATURES = FEATURE_KEYS
@@ -62,6 +63,7 @@ export default function CompaniesSection() {
 
   const [search, setSearch] = useState('')
   const [planFilter, setPlanFilter] = useState('all')
+  const [stateFilter, setStateFilter] = useState('all')
   const [sortBy, setSortBy] = useState('created')
   const [page, setPage] = useState(0)
 
@@ -106,14 +108,28 @@ export default function CompaniesSection() {
     filtered = filtered.filter(c => c.name.toLowerCase().includes(q))
   }
   if (planFilter !== 'all') filtered = filtered.filter(c => (c.plan_key ?? c.plan ?? '') === planFilter)
+  if (stateFilter !== 'all') filtered = filtered.filter(c => (c.state ?? '') === stateFilter)
   if (sortBy === 'name') filtered = [...filtered].sort((a, b) => a.name.localeCompare(b.name))
   else if (sortBy === 'plan') filtered = [...filtered].sort((a, b) => (a.plan_key ?? a.plan ?? '').localeCompare(b.plan_key ?? b.plan ?? ''))
+  else if (sortBy === 'state') filtered = [...filtered].sort((a, b) => (a.state ?? '').localeCompare(b.state ?? ''))
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
   const paged = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
   // Derive unique plan keys from companies for filter dropdown
   const planKeys = [...new Set(companies.map(c => c.plan_key ?? c.plan).filter(Boolean))].sort()
+
+  // Per-state real signup count (excludes internal companies)
+  const realByState = {}
+  for (const c of companies) {
+    if (c.is_internal) continue
+    const st = c.state || 'Unknown'
+    realByState[st] = (realByState[st] || 0) + 1
+  }
+  const stateFilterLabel = stateFilter !== 'all'
+    ? US_STATES.find(s => s.code === stateFilter)?.name || stateFilter
+    : null
+  const stateFilterCount = stateFilter !== 'all' ? (realByState[stateFilter] || 0) : null
 
   // Handlers
   async function handleAdd(e) {
@@ -247,15 +263,26 @@ export default function CompaniesSection() {
           <option value="all">All Plans</option>
           {planKeys.map(k => <option key={k} value={k}>{k}</option>)}
         </select>
+        <select className={styles.filterSelect} value={stateFilter} onChange={e => { setStateFilter(e.target.value); setPage(0) }}>
+          <option value="all">All States</option>
+          {US_STATES.map(s => <option key={s.code} value={s.code}>{s.name}</option>)}
+        </select>
         <select className={styles.filterSelect} value={sortBy} onChange={e => setSortBy(e.target.value)}>
           <option value="created">Created Date</option>
           <option value="name">Name A-Z</option>
           <option value="plan">Plan</option>
+          <option value="state">State</option>
         </select>
         <button className={styles.addBtn} onClick={() => { setShowAdd(v => !v); setAddError('') }}>
           {showAdd ? 'Cancel' : '+ New Company'}
         </button>
       </div>
+
+      {stateFilterCount !== null && (
+        <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 12 }}>
+          <strong>{stateFilterLabel}</strong>: {stateFilterCount} real {stateFilterCount === 1 ? 'signup' : 'signups'} (excludes internal)
+        </div>
+      )}
 
       {showAdd && (
         <form className={styles.form} onSubmit={handleAdd}>
@@ -280,6 +307,7 @@ export default function CompaniesSection() {
             <thead>
               <tr>
                 <th className={styles.th}>Company</th>
+                <th className={styles.th}>State</th>
                 <th className={styles.th}>Plan</th>
                 <th className={styles.th}>Status</th>
                 <th className={styles.th}>Seats</th>
@@ -327,6 +355,7 @@ export default function CompaniesSection() {
                         )}
                       </div>
                     </td>
+                    <td className={styles.td} style={{ fontSize: 12 }}>{company.state || '—'}</td>
                     <td className={styles.td}>
                       <CompanyPlanBadge company={company} />
                     </td>
