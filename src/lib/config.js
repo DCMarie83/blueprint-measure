@@ -29,7 +29,7 @@ export const TRIAL_GRACE_DAYS = 3;
 export const GOOGLE_ADS_TAG_ID = 'AW-18297721330';
 
 // Google Ads signup_completed conversion label (the string after AW-18297721330/).
-export const GOOGLE_ADS_SIGNUP_CONVERSION_LABEL = 'REPLACE_WITH_LABEL';
+export const GOOGLE_ADS_SIGNUP_CONVERSION_LABEL = '73_wCPj00MwcEPKjhJVE';
 
 // Recurly public key (browser-safe, Recurly.js).
 export const RECURLY_PUBLIC_KEY = 'ewr1-5FyjbrwzjnEJiFBVHibzyZ';
