@@ -169,13 +169,10 @@ export default function CompanyDrawer({
                 <span style={{ color: 'var(--color-text-muted)' }}>Founder #</span>
                 <span>{company.founding_member_number != null ? `#${company.founding_member_number}` : '—'}</span>
               </div>
+              {/* When annual billing ships, check cadence to decide monthly vs annual display */}
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--color-text-muted)' }}>Locked Monthly</span>
+                <span style={{ color: 'var(--color-text-muted)' }}>Locked Price</span>
                 <span>{fmtPrice(company.locked_price_monthly)}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--color-text-muted)' }}>Locked Annual</span>
-                <span>{fmtPrice(company.locked_price_annual)}</span>
               </div>
             </div>
           </section>
@@ -230,10 +227,6 @@ export default function CompanyDrawer({
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--color-text-muted)' }}>Card Required</span>
                 <span>{fmtBool(company.card_required)}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--color-text-muted)' }}>Awaiting Card</span>
-                <span>{fmtBool(company.awaiting_recurly_card)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--color-text-muted)' }}>Internal</span>

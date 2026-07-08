@@ -28,7 +28,7 @@ const NARRATIVE = [
   { step: '4', title: 'Get Paid', desc: 'Invoice from the accepted estimate. Clients pay through their portal.', icon: DollarSign },
 ]
 
-const FOUNDERS_PLAN_NAME = 'Founders Promotion' // must match plan_name the RPC returns for the founders tier
+const FOUNDERS_PLAN_KEY = 'founding_500' // matches plan_key the RPC returns — independent of display name
 const FOUNDER_GIFT_LINE = 'Plus a special thank-you gift after 90 days as an active subscriber.' // EDIT: finalize swag copy
 
 function DemoCard({ id, label }) {
@@ -270,7 +270,7 @@ export default function SignupPage() {
                   </p>
                 )
               }
-              const isFoundersTier = scarcity.plan_name === FOUNDERS_PLAN_NAME
+              const isFoundersTier = scarcity.plan_key === FOUNDERS_PLAN_KEY
 
               // Branch A — Founders tier, completely open
               if (isFoundersTier && scarcity.spots_remaining === scarcity.spots_total) {
