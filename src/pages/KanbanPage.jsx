@@ -177,7 +177,8 @@ export default function KanbanPage() {
 
   const totalProjects = allProjects.length
 
-  const CONFIRM_COLUMNS = ['In Progress', 'Complete']
+  // Positions that require confirmation + client email (rename-proof)
+  const CONFIRM_POSITIONS = { 8: 'in_progress', 9: 'complete' }
 
   async function handleDragEnd(event) {
     setActiveId(null)
@@ -190,11 +191,11 @@ export default function KanbanPage() {
     const toCol = columns.find(c => c.id === toColumnId)
     const project = allProjects.find(p => p.id === active.id)
 
-    // Gate: In Progress and Complete require confirmation
-    if (toCol && CONFIRM_COLUMNS.includes(toCol.name)) {
+    // Gate: positions 8 (In Progress) and 9 (Complete) require confirmation
+    if (toCol && CONFIRM_POSITIONS[toCol.position]) {
       const linkedClient = project?.client_id ? clients.find(c => c.id === project.client_id) : null
       const hasEmail = linkedClient && (linkedClient.primary_email || linkedClient.client_contacts?.some(cc => cc.is_portal_recipient && cc.email))
-      setPendingMove({ projectId: active.id, fromColumnId, toColumnId, toColName: toCol.name, project, hasEmail: !!hasEmail, clientName: linkedClient?.display_name })
+      setPendingMove({ projectId: active.id, fromColumnId, toColumnId, toColName: toCol.name, statusType: CONFIRM_POSITIONS[toCol.position], project, hasEmail: !!hasEmail, clientName: linkedClient?.display_name })
       setNotifyClient(!!hasEmail)
       return
     }
@@ -222,7 +223,7 @@ export default function KanbanPage() {
 
       // Send client notification (fire-and-forget)
       if (notifyClient && pendingMove.hasEmail) {
-        const statusType = pendingMove.toColName === 'In Progress' ? 'in_progress' : 'complete'
+        const statusType = pendingMove.statusType
         supabase.functions.invoke('send-status-email', {
           body: { project_id: pendingMove.projectId, status_type: statusType },
         }).catch(err => console.error('Status email failed', err))

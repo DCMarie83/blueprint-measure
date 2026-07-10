@@ -208,9 +208,9 @@ export default function CompaniesSection() {
   async function handleSaveStatus(companyId, newStatus) {
     setSavingStatusId(companyId)
     try {
-      const { error } = await supabase.from('companies').update({ subscription_status: newStatus }).eq('id', companyId)
+      const { error } = await supabase.from('companies').update({ subscription_status: newStatus, subscription_status_changed_at: new Date().toISOString() }).eq('id', companyId)
       if (error) throw new Error(error.message)
-      setCompanies(prev => prev.map(c => c.id === companyId ? { ...c, subscription_status: newStatus } : c))
+      setCompanies(prev => prev.map(c => c.id === companyId ? { ...c, subscription_status: newStatus, subscription_status_changed_at: new Date().toISOString() } : c))
       setEditingStatusId(null)
     } catch (err) { alert('Failed: ' + err.message) } finally { setSavingStatusId(null) }
   }

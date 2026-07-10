@@ -130,6 +130,10 @@ Deno.serve(async (req) => {
         ban_duration: '876000h', // ~100 years
       })
       if (error) return json({ error: error.message }, 500)
+
+      // Revoke live sessions so the ban takes effect immediately
+      await supabase.auth.admin.signOut(target_user_id, 'global')
+
       return json({ ok: true })
     }
 

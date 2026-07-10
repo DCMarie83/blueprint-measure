@@ -165,7 +165,7 @@ export default function UserDetailPage() {
       if (action === 'reset_password') {
         showToast('Password reset email sent')
       } else if (action === 'suspend') {
-        setAuthInfo(prev => ({ ...prev, banned_until: 'suspended' }))
+        setAuthInfo(prev => ({ ...prev, banned_until: '2999-12-31T00:00:00Z' }))
         showToast('Account deactivated')
       } else if (action === 'unsuspend') {
         setAuthInfo(prev => ({ ...prev, banned_until: null }))
