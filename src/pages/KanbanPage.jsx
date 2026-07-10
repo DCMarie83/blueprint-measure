@@ -177,9 +177,6 @@ export default function KanbanPage() {
 
   const totalProjects = allProjects.length
 
-  // Positions that require confirmation + client email (rename-proof)
-  const CONFIRM_POSITIONS = { 8: 'in_progress', 9: 'complete' }
-
   async function handleDragEnd(event) {
     setActiveId(null)
     const { active, over } = event
@@ -191,11 +188,11 @@ export default function KanbanPage() {
     const toCol = columns.find(c => c.id === toColumnId)
     const project = allProjects.find(p => p.id === active.id)
 
-    // Gate: positions 8 (In Progress) and 9 (Complete) require confirmation
-    if (toCol && CONFIRM_POSITIONS[toCol.position]) {
+    // Gate: columns flagged with notify_status require confirmation + optional client email
+    if (toCol?.notify_status) {
       const linkedClient = project?.client_id ? clients.find(c => c.id === project.client_id) : null
       const hasEmail = linkedClient && (linkedClient.primary_email || linkedClient.client_contacts?.some(cc => cc.is_portal_recipient && cc.email))
-      setPendingMove({ projectId: active.id, fromColumnId, toColumnId, toColName: toCol.name, statusType: CONFIRM_POSITIONS[toCol.position], project, hasEmail: !!hasEmail, clientName: linkedClient?.display_name })
+      setPendingMove({ projectId: active.id, fromColumnId, toColumnId, toColName: toCol.name, statusType: toCol.notify_status, project, hasEmail: !!hasEmail, clientName: linkedClient?.display_name })
       setNotifyClient(!!hasEmail)
       return
     }
