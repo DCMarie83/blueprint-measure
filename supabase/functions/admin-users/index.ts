@@ -6,6 +6,11 @@
 //   super_admin (checked via super_admins table) — all actions, any company
 //   contractor_admin — invite/create/resend to own company only
 //   contractor_user — rejected (403)
+//
+// Seat enforcement:
+//   invite/create check seats BEFORE creating the auth user to prevent orphans.
+//   If the DB trigger (trg_enforce_seat_limit) fires as a backstop, the just-created
+//   auth user is cleaned up before returning the 403.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -19,6 +24,55 @@ function json(data: unknown, status = 200) {
     status,
     headers: { ...CORS, 'Content-Type': 'application/json' },
   })
+}
+
+// Check whether adding a seat to this company would exceed its limit.
+// Returns { allowed: true } or { allowed: false, used, limit }.
+// Exempt companies (pilot / internal) are always allowed.
+async function checkSeatLimit(
+  adminClient: ReturnType<typeof createClient>,
+  companyId: string,
+): Promise<{ allowed: boolean; used?: number; limit?: number }> {
+  // Load company + plan in one query via plan_id FK
+  const { data: company } = await adminClient
+    .from('companies')
+    .select('subscription_status, is_internal, seat_limit_override, plan_id')
+    .eq('id', companyId)
+    .single()
+
+  if (!company) return { allowed: true } // no company = no gate (edge case)
+
+  // Exempt: pilot or internal → always allowed, unlimited seats
+  if (company.subscription_status === 'pilot' || company.is_internal === true) {
+    return { allowed: true }
+  }
+
+  // Resolve effective seat limit: override → plan.max_seats → default 2
+  let maxSeats = company.seat_limit_override
+  if (maxSeats == null && company.plan_id) {
+    const { data: plan } = await adminClient
+      .from('plans')
+      .select('max_seats')
+      .eq('id', company.plan_id)
+      .single()
+    maxSeats = plan?.max_seats ?? null
+  }
+  const limit = maxSeats ?? 2 // GRANDFATHER_DEFAULTS.max_seats
+
+  // Count active seats (same logic as the DB trigger)
+  const { count, error: countErr } = await adminClient
+    .from('user_profiles')
+    .select('id', { count: 'exact', head: true })
+    .eq('company_id', companyId)
+    .is('deleted_at', null)
+
+  if (countErr) return { allowed: true } // fail open on count error
+  const used = count ?? 0
+
+  if (used >= limit) {
+    return { allowed: false, used, limit }
+  }
+  return { allowed: true }
 }
 
 Deno.serve(async (req) => {
@@ -114,6 +168,14 @@ Deno.serve(async (req) => {
       const { email } = body
       if (!email) return json({ error: 'email is required' }, 400)
 
+      // Seat check BEFORE creating the auth user (prevents orphaned auth users)
+      if (targetCompanyId) {
+        const seat = await checkSeatLimit(adminClient, targetCompanyId)
+        if (!seat.allowed) {
+          return json({ error: 'seat_limit_reached', used: seat.used, limit: seat.limit }, 403)
+        }
+      }
+
       const { data: authData, error: authErr } =
         await adminClient.auth.admin.inviteUserByEmail(email as string)
       if (authErr) throw authErr
@@ -125,7 +187,25 @@ Deno.serve(async (req) => {
           company_id: targetCompanyId,
           email:      authData.user.email,
         })
-      if (profileErr) throw profileErr
+
+      // Defensive: if the DB trigger blocked the insert (SEAT_LIMIT_REACHED),
+      // clean up the just-created auth user so no orphan remains.
+      if (profileErr) {
+        const msg = profileErr.message ?? ''
+        if (msg.includes('SEAT_LIMIT_REACHED')) {
+          await adminClient.auth.admin.deleteUser(authData.user.id)
+          // Parse used/limit from trigger message: "SEAT_LIMIT_REACHED:used=N,limit=M"
+          const match = msg.match(/used=(\d+),limit=(\d+)/)
+          return json({
+            error: 'seat_limit_reached',
+            used: match ? parseInt(match[1]) : undefined,
+            limit: match ? parseInt(match[2]) : undefined,
+          }, 403)
+        }
+        // Non-seat error — still clean up the orphan auth user, then rethrow
+        await adminClient.auth.admin.deleteUser(authData.user.id)
+        throw profileErr
+      }
 
       return json({ user: authData.user })
     }
@@ -135,6 +215,14 @@ Deno.serve(async (req) => {
       const { email, password } = body
       if (!email)    return json({ error: 'email is required' }, 400)
       if (!password) return json({ error: 'password is required' }, 400)
+
+      // Seat check BEFORE creating the auth user (prevents orphaned auth users)
+      if (targetCompanyId) {
+        const seat = await checkSeatLimit(adminClient, targetCompanyId)
+        if (!seat.allowed) {
+          return json({ error: 'seat_limit_reached', used: seat.used, limit: seat.limit }, 403)
+        }
+      }
 
       const { data: authData, error: authErr } = await adminClient.auth.admin.createUser({
         email:         email as string,
@@ -151,7 +239,22 @@ Deno.serve(async (req) => {
           company_id: targetCompanyId,
           email:      authData.user.email,
         })
-      if (profileErr) throw profileErr
+
+      // Defensive: if the DB trigger blocked the insert, clean up the auth user.
+      if (profileErr) {
+        const msg = profileErr.message ?? ''
+        if (msg.includes('SEAT_LIMIT_REACHED')) {
+          await adminClient.auth.admin.deleteUser(authData.user.id)
+          const match = msg.match(/used=(\d+),limit=(\d+)/)
+          return json({
+            error: 'seat_limit_reached',
+            used: match ? parseInt(match[1]) : undefined,
+            limit: match ? parseInt(match[2]) : undefined,
+          }, 403)
+        }
+        await adminClient.auth.admin.deleteUser(authData.user.id)
+        throw profileErr
+      }
 
       return json({ user: authData.user })
     }

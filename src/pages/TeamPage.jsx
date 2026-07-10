@@ -2,13 +2,15 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { usePlan } from '../lib/plans'
+import { resolveEntitlements } from '../lib/entitlements'
 import AppHeader from '../components/AppHeader'
 import Modal from '../components/ui/Modal'
 import { useDateFormat } from '../hooks/useDateFormat'
 import styles from './TeamPage.module.css'
 
 export default function TeamPage() {
-  const { user } = useAuth()
+  const { user, company } = useAuth()
   const navigate = useNavigate()
   const [teamMembers, setTeamMembers] = useState([])
   const [companyName, setCompanyName] = useState('')
@@ -27,6 +29,19 @@ export default function TeamPage() {
   const [inviteError, setInviteError] = useState('')
   const { formatDate } = useDateFormat()
 
+  // Seat request state
+  const [showSeatRequest, setShowSeatRequest] = useState(false)
+  const [requestingSeats, setRequestingSeats] = useState(false)
+  const [seatRequestSent, setSeatRequestSent] = useState(false)
+
+  // Resolve entitlements for seat display
+  const rawPlan = usePlan(company?.plan_key)
+  const entitlements = company ? resolveEntitlements(company, rawPlan) : null
+  const seatLimit = entitlements?.seats // null = unlimited
+  const activeMembers = teamMembers.filter(m => !m.deleted_at)
+  const activeCount = activeMembers.length
+  const atLimit = seatLimit != null && activeCount >= seatLimit
+
   useEffect(() => {
     async function load() {
       // Get current user's company
@@ -42,12 +57,12 @@ export default function TeamPage() {
       }
 
       // Get company name
-      const { data: company } = await supabase
+      const { data: companyData } = await supabase
         .from('companies')
         .select('name')
         .eq('id', myProfile.company_id)
         .maybeSingle()
-      setCompanyName(company?.name || '')
+      setCompanyName(companyData?.name || '')
 
       // RLS will scope this to same-tenant members
       const { data: members } = await supabase
@@ -81,6 +96,12 @@ export default function TeamPage() {
         : { action: 'create', email: inviteEmail.trim(), password: invitePassword, company_id: myProfile?.company_id || null }
 
       const { data, error } = await supabase.functions.invoke('admin-users', { body })
+
+      // Handle seat limit error from edge fn
+      if (data?.error === 'seat_limit_reached') {
+        setInviteError(`You've used all ${data.limit} seats on your plan.`)
+        return
+      }
       if (error) throw new Error(error.message)
       if (data?.error) throw new Error(data.error)
 
@@ -99,6 +120,21 @@ export default function TeamPage() {
       setInviteError(err.message)
     } finally {
       setInviting(false)
+    }
+  }
+
+  async function handleSeatRequest() {
+    setRequestingSeats(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('request-seats')
+      if (error) throw new Error(error.message)
+      if (data?.error) throw new Error(data.error)
+      setSeatRequestSent(true)
+      setShowSeatRequest(false)
+    } catch (err) {
+      alert('Failed to send request: ' + err.message)
+    } finally {
+      setRequestingSeats(false)
     }
   }
 
@@ -133,6 +169,34 @@ export default function TeamPage() {
       <AppHeader extras={<h1 className={styles.title}>Team {companyName && `- ${companyName}`}</h1>} />
 
       <main className={styles.main}>
+        {/* Seat usage line */}
+        {entitlements && !loading && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, fontSize: 13, color: 'var(--color-text-muted)' }}>
+            {entitlements.isExempt ? (
+              <span>Unlimited seats</span>
+            ) : (
+              <span>{activeCount} of {seatLimit} seats used</span>
+            )}
+            {!entitlements.isExempt && (
+              <button
+                className={styles.secondaryBtn ?? styles.addBtn}
+                style={{ fontSize: 12, padding: '4px 10px', opacity: seatRequestSent ? 0.6 : 1 }}
+                onClick={() => seatRequestSent ? null : setShowSeatRequest(true)}
+                disabled={seatRequestSent}
+              >
+                {seatRequestSent ? 'Request sent!' : 'Need more seats?'}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* At-limit banner */}
+        {atLimit && !entitlements?.isExempt && (
+          <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: 8, padding: '10px 16px', marginBottom: 16, fontSize: 13, color: '#f59e0b' }}>
+            You've used all {seatLimit} seats on your plan.
+          </div>
+        )}
+
         <div className={styles.toolbar}>
           <input
             className={styles.searchInput}
@@ -140,7 +204,12 @@ export default function TeamPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
-          <button className={styles.addBtn} onClick={() => { setShowInvite(v => !v); setInviteError('') }}>
+          <button
+            className={styles.addBtn}
+            onClick={() => { setShowInvite(v => !v); setInviteError('') }}
+            disabled={atLimit && !entitlements?.isExempt}
+            style={atLimit && !entitlements?.isExempt ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
+          >
             {showInvite ? 'Cancel' : '+ Invite User'}
           </button>
         </div>
@@ -228,6 +297,26 @@ export default function TeamPage() {
           <input type="checkbox" checked={showDeleted} onChange={e => setShowDeleted(e.target.checked)} />
           Show deleted users
         </label>
+
+        {/* Seat request confirmation modal */}
+        {showSeatRequest && (
+          <Modal onClose={() => setShowSeatRequest(false)}>
+            <div style={{ padding: 24, maxWidth: 400 }}>
+              <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 18, marginBottom: 12 }}>
+                Request additional seats
+              </h3>
+              <p style={{ fontSize: 14, color: 'var(--color-text-muted)', lineHeight: 1.6, marginBottom: 20 }}>
+                Request additional seats for your team? We'll be in touch shortly.
+              </p>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                <button className={styles.secondaryBtn} onClick={() => setShowSeatRequest(false)}>Cancel</button>
+                <button className={styles.addBtn} onClick={handleSeatRequest} disabled={requestingSeats}>
+                  {requestingSeats ? 'Sending...' : 'Send Request'}
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )}
       </main>
     </div>
   )
