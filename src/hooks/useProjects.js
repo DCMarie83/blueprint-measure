@@ -97,11 +97,11 @@ export function useProjects() {
   }
 
   async function updateProject(projectId, fields) {
+    // RLS (projects_update_tenant) scopes to same-company — no client-side user_id filter needed.
     const { data, error } = await supabase
       .from('projects')
       .update(fields)
       .eq('id', projectId)
-      .eq('user_id', user.id)
       .select()
       .single()
 

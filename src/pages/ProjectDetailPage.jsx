@@ -205,6 +205,40 @@ export default function ProjectDetailPage() {
               renderDisplay={(val) => <span style={{ fontSize: 13, color: 'var(--color-text-muted)', opacity: 0.7 }}>{val}</span>}
             />
           </div>
+
+          {/* Schedule fields */}
+          <div style={{ display: 'flex', gap: 16, marginTop: 10, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: 11, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Start Date</label>
+              <input
+                type="date"
+                value={project.scheduled_start ? project.scheduled_start.slice(0, 10) : ''}
+                onChange={async (e) => {
+                  const val = e.target.value || null
+                  try {
+                    await updateProject(projectId, { scheduled_start: val ? new Date(val + 'T09:00:00').toISOString() : null })
+                    refetch()
+                  } catch (err) { console.error('Failed to save start date:', err) }
+                }}
+                style={{ padding: '4px 8px', fontSize: 13, border: '1px solid var(--color-border)', borderRadius: 4, background: 'var(--color-bg)', color: 'var(--color-text)' }}
+              />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: 11, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Est. Completion</label>
+              <input
+                type="date"
+                value={project.estimated_completion ? project.estimated_completion.slice(0, 10) : ''}
+                onChange={async (e) => {
+                  const val = e.target.value || null
+                  try {
+                    await updateProject(projectId, { estimated_completion: val ? new Date(val + 'T17:00:00').toISOString() : null })
+                    refetch()
+                  } catch (err) { console.error('Failed to save completion date:', err) }
+                }}
+                style={{ padding: '4px 8px', fontSize: 13, border: '1px solid var(--color-border)', borderRadius: 4, background: 'var(--color-bg)', color: 'var(--color-text)' }}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Customer Portal */}

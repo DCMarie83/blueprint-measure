@@ -88,12 +88,15 @@
 }
 
 .statusBadge {
-  background: color-mix(in srgb, var(--color-primary) 15%, transparent);
-  color: var(--color-primary);
+  background: rgba(242, 114, 67, 0.15);
+  background: color-mix(in srgb, var(--color-primary, #f27243) 15%, var(--color-surface-2));
+  color: var(--color-primary, #f27243);
   padding: 6px 14px;
   border-radius: 9999px;
   font-size: 13px;
   font-weight: 600;
+  border: 1px solid rgba(242, 114, 67, 0.3);
+  border-color: color-mix(in srgb, var(--color-primary, #f27243) 30%, transparent);
 }
 
 .clientRow {

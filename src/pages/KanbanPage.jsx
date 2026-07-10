@@ -104,6 +104,11 @@ export default function KanbanPage() {
   const [activeId, setActiveId] = useState(null)
   const [showNewJob, setShowNewJob] = useState(false)
 
+  // Confirm-gated move state (In Progress / Complete)
+  const [pendingMove, setPendingMove] = useState(null) // { projectId, fromColumnId, toColumnId, toColName, project }
+  const [notifyClient, setNotifyClient] = useState(true)
+  const [confirmMoving, setConfirmMoving] = useState(false)
+
   // Filters
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -172,6 +177,8 @@ export default function KanbanPage() {
 
   const totalProjects = allProjects.length
 
+  const CONFIRM_COLUMNS = ['In Progress', 'Complete']
+
   async function handleDragEnd(event) {
     setActiveId(null)
     const { active, over } = event
@@ -179,11 +186,52 @@ export default function KanbanPage() {
     const fromColumnId = active.data.current?.columnId
     const toColumnId = over.data.current?.columnId ?? over.id
     if (!fromColumnId || !toColumnId || fromColumnId === toColumnId) return
+
+    const toCol = columns.find(c => c.id === toColumnId)
+    const project = allProjects.find(p => p.id === active.id)
+
+    // Gate: In Progress and Complete require confirmation
+    if (toCol && CONFIRM_COLUMNS.includes(toCol.name)) {
+      const linkedClient = project?.client_id ? clients.find(c => c.id === project.client_id) : null
+      const hasEmail = linkedClient && (linkedClient.primary_email || linkedClient.client_contacts?.some(cc => cc.is_portal_recipient && cc.email))
+      setPendingMove({ projectId: active.id, fromColumnId, toColumnId, toColName: toCol.name, project, hasEmail: !!hasEmail, clientName: linkedClient?.display_name })
+      setNotifyClient(!!hasEmail)
+      return
+    }
+
+    // All other columns: move silently
     try {
       const result = await moveProject(active.id, fromColumnId, toColumnId)
       if (result?.error) alert('Could not move job: ' + result.error)
     } catch (err) {
       alert('Could not move job: ' + (err.message || 'Unknown error'))
+    }
+  }
+
+  async function handleConfirmMove() {
+    if (!pendingMove) return
+    setConfirmMoving(true)
+    try {
+      const result = await moveProject(pendingMove.projectId, pendingMove.fromColumnId, pendingMove.toColumnId)
+      if (result?.error) {
+        alert('Could not move job: ' + result.error)
+        setConfirmMoving(false)
+        setPendingMove(null)
+        return
+      }
+
+      // Send client notification (fire-and-forget)
+      if (notifyClient && pendingMove.hasEmail) {
+        const statusType = pendingMove.toColName === 'In Progress' ? 'in_progress' : 'complete'
+        supabase.functions.invoke('send-status-email', {
+          body: { project_id: pendingMove.projectId, status_type: statusType },
+        }).catch(err => console.error('Status email failed', err))
+      }
+    } catch (err) {
+      alert('Could not move job: ' + (err.message || 'Unknown error'))
+    } finally {
+      setConfirmMoving(false)
+      setPendingMove(null)
     }
   }
 
@@ -268,6 +316,33 @@ export default function KanbanPage() {
       {showNewJob && (
         <Modal title="Create New Job" onClose={() => setShowNewJob(false)}>
           <NewProjectForm onCreate={handleCreateJob} onCancel={() => setShowNewJob(false)} />
+        </Modal>
+      )}
+
+      {pendingMove && (
+        <Modal onClose={() => setPendingMove(null)}>
+          <div style={{ padding: 24, maxWidth: 400 }}>
+            <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 18, marginBottom: 8 }}>
+              Move to {pendingMove.toColName}?
+            </h3>
+            <p style={{ fontSize: 14, color: 'var(--color-text-muted)', lineHeight: 1.5, marginBottom: 16 }}>
+              {pendingMove.project?.name}
+            </p>
+            {pendingMove.hasEmail && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer', marginBottom: 20 }}>
+                <input type="checkbox" checked={notifyClient} onChange={e => setNotifyClient(e.target.checked)} />
+                Notify {pendingMove.clientName || 'client'} by email
+              </label>
+            )}
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setPendingMove(null)} style={{ padding: '8px 16px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontSize: 13, color: 'var(--color-text)' }}>
+                Cancel
+              </button>
+              <button onClick={handleConfirmMove} disabled={confirmMoving} style={{ padding: '8px 16px', background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontSize: 13, fontWeight: 600, opacity: confirmMoving ? 0.6 : 1 }}>
+                {confirmMoving ? 'Moving...' : 'Confirm'}
+              </button>
+            </div>
+          </div>
         </Modal>
       )}
     </div>

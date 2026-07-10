@@ -108,6 +108,27 @@ export default function PortalPage() {
           </div>
         )}
 
+        {(data.scheduled_start || data.estimated_completion) && (
+          <div style={{ display: 'flex', gap: 24, padding: '12px 0', fontSize: 14, color: 'var(--color-text-muted, #555)' }}>
+            {data.scheduled_start && (
+              <div>
+                <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 2 }}>Start Date</span>
+                <span style={{ color: 'var(--color-text, #1b2426)', fontWeight: 500 }}>
+                  {new Date(data.scheduled_start).toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })}
+                </span>
+              </div>
+            )}
+            {data.estimated_completion && (
+              <div>
+                <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 2 }}>Est. Completion</span>
+                <span style={{ color: 'var(--color-text, #1b2426)', fontWeight: 500 }}>
+                  {new Date(data.estimated_completion).toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
         {data.client_name && (
           <div className={styles.clientRow}>
             <span className={styles.clientRowLabel}>Your contact</span>
