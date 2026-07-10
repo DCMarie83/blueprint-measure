@@ -6,7 +6,8 @@ import EnterAccountModal from '../../components/admin/EnterAccountModal'
 import { useImpersonation } from '../../context/ImpersonationContext'
 import { supabase } from '../../lib/supabase'
 import { useAdminData } from '../../context/AdminDataContext'
-import { FEATURE_KEYS, useCompanyPlan, GRANDFATHER_DEFAULTS } from '../../lib/plans'
+import { FEATURE_KEYS, useCompanyPlan, GRANDFATHER_DEFAULTS, usePlan } from '../../lib/plans'
+import { resolveEntitlements } from '../../lib/entitlements'
 import CompanyDrawer from '../../components/admin/CompanyDrawer'
 import { US_STATES } from '../../data/usStates'
 import styles from './sections.module.css'
@@ -27,10 +28,10 @@ function CompanyPlanBadge({ company }) {
 }
 
 function CompanySeatDisplay({ company, companyUsers }) {
-  const plan = useCompanyPlan(company)
-  const seatLimit = company.seat_limit_override ?? plan?.max_seats ?? GRANDFATHER_DEFAULTS.max_seats
+  const plan = usePlan(company.plan_key)
+  const { seats } = resolveEntitlements(company, plan)
   return (
-    <span className={styles.usageCount}>{companyUsers.length} / {seatLimit ?? '∞'}</span>
+    <span className={styles.usageCount}>{companyUsers.length} / {seats ?? '∞'}</span>
   )
 }
 
