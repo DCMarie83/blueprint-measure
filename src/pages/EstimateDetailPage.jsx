@@ -222,6 +222,23 @@ export default function EstimateDetailPage() {
       if (newStatus === 'accepted') patch.accepted_at = new Date().toISOString()
       if (newStatus === 'declined') patch.declined_at = new Date().toISOString()
       await builder.updateEstimate(patch)
+
+      // Auto-move project to "Accepted" kanban column (position 5) when
+      // estimate is accepted — mirrors the portal accept_estimate RPC behavior.
+      if (newStatus === 'accepted' && estimate.project_id && estimate.company_id) {
+        const { data: acceptedCol } = await supabase
+          .from('kanban_columns')
+          .select('id')
+          .eq('company_id', estimate.company_id)
+          .eq('position', 5)
+          .maybeSingle()
+        if (acceptedCol) {
+          await supabase
+            .from('projects')
+            .update({ kanban_column_id: acceptedCol.id, updated_at: new Date().toISOString() })
+            .eq('id', estimate.project_id)
+        }
+      }
     } catch (err) {
       alert('Failed to update status: ' + err.message)
     }

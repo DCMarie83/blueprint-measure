@@ -4,7 +4,7 @@ import { Plus, Columns3, List } from 'lucide-react'
 import {
   DndContext, DragOverlay, useDroppable,
   useSensor, useSensors, PointerSensor, TouchSensor, KeyboardSensor,
-  closestCenter,
+  pointerWithin,
 } from '@dnd-kit/core'
 import { useSortable, SortableContext, verticalListSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -179,8 +179,12 @@ export default function KanbanPage() {
     const fromColumnId = active.data.current?.columnId
     const toColumnId = over.data.current?.columnId ?? over.id
     if (!fromColumnId || !toColumnId || fromColumnId === toColumnId) return
-    const result = await moveProject(active.id, fromColumnId, toColumnId)
-    if (result?.error) alert('Could not move card: ' + result.error)
+    try {
+      const result = await moveProject(active.id, fromColumnId, toColumnId)
+      if (result?.error) alert('Could not move job: ' + result.error)
+    } catch (err) {
+      alert('Could not move job: ' + (err.message || 'Unknown error'))
+    }
   }
 
   async function handleCreateJob(payload, buildMethod) {
@@ -238,7 +242,7 @@ export default function KanbanPage() {
             )}
             {view === 'kanban' ? (
               <div className={styles.boardContainer}>
-                <DndContext sensors={sensors} collisionDetection={closestCenter}
+                <DndContext sensors={sensors} collisionDetection={pointerWithin}
                   onDragStart={(e) => setActiveId(e.active.id)}
                   onDragCancel={() => setActiveId(null)}
                   onDragEnd={handleDragEnd}>
