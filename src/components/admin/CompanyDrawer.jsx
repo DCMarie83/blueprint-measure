@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useDateFormat } from '../../hooks/useDateFormat'
-import { FEATURE_KEYS, useCompanyPlan } from '../../lib/plans'
+import { FEATURE_KEYS, useCompanyPlan, usePlan } from '../../lib/plans'
+import { resolveEntitlements } from '../../lib/entitlements'
 import styles from './CompanyDrawer.module.css'
 
 const FEATURES = FEATURE_KEYS
@@ -18,6 +19,8 @@ export default function CompanyDrawer({
   }, [onClose])
 
   const companyPlan = useCompanyPlan(company)
+  const rawPlan = usePlan(company?.plan_key)
+  const entitlements = company ? resolveEntitlements(company, rawPlan) : null
 
   if (!company) return null
 
@@ -169,10 +172,12 @@ export default function CompanyDrawer({
                 <span style={{ color: 'var(--color-text-muted)' }}>Founder #</span>
                 <span>{company.founding_member_number != null ? `#${company.founding_member_number}` : '—'}</span>
               </div>
-              {/* When annual billing ships, check cadence to decide monthly vs annual display */}
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--color-text-muted)' }}>Locked Price</span>
-                <span>{fmtPrice(company.locked_price_monthly)}</span>
+                <span style={{ color: 'var(--color-text-muted)' }}>Effective Price</span>
+                <span>
+                  {fmtPrice(entitlements?.priceMonthly)}
+                  {company.locked_price_monthly != null && <span style={{ fontSize: 10, color: 'var(--color-text-muted)', marginLeft: 4 }}>(locked)</span>}
+                </span>
               </div>
             </div>
           </section>

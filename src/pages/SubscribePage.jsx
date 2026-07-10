@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useEffectiveCompany } from '../hooks/useEffectiveCompany'
 import { useImpersonation } from '../context/ImpersonationContext'
-import { useCompanyPlan } from '../lib/plans'
+import { useCompanyPlan, usePlan } from '../lib/plans'
+import { resolveEntitlements } from '../lib/entitlements'
 import { supabase } from '../lib/supabase'
 import AppHeader from '../components/AppHeader'
 
@@ -11,6 +12,8 @@ export default function SubscribePage() {
   const { company } = useEffectiveCompany()
   const { isImpersonating } = useImpersonation()
   const companyPlan = useCompanyPlan(company)
+  const rawPlan = usePlan(company?.plan_key)
+  const entitlements = company ? resolveEntitlements(company, rawPlan) : null
   const [term, setTerm] = useState('monthly')
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState(null)
@@ -70,9 +73,9 @@ export default function SubscribePage() {
     )
   }
 
-  // Subscribe flow
-  const monthlyPrice = companyPlan.monthly_price
-  const annualPrice = companyPlan.annual_price
+  // Subscribe flow — prices from resolver (locked price wins when set)
+  const monthlyPrice = entitlements?.priceMonthly ?? companyPlan.monthly_price
+  const annualPrice = entitlements?.priceAnnual ?? companyPlan.annual_price
   const yearlySavings = monthlyPrice != null && annualPrice != null
     ? ((monthlyPrice * 12) - annualPrice).toFixed(2)
     : null

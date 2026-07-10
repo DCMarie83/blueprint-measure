@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { RECURLY_PUBLIC_KEY } from '../lib/config'
+import { usePlan } from '../lib/plans'
+import { resolveEntitlements } from '../lib/entitlements'
 import AppHeader from '../components/AppHeader'
 
 // Inject Recurly.js once
@@ -20,6 +22,8 @@ function useRecurlyScript() {
 
 export default function SubscribeRecurly() {
   const { user, company } = useAuth()
+  const rawPlan = usePlan(company?.plan_key)
+  const entitlements = company ? resolveEntitlements(company, rawPlan) : null
   const recurlyReady = useRecurlyScript()
   const formRef = useRef(null)
   const cardRef = useRef(null)
@@ -162,7 +166,7 @@ export default function SubscribeRecurly() {
           </h1>
           <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 24 }}>
             Test charge via Recurly + Authorize.Net. Company: <strong>{company.name}</strong>
-            {' '}| Locked price: <strong>${company.locked_price_monthly ?? 'NOT SET'}</strong>/mo
+            {' '}| Price: <strong>${entitlements?.priceMonthly ?? 'NOT SET'}</strong>/mo{company.locked_price_monthly != null ? ' (locked)' : ''}
           </p>
 
           {status === 'success' ? (
@@ -270,7 +274,7 @@ export default function SubscribeRecurly() {
                 {status === 'tokenizing' ? 'Tokenizing...'
                   : status === 'submitting' ? 'Processing...'
                   : status === '3ds' ? '3DS in progress...'
-                  : `Pay $${company.locked_price_monthly ?? '??'}`}
+                  : `Pay $${entitlements?.priceMonthly ?? '??'}`}
               </button>
             </form>
           )}
