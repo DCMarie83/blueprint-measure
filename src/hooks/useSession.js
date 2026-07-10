@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { resolveEntitlements } from '../lib/entitlements'
 
 // Loads a single session plus all its zones from the database.
 export function useSession(sessionId) {
@@ -40,20 +41,14 @@ export function useSession(sessionId) {
       setZones(zonesData)
     }
 
-    // The super admin always gets every feature unlocked, regardless of company flags.
+    // Resolve feature flags via the entitlements resolver.
+    // Super-admins get all features (the resolver handles this via
+    // the isSuperAdmin path below). Normal users get live plan features.
     if (isSuperAdmin) {
-      setEnabledFeatures({
-        blueprint_measurement: true,
-        multi_page_pdf:     true,
-        csv_export:         true,
-        redraw_zones:       true,
-        paint_calculator:   true,
-        ai_scale_detection: true,
-        wall_calculator:    true,
-        test_mode:          true,
-      })
+      setEnabledFeatures(resolveEntitlements(null, null).features)
     } else {
-      // Load the tenant's feature flags via two queries (split to avoid FK join blocked by RLS).
+      // Load company + plan to resolve features via entitlements.
+      // Two queries: profile → company (split to avoid FK join blocked by RLS).
       const { data: profile } = await supabase
         .from('user_profiles')
         .select('company_id')
@@ -62,10 +57,25 @@ export function useSession(sessionId) {
       if (profile?.company_id) {
         const { data: company } = await supabase
           .from('companies')
-          .select('features')
+          .select('subscription_status, is_internal, plan_key, features')
           .eq('id', profile.company_id)
           .single()
-        setEnabledFeatures(company?.features ?? {})
+        if (company) {
+          // Fetch the plan by plan_key to get live features.
+          let plan = null
+          if (company.plan_key) {
+            const { data: planData } = await supabase
+              .from('plans')
+              .select('features, max_seats, monthly_price, annual_price')
+              .eq('key', company.plan_key)
+              .eq('is_active', true)
+              .maybeSingle()
+            plan = planData
+          }
+          setEnabledFeatures(resolveEntitlements(company, plan).features)
+        } else {
+          setEnabledFeatures({})
+        }
       } else {
         setEnabledFeatures({})
       }
