@@ -43,6 +43,18 @@ export default function InvoicePortalPage() {
     return () => { cancelled = true }
   }, [token])
 
+  // Portal theme — must be above early returns (Rules of Hooks)
+  useEffect(() => {
+    if (!data) return
+    const theme = data.company_portal_theme || 'light'
+    const previous = document.documentElement.getAttribute('data-theme')
+    document.documentElement.setAttribute('data-theme', theme)
+    return () => {
+      if (previous) document.documentElement.setAttribute('data-theme', previous)
+      else document.documentElement.removeAttribute('data-theme')
+    }
+  }, [data?.company_portal_theme])
+
   async function handleDownload() {
     if (!data) return
     setDownloading(true)
@@ -102,17 +114,6 @@ export default function InvoicePortalPage() {
       </div>
     )
   }
-
-  // Enforce portal theme on document root
-  useEffect(() => {
-    const theme = data?.company_portal_theme || 'light'
-    const previous = document.documentElement.getAttribute('data-theme')
-    document.documentElement.setAttribute('data-theme', theme)
-    return () => {
-      if (previous) document.documentElement.setAttribute('data-theme', previous)
-      else document.documentElement.removeAttribute('data-theme')
-    }
-  }, [data?.company_portal_theme])
 
   const inv = data.invoice
   const lineItems = data.line_items || []
