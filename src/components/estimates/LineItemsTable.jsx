@@ -17,7 +17,6 @@ export default function LineItemsTable({ lineItems, onUpdate, onRemove, readOnly
     )
   }
 
-  // Group by category_name
   const groups = []
   const catOrder = []
   const catMap = {}
@@ -41,12 +40,8 @@ export default function LineItemsTable({ lineItems, onUpdate, onRemove, readOnly
             <th className={styles.thDesc}>Description</th>
             <th className={styles.thUnit}>Unit</th>
             <th className={styles.thQty}>Qty</th>
-            <th className={styles.thRate}>Good Rate</th>
-            <th className={styles.thRate}>Better Rate</th>
-            <th className={styles.thRate}>Best Rate</th>
-            <th className={styles.thTotal}>Good Total</th>
-            <th className={styles.thTotal}>Better Total</th>
-            <th className={styles.thTotal}>Best Total</th>
+            <th className={styles.thRate}>Rate</th>
+            <th className={styles.thTotal}>Total</th>
             {!readOnly && <th className={styles.thAction}></th>}
           </tr>
         </thead>
@@ -68,7 +63,7 @@ export default function LineItemsTable({ lineItems, onUpdate, onRemove, readOnly
 }
 
 function GroupRows({ category, items, onUpdate, onRemove, readOnly }) {
-  const colSpan = readOnly ? 9 : 10
+  const colSpan = readOnly ? 5 : 6
   return (
     <>
       <tr className={styles.catRow}>
@@ -130,96 +125,28 @@ function GroupRows({ category, items, onUpdate, onRemove, readOnly }) {
                 />
               )}
             </td>
-            {isLump ? (
-              <>
-                <td className={styles.tdRate} colSpan={3}>
-                  {readOnly ? (
-                    <span className={styles.mono}>{fmtMoney(li.rate_good)}</span>
-                  ) : (
-                    <input
-                      className={`${styles.cellInput} ${styles.cellNumber}`}
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={li.rate_good === 0 || li.rate_good == null ? '' : li.rate_good}
-                      placeholder="Amount"
-                      onChange={e => onUpdate(li.id, { rate_good: e.target.value === '' ? 0 : Number(e.target.value) })}
-                      onFocus={e => e.target.select()}
-                    />
-                  )}
-                </td>
-                <td className={styles.tdTotal} colSpan={3}>
-                  <span className={styles.mono}>{fmtMoney(li.total_good)}</span>
-                </td>
-              </>
-            ) : (
-              <>
-                <td className={styles.tdRate}>
-                  {readOnly ? (
-                    <span className={styles.mono}>{fmtMoney(li.rate_good)}</span>
-                  ) : (
-                    <input
-                      className={`${styles.cellInput} ${styles.cellNumber}`}
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={li.rate_good === 0 || li.rate_good == null ? '' : li.rate_good}
-                      placeholder="0"
-                      onChange={e => onUpdate(li.id, { rate_good: e.target.value === '' ? 0 : Number(e.target.value) })}
-                      onFocus={e => e.target.select()}
-                    />
-                  )}
-                </td>
-                <td className={styles.tdRate}>
-                  {readOnly ? (
-                    <span className={styles.mono}>{fmtMoney(li.rate_better)}</span>
-                  ) : (
-                    <input
-                      className={`${styles.cellInput} ${styles.cellNumber}`}
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={li.rate_better === 0 || li.rate_better == null ? '' : li.rate_better}
-                      placeholder="0"
-                      onChange={e => onUpdate(li.id, { rate_better: e.target.value === '' ? 0 : Number(e.target.value) })}
-                      onFocus={e => e.target.select()}
-                    />
-                  )}
-                </td>
-                <td className={styles.tdRate}>
-                  {readOnly ? (
-                    <span className={styles.mono}>{fmtMoney(li.rate_best)}</span>
-                  ) : (
-                    <input
-                      className={`${styles.cellInput} ${styles.cellNumber}`}
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={li.rate_best === 0 || li.rate_best == null ? '' : li.rate_best}
-                      placeholder="0"
-                      onChange={e => onUpdate(li.id, { rate_best: e.target.value === '' ? 0 : Number(e.target.value) })}
-                      onFocus={e => e.target.select()}
-                    />
-                  )}
-                </td>
-                <td className={styles.tdTotal}>
-                  <span className={styles.mono}>{fmtMoney(li.total_good)}</span>
-                </td>
-                <td className={styles.tdTotal}>
-                  <span className={styles.mono}>{fmtMoney(li.total_better)}</span>
-                </td>
-                <td className={styles.tdTotal}>
-                  <span className={styles.mono}>{fmtMoney(li.total_best)}</span>
-                </td>
-              </>
-            )}
+            <td className={styles.tdRate}>
+              {readOnly ? (
+                <span className={styles.mono}>{fmtMoney(li.rate_good)}</span>
+              ) : (
+                <input
+                  className={`${styles.cellInput} ${styles.cellNumber}`}
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={li.rate_good === 0 || li.rate_good == null ? '' : li.rate_good}
+                  placeholder={isLump ? 'Amount' : '0'}
+                  onChange={e => onUpdate(li.id, { rate_good: e.target.value === '' ? 0 : Number(e.target.value) })}
+                  onFocus={e => e.target.select()}
+                />
+              )}
+            </td>
+            <td className={styles.tdTotal}>
+              <span className={styles.mono}>{fmtMoney(li.total_good)}</span>
+            </td>
             {!readOnly && (
               <td className={styles.tdAction}>
-                <button
-                  className={styles.removeBtn}
-                  onClick={() => onRemove(li.id)}
-                  title="Remove line item"
-                >
+                <button className={styles.removeBtn} onClick={() => onRemove(li.id)} title="Remove">
                   <Trash2 size={14} />
                 </button>
               </td>

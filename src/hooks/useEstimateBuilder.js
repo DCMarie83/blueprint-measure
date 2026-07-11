@@ -98,6 +98,9 @@ export function useEstimateBuilder(estimateId) {
 
   // ── Line item mutations (local state — call saveAll to persist) ────────
   function addLineItem(item) {
+    const rate = item.rate_good ?? item.rate ?? 0
+    const qty = item.quantity ?? 0
+    const total = item.unit === 'lump_sum' ? rate : qty * rate
     const newItem = {
       id: crypto.randomUUID(),
       estimate_id: estimateId,
@@ -105,13 +108,13 @@ export function useEstimateBuilder(estimateId) {
       description: item.description || '',
       category_name: item.category_name || '',
       unit: item.unit || 'sf',
-      quantity: item.quantity ?? 0,
-      rate_good: item.rate_good ?? 0,
-      rate_better: item.rate_better ?? 0,
-      rate_best: item.rate_best ?? 0,
-      total_good: item.unit === 'lump_sum' ? (item.rate_good ?? 0) : (item.quantity ?? 0) * (item.rate_good ?? 0),
-      total_better: item.unit === 'lump_sum' ? (item.rate_good ?? 0) : (item.quantity ?? 0) * (item.rate_better ?? 0),
-      total_best: item.unit === 'lump_sum' ? (item.rate_good ?? 0) : (item.quantity ?? 0) * (item.rate_best ?? 0),
+      quantity: qty,
+      rate_good: rate,
+      rate_better: 0,
+      rate_best: 0,
+      total_good: total,
+      total_better: 0,
+      total_best: 0,
       source_zone_id: item.source_zone_id || null,
       source_zone_name: item.source_zone_name || null,
       source_measurement_type: item.source_measurement_type || null,
@@ -128,25 +131,22 @@ export function useEstimateBuilder(estimateId) {
       if (li.id !== id) return li
       const updated = { ...li, ...patch }
 
-      // If switching INTO lump_sum, seed the flat amount from the current Good total
       if (patch.unit === 'lump_sum' && li.unit !== 'lump_sum') {
         const seed = updated.total_good ?? 0
         updated.quantity = 1
         updated.rate_good = seed
-        updated.rate_better = seed
-        updated.rate_best = seed
       }
 
       if (updated.unit === 'lump_sum') {
         updated.quantity = 1
         updated.total_good = updated.rate_good ?? 0
-        updated.total_better = updated.rate_good ?? 0
-        updated.total_best = updated.rate_good ?? 0
       } else {
         updated.total_good = (updated.quantity ?? 0) * (updated.rate_good ?? 0)
-        updated.total_better = (updated.quantity ?? 0) * (updated.rate_better ?? 0)
-        updated.total_best = (updated.quantity ?? 0) * (updated.rate_best ?? 0)
       }
+      updated.rate_better = 0
+      updated.rate_best = 0
+      updated.total_better = 0
+      updated.total_best = 0
       return updated
     }))
     dirty.current = true
@@ -157,15 +157,8 @@ export function useEstimateBuilder(estimateId) {
     dirty.current = true
   }
 
-  // ── Computed totals ─────────────────────────────────────────────────────
-  const totals = lineItems.reduce(
-    (acc, li) => ({
-      good: acc.good + (li.total_good ?? 0),
-      better: acc.better + (li.total_better ?? 0),
-      best: acc.best + (li.total_best ?? 0),
-    }),
-    { good: 0, better: 0, best: 0 }
-  )
+  // ── Computed total ──────────────────────────────────────────────────────
+  const total = lineItems.reduce((sum, li) => sum + (li.total_good ?? 0), 0)
 
   // ── Save all line items + estimate totals ───────────────────────────────
   async function saveAll() {
@@ -210,9 +203,9 @@ export function useEstimateBuilder(estimateId) {
       const { error: updErr } = await supabase
         .from('estimates')
         .update({
-          good_total: totals.good,
-          better_total: totals.better,
-          best_total: totals.best,
+          good_total: total,
+          better_total: 0,
+          best_total: 0,
           updated_at: new Date().toISOString(),
         })
         .eq('id', estimateId)
@@ -263,7 +256,7 @@ export function useEstimateBuilder(estimateId) {
     estimate,
     lineItems,
     zones,
-    totals,
+    total,
     loading,
     saving,
     error,

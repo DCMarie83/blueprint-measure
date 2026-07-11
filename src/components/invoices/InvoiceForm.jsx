@@ -81,7 +81,7 @@ export default function InvoiceForm({ existingInvoice, existingLineItems }) {
       setEstimateBanner(`Creating invoice from estimate ${est.estimate_number}`)
       setTitle(est.title || '')
       // Convert estimate line items → invoice line items using the selected variant or 'better' fallback
-      const variant = est.accepted_variant || est.selected_variant || 'better'
+      const variant = est.accepted_variant || est.selected_variant || 'good'
       const rateField = `rate_${variant}`
       const totalField = `total_${variant}`
       const items = (est.estimate_line_items ?? [])

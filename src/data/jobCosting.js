@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 function num(v) { return Number(v) || 0 }
 
 function getAcceptedTotal(est) {
-  const v = est.accepted_variant || est.selected_variant || 'better'
+  const v = est.accepted_variant || est.selected_variant || 'good'
   return num(est[`${v}_total`])
 }
 

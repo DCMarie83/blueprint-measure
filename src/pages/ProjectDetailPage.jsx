@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useProject } from '../hooks/useProject'
+import { getDisplayTotal } from '../lib/estimateDisplay'
 import { useProjects } from '../hooks/useProjects'
 import { useSessions } from '../hooks/useSessions'
 import { useCompanyPlan } from '../lib/plans'
@@ -487,7 +488,7 @@ export default function ProjectDetailPage() {
                     )}
                   </div>
                   <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-                    Good ${Number(est.good_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    ${Number(getDisplayTotal(est)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </span>
                 </div>
               ))}

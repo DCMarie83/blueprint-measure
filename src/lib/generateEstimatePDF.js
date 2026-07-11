@@ -8,11 +8,7 @@ const WHITE = [255, 255, 255]
 const STRIPE = [245, 245, 245]
 const FALLBACK_PRIMARY = [242, 114, 67] // #f27243
 
-const VARIANTS = [
-  { key: 'good', label: 'GOOD', rateField: 'rate_good', totalField: 'total_good', grandTotal: 'good_total' },
-  { key: 'better', label: 'BETTER', rateField: 'rate_better', totalField: 'total_better', grandTotal: 'better_total' },
-  { key: 'best', label: 'BEST', rateField: 'rate_best', totalField: 'total_best', grandTotal: 'best_total' },
-]
+import { getDisplayVariant } from './estimateDisplay'
 
 const UNIT_LABELS = { sf: 'SF', lf: 'LF', each: 'Each', hour: 'Hour', lump_sum: 'Lump Sum' }
 
@@ -73,7 +69,7 @@ function renderPaymentInstructions(doc, pi, x, y, primaryRgb, pageWidth, pageHei
  * @param {Object} opts.project - { name, address }
  * @param {Object} opts.client - { display_name, business_name, address } (nullable)
  * @param {Object} opts.company - { name } (nullable)
- * @param {'good'|'better'|'best'|null} opts.variant - Single variant (Send flow) or null for all 3 (Download flow)
+ * @param {'good'|'better'|'best'|null} opts.variant - Ignored (kept for API compat). Uses display variant helper.
  * @param {'blob'|'base64'|'save'} opts.returnAs - Output format
  * @returns {Blob|string|void}
  */
@@ -89,16 +85,18 @@ export function generateEstimatePDF({ estimate, lineItems, project, client, comp
   const estTitle = estimate.title || estimate.estimate_number
   const estNumber = estimate.estimate_number
 
-  // Determine which variants to render
-  const variantsToRender = variant
-    ? VARIANTS.filter(v => v.key === variant)
-    : VARIANTS
-  const totalPages = variantsToRender.length
-  const isSingleVariant = totalPages === 1
+  // Single-page: render the display variant (accepted > selected > good)
+  const displayKey = variant || getDisplayVariant(estimate)
+  const v = {
+    key: displayKey,
+    label: displayKey.toUpperCase(),
+    rateField: `rate_${displayKey}`,
+    totalField: `total_${displayKey}`,
+    grandTotal: `${displayKey}_total`,
+  }
+  const isSingleVariant = true
 
-  variantsToRender.forEach((v, vi) => {
-    if (vi > 0) doc.addPage()
-
+  {
     let y = margin
 
     // ── Header band ──────────────────────────────────────────
@@ -367,8 +365,8 @@ export function generateEstimatePDF({ estimate, lineItems, project, client, comp
     doc.setTextColor(...MUTED)
     // TODO: Add company address when companies.address is available
     doc.text(companyName, margin, pageHeight - 12)
-    doc.text(`${estNumber}  |  Page ${vi + 1} of ${totalPages}`, pageWidth - margin, pageHeight - 12, { align: 'right' })
-  })
+    doc.text(estNumber, pageWidth - margin, pageHeight - 12, { align: 'right' })
+  }
 
   // ── Output ─────────────────────────────────────────────────
   const filename = `${sanitizeFilename(estTitle)}_${sanitizeFilename(estNumber)}${client?.display_name ? '_' + sanitizeFilename(client.display_name) : ''}.pdf`

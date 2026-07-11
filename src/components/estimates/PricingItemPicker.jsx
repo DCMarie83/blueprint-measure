@@ -88,8 +88,6 @@ export default function PricingItemPicker({ zone, categories, items, onPick, onC
                         <span className={styles.unitBadge}>{UNIT_LABELS[item.unit] || item.unit}</span>
                         <span className={styles.rates}>
                           {fmtRate(item.default_rate)}
-                          {item.default_rate_better != null && ` / ${fmtRate(item.default_rate_better)}`}
-                          {item.default_rate_best != null && ` / ${fmtRate(item.default_rate_best)}`}
                         </span>
                       </span>
                     </div>

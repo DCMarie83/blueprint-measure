@@ -14,7 +14,7 @@ export default function PricingPage() {
   const [showAddCategory, setShowAddCategory] = useState(false)
   const [showAddItem, setShowAddItem] = useState(null) // category_id or null
   const [catForm, setCatForm] = useState({ name: '', trade_vertical: '' })
-  const [itemForm, setItemForm] = useState({ name: '', unit: 'sf', default_rate: '', default_rate_better: '', default_rate_best: '', description: '' })
+  const [itemForm, setItemForm] = useState({ name: '', unit: 'sf', default_rate: '', description: '' })
 
   function toggleCategory(id) {
     setExpandedCategories(prev => {
@@ -42,11 +42,9 @@ export default function PricingPage() {
       name: itemForm.name,
       unit: itemForm.unit,
       default_rate: parseFloat(itemForm.default_rate) || 0,
-      default_rate_better: itemForm.default_rate_better ? parseFloat(itemForm.default_rate_better) : null,
-      default_rate_best: itemForm.default_rate_best ? parseFloat(itemForm.default_rate_best) : null,
       description: itemForm.description || null,
     })
-    setItemForm({ name: '', unit: 'sf', default_rate: '', default_rate_better: '', default_rate_best: '', description: '' })
+    setItemForm({ name: '', unit: 'sf', default_rate: '', description: '' })
     setShowAddItem(null)
   }
 
@@ -121,13 +119,7 @@ export default function PricingPage() {
                         <span className={styles.itemName}>{item.name}</span>
                         <span className={styles.unitBadge}>{item.unit}</span>
                         <span className={styles.rateCell}>
-                          <span className={styles.rateLabel}>Good </span>{fmtRate(item.default_rate)}
-                        </span>
-                        <span className={styles.rateCell}>
-                          <span className={styles.rateLabel}>Better </span>{fmtRate(item.default_rate_better)}
-                        </span>
-                        <span className={styles.rateCell}>
-                          <span className={styles.rateLabel}>Best </span>{fmtRate(item.default_rate_best)}
+                          <span className={styles.rateLabel}>Rate </span>{fmtRate(item.default_rate)}
                         </span>
                         <button className={styles.deleteBtn} onClick={() => handleDeleteItem(item.id)} title="Delete item">
                           <Trash2 size={15} />
@@ -205,28 +197,6 @@ export default function PricingPage() {
                   onChange={e => setItemForm(f => ({ ...f, default_rate: e.target.value }))}
                   placeholder="0.00"
                   required
-                />
-              </div>
-              <div className={styles.modalField}>
-                <label>Better Rate</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={itemForm.default_rate_better}
-                  onChange={e => setItemForm(f => ({ ...f, default_rate_better: e.target.value }))}
-                  placeholder="0.00"
-                />
-              </div>
-              <div className={styles.modalField}>
-                <label>Best Rate</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={itemForm.default_rate_best}
-                  onChange={e => setItemForm(f => ({ ...f, default_rate_best: e.target.value }))}
-                  placeholder="0.00"
                 />
               </div>
             </div>

@@ -1,13 +1,8 @@
 import { useState } from 'react'
 import { Check, X, AlertCircle } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { getDisplayVariant, getDisplayTotal, getDisplayRate, getDisplayLineTotal } from '../../lib/estimateDisplay'
 import styles from './PortalEstimateSection.module.css'
-
-const VARIANTS = [
-  { key: 'good', label: 'Good', rateField: 'rate_good', totalField: 'total_good', grandTotal: 'good_total' },
-  { key: 'better', label: 'Better', rateField: 'rate_better', totalField: 'total_better', grandTotal: 'better_total' },
-  { key: 'best', label: 'Best', rateField: 'rate_best', totalField: 'total_best', grandTotal: 'best_total' },
-]
 
 const UNIT_LABELS = { sf: 'SF', lf: 'LF', each: 'Each', hour: 'Hour', lump_sum: 'Lump Sum' }
 
@@ -22,9 +17,6 @@ function fmtDate(dateStr) {
 }
 
 export default function PortalEstimateSection({ estimate, lineItems, portalToken }) {
-  // If contractor selected a specific variant, lock to it (no tabs)
-  const lockedVariant = estimate.selected_variant || null
-  const [selectedVariant, setSelectedVariant] = useState(lockedVariant || 'best')
   const [showAccept, setShowAccept] = useState(false)
   const [showDecline, setShowDecline] = useState(false)
   const [typedName, setTypedName] = useState('')
@@ -34,8 +26,7 @@ export default function PortalEstimateSection({ estimate, lineItems, portalToken
   const [error, setError] = useState(null)
   const [responseStatus, setResponseStatus] = useState(estimate.status)
 
-  const variant = VARIANTS.find(v => v.key === selectedVariant) || VARIANTS[2]
-  const variantTotal = fmtMoney(estimate[variant.grandTotal])
+  const displayTotal = fmtMoney(getDisplayTotal(estimate))
 
   // Group line items by category
   const groups = []
@@ -58,13 +49,12 @@ export default function PortalEstimateSection({ estimate, lineItems, portalToken
         p_estimate_id: estimate.id,
         p_portal_token: portalToken,
         p_typed_name: typedName,
-        p_accepted_variant: lockedVariant || selectedVariant,
+        p_accepted_variant: null,
       })
       if (rpcErr) throw rpcErr
       setResponseStatus('accepted')
       setShowAccept(false)
 
-      // Notify contractor (fire-and-forget)
       supabase.functions.invoke('notify-estimate-response', {
         body: { estimate_id: estimate.id },
       }).catch(() => {})
@@ -88,7 +78,6 @@ export default function PortalEstimateSection({ estimate, lineItems, portalToken
       setResponseStatus('declined')
       setShowDecline(false)
 
-      // Notify contractor (fire-and-forget)
       supabase.functions.invoke('notify-estimate-response', {
         body: { estimate_id: estimate.id },
       }).catch(() => {})
@@ -126,26 +115,11 @@ export default function PortalEstimateSection({ estimate, lineItems, portalToken
         </div>
       )}
 
-      {/* Variant tabs or single-variant heading */}
-      {lockedVariant ? (
-        <div className={styles.singleVariantHeader}>
-          <span className={styles.singleVariantLabel}>{estimate.title || 'Project Estimate'}</span>
-          <span className={styles.singleVariantTotal}>{variantTotal}</span>
-        </div>
-      ) : (
-        <div className={styles.variantTabs}>
-          {VARIANTS.map(v => (
-            <button
-              key={v.key}
-              className={`${styles.variantTab} ${selectedVariant === v.key ? styles.variantTabActive : ''}`}
-              onClick={() => setSelectedVariant(v.key)}
-            >
-              {v.label}
-              <span className={styles.variantTotal}>{fmtMoney(estimate[v.grandTotal])}</span>
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Single-price heading */}
+      <div className={styles.singleVariantHeader}>
+        <span className={styles.singleVariantLabel}>{estimate.title || 'Project Estimate'}</span>
+        <span className={styles.singleVariantTotal}>{displayTotal}</span>
+      </div>
 
       {/* Line items */}
       <div className={styles.lineItems}>
@@ -163,8 +137,8 @@ export default function PortalEstimateSection({ estimate, lineItems, portalToken
                 <div className={styles.lineQty}>
                   {Number(li.quantity || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} {UNIT_LABELS[li.unit] || li.unit}
                 </div>
-                <div className={styles.lineRate}>{fmtMoney(li[variant.rateField])}</div>
-                <div className={styles.lineTotal}>{fmtMoney(li[variant.totalField])}</div>
+                <div className={styles.lineRate}>{fmtMoney(getDisplayRate(li, estimate))}</div>
+                <div className={styles.lineTotal}>{fmtMoney(getDisplayLineTotal(li, estimate))}</div>
               </div>
             ))}
           </div>
@@ -173,8 +147,8 @@ export default function PortalEstimateSection({ estimate, lineItems, portalToken
 
       {/* Total */}
       <div className={styles.grandTotal}>
-        <span>{lockedVariant ? 'Total' : `${variant.label} Total`}</span>
-        <span className={styles.grandTotalValue}>{variantTotal}</span>
+        <span>Total</span>
+        <span className={styles.grandTotalValue}>{displayTotal}</span>
       </div>
 
       {/* Notes / Deposit / Terms */}
@@ -187,8 +161,7 @@ export default function PortalEstimateSection({ estimate, lineItems, portalToken
             </div>
           )}
           {estimate.deposit_amount != null && Number(estimate.deposit_amount) > 0 && (() => {
-            const refKey = lockedVariant || 'better'
-            const refTotal = Number(estimate[`${refKey}_total`] || 0)
+            const refTotal = getDisplayTotal(estimate)
             const dep = Number(estimate.deposit_amount)
             const pct = (refTotal > 0 && dep > 0) ? Math.round((dep / refTotal) * 100) : null
             const depFmt = `$${dep.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -211,14 +184,12 @@ export default function PortalEstimateSection({ estimate, lineItems, portalToken
         </div>
       )}
 
-      {/* Error */}
       {error && (
         <div className={styles.errorBlock}>
           <AlertCircle size={16} /> {error}
         </div>
       )}
 
-      {/* Accept / Decline buttons */}
       {responseStatus === 'sent' && !showAccept && !showDecline && (
         <div className={styles.actionRow}>
           <button className={styles.acceptBtn} onClick={() => setShowAccept(true)}>
@@ -230,7 +201,6 @@ export default function PortalEstimateSection({ estimate, lineItems, portalToken
         </div>
       )}
 
-      {/* Accept form */}
       {showAccept && (
         <div className={styles.responseForm}>
           <h3 className={styles.formTitle}>Accept Estimate</h3>
@@ -246,51 +216,32 @@ export default function PortalEstimateSection({ estimate, lineItems, portalToken
           </div>
           {typedName.trim() && (
             <p className={styles.confirmText}>
-              I, <strong>{typedName}</strong>, accept this estimate totaling <strong>{variantTotal}</strong>.
+              I, <strong>{typedName}</strong>, accept this estimate totaling <strong>{displayTotal}</strong>.
             </p>
           )}
           <label className={styles.checkboxRow}>
-            <input
-              type="checkbox"
-              checked={acceptChecked}
-              onChange={e => setAcceptChecked(e.target.checked)}
-            />
+            <input type="checkbox" checked={acceptChecked} onChange={e => setAcceptChecked(e.target.checked)} />
             <span>I understand this constitutes acceptance of the estimate</span>
           </label>
           <div className={styles.formActions}>
             <button className={styles.cancelFormBtn} onClick={() => { setShowAccept(false); setTypedName(''); setAcceptChecked(false) }}>Cancel</button>
-            <button
-              className={styles.confirmAcceptBtn}
-              onClick={handleAccept}
-              disabled={!typedName.trim() || !acceptChecked || submitting}
-            >
+            <button className={styles.confirmAcceptBtn} onClick={handleAccept} disabled={!typedName.trim() || !acceptChecked || submitting}>
               {submitting ? 'Submitting...' : 'Confirm Acceptance'}
             </button>
           </div>
         </div>
       )}
 
-      {/* Decline form */}
       {showDecline && (
         <div className={styles.responseForm}>
           <h3 className={styles.formTitle}>Decline Estimate</h3>
           <div className={styles.field}>
             <label className={styles.fieldLabel}>Reason (optional)</label>
-            <textarea
-              className={styles.fieldTextarea}
-              value={declineReason}
-              onChange={e => setDeclineReason(e.target.value)}
-              placeholder="Let the contractor know why..."
-              rows={3}
-            />
+            <textarea className={styles.fieldTextarea} value={declineReason} onChange={e => setDeclineReason(e.target.value)} placeholder="Let the contractor know why..." rows={3} />
           </div>
           <div className={styles.formActions}>
             <button className={styles.cancelFormBtn} onClick={() => { setShowDecline(false); setDeclineReason('') }}>Cancel</button>
-            <button
-              className={styles.confirmDeclineBtn}
-              onClick={handleDecline}
-              disabled={submitting}
-            >
+            <button className={styles.confirmDeclineBtn} onClick={handleDecline} disabled={submitting}>
               {submitting ? 'Submitting...' : 'Confirm Decline'}
             </button>
           </div>

@@ -14,6 +14,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { generateEstimatePDF } from '../lib/generateEstimatePDF'
 import { calculateDepositPercent, getReferenceTotal } from '../lib/depositMath'
+import { getDisplayTotal } from '../lib/estimateDisplay'
 import styles from './EstimateDetailPage.module.css'
 
 const STATUS_OPTIONS = ['draft', 'sent', 'accepted', 'declined', 'expired']
@@ -153,15 +154,12 @@ export default function EstimateDetailPage() {
     )
   }
 
-  const { lineItems, zones, totals, saving } = builder
+  const { lineItems, zones, total, saving } = builder
   const notes = notesValue ?? estimate.notes ?? ''
   const title = titleValue ?? estimate.title ?? ''
   const terms = termsValue ?? estimate.terms ?? ''
   const depositAmount = depositValue ?? estimate.deposit_amount ?? ''
   const depositPercent = calculateDepositPercent(depositAmount, getReferenceTotal(estimate))
-  const referenceVariantLabel = estimate?.selected_variant
-    ? estimate.selected_variant.charAt(0).toUpperCase() + estimate.selected_variant.slice(1)
-    : 'Better'
 
   async function handleSave() {
     try {
@@ -289,8 +287,6 @@ export default function EstimateDetailPage() {
       unit: pricingItem.unit,
       quantity: pickerZone ? pickerZone.total_result : 0,
       rate_good: pricingItem.default_rate ?? 0,
-      rate_better: pricingItem.default_rate_better ?? 0,
-      rate_best: pricingItem.default_rate_best ?? 0,
       source_zone_name: pickerZone ? pickerZone.display_name : null,
       source_measurement_type: pickerZone ? pickerZone.measurement_type : null,
     })
@@ -346,29 +342,9 @@ export default function EstimateDetailPage() {
           {isAdmin && (
             <div className={styles.headerActions}>
               {saveMsg && <span className={styles.saveMsg}>{saveMsg}</span>}
-              <div className={styles.pdfDropdown} ref={pdfMenuRef}>
-                <button className={styles.toolBtn} onClick={() => setPdfMenuOpen(v => !v)} title="Download PDF">
-                  <Download size={15} /> PDF <span className={styles.pdfCaret}>▾</span>
-                </button>
-                {pdfMenuOpen && (
-                  <div className={styles.pdfMenu}>
-                    <button onClick={() => handleDownloadPDF(null)} className={styles.pdfMenuItem}>
-                      <span className={styles.pdfMenuLabel}>All Tiers</span>
-                      <span className={styles.pdfMenuHint}>Internal reference — Good / Better / Best</span>
-                    </button>
-                    <div className={styles.pdfMenuDivider} />
-                    <button onClick={() => handleDownloadPDF('good')} className={styles.pdfMenuItem}>
-                      <span className={styles.pdfMenuLabel}>Good — Client Version</span>
-                    </button>
-                    <button onClick={() => handleDownloadPDF('better')} className={styles.pdfMenuItem}>
-                      <span className={styles.pdfMenuLabel}>Better — Client Version</span>
-                    </button>
-                    <button onClick={() => handleDownloadPDF('best')} className={styles.pdfMenuItem}>
-                      <span className={styles.pdfMenuLabel}>Best — Client Version</span>
-                    </button>
-                  </div>
-                )}
-              </div>
+              <button className={styles.toolBtn} onClick={() => handleDownloadPDF(null)} title="Download PDF">
+                <Download size={15} /> PDF
+              </button>
               <button className={styles.saveBtn} onClick={handleSave} disabled={saving}>
                 <Save size={15} /> {saving ? 'Saving...' : 'Save'}
               </button>
@@ -419,25 +395,10 @@ export default function EstimateDetailPage() {
             />
 
             <div className={styles.totalsCard}>
-              <div className={`${styles.totalRow} ${estimate.selected_variant === 'good' ? styles.totalRowSent : estimate.selected_variant ? styles.totalRowMuted : ''}`}>
-                <span>Good Total</span>
+              <div className={`${styles.totalRow} ${styles.totalRowBest}`}>
+                <span>Estimate Total</span>
                 <span className={styles.totalValue}>
-                  {fmtMoney(totals.good)}
-                  {estimate.selected_variant === 'good' && <span className={styles.sentBadge}>SENT</span>}
-                </span>
-              </div>
-              <div className={`${styles.totalRow} ${estimate.selected_variant === 'better' ? styles.totalRowSent : estimate.selected_variant ? styles.totalRowMuted : ''}`}>
-                <span>Better Total</span>
-                <span className={styles.totalValue}>
-                  {fmtMoney(totals.better)}
-                  {estimate.selected_variant === 'better' && <span className={styles.sentBadge}>SENT</span>}
-                </span>
-              </div>
-              <div className={`${styles.totalRow} ${styles.totalRowBest} ${estimate.selected_variant === 'best' ? styles.totalRowSent : estimate.selected_variant ? styles.totalRowMuted : ''}`}>
-                <span>Best Total</span>
-                <span className={styles.totalValue}>
-                  {fmtMoney(totals.best)}
-                  {estimate.selected_variant === 'best' && <span className={styles.sentBadge}>SENT</span>}
+                  {fmtMoney(estimate ? getDisplayTotal(estimate) : total)}
                 </span>
               </div>
             </div>
@@ -483,7 +444,7 @@ export default function EstimateDetailPage() {
                     <span className={styles.depositPercent}>
                       {depositPercent}%
                       {!estimate?.selected_variant && (
-                        <span className={styles.depositPercentHint}> of {referenceVariantLabel} tier</span>
+                        <span className={styles.depositPercentHint}> of total</span>
                       )}
                     </span>
                   )}

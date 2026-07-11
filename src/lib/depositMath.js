@@ -6,6 +6,6 @@ export function calculateDepositPercent(depositAmount, referenceTotal) {
 }
 
 export function getReferenceTotal(estimate) {
-  const variantKey = estimate?.selected_variant || 'better'
+  const variantKey = estimate?.accepted_variant || estimate?.selected_variant || 'good'
   return Number(estimate?.[`${variantKey}_total`] || 0)
 }
