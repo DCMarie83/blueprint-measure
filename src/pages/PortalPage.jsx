@@ -17,13 +17,11 @@ export default function PortalPage() {
     let cancelled = false
     ;(async () => {
       try {
-        // Fetch portal view + estimate data in parallel
+        // Fetch portal project + estimate data in parallel — both are
+        // token-scoped RPCs (portal_view SELECT was revoked from anon;
+        // get_portal_project filters by token + portal_enabled internally)
         const [portalRes, estimateRes] = await Promise.all([
-          supabase
-            .from('portal_view')
-            .select('*')
-            .eq('portal_token', token)
-            .maybeSingle(),
+          supabase.rpc('get_portal_project', { p_portal_token: token }),
           supabase.rpc('get_portal_estimate', { p_portal_token: token }),
         ])
 
