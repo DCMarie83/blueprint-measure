@@ -13,6 +13,20 @@ const SEVERITY_COLORS = {
   critical: { bg: 'rgba(220,38,38,0.15)', color: '#dc2626' },
 }
 
+function TimezoneBadge({ timezone }) {
+  if (!timezone) return <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>-</span>
+  // Shorten "Asia/Bangkok" → "Bangkok" for the badge; full value in tooltip.
+  const city = timezone.split('/').pop().replace(/_/g, ' ')
+  return (
+    <span
+      title={timezone}
+      style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: 'rgba(139,92,246,0.12)', color: '#8b5cf6', whiteSpace: 'nowrap' }}
+    >
+      {city}
+    </span>
+  )
+}
+
 function SeverityBadge({ severity }) {
   const s = SEVERITY_COLORS[severity] || SEVERITY_COLORS.error
   return (
@@ -321,6 +335,7 @@ export default function ErrorsSection() {
                 {groupByFingerprint && <th className={styles.th}>Count</th>}
                 <th className={styles.th}>Tenant</th>
                 <th className={styles.th}>User</th>
+                <th className={styles.th}>Timezone</th>
                 <th className={styles.th}>Page</th>
                 <th className={styles.th}>When</th>
                 <th className={styles.th}>Actions</th>
@@ -341,6 +356,7 @@ export default function ErrorsSection() {
                       {groupByFingerprint && <td className={styles.td} style={{ fontWeight: 700 }}>{ce._count}</td>}
                       <td className={styles.td}>{ceCompany}</td>
                       <td className={styles.td} style={{ fontSize: 11 }}>{ceUser}</td>
+                      <td className={styles.td}><TimezoneBadge timezone={ce.timezone} /></td>
                       <td className={styles.td} style={{ fontSize: 11, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ce.page_url}</td>
                       <td className={styles.td} style={{ whiteSpace: 'nowrap' }}>
                         {formatDateTime(ce.created_at)}
@@ -360,7 +376,7 @@ export default function ErrorsSection() {
                     </tr>
                     {isExp && (
                       <tr className={styles.expandedRow}>
-                        <td colSpan={groupByFingerprint ? 9 : 8} className={styles.expandedCell}>
+                        <td colSpan={groupByFingerprint ? 10 : 9} className={styles.expandedCell}>
                           <ErrorDetail error={ce} users={users} formatDateTime={formatDateTime} formatTime={formatTime} />
                         </td>
                       </tr>
@@ -385,6 +401,12 @@ function ErrorDetail({ error: ce, users, formatDateTime, formatTime }) {
       <div><strong>Fingerprint:</strong> <code style={{ fontSize: 11 }}>{ce.error_fingerprint || '-'}</code></div>
       <div><strong>Page URL:</strong> {ce.page_url}</div>
       <div><strong>User Agent:</strong> <span style={{ fontSize: 11 }}>{ce.user_agent || '-'}</span></div>
+      <div>
+        <strong>Location context:</strong>{' '}
+        <span style={{ fontSize: 11 }}>
+          {ce.timezone || 'unknown timezone'} · {ce.locale || 'unknown locale'} · viewport {ce.viewport || '-'}
+        </span>
+      </div>
 
       {ce.error_stack && (
         <div>

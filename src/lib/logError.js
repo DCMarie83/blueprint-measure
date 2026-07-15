@@ -37,6 +37,14 @@ export async function logError(error, severity = 'error', extraContext = {}) {
       tenantId = profile?.company_id || null;
     }
 
+    // Location context — zero-cost client signals, no network call, no permission prompt.
+    // Timezone (e.g. "Asia/Bangkok" vs "America/New_York") distinguishes internal
+    // testing from real-market users.
+    let timezone = null;
+    try { timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || null; } catch { /* noop */ }
+    const locale = navigator.language || null;
+    const viewport = `${window.innerWidth}x${window.innerHeight}`;
+
     const errorRow = {
       company_id: tenantId,
       user_id: userId,
@@ -48,6 +56,9 @@ export async function logError(error, severity = 'error', extraContext = {}) {
       user_agent: navigator.userAgent,
       breadcrumbs,
       error_fingerprint: fingerprint,
+      timezone,
+      locale,
+      viewport,
     };
 
     const { error: insertError } = await supabase
