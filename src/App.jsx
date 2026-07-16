@@ -60,7 +60,10 @@ import BillingCancelPage from './pages/BillingCancelPage'
 
 // ProtectedRoute wraps pages that require login + completed setup.
 // bypassSubscriptionGate: if true, skip the subscription check (for /settings, /account, /subscribe)
-function ProtectedRoute({ children, bypassSubscriptionGate = false }) {
+// hideFeedback: if true, don't mount the floating FeedbackButton — used by
+// /subscribe, where the fab overlaps the Recurly card iframe on mobile and
+// competes with the single card-entry action.
+function ProtectedRoute({ children, bypassSubscriptionGate = false, hideFeedback = false }) {
   const { user, loading, setupComplete, company, companyLoading, companyResolved, isSuperAdmin } = useAuth()
   useConversionTracker()
 
@@ -93,8 +96,8 @@ function ProtectedRoute({ children, bypassSubscriptionGate = false }) {
     return <Navigate to="/subscribe" replace />
   }
 
-  if (bypassSubscriptionGate) return <>{children}<FeedbackButton /></>
-  return <SubscriptionGate>{children}<FeedbackButton /></SubscriptionGate>
+  if (bypassSubscriptionGate) return <>{children}{!hideFeedback && <FeedbackButton />}</>
+  return <SubscriptionGate>{children}{!hideFeedback && <FeedbackButton />}</SubscriptionGate>
 }
 
 // AdminRoute wraps /admin. Requires login AND super-admin status from the database.
@@ -225,7 +228,7 @@ export default function App() {
       />
       <Route
         path="/subscribe"
-        element={<ProtectedRoute bypassSubscriptionGate><RecurlyCheckout /></ProtectedRoute>}
+        element={<ProtectedRoute bypassSubscriptionGate hideFeedback><RecurlyCheckout /></ProtectedRoute>}
       />
       <Route
         path="/subscribe-recurly"

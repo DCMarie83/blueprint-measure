@@ -5,7 +5,28 @@ import { useCompanyPlan } from '../lib/plans'
 import { supabase } from '../lib/supabase'
 import { RECURLY_PUBLIC_KEY } from '../lib/config'
 import Logo from '../components/brand/Logo'
-import AppHeader from '../components/AppHeader'
+
+// Minimal chrome for the checkout page: logo + a Sign out escape hatch,
+// nothing that competes with the card form. Deliberately NOT AppHeader
+// (which brings TrialBanner, nav, hamburger, and UserMenu with it).
+function CheckoutHeader() {
+  return (
+    <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px' }}>
+      <Link to="/" aria-label="RivetDog home">
+        <Logo />
+      </Link>
+      <button
+        onClick={() => supabase.auth.signOut()}
+        style={{
+          background: 'none', border: 'none', cursor: 'pointer',
+          color: 'var(--color-text-muted)', fontSize: 14, textDecoration: 'underline',
+        }}
+      >
+        Sign out
+      </button>
+    </header>
+  )
+}
 
 // Inject Recurly.js v4 once
 function useRecurlyScript() {
@@ -167,7 +188,7 @@ export default function RecurlyCheckout() {
   if (company?.subscription_status === 'active') {
     return (
       <>
-        <AppHeader />
+        <CheckoutHeader />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', padding: 24 }}>
           <div style={{ maxWidth: 440, textAlign: 'center', background: 'var(--color-surface)', borderRadius: 12, padding: '48px 32px', boxShadow: 'var(--shadow-lg)' }}>
             <h1 style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, color: 'var(--color-text)', marginBottom: 12 }}>You're subscribed</h1>
@@ -187,7 +208,7 @@ export default function RecurlyCheckout() {
   if (company?.subscription_status === 'pilot') {
     return (
       <>
-        <AppHeader />
+        <CheckoutHeader />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', padding: 24 }}>
           <div style={{ maxWidth: 440, textAlign: 'center', background: 'var(--color-surface)', borderRadius: 12, padding: '48px 32px', boxShadow: 'var(--shadow-lg)' }}>
             <h1 style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, color: 'var(--color-text)', marginBottom: 12 }}>Pilot Account</h1>
@@ -206,7 +227,7 @@ export default function RecurlyCheckout() {
   if (!company) {
     return (
       <>
-        <AppHeader />
+        <CheckoutHeader />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
           <div className="spinner" />
         </div>
@@ -220,7 +241,7 @@ export default function RecurlyCheckout() {
 
   return (
     <>
-      <AppHeader />
+      <CheckoutHeader />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', padding: 24 }}>
         <div style={{ maxWidth: 480, width: '100%', background: 'var(--color-surface)', borderRadius: 12, padding: '40px 32px', boxShadow: 'var(--shadow-lg)' }}>
 
