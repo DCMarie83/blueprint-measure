@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
 import AppHeader from '../../components/AppHeader'
-import ClientPicker from '../../components/clients/ClientPicker'
+import NewJobSheet from '../../components/lite/NewJobSheet'
 import { useProjects } from '../../hooks/useProjects'
 import { useClients } from '../../hooks/useClients'
 import { useWorkItems } from '../../hooks/useWorkItems'
@@ -15,12 +15,14 @@ import styles from './lite.module.css'
 const todayStr = () => new Date().toISOString().slice(0, 10)
 
 export default function LogPage() {
+  const [searchParams] = useSearchParams()
+  const initialJob = searchParams.get('job')
   const { companyId, company } = useEffectiveCompany()
   const { projects, createProject } = useProjects()
   const { clients, createClient } = useClients()
 
   const [date, setDate] = useState(todayStr())
-  const [projectId, setProjectId] = useState('')
+  const [projectId, setProjectId] = useState(initialJob || '')
   const [mode, setMode] = useState('piece')
   const [toast, setToast] = useState('')
 
@@ -33,6 +35,8 @@ export default function LogPage() {
   const [pieceQty, setPieceQty] = useState('')
   const [library, setLibrary] = useState([])
   const qtyRef = useRef(null)
+  const searchRef = useRef(null)
+  const didFocusRef = useRef(false)
 
   // Hourly composer
   const [hours, setHours] = useState('')
@@ -41,9 +45,6 @@ export default function LogPage() {
 
   // New job
   const [showNewJob, setShowNewJob] = useState(false)
-  const [newJobName, setNewJobName] = useState('')
-  const [newJobGcId, setNewJobGcId] = useState(null)
-  const [creatingJob, setCreatingJob] = useState(false)
 
   const promptedRef = useRef(new Set())
   const [catalogPrompt, setCatalogPrompt] = useState(null) // gc client id needing setup
@@ -88,6 +89,16 @@ export default function LogPage() {
   useEffect(() => {
     setPick(null); setSearch(''); setDebounced(''); setInlineRate(''); setPieceQty(''); setCustomUnit('each')
   }, [projectId])
+
+  // Arriving from a job detail (/log?job=<id>): once that job resolves, focus the
+  // piece composer's search box so the sub can start logging immediately. Guarded
+  // to fire only once so it never steals focus during normal use.
+  useEffect(() => {
+    if (initialJob && job && !didFocusRef.current) {
+      didFocusRef.current = true
+      searchRef.current?.focus()
+    }
+  }, [initialJob, job])
 
   // Merged results: GC catalog first (capped 5), then library minus items already
   // in this GC's catalog (capped 6). Case-insensitive substring on name.
@@ -156,21 +167,10 @@ export default function LogPage() {
     setPick(null); setSearch(''); setDebounced(''); setInlineRate(''); setPieceQty(''); setCustomUnit('each')
   }
 
-  async function handleCreateJob() {
-    if (!newJobName.trim() || !newJobGcId) return
-    setCreatingJob(true)
-    try {
-      const proj = await createProject({ name: newJobName.trim(), clientId: newJobGcId })
-      setProjectId(proj.id)
-      setShowNewJob(false)
-      setNewJobName('')
-      setNewJobGcId(null)
-      flash('New job started — go fetch!')
-    } catch (err) {
-      alert('Failed to create job: ' + err.message)
-    } finally {
-      setCreatingJob(false)
-    }
+  function handleJobCreated(proj) {
+    setProjectId(proj.id)
+    setShowNewJob(false)
+    flash('New job started — go fetch!')
   }
 
   async function addPiece() {
@@ -283,22 +283,12 @@ export default function LogPage() {
           {!showNewJob ? (
             <button className={styles.linkBtn} onClick={() => setShowNewJob(true)}>+ New job</button>
           ) : (
-            <div className={styles.card} style={{ marginTop: 8, marginBottom: 0 }}>
-              <div className={styles.field} style={{ marginBottom: 8 }}>
-                <span className={styles.fieldLabel}>Job name</span>
-                <input className={styles.input} value={newJobName} onChange={e => setNewJobName(e.target.value)} placeholder="e.g. Maple St unit 4" autoFocus />
-              </div>
-              <div className={styles.field} style={{ marginBottom: 8 }}>
-                <span className={styles.fieldLabel}>General contractor</span>
-                <ClientPicker clients={gcs} value={newJobGcId} onChange={setNewJobGcId} placeholder="Search GCs…" />
-              </div>
-              <div className={styles.rowBetween}>
-                <button className={styles.secondaryBtn} onClick={() => { setShowNewJob(false); setNewJobName(''); setNewJobGcId(null) }}>Cancel</button>
-                <button className={styles.primaryBtn} disabled={!newJobName.trim() || !newJobGcId || creatingJob} onClick={handleCreateJob}>
-                  {creatingJob ? 'Creating…' : 'Create job'}
-                </button>
-              </div>
-            </div>
+            <NewJobSheet
+              gcs={gcs}
+              createProject={createProject}
+              onCreated={handleJobCreated}
+              onCancel={() => setShowNewJob(false)}
+            />
           )}
         </div>
 
@@ -321,7 +311,7 @@ export default function LogPage() {
               !pick ? (
                 <div className={styles.field} style={{ marginBottom: 0 }}>
                   <span className={styles.fieldLabel}>What did you work on?</span>
-                  <input className={styles.input} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search items…" />
+                  <input ref={searchRef} className={styles.input} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search items…" />
                   {debounced.trim().length >= 2 && (
                     <div className={styles.searchResults}>
                       {results.catalog.length > 0 && <div className={styles.searchSection}>Your catalog</div>}

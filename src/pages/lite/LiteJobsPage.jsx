@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Briefcase, ChevronRight } from 'lucide-react'
+import { Briefcase, ChevronRight, Plus } from 'lucide-react'
 import AppHeader from '../../components/AppHeader'
+import NewJobSheet from '../../components/lite/NewJobSheet'
 import { useProjects } from '../../hooks/useProjects'
 import { useClients } from '../../hooks/useClients'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
@@ -15,10 +16,13 @@ import styles from './lite.module.css'
 export default function LiteJobsPage() {
   const navigate = useNavigate()
   const { companyId } = useEffectiveCompany()
-  const { projects, loading: projectsLoading } = useProjects()
+  const { projects, loading: projectsLoading, createProject } = useProjects()
   const { clients } = useClients()
   const [sums, setSums] = useState({}) // projectId -> { total, unbilled }
   const [sumsLoading, setSumsLoading] = useState(true)
+  const [showNewJob, setShowNewJob] = useState(false)
+
+  const gcs = useMemo(() => clients.filter(c => c.client_type === GC_CLIENT_TYPE), [clients])
 
   const gcName = useMemo(() => {
     const map = {}
@@ -64,7 +68,21 @@ export default function LiteJobsPage() {
             <h1 className={styles.title}>Jobs</h1>
             <p className={styles.subtitle}>Everything you're logging work against</p>
           </div>
+          {!showNewJob && (
+            <button className={styles.primaryBtn} onClick={() => setShowNewJob(true)}>
+              <Plus size={16} /> New job
+            </button>
+          )}
         </div>
+
+        {showNewJob && (
+          <NewJobSheet
+            gcs={gcs}
+            createProject={createProject}
+            onCreated={proj => navigate(`/log/job/${proj.id}`)}
+            onCancel={() => setShowNewJob(false)}
+          />
+        )}
 
         {loading ? (
           <div className={styles.loading}>Loading jobs…</div>

@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { User, Settings, Users, LogOut, ChevronDown, DollarSign } from 'lucide-react'
+import { User, Settings, Users, LogOut, ChevronDown, DollarSign, Building2, FlaskConical } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useImpersonation } from '../context/ImpersonationContext'
 import { useIsLite } from '../hooks/useIsLite'
+import { LITE_SANDBOX_COMPANY_ID } from '../lib/config'
 import ThemeToggle from './ThemeToggle'
 import styles from './UserMenu.module.css'
 
@@ -15,6 +17,7 @@ const ROLE_LABELS = {
 
 export default function UserMenu() {
   const { user, isSuperAdmin } = useAuth()
+  const { isImpersonating, actingAsCompanyId, startImpersonation, stopImpersonation } = useImpersonation()
   const { isLite } = useIsLite()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
@@ -52,6 +55,22 @@ export default function UserMenu() {
     navigate('/login')
   }
 
+  // One-click Lite sandbox for super admins: start (or switch to) an impersonation
+  // session on the sandbox tenant via the SAME machinery the admin drawer uses —
+  // real impersonation_sessions row, banner, audit trail. If already acting as a
+  // different company, end that session first so the prior audit row is closed
+  // cleanly before the new one opens (no swap, no bypass). Then land in /log.
+  async function handleLiteSandbox() {
+    setOpen(false)
+    if (actingAsCompanyId === LITE_SANDBOX_COMPANY_ID) {
+      navigate('/log')
+      return
+    }
+    if (isImpersonating) await stopImpersonation()
+    await startImpersonation(LITE_SANDBOX_COMPANY_ID, { notes: 'Time & Pay Lite sandbox (one-click)' })
+    navigate('/log')
+  }
+
   const displayName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'
   const roleLabel = role ? ROLE_LABELS[role] ?? role : null
 
@@ -84,6 +103,12 @@ export default function UserMenu() {
               <Settings size={15} />
               <span>Settings</span>
             </button>
+            {isLite && (
+              <button className={styles.menuItem} onClick={() => { navigate('/business'); setOpen(false) }}>
+                <Building2 size={15} />
+                <span>Business info</span>
+              </button>
+            )}
             {!isLite && (role === 'contractor_admin' || isSuperAdmin) && (
               <button className={styles.menuItem} onClick={() => { navigate('/pricing'); setOpen(false) }}>
                 <DollarSign size={15} />
@@ -94,6 +119,12 @@ export default function UserMenu() {
               <button className={styles.menuItem} onClick={() => { navigate('/dashboard/team'); setOpen(false) }}>
                 <Users size={15} />
                 <span>Manage Team</span>
+              </button>
+            )}
+            {isSuperAdmin && LITE_SANDBOX_COMPANY_ID && (
+              <button className={styles.menuItem} onClick={handleLiteSandbox}>
+                <FlaskConical size={15} />
+                <span>Time &amp; Pay Lite sandbox</span>
               </button>
             )}
             {isSuperAdmin && (

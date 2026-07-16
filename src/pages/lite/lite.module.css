@@ -376,6 +376,43 @@
   display: inline-block;
 }
 
+/* Bottom sheet — used for Create invoice / Mark paid on mobile-first surfaces. */
+.sheetBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 50;
+}
+
+.sheet {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  background: var(--color-surface, #fff);
+  border-radius: var(--radius-md, 10px) var(--radius-md, 10px) 0 0;
+  border: 1px solid var(--color-border);
+  padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
+  z-index: 51;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.18);
+}
+
+.sheetTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text, #1a1a1a);
+  margin: 0 0 2px;
+}
+
+.sheetActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
 /* Log-first type-ahead: merged catalog + library dropdown. Tap targets ≥ 44px. */
 .searchResults {
   margin-top: 6px;

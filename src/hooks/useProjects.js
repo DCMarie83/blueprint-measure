@@ -11,14 +11,17 @@ export function useProjects() {
   const [error, setError] = useState(null)
 
   const fetchProjects = useCallback(async () => {
-    if (!user) return
+    // Scope by the EFFECTIVE company so impersonation shows the acted-on tenant's
+    // jobs, not the raw auth user's. Gating on companyId (not user) also holds the
+    // fetch during an impersonation switch until the effective company resolves.
+    if (!companyId) { setLoading(false); return }
     setLoading(true)
 
     // Fetch projects with session count
     const { data, error: fetchError } = await supabase
       .from('projects')
       .select('*, sessions(id, updated_at, created_at)')
-      .eq('user_id', user.id)
+      .eq('company_id', companyId)
       .is('deleted_at', null)
       .order('updated_at', { ascending: false })
 
@@ -47,7 +50,7 @@ export function useProjects() {
       setProjects(enriched)
     }
     setLoading(false)
-  }, [user])
+  }, [companyId])
 
   useEffect(() => {
     fetchProjects()

@@ -50,3 +50,9 @@ export const FOUNDER_SPOTS_SCARCITY_THRESHOLD = 10;
 
 // GHL onboarding booking calendar (public link).
 export const ONBOARDING_CALENDAR_URL = 'https://api.leadconnectorhq.com/widget/booking/JqBPdsARvHo9H7xbnu0q';
+
+// Time & Pay Lite sandbox company — the one-click super-admin demo tenant. Paste
+// the real sandbox company UUID here to enable the "Time & Pay Lite sandbox"
+// UserMenu shortcut. While null/empty the menu item does not render, so no
+// half-wired impersonation is ever offered.
+export const LITE_SANDBOX_COMPANY_ID = 'fc966571-44d7-422d-a0e7-a192d37e4668';

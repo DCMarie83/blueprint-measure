@@ -66,6 +66,9 @@ import LiteJobsPage from './pages/lite/LiteJobsPage'
 import LiteJobDetailPage from './pages/lite/LiteJobDetailPage'
 import GCsPage from './pages/lite/GCsPage'
 import GCCatalogPage from './pages/lite/GCCatalogPage'
+import LiteInvoicesPage from './pages/lite/LiteInvoicesPage'
+import LiteInvoiceDetailPage from './pages/lite/LiteInvoiceDetailPage'
+import LiteBusinessInfoPage from './pages/lite/LiteBusinessInfoPage'
 
 // ProtectedRoute wraps pages that require login + completed setup.
 // bypassSubscriptionGate: if true, skip the subscription check (for /settings, /account, /subscribe)
@@ -213,6 +216,33 @@ function JobsRouter() {
   return isLite ? <LiteJobsPage /> : <KanbanPage />
 }
 
+// /invoices is shared by both families: the contractor list vs the Lite list,
+// and likewise for the detail page. Branch instead of redirect so the Lite nav's
+// Invoices link and deep links to a specific invoice both land correctly.
+function InvoicesRouter() {
+  const { isLite, resolved } = useIsLite()
+  if (!resolved) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+        <div className="spinner" />
+      </div>
+    )
+  }
+  return isLite ? <LiteInvoicesPage /> : <InvoiceListPage />
+}
+
+function InvoiceDetailRouter() {
+  const { isLite, resolved } = useIsLite()
+  if (!resolved) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+        <div className="spinner" />
+      </div>
+    )
+  }
+  return isLite ? <LiteInvoiceDetailPage /> : <InvoiceDetailPage />
+}
+
 function RouteBreadcrumbs() {
   const location = useLocation()
   useEffect(() => {
@@ -333,20 +363,24 @@ export default function App() {
         element={<ProtectedRoute><FamilyGate allow="lite" redirectTo="/dashboard"><GCsPage /></FamilyGate></ProtectedRoute>}
       />
       <Route
+        path="/business"
+        element={<ProtectedRoute><FamilyGate allow="lite" redirectTo="/dashboard"><LiteBusinessInfoPage /></FamilyGate></ProtectedRoute>}
+      />
+      <Route
         path="/gcs/:clientId/catalog"
         element={<ProtectedRoute><FamilyGate allow="lite" redirectTo="/dashboard"><GCCatalogPage /></FamilyGate></ProtectedRoute>}
       />
       <Route
         path="/invoices"
-        element={<ProtectedRoute><InvoiceListPage /></ProtectedRoute>}
+        element={<ProtectedRoute><InvoicesRouter /></ProtectedRoute>}
       />
       <Route
         path="/invoices/new"
-        element={<ProtectedRoute><InvoiceForm /></ProtectedRoute>}
+        element={<ProtectedRoute><FamilyGate allow="contractor" redirectTo="/invoices"><InvoiceForm /></FamilyGate></ProtectedRoute>}
       />
       <Route
         path="/invoices/:id"
-        element={<ProtectedRoute><InvoiceDetailPage /></ProtectedRoute>}
+        element={<ProtectedRoute><InvoiceDetailRouter /></ProtectedRoute>}
       />
       <Route
         path="/time"
