@@ -21,30 +21,29 @@ export function extractYouTubeId(input) {
 
 // ── Public queries (authenticated users) ─────────────────────────────────
 
-export async function getAcademyModules({ isAdmin } = {}) {
-  let query = supabase
+// Tenant-facing reads are scoped to the caller's plan-family audience set —
+// lite sees ['all','lite'], contractor sees ['all','fieldos']. 'admin' content
+// is deliberately NOT in any tenant set; it surfaces only in the super-admin
+// CRUD (getAllModules/getAllVideos). audiences defaults to ['all'] as a safe
+// floor so a missing arg can never leak the admin lane.
+export async function getAcademyModules({ audiences = ['all'] } = {}) {
+  const { data, error } = await supabase
     .from('academy_modules')
     .select('*')
     .eq('is_active', true)
+    .in('audience', audiences)
     .order('sort_order', { ascending: true })
-  if (!isAdmin) {
-    query = query.eq('audience', 'all')
-  }
-  const { data, error } = await query
   if (error) throw error
   return data ?? []
 }
 
-export async function getAcademyVideos({ tradeVertical, isAdmin } = {}) {
-  let query = supabase
+export async function getAcademyVideos({ tradeVertical, audiences = ['all'] } = {}) {
+  const query = supabase
     .from('academy_videos')
     .select('*')
     .eq('is_active', true)
+    .in('audience', audiences)
     .order('sort_order', { ascending: true })
-
-  if (!isAdmin) {
-    query = query.eq('audience', 'all')
-  }
 
   const { data, error } = await query
   if (error) throw error

@@ -1,8 +1,12 @@
 import { useEffect } from 'react'
+import { useSheetSignal } from '../../hooks/useSheetSignal'
 import styles from './Modal.module.css'
 
 // A reusable modal dialog. Pass `onClose` to handle clicking the backdrop or X button.
 export default function Modal({ title, onClose, children }) {
+  // Only mounted while open, so signal the FAB to hide for its whole lifetime.
+  useSheetSignal(true)
+
   // Close on Escape key
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') onClose() }

@@ -3,6 +3,7 @@ import { Bookmark, BookmarkCheck, GraduationCap, Search, MessageCircleQuestion, 
 import AppHeader from '../components/AppHeader'
 import { useAuth } from '../context/AuthContext'
 import { useEffectiveCompany } from '../hooks/useEffectiveCompany'
+import { useIsLite } from '../hooks/useIsLite'
 import {
   getAcademyModules, getAcademyVideos,
   getPublishedQuestions, getMyQuestions, submitQuestion,
@@ -15,9 +16,15 @@ import styles from './AcademyPage.module.css'
 const SECTION_ORDER = ['start_here', 'core', 'advanced']
 const SECTION_LABELS = { start_here: 'Start Here', core: 'Core', advanced: 'Advanced' }
 
+// Stable per-family audience sets (module-level so the load effect dep is a
+// stable reference). Tenant surfaces never include 'admin'.
+const LITE_AUDIENCES = ['all', 'lite']
+const FIELDOS_AUDIENCES = ['all', 'fieldos']
+
 export default function AcademyPage() {
-  const { user, userProfile, company, isSuperAdmin } = useAuth()
+  const { user, company } = useAuth()
   const { companyId: effectiveCompanyId } = useEffectiveCompany()
+  const { isLite, resolved } = useIsLite()
   const { isBookmarked, toggle, count } = useAcademyBookmarks()
 
   const [tab, setTab] = useState('lessons')
@@ -41,17 +48,19 @@ export default function AcademyPage() {
   const [askSubmitting, setAskSubmitting] = useState(false)
   const [askSuccess, setAskSuccess] = useState(false)
 
-  const isAdmin = isSuperAdmin || userProfile?.role === 'contractor_admin'
   const tradeVertical = company?.trade_vertical || 'all'
+  const audiences = isLite ? LITE_AUDIENCES : FIELDOS_AUDIENCES
 
-  // Load lessons
+  // Load lessons — held until the plan family resolves so a Lite tenant never
+  // fetches with the contractor audience set (or vice-versa) on first paint.
   useEffect(() => {
+    if (!resolved) return
     let cancelled = false
     ;(async () => {
       try {
         const [mods, vids] = await Promise.all([
-          getAcademyModules({ isAdmin }),
-          getAcademyVideos({ tradeVertical, isAdmin }),
+          getAcademyModules({ audiences }),
+          getAcademyVideos({ tradeVertical, audiences }),
         ])
         if (!cancelled) { setModules(mods); setVideos(vids) }
       } catch (err) {
@@ -61,7 +70,7 @@ export default function AcademyPage() {
       }
     })()
     return () => { cancelled = true }
-  }, [tradeVertical, isAdmin])
+  }, [tradeVertical, audiences, resolved])
 
   // Load Q&A when tab changes
   const loadQA = useCallback(async () => {
@@ -184,7 +193,6 @@ export default function AcademyPage() {
           <h3 className={styles.cardTitle}>{video.title}</h3>
           <p className={styles.cardDesc}>{video.description}</p>
           {mod && <span className={styles.categoryBadge}>{mod.title}</span>}
-          {video.audience === 'admin' && <span className={styles.adminBadge}>Admin</span>}
         </div>
       </div>
     )
@@ -261,7 +269,6 @@ export default function AcademyPage() {
                     <div key={mod.id} className={styles.moduleBlock}>
                       <h3 className={styles.moduleHeading}>
                         {mod.title}
-                        {mod.audience === 'admin' && <span className={styles.adminBadge}>Admin</span>}
                       </h3>
                       {mod.description && <p className={styles.moduleDesc}>{mod.description}</p>}
                       <div className={styles.grid}>

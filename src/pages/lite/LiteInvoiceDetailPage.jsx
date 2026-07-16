@@ -5,6 +5,7 @@ import AppHeader from '../../components/AppHeader'
 import InvoiceStatusBadge from '../../components/invoices/InvoiceStatusBadge'
 import { useInvoice, useInvoiceMutations, isOverdue } from '../../hooks/useInvoices'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
+import { useSheetSignal } from '../../hooks/useSheetSignal'
 import { generateInvoicePDF } from '../../lib/generateInvoicePDF'
 import { generateLiteInvoiceXLSX } from '../../lib/generateLiteInvoiceXLSX'
 import { supabase } from '../../lib/supabase'
@@ -45,6 +46,9 @@ export default function LiteInvoiceDetailPage() {
   const [payMode, setPayMode] = useState('full') // 'full' | 'partial'
   const [payAmount, setPayAmount] = useState('')
   const [payMethod, setPayMethod] = useState('check')
+
+  // Hide the floating feedback FAB while the mark-paid sheet is open.
+  useSheetSignal(showPaySheet)
 
   // Resolve the GC + project once the invoice loads (for branding + recipient).
   useEffect(() => {
@@ -161,6 +165,13 @@ export default function LiteInvoiceDetailPage() {
   const canPay = invoice.status !== 'void' && balanceDue > 0
   const hasEmail = !!gc?.primary_email
 
+  // The GC's online response, if they've reviewed the invoice. Any value
+  // starting with "approv" is an approval; anything else set means they asked
+  // for changes and left a note in gc_comment.
+  const gcApproval = invoice.gc_approval || null
+  const gcApproved = gcApproval && String(gcApproval).toLowerCase().startsWith('approv')
+  const gcComment = (invoice.gc_comment || '').trim()
+
   return (
     <div className={styles.page}>
       <AppHeader />
@@ -174,6 +185,23 @@ export default function LiteInvoiceDetailPage() {
           </div>
           <InvoiceStatusBadge status={invoice.status} isOverdue={overdue} />
         </div>
+
+        {/* GC's online response, when they've reviewed the invoice. */}
+        {gcApproval && (
+          <div className={styles.card} style={{ borderLeft: `3px solid ${gcApproved ? 'var(--color-success)' : 'var(--color-warning, #b45309)'}` }}>
+            <div className={styles.statLabel} style={{ color: gcApproved ? 'var(--color-success)' : 'var(--color-warning, #b45309)', marginBottom: 6 }}>
+              {gcApproved ? 'Approved by the GC' : 'Changes requested'}
+            </div>
+            <p className={styles.entryMeta} style={{ margin: 0 }}>
+              {gcApproved
+                ? `${gcName} approved this invoice online${invoice.gc_responded_at ? ` on ${fmtDate(invoice.gc_responded_at)}` : ''}.`
+                : `${gcName} asked for changes${invoice.gc_responded_at ? ` on ${fmtDate(invoice.gc_responded_at)}` : ''}.`}
+            </p>
+            {!gcApproved && gcComment && (
+              <p className={styles.entryName} style={{ marginTop: 10, whiteSpace: 'pre-wrap' }}>{gcComment}</p>
+            )}
+          </div>
+        )}
 
         {/* Actions */}
         <div className={styles.card}>

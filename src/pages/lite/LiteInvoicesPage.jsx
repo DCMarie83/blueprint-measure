@@ -24,6 +24,16 @@ export default function LiteInvoicesPage() {
     return d ? new Date(d).toLocaleDateString() : ''
   }
 
+  // The GC's own response to the invoice, if they've reviewed it online. Any
+  // value starting with "approv" is an approval; anything else set means the GC
+  // asked for changes.
+  function gcResponseFor(inv) {
+    if (!inv.gc_approval) return null
+    return String(inv.gc_approval).toLowerCase().startsWith('approv')
+      ? { label: 'GC approved', approved: true }
+      : { label: 'Changes requested', approved: false }
+  }
+
   return (
     <div className={styles.page}>
       <AppHeader />
@@ -54,6 +64,12 @@ export default function LiteInvoicesPage() {
               <div className={styles.listRight}>
                 <div className={styles.entryAmount}>{fmtMoney(inv.total)}</div>
                 <div style={{ marginTop: 4 }}><InvoiceStatusBadge status={inv.status} isOverdue={isOverdue(inv)} /></div>
+                {(() => {
+                  const r = gcResponseFor(inv)
+                  return r ? (
+                    <div style={{ marginTop: 4, fontSize: 11, fontWeight: 600, color: r.approved ? 'var(--color-success)' : 'var(--color-warning, #b45309)' }}>{r.label}</div>
+                  ) : null
+                })()}
               </div>
               <ChevronRight size={18} className={styles.muted} />
             </button>

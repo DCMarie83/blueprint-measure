@@ -9,7 +9,10 @@
 .main {
   max-width: 720px;
   margin: 0 auto;
-  padding: 16px 14px 96px;
+  /* Extra bottom room clears the floating FAB and the home-indicator safe area,
+     and gives the composer scroll headroom so the Add button can rise above the
+     on-screen keyboard when the rate/qty fields expand. */
+  padding: 16px 14px calc(96px + env(safe-area-inset-bottom));
 }
 
 .header {
@@ -599,4 +602,28 @@
 .stepDone {
   color: var(--color-text-muted);
   font-weight: 500;
+}
+
+/* ── Mobile ergonomics (≤640px) ─────────────────────────────────── */
+/* Guarantee ≥44px tap targets on the primary interactive controls so nothing
+   is fiddly on a phone. Desktop sizing (padding-driven) is untouched. */
+@media (max-width: 640px) {
+  .primaryBtn,
+  .secondaryBtn,
+  .modeBtn,
+  .input,
+  .select {
+    min-height: 44px;
+  }
+  .iconBtn {
+    min-width: 44px;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+  }
+  .chip {
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+  }
 }

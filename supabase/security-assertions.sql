@@ -26,6 +26,7 @@ expected_anon_fns(fn) AS (
   VALUES
     ('accept_estimate'),
     ('decline_estimate'),
+    ('gc_respond_to_invoice'),
     ('get_founder_spots'),
     ('get_lite_offer'),
     ('get_portal_estimate'),

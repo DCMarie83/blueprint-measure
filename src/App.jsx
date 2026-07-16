@@ -53,6 +53,7 @@ import InvoiceListPage from './pages/InvoiceListPage'
 import InvoiceDetailPage from './pages/InvoiceDetailPage'
 import InvoiceForm from './components/invoices/InvoiceForm'
 import InvoicePortalPage from './pages/InvoicePortalPage'
+import GCInvoiceReviewPage from './pages/GCInvoiceReviewPage'
 import PasswordRecoveryHandler from './components/PasswordRecoveryHandler'
 import ImpersonationBanner from './components/ImpersonationBanner'
 import SubscriptionGate from './components/auth/SubscriptionGate'
@@ -297,6 +298,7 @@ export default function App() {
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/portal/:token" element={<PortalPage />} />
       <Route path="/portal/invoice/:token" element={<InvoicePortalPage />} />
+      <Route path="/gc/invoice/:token" element={<GCInvoiceReviewPage />} />
       <Route path="/rivetpay/:token" element={<RivetPayLinkPage />} />
 
       {/* Registration / setup — only for users who haven't completed setup */}
@@ -414,7 +416,7 @@ export default function App() {
       />
       <Route
         path="/resources"
-        element={<ProtectedRoute><FamilyGate allow="contractor" redirectTo="/log"><ResourcesPage /></FamilyGate></ProtectedRoute>}
+        element={<ProtectedRoute><ResourcesPage /></ProtectedRoute>}
       />
       <Route
         path="/reports"

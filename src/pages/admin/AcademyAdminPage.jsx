@@ -7,8 +7,23 @@ import {
 import { supabase } from '../../lib/supabase'
 import styles from './sections.module.css'
 
-const EMPTY_MODULE = { title: '', description: '', sort_order: 0, is_active: true, audience: 'all', module_group: 'core' }
-const EMPTY_VIDEO = { module_id: '', title: '', description: '', youtube_id: '', duration: '', audience: 'all', trade_vertical: 'all', sort_order: 0, is_active: true }
+// New rows default to 'fieldos' on the form — a deliberate authoring default
+// (the column's own DB default is separate). Full audience set is the live
+// four-value CHECK: all / fieldos / lite / admin.
+const EMPTY_MODULE = { title: '', description: '', sort_order: 0, is_active: true, audience: 'fieldos', module_group: 'core' }
+const EMPTY_VIDEO = { module_id: '', title: '', description: '', youtube_id: '', duration: '', audience: 'fieldos', trade_vertical: 'all', sort_order: 0, is_active: true }
+
+const AUDIENCE_OPTIONS = [
+  { value: 'all', label: 'Everyone' },
+  { value: 'fieldos', label: 'Contractors' },
+  { value: 'lite', label: 'Time & Pay Lite' },
+  { value: 'admin', label: 'Internal' },
+]
+const AUDIENCE_LABELS = Object.fromEntries(AUDIENCE_OPTIONS.map(o => [o.value, o.label]))
+
+function AudienceBadge({ value }) {
+  return <span className={styles.badge}>{AUDIENCE_LABELS[value] || value || '—'}</span>
+}
 
 export default function AcademyAdminPage() {
   const [tab, setTab] = useState('content')
@@ -75,7 +90,7 @@ export default function AcademyAdminPage() {
           description: moduleModal.description || null,
           sort_order: parseInt(moduleModal.sort_order) || 0,
           is_active: moduleModal.is_active,
-          audience: moduleModal.audience || 'all',
+          audience: moduleModal.audience || 'fieldos',
           module_group: moduleModal.module_group || 'core',
         })
       } else {
@@ -84,7 +99,7 @@ export default function AcademyAdminPage() {
           description: moduleModal.description || null,
           sort_order: parseInt(moduleModal.sort_order) || 0,
           is_active: moduleModal.is_active,
-          audience: moduleModal.audience || 'all',
+          audience: moduleModal.audience || 'fieldos',
           module_group: moduleModal.module_group || 'core',
         })
       }
@@ -208,6 +223,7 @@ export default function AcademyAdminPage() {
                     <tr>
                       <th className={styles.th}>Order</th>
                       <th className={styles.th}>Title</th>
+                      <th className={styles.th}>Audience</th>
                       <th className={styles.th}>Status</th>
                       <th className={styles.th}>Videos</th>
                       <th className={styles.th}></th>
@@ -218,6 +234,7 @@ export default function AcademyAdminPage() {
                       <tr key={mod.id} className={styles.tr}>
                         <td className={styles.td}>{mod.sort_order}</td>
                         <td className={styles.td} style={{ fontWeight: 600 }}>{mod.title}</td>
+                        <td className={styles.td}><AudienceBadge value={mod.audience} /></td>
                         <td className={styles.td}>
                           <span className={`${styles.badge} ${mod.is_active ? styles.badgeActive : styles.badgeInactive}`}>
                             {mod.is_active ? 'Active' : 'Inactive'}
@@ -277,7 +294,7 @@ export default function AcademyAdminPage() {
                             {vid.duration && <span style={{ marginLeft: 8, fontWeight: 400, color: 'var(--color-text-muted)', fontSize: 12 }}>{vid.duration}</span>}
                           </td>
                           <td className={styles.td}>{mod?.title ?? '—'}</td>
-                          <td className={styles.td}>{vid.audience}</td>
+                          <td className={styles.td}><AudienceBadge value={vid.audience} /></td>
                           <td className={styles.td}>{vid.trade_vertical}</td>
                           <td className={styles.td}>
                             <span className={`${styles.badge} ${vid.is_active ? styles.badgeActive : styles.badgeInactive}`}>
@@ -376,9 +393,8 @@ export default function AcademyAdminPage() {
             <div className={styles.formGrid}>
               <div className={styles.formField}>
                 <label className={styles.formLabel}>Audience</label>
-                <select className={styles.formSelect} value={moduleModal.audience || 'all'} onChange={e => setModuleModal(m => ({ ...m, audience: e.target.value }))}>
-                  <option value="all">All users</option>
-                  <option value="admin">Admin only</option>
+                <select className={styles.formSelect} value={moduleModal.audience || 'fieldos'} onChange={e => setModuleModal(m => ({ ...m, audience: e.target.value }))}>
+                  {AUDIENCE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
               <div className={styles.formField}>
@@ -445,9 +461,8 @@ export default function AcademyAdminPage() {
             <div className={styles.formGrid}>
               <div className={styles.formField}>
                 <label className={styles.formLabel}>Audience</label>
-                <select className={styles.formSelect} value={videoModal.audience} onChange={e => setVideoModal(v => ({ ...v, audience: e.target.value }))}>
-                  <option value="all">All users</option>
-                  <option value="admin">Admins only</option>
+                <select className={styles.formSelect} value={videoModal.audience || 'fieldos'} onChange={e => setVideoModal(v => ({ ...v, audience: e.target.value }))}>
+                  {AUDIENCE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
               <div className={styles.formField}>

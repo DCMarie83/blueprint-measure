@@ -12,11 +12,15 @@ export async function getResourceCategories() {
   return data ?? []
 }
 
-export async function getResources() {
+// Tenant-facing read scoped to the caller's plan-family audience set — lite
+// sees ['all','lite'], contractor sees ['all','fieldos']. audiences defaults to
+// ['all'] as a safe floor. Super-admin CRUD uses getAllResources (unfiltered).
+export async function getResources({ audiences = ['all'] } = {}) {
   const { data, error } = await supabase
     .from('resources')
     .select('*')
     .eq('is_active', true)
+    .in('audience', audiences)
     .order('is_featured', { ascending: false })
     .order('sort_order', { ascending: true })
   if (error) throw error

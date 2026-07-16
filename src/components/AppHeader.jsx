@@ -1,8 +1,9 @@
 import { Link, useLocation } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Menu, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useIsLite } from '../hooks/useIsLite'
+import { useLiteNavSections } from '../hooks/useLiteNavSections'
 import Logo from './brand/Logo'
 import UserMenu from './UserMenu'
 import TrialBanner from './TrialBanner'
@@ -44,13 +45,23 @@ function NavLink({ to, label, active, onClick }) {
 export default function AppHeader({ extras = null }) {
   const location = useLocation()
   const { company } = useAuth()
-  const { isLite } = useIsLite()
+  const { isLite, resolved } = useIsLite()
+  const liteSections = useLiteNavSections(isLite && resolved)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [logoError, setLogoError] = useState(false)
 
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + '/')
 
-  const primaryNav = isLite ? LITE_NAV : CONTRACTOR_NAV
+  // Lite nav appends Academy/Resources AFTER Reports, but only for the lite
+  // family and only once there is at least one lite-visible row in that section
+  // (zero lite content = the item does not exist). Contractor nav is untouched.
+  const primaryNav = useMemo(() => {
+    if (!isLite) return CONTRACTOR_NAV
+    const nav = [...LITE_NAV]
+    if (liteSections.academy) nav.push({ to: '/academy', label: 'Academy' })
+    if (liteSections.resources) nav.push({ to: '/resources', label: 'Resources' })
+    return nav
+  }, [isLite, liteSections])
   const homeLink = isLite ? '/home' : '/dashboard'
   const hasTenantLogo = company?.logo_url && !logoError
 

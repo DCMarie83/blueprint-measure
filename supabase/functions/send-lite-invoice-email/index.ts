@@ -1,8 +1,9 @@
 // send-lite-invoice-email — the Time & Pay Lite counterpart to send-invoice-email.
 // Kept as a SIBLING (not a branch of the contractor function) so the sub-facing
 // path can differ safely: subject reads "Invoice {number} from {company}", the
-// reply-to is the sub who sent it, the body is deliberately pun-free, and there
-// is never a client-portal button (Lite invoices carry no portal_token). It
+// reply-to is the sub who sent it, and the body is deliberately pun-free. It
+// carries a "Review & approve online" button to the GC response page
+// (/gc/invoice/{portal_token}) so the GC can approve or send the invoice back. It
 // resolves the recipient from the invoice's own client_id, falling back to the
 // project's client, and finally to the client's primary_email.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -76,7 +77,7 @@ Deno.serve(async (req) => {
     // 4. Fetch invoice + project
     const { data: invoice, error: invErr } = await adminClient
       .from('invoices')
-      .select('id, invoice_number, title, status, total, due_date, project_id, company_id, client_id')
+      .select('id, invoice_number, title, status, total, due_date, project_id, company_id, client_id, portal_token')
       .eq('id', invoice_id)
       .single()
     if (invErr || !invoice) return json({ error: 'Invoice not found' }, 404)
@@ -153,6 +154,16 @@ Deno.serve(async (req) => {
       ? `<p style="font-size: 14px; color: #555; line-height: 1.5;"><strong style="color: ${tenantPrimary};">Payment due by ${dueDateFmt}</strong></p>`
       : ''
 
+    // Review & approve button — links to the GC response page. Only rendered when
+    // the invoice actually carries a portal_token (defensive; it always should).
+    const siteUrl = Deno.env.get('SITE_URL') || 'https://app.rivetdog.com'
+    const reviewUrl = invoice.portal_token ? `${siteUrl}/gc/invoice/${invoice.portal_token}` : null
+    const reviewBtnHtml = reviewUrl
+      ? `<div style="text-align: center; margin: 24px 0;">
+          <a href="${reviewUrl}" style="display: inline-block; padding: 14px 28px; background: ${tenantPrimary}; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">Review &amp; approve online</a>
+        </div>`
+      : ''
+
     // Referral canvas — a self-contained, brand-owned card at the bottom of the
     // email. It sells RivetDog and never touches the money conversation; it is
     // also the SOLE attribution now (no separate "Powered by RivetDog" footer, to
@@ -166,12 +177,12 @@ Deno.serve(async (req) => {
             <td style="background: #1B2426; border-radius: 12px; padding: 32px 28px;">
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                 <tr>
-                  <td style="text-align: center;">
-                    <div style="font-size: 26px; font-weight: 800; letter-spacing: 0.5px; color: #F27243; font-family: 'Telegraf', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;">RivetDog</div>
+                  <td align="center" style="text-align: center;">
+                    <div style="font-size: 40px; line-height: 1; font-weight: 800; letter-spacing: 0.5px; color: #F27243; font-family: 'Telegraf', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;">RivetDog</div>
                     <h2 style="font-size: 21px; line-height: 1.3; color: #ffffff; font-weight: 700; margin: 20px 0 12px;">Interested in how RivetDog can make your estimating and jobs easier?</h2>
                     <p style="font-size: 14px; line-height: 1.5; color: #b8c0c2; margin: 0 0 24px;">The platform built for trade contractors. Measure, estimate, invoice, get paid.</p>
                     <a href="${referralUrl}" style="display: inline-block; background: #F27243; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; padding: 13px 28px; border-radius: 8px;">See RivetDog</a>
-                    <p style="font-size: 12px; color: #8b9295; margin: 22px 0 0;">This invoice was sent with RivetDog Time &amp; Pay Lite.</p>
+                    <p style="font-size: 12px; color: #8b9295; margin: 22px 0 0;">Sent with RivetDog.</p>
                   </td>
                 </tr>
               </table>
@@ -192,12 +203,14 @@ Deno.serve(async (req) => {
         ${dueHtml}
         ${renderPaymentInstructionsHTML(company?.payment_instructions, tenantPrimary)}
         <p style="font-size: 13px; color: #888; margin-top: 24px;">A PDF copy is attached. Questions? Just reply to this email.</p>
+        ${reviewBtnHtml}
         ${referralCard}
       </div>
     `
 
-    // Plain-text fallback: headline + full URL + the sent-with line.
-    const text = `Interested in how RivetDog can make your estimating and jobs easier?\n\nSee RivetDog: ${referralUrl}\n\nThis invoice was sent with RivetDog Time & Pay Lite.`
+    // Plain-text fallback: review link (when present) + referral headline + URL.
+    const reviewText = reviewUrl ? `Review & approve online: ${reviewUrl}\n\n` : ''
+    const text = `${reviewText}Interested in how RivetDog can make your estimating and jobs easier?\n\nSee RivetDog: ${referralUrl}\n\nSent with RivetDog.`
 
     // 9. Send via Resend — reply-to the sub who sent it.
     const resendRes = await fetch('https://api.resend.com/emails', {

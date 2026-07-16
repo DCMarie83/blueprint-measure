@@ -10,6 +10,7 @@ import { useWorkItems } from '../../hooks/useWorkItems'
 import { useWorkEntries } from '../../hooks/useWorkEntries'
 import { supabase } from '../../lib/supabase'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
+import { useSheetSignal } from '../../hooks/useSheetSignal'
 import { GC_CLIENT_TYPE, LITE_UNITS, unitLabel, fmtMoney } from '../../lib/lite'
 import { TOASTS, DONE_CLOSER } from '../../lib/liteVoice'
 import styles from './lite.module.css'
@@ -52,6 +53,9 @@ export default function LogPage() {
 
   // "Done for today" summary sheet — purely presentational, writes nothing.
   const [doneSheet, setDoneSheet] = useState(null) // null | { count, total, otherAmount, otherJobs }
+
+  // Hide the floating feedback FAB while the done-for-today sheet is open.
+  useSheetSignal(!!doneSheet)
 
   const promptedRef = useRef(new Set())
   const [catalogPrompt, setCatalogPrompt] = useState(null) // gc client id needing setup

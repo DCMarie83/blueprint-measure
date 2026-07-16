@@ -1,10 +1,15 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useIsLite } from '../hooks/useIsLite'
 import AppHeader from '../components/AppHeader'
 import ResourceCard from '../components/resources/ResourceCard'
 import { getResourceCategories, getResources } from '../data/resources'
 import { US_STATES } from '../data/usStates'
 import styles from './DashboardPage.module.css'
+
+// Stable per-family audience sets (module-level for a stable effect dep).
+const LITE_AUDIENCES = ['all', 'lite']
+const FIELDOS_AUDIENCES = ['all', 'fieldos']
 
 const filterLabel = { fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)', marginBottom: 6 }
 const filterInput = { padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', background: 'var(--color-bg)', color: 'var(--color-text)', fontSize: 13 }
@@ -27,6 +32,8 @@ const pillActive = { ...pillBase, background: 'var(--color-primary)', color: 'va
 
 export default function ResourcesPage() {
   const { isSuperAdmin, company } = useAuth()
+  const { isLite, resolved } = useIsLite()
+  const audiences = isLite ? LITE_AUDIENCES : FIELDOS_AUDIENCES
   const companyState = company?.state || ''
 
   const [categories, setCategories] = useState([])
@@ -40,14 +47,17 @@ export default function ResourcesPage() {
   useEffect(() => { setStateFilter(companyState || '__all') }, [companyState])
 
   useEffect(() => {
+    if (!resolved) return
+    let cancelled = false
     ;(async () => {
       try {
-        const [cats, ress] = await Promise.all([getResourceCategories(), getResources()])
-        setCategories(cats); setResources(ress)
-      } catch (err) { alert(err.message) }
-      finally { setLoading(false) }
+        const [cats, ress] = await Promise.all([getResourceCategories(), getResources({ audiences })])
+        if (!cancelled) { setCategories(cats); setResources(ress) }
+      } catch (err) { if (!cancelled) alert(err.message) }
+      finally { if (!cancelled) setLoading(false) }
     })()
-  }, [])
+    return () => { cancelled = true }
+  }, [resolved, audiences])
 
   function handleLogoUploaded(resourceId, newUrl) {
     setResources(prev => prev.map(r => r.id === resourceId ? { ...r, logo_url: newUrl } : r))
@@ -159,22 +169,18 @@ export default function ResourcesPage() {
               ))}
             </>
           ) : (
-            [...grouped.values()].map(({ category, items }, idx) => (
-              <section key={category.id} id={`category-${category.key}`} style={{ marginTop: idx === 0 ? 0 : 32 }}>
-                <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--color-text)', margin: '0 0 12px 0' }}>{category.label}</h2>
-                {items.length === 0 ? (
-                  <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
-                    {searchQuery ? `No matches for '${searchQuery}' in this category.` : 'No partners listed in this category yet.'}
-                  </p>
-                ) : (
+            [...grouped.values()]
+              .filter(({ items }) => items.length > 0)
+              .map(({ category, items }, idx) => (
+                <section key={category.id} id={`category-${category.key}`} style={{ marginTop: idx === 0 ? 0 : 32 }}>
+                  <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--color-text)', margin: '0 0 12px 0' }}>{category.label}</h2>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 12 }}>
                     {items.map(res => (
                       <ResourceCard key={res.id} resource={res} category={category} isSuperAdmin={isSuperAdmin} onLogoUploaded={handleLogoUploaded} />
                     ))}
                   </div>
-                )}
-              </section>
-            ))
+                </section>
+              ))
           )}
         </>}
       </main>

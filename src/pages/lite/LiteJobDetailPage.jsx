@@ -6,6 +6,7 @@ import { useProjects } from '../../hooks/useProjects'
 import { useClients } from '../../hooks/useClients'
 import { useWorkEntries } from '../../hooks/useWorkEntries'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
+import { useSheetSignal } from '../../hooks/useSheetSignal'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { GC_CLIENT_TYPE, unitLabel, fmtMoney, invoiceDueDate } from '../../lib/lite'
@@ -41,6 +42,9 @@ export default function LiteJobDetailPage() {
   const [invTo, setInvTo] = useState('')
   const [creating, setCreating] = useState(false)
   const [invError, setInvError] = useState(null)
+
+  // Hide the floating feedback FAB while the invoice-range sheet is open.
+  useSheetSignal(showInvoiceSheet)
 
   const job = projects.find(p => p.id === id) || null
   const gc = clients.find(c => c.id === job?.client_id && c.client_type === GC_CLIENT_TYPE) || null
