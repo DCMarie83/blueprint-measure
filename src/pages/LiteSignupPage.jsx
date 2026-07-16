@@ -216,6 +216,9 @@ export default function LiteSignupPage() {
   const priceLabel = formatPrice(offer.monthly_price)
   const trialDays = offer.trial_days
   const spots = offer.spots_remaining
+  // Threshold is offer-driven; fall back to the shared config only when the
+  // RPC leaves it null.
+  const scarcityThreshold = offer.scarcity_threshold ?? FOUNDER_SPOTS_SCARCITY_THRESHOLD
 
   return (
     <div className={s.page}>
@@ -241,7 +244,7 @@ export default function LiteSignupPage() {
 
           {/* Scarcity — mirrors /signup's threshold rule against the live count */}
           {spots != null && (
-            spots <= FOUNDER_SPOTS_SCARCITY_THRESHOLD ? (
+            spots <= scarcityThreshold ? (
               <p className={s.scarcityLine}>
                 Only {spots} founder {spots === 1 ? 'spot' : 'spots'} left at this price.
               </p>

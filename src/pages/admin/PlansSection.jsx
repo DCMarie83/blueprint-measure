@@ -13,6 +13,7 @@ export default function PlansSection() {
   const [expandedId, setExpandedId] = useState(null)
   const [editState, setEditState] = useState({})
   const [saving, setSaving] = useState(null)
+  const [cohortUsage, setCohortUsage] = useState({})
 
   useEffect(() => {
     async function load() {
@@ -25,6 +26,28 @@ export default function PlansSection() {
     }
     load()
   }, [])
+
+  // Founder-spot usage for every capped plan, in ONE query (grouped client-side
+  // by plan_key). "Used" = real signups only, so internal companies are excluded.
+  useEffect(() => {
+    const cappedKeys = plans.filter(p => p.cohort_cap != null).map(p => p.key)
+    if (cappedKeys.length === 0) return
+    let cancelled = false
+    ;(async () => {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('plan_key')
+        .eq('is_internal', false)
+        .in('plan_key', cappedKeys)
+      if (error || cancelled) return
+      const counts = {}
+      for (const row of data ?? []) {
+        counts[row.plan_key] = (counts[row.plan_key] ?? 0) + 1
+      }
+      setCohortUsage(counts)
+    })()
+    return () => { cancelled = true }
+  }, [plans])
 
   function companiesOnPlan(planKey) {
     return companies.filter(c => (c.plan_key ?? c.plan) === planKey).length
@@ -120,6 +143,9 @@ export default function PlansSection() {
                 </span>
                 {plan.is_intro_tier && <span className={styles.pill}>Intro</span>}
                 {count > 0 && <span className={styles.pill}>{count} companies</span>}
+                {plan.cohort_cap != null && (
+                  <span className={styles.pill}>{cohortUsage[plan.key] ?? 0} of {plan.cohort_cap} founder spots used</span>
+                )}
               </div>
               <span style={{ color: 'var(--color-text-muted)' }}>{isExp ? '▾' : '▸'}</span>
             </div>
