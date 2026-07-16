@@ -34,6 +34,90 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- Unsupported-browser guard — ES5 only, must stay before the module
+         script. The bundle targets es2020 (Vite default: chrome87/safari14);
+         browsers older than that parse-fail the bundle with "Script error."
+         and a blank page. This detects them via API markers (no syntax
+         probing — CSP-safe) and shows a readable message instead.
+         Complete no-op on supported browsers. -->
+    <script>
+      (function () {
+        try {
+          if (
+            typeof globalThis !== 'undefined' &&
+            typeof Promise !== 'undefined' &&
+            typeof Promise.prototype.finally === 'function' &&
+            typeof Promise.allSettled === 'function' &&
+            typeof Object.fromEntries === 'function' &&
+            typeof BigInt === 'function'
+          ) {
+            return; // supported — do nothing
+          }
+        } catch (e) {
+          // detection itself blew up — treat as unsupported
+        }
+
+        // Telemetry beacon — fire-and-forget; wrapped so it can never block
+        // the message below. Captures UA + full URL (keeps gclid/utm params)
+        // plus timezone/locale/viewport, mirroring src/lib/logError.js so
+        // these rows are attributable (internal Asia/Bangkok vs real market).
+        try {
+          if (typeof fetch === 'function') {
+            var tz = '';
+            try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
+            fetch('%VITE_SUPABASE_URL%' + '/rest/v1/client_errors', {
+              method: 'POST',
+              headers: {
+                'apikey': '%VITE_SUPABASE_ANON_KEY%',
+                'Content-Type': 'application/json',
+                'Prefer': 'return=minimal'
+              },
+              body: JSON.stringify({
+                error_message: 'Unsupported browser',
+                severity: 'error',
+                error_fingerprint: 'unsupported_browser_guard',
+                page_url: window.location.href,
+                user_agent: navigator.userAgent,
+                timezone: tz,
+                locale: navigator.language || navigator.userLanguage || '',
+                viewport: window.innerWidth + 'x' + window.innerHeight
+              })
+            });
+          }
+        } catch (e) { /* never block the message */ }
+
+        // Branded fallback message — all styles inline (no CSS has loaded).
+        try {
+          var root = document.getElementById('root');
+          var host = root || document.body;
+          host.innerHTML =
+            '<div style="min-height:100vh;background:#1B2426;color:#F5F2ED;' +
+            'font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,Helvetica,Arial,sans-serif;' +
+            'display:-webkit-box;display:-webkit-flex;display:flex;' +
+            '-webkit-box-align:center;-webkit-align-items:center;align-items:center;' +
+            '-webkit-box-pack:center;-webkit-justify-content:center;justify-content:center;' +
+            'padding:24px;text-align:center;">' +
+              '<div style="max-width:420px;">' +
+                '<div style="color:#F27243;font-size:14px;font-weight:700;' +
+                'letter-spacing:1px;text-transform:uppercase;margin-bottom:16px;">RivetDog</div>' +
+                '<h1 style="font-size:22px;line-height:1.3;margin:0 0 12px;color:#F5F2ED;">' +
+                'Your browser is too old to run RivetDog</h1>' +
+                '<p style="font-size:15px;line-height:1.6;margin:0 0 20px;color:#C9C4BC;">' +
+                'The app needs a newer browser than this one. Updating your browser, ' +
+                'or opening this same link in a current version of Chrome, Safari, or Edge, ' +
+                'will get you in.</p>' +
+                '<p style="font-size:14px;line-height:1.6;margin:0;color:#C9C4BC;">' +
+                'Stuck? Email us at ' +
+                '<a href="mailto:support@rivetdog.com" style="color:#F27243;text-decoration:none;font-weight:600;">' +
+                'support@rivetdog.com</a> and we\'ll help you out.</p>' +
+              '</div>' +
+            '</div>';
+        } catch (e) {
+          // last resort: plain-text fallback
+          document.title = 'Browser not supported — RivetDog';
+        }
+      })();
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
