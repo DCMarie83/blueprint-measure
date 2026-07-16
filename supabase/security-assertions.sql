@@ -17,11 +17,20 @@
 WITH
 
 -- ── A1 ─────────────────────────────────────────────────────────────
--- Postgres grants EXECUTE to PUBLIC by default and PostgREST exposes the
--- public schema, so EVERY function is anon-callable unless revoked.
--- REVOKE FROM anon is a NO-OP (anon is a PUBLIC member) — revoke FROM
--- PUBLIC, then GRANT back to authenticated if real users need it.
--- Adding a name here is a deliberate decision, not a formality.
+-- On this project, Supabase's default privileges grant EXECUTE on every
+-- NEW function DIRECTLY to anon and authenticated (not only to PUBLIC),
+-- and PostgREST exposes the public schema — so a fresh function is
+-- anon-callable the instant it is created, until it is explicitly revoked.
+-- REVOKE ... FROM PUBLIC alone is NOT enough here: the direct anon and
+-- authenticated grants survive it.
+--   • Internal function (no anon, no browser): REVOKE EXECUTE ON FUNCTION
+--     ... FROM PUBLIC, anon, authenticated. Strip all three.
+--   • Deliberate anon function (listed below): do the same revoke, then
+--     GRANT EXECUTE ... TO anon (and TO authenticated when signed-in users
+--     also call it). The grant is the record of intent.
+-- A new function passing A1 by accident is therefore impossible — it is
+-- born anon-executable. If a name shows up as UNEXPECTED, the author simply
+-- skipped the revoke. Adding a name here is a deliberate decision.
 expected_anon_fns(fn) AS (
   VALUES
     ('accept_estimate'),

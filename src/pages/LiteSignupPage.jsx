@@ -222,9 +222,15 @@ export default function LiteSignupPage() {
 
   return (
     <div className={s.page}>
-      {/* ── Top bar ─────────────────────────────────────────────── */}
-      <div className={s.topBar}>
-        <a href="https://rivetdog.com" style={{ textDecoration: 'none' }}><Logo variant="full" /></a>
+      {/* ── Title block — long-form logo + product name + offer, centered
+           on mobile and desktop. Name and offer are RPC-driven, never
+           literals. ─────────────────────────────────────────────────── */}
+      <div className={s.titleBlock}>
+        <a href="https://rivetdog.com" style={{ textDecoration: 'none', display: 'inline-block' }}>
+          <Logo variant="full" className={s.titleLogo} />
+        </a>
+        <div className={s.titleName}>{planName}</div>
+        <div className={s.titleOffer}>{priceLabel}/mo · {trialDays}-day free trial</div>
       </div>
 
       {/* ── Hero ────────────────────────────────────────────────── */}
