@@ -122,25 +122,6 @@
   margin: 0 0 20px;
 }
 
-/* ── Hero demos (inside left column) ──────────────────────── */
-.heroDemos {
-  margin-top: 8px;
-}
-
-.heroDemosTitle {
-  font-family: var(--font-heading);
-  font-weight: 800;
-  font-size: 18px;
-  color: var(--color-text);
-  margin: 0 0 12px;
-}
-
-.heroDemoGrid {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
 /* ── Section strip (shared) ───────────────────────────────── */
 .strip {
   max-width: 1120px;
@@ -396,6 +377,11 @@
     grid-template-columns: 1fr;
     gap: 24px;
     padding: 16px 16px 32px;
+  }
+
+  /* Mobile: the form stacks first, headline + scarcity below it */
+  .formCard {
+    order: -1;
   }
 
   .heroH1 {

@@ -61,10 +61,16 @@ import BillingCancelPage from './pages/BillingCancelPage'
 // ProtectedRoute wraps pages that require login + completed setup.
 // bypassSubscriptionGate: if true, skip the subscription check (for /settings, /account, /subscribe)
 function ProtectedRoute({ children, bypassSubscriptionGate = false }) {
-  const { user, loading, setupComplete, company, companyLoading, isSuperAdmin } = useAuth()
+  const { user, loading, setupComplete, company, companyLoading, companyResolved, isSuperAdmin } = useAuth()
   useConversionTracker()
 
-  if (loading || companyLoading) {
+  // Hold the spinner while auth is loading, a company fetch is in flight, OR
+  // an authenticated user's company is still UNKNOWN (companyResolved starts
+  // false and only flips true once the profile->company fetch chain settles).
+  // Without the third clause there is a first-render window where company is
+  // null-because-not-fetched-yet, the card wall's `company &&` clause skips,
+  // and protected pages flash before the /subscribe redirect.
+  if (loading || companyLoading || (user && !companyResolved)) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
         <div className="spinner" />

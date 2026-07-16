@@ -13,6 +13,12 @@ export function AuthProvider({ children }) {
   const [companyLoading, setCompanyLoading] = useState(false)
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const [superAdminChecked, setSuperAdminChecked] = useState(false)
+  // companyResolved distinguishes "company not fetched yet" (false) from
+  // "fetch chain finished — company is real data or genuinely null" (true).
+  // ProtectedRoute holds its spinner until this is true, closing the render
+  // window where an authenticated user briefly had no company and the card
+  // wall was skipped.
+  const [companyResolved, setCompanyResolved] = useState(false)
 
   const refreshCompany = useCallback(async (companyId) => {
     const cid = companyId || userProfile?.company_id
@@ -29,6 +35,9 @@ export function AuthProvider({ children }) {
       // fail open
     } finally {
       setCompanyLoading(false)
+      // Fetch attempt finished — success or failure, the company state is now
+      // as known as it is going to get. Always resolves; never left hanging.
+      setCompanyResolved(true)
     }
   }, [userProfile?.company_id])
 
@@ -43,8 +52,14 @@ export function AuthProvider({ children }) {
         .single()
       setUserProfile(data)
       if (data) setSetupComplete(!!data.setup_completed_at)
+      // No company_id on the profile means the company-fetch effect will never
+      // run — the company is genuinely null (or unknowable). Mark resolved so
+      // consumers fall through to today's behavior instead of spinning forever.
+      // When company_id exists, refreshCompany's finally marks resolved.
+      if (!data?.company_id) setCompanyResolved(true)
     } catch {
-      // fail open
+      // fail open — profile fetch threw; company can't be determined, resolve.
+      setCompanyResolved(true)
     } finally {
       setUserProfileLoading(false)
     }
@@ -77,6 +92,7 @@ export function AuthProvider({ children }) {
         setSetupComplete(null)
         setUserProfile(null)
         setCompany(null)
+        setCompanyResolved(false)
         setIsSuperAdmin(false)
         setSuperAdminChecked(false)
       }
@@ -123,7 +139,7 @@ export function AuthProvider({ children }) {
   }, [user?.id])
 
   return (
-    <AuthContext.Provider value={{ user, loading, setupComplete, setSetupComplete, userProfile, userProfileLoading, refreshUserProfile, company, companyLoading, refreshCompany, isSuperAdmin, superAdminChecked }}>
+    <AuthContext.Provider value={{ user, loading, setupComplete, setSetupComplete, userProfile, userProfileLoading, refreshUserProfile, company, companyLoading, companyResolved, refreshCompany, isSuperAdmin, superAdminChecked }}>
       {children}
     </AuthContext.Provider>
   )

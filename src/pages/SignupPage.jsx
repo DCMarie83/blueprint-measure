@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { BRAND } from '../lib/config'
+import { formatAuthError } from '../lib/authErrors'
 import Logo from '../components/brand/Logo'
 import { US_STATES } from '../data/usStates'
 import { TRADES, DEFAULT_TRADE } from '../constants/trades'
-import { Check, Shield, Lock, Ruler, FileText, Clock, DollarSign, ChevronRight } from 'lucide-react'
+import { Check, Shield, Lock, Ruler, FileText, Clock, DollarSign, Eye, EyeOff } from 'lucide-react'
 import formStyles from './LoginPage.module.css'
 import s from './SignupPage.module.css'
 
@@ -81,28 +82,24 @@ export default function SignupPage() {
     }
   }, [])
 
-  // ── Account state (UNCHANGED) ──────────────────────────────
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
+  const navigate = useNavigate()
+
+  // ── Account state ──────────────────────────────────────────
+  const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [termsAccepted, setTermsAccepted] = useState(false)
 
-  // ── Business state (UNCHANGED) ─────────────────────────────
+  // ── Business state ─────────────────────────────────────────
   const [companyName, setCompanyName] = useState('')
   const [tradeVertical, setTradeVertical] = useState(DEFAULT_TRADE)
-  const [addressLine1, setAddressLine1] = useState('')
-  const [addressLine2, setAddressLine2] = useState('')
-  const [city, setCity] = useState('')
   const [state, setState] = useState('')
-  const [zip, setZip] = useState('')
-  const [businessPhone, setBusinessPhone] = useState('')
-  const [brandingChoice, setBrandingChoice] = useState('later')
 
-  // ── UI state (UNCHANGED) ───────────────────────────────────
+  // ── UI state ───────────────────────────────────────────────
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [duplicateEmail, setDuplicateEmail] = useState(false)
   const [sent, setSent] = useState(false)
   const [resending, setResending] = useState(false)
   const [resendMsg, setResendMsg] = useState('')
@@ -112,39 +109,34 @@ export default function SignupPage() {
   const [scarcity, setScarcity] = useState(null)
   const [scarcityLoading, setScarcityLoading] = useState(false)
 
-  const passwordsMatch = password === confirmPassword
   const canSubmit =
-    firstName.trim() && lastName.trim() && email.trim() &&
-    password.length >= 8 && passwordsMatch && confirmPassword &&
-    companyName.trim() && termsAccepted &&
-    addressLine1.trim() && city.trim() && state && zip.trim() && businessPhone.trim()
+    fullName.trim() && email.trim() &&
+    password.length >= 8 && state && termsAccepted
 
-  // ── handleSubmit (UNCHANGED — identical to original) ───────
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
+    setDuplicateEmail(false)
     if (!canSubmit) return
     setLoading(true)
 
-    const { error: signUpError } = await supabase.auth.signUp({
+    // Exact metadata contract with handle_new_user: nothing else is sent.
+    // company_name key is omitted entirely when blank (trigger falls back
+    // full_name -> email local part). terms_accepted_at / email_consent are
+    // written server-side by the trigger.
+    const metadata = {
+      signup_path: 'self_serve',
+      full_name: fullName.trim(),
+      trade_vertical: tradeVertical,
+      state,
+    }
+    if (companyName.trim()) metadata.company_name = companyName.trim()
+
+    const { data, error: signUpError } = await supabase.auth.signUp({
       email: email.trim(),
       password,
       options: {
-        data: {
-          signup_path: 'self_serve',
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
-          company_name: companyName.trim(),
-          trade_vertical: tradeVertical,
-          address_line1: addressLine1.trim(),
-          address_line2: addressLine2.trim(),
-          city: city.trim(),
-          state,
-          zip: zip.trim(),
-          business_phone: businessPhone.trim(),
-          wants_branding_quote: brandingChoice === 'quote',
-          terms_accepted_at: new Date().toISOString(),
-        },
+        data: metadata,
         emailRedirectTo: `${window.location.origin}/login`,
       },
     })
@@ -152,11 +144,21 @@ export default function SignupPage() {
     if (signUpError) {
       const msg = signUpError.message?.toLowerCase() || ''
       if (msg.includes('already registered') || msg.includes('already been registered')) {
-        setError('An account with this email already exists. Try logging in or resetting your password.')
+        setDuplicateEmail(true)
       } else {
-        setError(signUpError.message)
+        setError(formatAuthError(signUpError))
       }
+    } else if (data?.user && data.user.identities?.length === 0) {
+      // Confirmations ON: Supabase obfuscates an existing confirmed email as a
+      // fake SUCCESS with an empty identities array. Without this check the
+      // user waits forever for an email that never sends.
+      setDuplicateEmail(true)
+    } else if (data?.session) {
+      // Confirmations OFF: signed in immediately — straight to checkout.
+      navigate('/subscribe')
+      return
     } else {
+      // Confirmations ON, genuinely new account: keep the email screen.
       setSent(true)
     }
     setLoading(false)
@@ -322,15 +324,6 @@ export default function SignupPage() {
             })()}
           </div>
 
-          {/* ── Demo videos (inside hero left column) ────────────── */}
-          <div className={s.heroDemos}>
-            <h2 className={s.heroDemosTitle}>See it work</h2>
-            <div className={s.heroDemoGrid}>
-              {DEMOS.map(d => (
-                <DemoCard key={d.id} id={d.id} label={d.label} />
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* ── Form card (RIGHT column) ────────────────────────── */}
@@ -338,18 +331,9 @@ export default function SignupPage() {
           <h2 className={s.formTitle}>Start your free trial</h2>
 
           <form className={formStyles.form} onSubmit={handleSubmit}>
-            {/* Your Account */}
-            <div style={{ fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)', marginBottom: 8 }}>Your Account</div>
-
-            <div className={formStyles.nameRow}>
-              <div className={formStyles.field}>
-                <label htmlFor="firstName">First name</label>
-                <input id="firstName" type="text" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Jane" required autoComplete="given-name" />
-              </div>
-              <div className={formStyles.field}>
-                <label htmlFor="lastName">Last name</label>
-                <input id="lastName" type="text" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Smith" required autoComplete="family-name" />
-              </div>
+            <div className={formStyles.field}>
+              <label htmlFor="fullName">Full name</label>
+              <input id="fullName" type="text" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Jane Smith" required autoComplete="name" />
             </div>
 
             <div className={formStyles.field}>
@@ -359,22 +343,41 @@ export default function SignupPage() {
 
             <div className={formStyles.field}>
               <label htmlFor="signupPassword">Password</label>
-              <input id="signupPassword" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="At least 8 characters" required minLength={8} autoComplete="new-password" />
+              <div style={{ position: 'relative' }}>
+                <input
+                  id="signupPassword"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="At least 8 characters"
+                  required
+                  minLength={8}
+                  autoComplete="new-password"
+                  style={{ width: '100%', boxSizing: 'border-box', paddingRight: 42 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(v => !v)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             <div className={formStyles.field}>
-              <label htmlFor="confirmPassword">Confirm password</label>
-              <input id="confirmPassword" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Repeat password" required autoComplete="new-password" />
-              {confirmPassword && !passwordsMatch && <div className={formStyles.error}>Passwords don't match</div>}
+              <label htmlFor="companyName">Company name <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>(optional)</span></label>
+              <input id="companyName" type="text" value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder="Leave blank if you work under your own name." autoComplete="organization" />
             </div>
-
-            {/* Your Business */}
-            <div style={{ fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)', marginTop: 20, marginBottom: 8, paddingTop: 16, borderTop: '1px solid var(--color-border)' }}>Your Business</div>
 
             <div className={formStyles.nameRow}>
               <div className={formStyles.field}>
-                <label htmlFor="companyName">Company name</label>
-                <input id="companyName" type="text" value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder="e.g. Smith Painting LLC" required autoComplete="organization" />
+                <label htmlFor="state">State</label>
+                <select id="state" value={state} onChange={e => handleHeroStateChange(e.target.value)} style={selectStyle} required>
+                  <option value="">Select state</option>
+                  {US_STATES.map(st => <option key={st.code} value={st.code}>{st.code}</option>)}
+                </select>
               </div>
               <div className={formStyles.field}>
                 <label htmlFor="tradeVertical">Trade</label>
@@ -386,59 +389,6 @@ export default function SignupPage() {
               </div>
             </div>
 
-            <div className={formStyles.field}>
-              <label htmlFor="addressLine1">Street address</label>
-              <input id="addressLine1" type="text" value={addressLine1} onChange={e => setAddressLine1(e.target.value)} placeholder="123 Main St" required autoComplete="address-line1" />
-            </div>
-
-            <div className={formStyles.field}>
-              <label htmlFor="addressLine2">Suite / Unit <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>(optional)</span></label>
-              <input id="addressLine2" type="text" value={addressLine2} onChange={e => setAddressLine2(e.target.value)} placeholder="Suite 200" autoComplete="address-line2" />
-            </div>
-
-            <div className={formStyles.nameRow} style={{ gap: 10 }}>
-              <div className={formStyles.field} style={{ flex: 2 }}>
-                <label htmlFor="city">City</label>
-                <input id="city" type="text" value={city} onChange={e => setCity(e.target.value)} placeholder="Columbus" required autoComplete="address-level2" />
-              </div>
-              <div className={formStyles.field} style={{ flex: 1 }}>
-                <label htmlFor="state">State</label>
-                <select id="state" value={state} onChange={e => setState(e.target.value)} style={selectStyle} required>
-                  <option value="">—</option>
-                  {US_STATES.map(st => <option key={st.code} value={st.code}>{st.code}</option>)}
-                </select>
-              </div>
-              <div className={formStyles.field} style={{ flex: 0, minWidth: 90 }}>
-                <label htmlFor="zip">Zip</label>
-                <input id="zip" type="text" value={zip} onChange={e => setZip(e.target.value.replace(/[^0-9]/g, '').slice(0, 5))} placeholder="43215" required inputMode="numeric" maxLength={5} autoComplete="postal-code" />
-              </div>
-            </div>
-
-            <div className={formStyles.field}>
-              <label htmlFor="businessPhone">Business phone</label>
-              <input id="businessPhone" type="tel" value={businessPhone} onChange={e => setBusinessPhone(e.target.value)} placeholder="(614) 555-0100" required autoComplete="tel" />
-            </div>
-
-            {/* Branding */}
-            <div style={{ margin: '16px 0', padding: 14, background: 'var(--color-surface-2)', borderRadius: 'var(--radius)', fontSize: 14 }}>
-              <div style={{ fontWeight: 600, marginBottom: 8 }}>Your company logo</div>
-              {[
-                { value: 'have', label: 'I have a logo' },
-                { value: 'quote', label: 'I\'d like a free branding quote from NG Automation Hub' },
-                { value: 'later', label: 'I\'ll add it later' },
-              ].map(opt => (
-                <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 6 }}>
-                  <input type="radio" name="brandingChoice" value={opt.value} checked={brandingChoice === opt.value} onChange={() => setBrandingChoice(opt.value)} />
-                  <span style={{ fontSize: 13 }}>{opt.label}</span>
-                </label>
-              ))}
-              {brandingChoice === 'have' && (
-                <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '8px 0 0', paddingLeft: 24 }}>
-                  You'll upload your logo from Settings after your account is active.
-                </p>
-              )}
-            </div>
-
             {/* Terms */}
             <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: 'var(--color-text-muted)', cursor: 'pointer' }}>
               <input type="checkbox" checked={termsAccepted} onChange={e => setTermsAccepted(e.target.checked)} style={{ marginTop: 2 }} />
@@ -446,11 +396,21 @@ export default function SignupPage() {
                 I agree to the{' '}
                 <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)' }}>Terms of Service</a>
                 {' '}and{' '}
-                <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)' }}>Privacy Policy</a>
+                <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)' }}>Privacy Policy</a>.
               </span>
             </label>
+            <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '6px 0 0', paddingLeft: 24 }}>
+              We'll email you product updates and setup tips. Unsubscribe anytime.
+            </p>
 
             {error && <div className={formStyles.error}>{error}</div>}
+            {duplicateEmail && (
+              <div className={formStyles.error}>
+                An account with this email already exists. Try{' '}
+                <Link to="/login" style={{ color: 'inherit', fontWeight: 600 }}>logging in</Link>
+                {' '}or resetting your password.
+              </div>
+            )}
 
             <button type="submit" className={formStyles.btn} disabled={!canSubmit || loading}>
               {loading ? 'Creating account…' : 'Start free trial'}
@@ -461,6 +421,16 @@ export default function SignupPage() {
             Already have an account?{' '}
             <Link to="/login" style={{ color: 'var(--color-primary)', fontWeight: 500 }}>Sign in</Link>
           </p>
+        </div>
+      </div>
+
+      {/* ── 3. DEMO VIDEOS (below the fold) ─────────────────────── */}
+      <div className={s.strip}>
+        <h2 className={s.stripTitle}>See it work</h2>
+        <div className={s.demoGrid}>
+          {DEMOS.map(d => (
+            <DemoCard key={d.id} id={d.id} label={d.label} />
+          ))}
         </div>
       </div>
 
