@@ -78,10 +78,15 @@ export function useCompanyPlan(company) {
   const { plans } = usePlans()
   if (!company) return null
   if (company.subscription_status === 'pilot') {
+    // A pilot company keeps unlimited entitlements, but its plan FAMILY must
+    // still come from the real plans row when plan_key resolves (e.g. the Lite
+    // founders test tenant). Legacy pilots with no resolvable key stay familyless.
+    const pilotPlan = plans.find(p => p.key === company.plan_key)
     return {
       ...GRANDFATHER_DEFAULTS,
       key: 'pilot',
       display_name: 'Pilot',
+      plan_family: pilotPlan?.plan_family ?? null,
       unlimited: true,
     }
   }
