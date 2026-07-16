@@ -8,6 +8,7 @@ import { useClients } from '../../hooks/useClients'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import { supabase } from '../../lib/supabase'
 import { GC_CLIENT_TYPE, fmtMoney } from '../../lib/lite'
+import { EMPTY } from '../../lib/liteVoice'
 import styles from './lite.module.css'
 
 // Lite "/jobs" — a flat list (never the kanban). For each job we surface the
@@ -89,7 +90,7 @@ export default function LiteJobsPage() {
         ) : projects.length === 0 ? (
           <div className={styles.empty}>
             <Briefcase size={44} />
-            <div className={styles.emptyTitle}>No jobs yet</div>
+            <div className={styles.emptyTitle}>{EMPTY.jobs}</div>
             <p>Start a job from the Daily Log to begin tracking your work and pay.</p>
           </div>
         ) : (

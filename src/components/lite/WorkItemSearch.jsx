@@ -28,20 +28,23 @@ const WorkItemSearch = forwardRef(function WorkItemSearch({
   }, [search])
 
   // Merged results: GC catalog first (capped 5), then library minus items already
-  // in this GC's catalog (capped 6). Case-insensitive substring on name. Hourly
-  // keeps only unit='hour'; piece trims unit='hour' out of the library section.
+  // in this GC's catalog (capped 6). Case-insensitive substring on name OR
+  // category, so a category-word search ('interior', 'trim') surfaces every item
+  // in that group. Hourly keeps only unit='hour'; piece trims unit='hour' out of
+  // the library section.
   const results = useMemo(() => {
     const q = debounced.trim().toLowerCase()
     if (q.length < 2) return { catalog: [], library: [] }
+    const matches = r => (r.name?.toLowerCase().includes(q)) || (r.category?.toLowerCase().includes(q))
     const active = catalog.filter(i => i.is_active)
     const catMatches = active
-      .filter(i => (!hourly || i.unit === 'hour') && i.name?.toLowerCase().includes(q))
+      .filter(i => (!hourly || i.unit === 'hour') && matches(i))
       .slice(0, 5)
     const existingLibIds = new Set(catalog.map(i => i.library_item_id).filter(Boolean))
     const libMatches = library
       .filter(l => !existingLibIds.has(l.id)
         && (hourly ? l.unit === 'hour' : l.unit !== 'hour')
-        && l.name?.toLowerCase().includes(q))
+        && matches(l))
       .slice(0, 6)
     return { catalog: catMatches, library: libMatches }
   }, [debounced, catalog, library, hourly])
@@ -64,14 +67,14 @@ const WorkItemSearch = forwardRef(function WorkItemSearch({
           {results.catalog.map(i => (
             <button key={i.id} type="button" className={styles.searchItem} onClick={() => onPickCatalog(i)}>
               <span className={styles.searchName}>{i.name}</span>
-              <span className={styles.searchMeta}>{unitLabel(i.unit)} · {fmtMoney(i.rate)}</span>
+              <span className={styles.searchMeta}>{i.category ? `${i.category} · ` : ''}{unitLabel(i.unit)} · {fmtMoney(i.rate)}</span>
             </button>
           ))}
           {results.library.length > 0 && <div className={styles.searchSection}>Add from library</div>}
           {results.library.map(l => (
             <button key={l.id} type="button" className={styles.searchItem} onClick={() => onPickLibrary(l)}>
               <span className={styles.searchName}>{l.name}</span>
-              <span className={styles.searchMeta}>{unitLabel(l.unit)}{l.billing_note ? ` · ${l.billing_note}` : ''}</span>
+              <span className={styles.searchMeta}>{l.category ? `${l.category} · ` : ''}{unitLabel(l.unit)}{l.billing_note ? ` · ${l.billing_note}` : ''}</span>
             </button>
           ))}
           <button type="button" className={styles.searchItem} onClick={() => onPickCustom(typed)}>

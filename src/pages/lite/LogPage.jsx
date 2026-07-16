@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
 import AppHeader from '../../components/AppHeader'
 import NewJobSheet from '../../components/lite/NewJobSheet'
@@ -11,11 +11,13 @@ import { useWorkEntries } from '../../hooks/useWorkEntries'
 import { supabase } from '../../lib/supabase'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import { GC_CLIENT_TYPE, LITE_UNITS, unitLabel, fmtMoney } from '../../lib/lite'
+import { TOASTS, DONE_CLOSER } from '../../lib/liteVoice'
 import styles from './lite.module.css'
 
 const todayStr = () => new Date().toISOString().slice(0, 10)
 
 export default function LogPage() {
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const initialJob = searchParams.get('job')
   const { companyId, company } = useEffectiveCompany()
@@ -47,6 +49,9 @@ export default function LogPage() {
 
   // New job
   const [showNewJob, setShowNewJob] = useState(false)
+
+  // "Done for today" summary sheet — purely presentational, writes nothing.
+  const [doneSheet, setDoneSheet] = useState(null) // null | { count, total, otherAmount, otherJobs }
 
   const promptedRef = useRef(new Set())
   const [catalogPrompt, setCatalogPrompt] = useState(null) // gc client id needing setup
@@ -175,7 +180,25 @@ export default function LogPage() {
   function handleJobCreated(proj) {
     setProjectId(proj.id)
     setShowNewJob(false)
-    flash('New job started — go fetch!')
+    flash(TOASTS.jobCreated)
+  }
+
+  // Open the day-summary sheet. Reads only — the entries are already saved on
+  // Add. One extra company-scoped read tallies same-date entries on OTHER jobs.
+  async function openDoneSheet() {
+    const base = { count: entries.length, total: dayTotal, otherAmount: 0, otherJobs: 0 }
+    if (!companyId) { setDoneSheet(base); return }
+    const { data } = await supabase
+      .from('work_entries')
+      .select('project_id, amount')
+      .eq('company_id', companyId)
+      .eq('work_date', date)
+      .neq('project_id', projectId)
+    if (data && data.length) {
+      base.otherAmount = data.reduce((s, e) => s + (Number(e.amount) || 0), 0)
+      base.otherJobs = new Set(data.map(e => e.project_id)).size
+    }
+    setDoneSheet(base)
   }
 
   async function addPiece() {
@@ -198,7 +221,7 @@ export default function LogPage() {
           work_date: date,
         })
         resetComposer()
-        flash('Logged it — good dog!')
+        flash(TOASTS.entryLogged)
       } catch (err) {
         alert('Failed to add entry: ' + err.message)
       }
@@ -231,7 +254,7 @@ export default function LogPage() {
         work_date: date,
       })
       resetComposer()
-      flash('New item saved — good dog!')
+      flash(TOASTS.itemSaved)
     } catch (err) {
       alert('Item saved to your catalog, but logging the entry failed: ' + err.message + '\nSearch it again to log against it.')
       resetComposer()
@@ -258,7 +281,7 @@ export default function LogPage() {
           work_date: date,
         })
         resetHourly()
-        flash('Logged it — good dog!')
+        flash(TOASTS.entryLogged)
       } catch (err) {
         alert('Failed to add entry: ' + err.message)
       }
@@ -281,7 +304,7 @@ export default function LogPage() {
           work_date: date,
         })
         resetHourly()
-        flash('Logged it — good dog!')
+        flash(TOASTS.entryLogged)
       } catch (err) {
         alert('Failed to add entry: ' + err.message)
       }
@@ -311,7 +334,7 @@ export default function LogPage() {
         work_date: date,
       })
       resetHourly()
-      flash('New item saved — good dog!')
+      flash(TOASTS.itemSaved)
     } catch (err) {
       alert('Item saved to your catalog, but logging the entry failed: ' + err.message + '\nSearch it again to log against it.')
       resetHourly()
@@ -483,7 +506,42 @@ export default function LogPage() {
             )}
           </div>
         )}
+
+        {/* Done for today — only once this job has an entry on this date. */}
+        {job && entries.length > 0 && (
+          <button className={styles.primaryBtn} style={{ width: '100%' }} onClick={openDoneSheet}>
+            Done for today
+          </button>
+        )}
       </main>
+
+      {doneSheet && (
+        <>
+          <div className={styles.sheetBackdrop} onClick={() => setDoneSheet(null)} />
+          <div className={styles.sheet} role="dialog" aria-label="Done for today">
+            <h2 className={styles.sheetTitle}>Done for today</h2>
+            <p className={styles.subtitle} style={{ marginBottom: 12 }}>{job?.name} · {date}</p>
+
+            <div className={styles.rowBetween} style={{ padding: '8px 0' }}>
+              <span className={styles.entryMeta}>{doneSheet.count} {doneSheet.count === 1 ? 'entry' : 'entries'} logged</span>
+              <span className={styles.entryAmount}>{fmtMoney(doneSheet.total)}</span>
+            </div>
+
+            {doneSheet.otherJobs > 0 && (
+              <p className={styles.entryMeta} style={{ marginTop: 4 }}>
+                Plus {fmtMoney(doneSheet.otherAmount)} across {doneSheet.otherJobs} other {doneSheet.otherJobs === 1 ? 'job' : 'jobs'} today.
+              </p>
+            )}
+
+            <p className={styles.muted} style={{ marginTop: 12 }}>{DONE_CLOSER}</p>
+
+            <div className={styles.sheetActions}>
+              <button className={styles.secondaryBtn} onClick={() => setDoneSheet(null)}>Keep logging</button>
+              <button className={styles.primaryBtn} onClick={() => navigate('/home')}>Back to Home</button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

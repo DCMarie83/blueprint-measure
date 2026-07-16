@@ -1,9 +1,13 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, FileText, HardHat, ChevronRight, Check } from 'lucide-react'
 import AppHeader from '../../components/AppHeader'
+import Logo from '../../components/brand/Logo'
+import { useAuth } from '../../context/AuthContext'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import { useLiteHomeStats } from '../../hooks/useLiteHomeStats'
 import { fmtMoney } from '../../lib/lite'
+import { timeGreeting, randomTagline } from '../../lib/liteVoice'
 import styles from './lite.module.css'
 
 // The Lite home. Hero "Owed to you", quick actions, a 2×2 earnings grid, and
@@ -12,11 +16,15 @@ import styles from './lite.module.css'
 // are pun-free; only the brand-new welcome line is allowed a wag.
 export default function LiteHomePage() {
   const navigate = useNavigate()
+  const { userProfile } = useAuth()
   const { companyId, company } = useEffectiveCompany()
   const {
     owed, earnedMTD, earnedYTD, loggedThisWeek, outstanding, paidCount,
     oldestUnpaid, jumpBackIn, flags, loading,
   } = useLiteHomeStats(companyId)
+
+  // Tagline holds steady within a session, rotates on reload (mount-time pick).
+  const [tagline] = useState(randomTagline)
 
   // Hold the shell until the effective company resolves (impersonation-safe).
   if (!companyId || loading) {
@@ -46,6 +54,13 @@ export default function LiteHomePage() {
             <h1 className={styles.title}>{company?.name || 'Home'}</h1>
             <p className={styles.subtitle}>Here's where you stand today.</p>
           </div>
+        </div>
+
+        {/* Mascot greeting — personality block, kept visually apart from money. */}
+        <div className={styles.greeting}>
+          <Logo variant="mark" className={styles.greetingMark} />
+          <div className={styles.greetingText}>{timeGreeting(userProfile?.full_name)}</div>
+          <div className={styles.greetingTag}>{tagline}</div>
         </div>
 
         {/* Hero */}

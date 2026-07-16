@@ -8,6 +8,7 @@ import { useClients } from '../../hooks/useClients'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import { supabase } from '../../lib/supabase'
 import { GC_CLIENT_TYPE } from '../../lib/lite'
+import { EMPTY, TOASTS } from '../../lib/liteVoice'
 import styles from './lite.module.css'
 
 export default function GCsPage() {
@@ -17,6 +18,7 @@ export default function GCsPage() {
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState(null)
   const [catalogCounts, setCatalogCounts] = useState({})
+  const [toast, setToast] = useState('')
 
   const gcs = clients.filter(c => c.client_type === GC_CLIENT_TYPE)
 
@@ -40,6 +42,7 @@ export default function GCsPage() {
   }, [companyId, gcs.length])
 
   async function handleSubmit(payload) {
+    const isNew = !editing
     if (editing) {
       await updateClient(editing.id, payload)
     } else {
@@ -48,6 +51,10 @@ export default function GCsPage() {
     setShowForm(false)
     setEditing(null)
     refetch()
+    if (isNew) {
+      setToast(TOASTS.gcAdded)
+      setTimeout(() => setToast(''), 2200)
+    }
   }
 
   function openAdd() { setEditing(null); setShowForm(true) }
@@ -57,6 +64,7 @@ export default function GCsPage() {
     <div className={styles.page}>
       <AppHeader />
       <main className={styles.main}>
+        {toast && <div className={styles.card} style={{ background: 'var(--color-action-open)', color: '#fff', borderColor: 'transparent' }}>{toast}</div>}
         <div className={styles.header}>
           <div>
             <h1 className={styles.title}>GCs</h1>
@@ -72,7 +80,7 @@ export default function GCsPage() {
         ) : gcs.length === 0 ? (
           <div className={styles.empty}>
             <HardHat size={44} />
-            <div className={styles.emptyTitle}>No GCs yet</div>
+            <div className={styles.emptyTitle}>{EMPTY.gcs}</div>
             <p>Add the general contractors you work for to start building their catalogs.</p>
             <button className={styles.primaryBtn} style={{ marginTop: 14 }} onClick={openAdd}><Plus size={16} /> Add your first GC</button>
           </div>

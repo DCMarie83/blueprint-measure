@@ -153,6 +153,33 @@ Deno.serve(async (req) => {
       ? `<p style="font-size: 14px; color: #555; line-height: 1.5;"><strong style="color: ${tenantPrimary};">Payment due by ${dueDateFmt}</strong></p>`
       : ''
 
+    // Referral canvas — a self-contained, brand-owned card at the bottom of the
+    // email. It sells RivetDog and never touches the money conversation; it is
+    // also the SOLE attribution now (no separate "Powered by RivetDog" footer, to
+    // avoid a duplicate). No hosted RivetDog brand image exists in any template,
+    // so the wordmark is styled text (Dee can swap in a hosted asset later).
+    const referralUrl = 'https://rivetdog.com/?utm_source=lite_invoice&utm_medium=email&utm_campaign=gc_referral'
+    const referralCard = `
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 28px 0;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse: separate;">
+          <tr>
+            <td style="background: #1B2426; border-radius: 12px; padding: 32px 28px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td style="text-align: center;">
+                    <div style="font-size: 26px; font-weight: 800; letter-spacing: 0.5px; color: #F27243; font-family: 'Telegraf', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;">RivetDog</div>
+                    <h2 style="font-size: 21px; line-height: 1.3; color: #ffffff; font-weight: 700; margin: 20px 0 12px;">Interested in how RivetDog can make your estimating and jobs easier?</h2>
+                    <p style="font-size: 14px; line-height: 1.5; color: #b8c0c2; margin: 0 0 24px;">The platform built for trade contractors. Measure, estimate, invoice, get paid.</p>
+                    <a href="${referralUrl}" style="display: inline-block; background: #F27243; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; padding: 13px 28px; border-radius: 8px;">See RivetDog</a>
+                    <p style="font-size: 12px; color: #8b9295; margin: 22px 0 0;">This invoice was sent with RivetDog Time &amp; Pay Lite.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+    `
+
     const html = `
       <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
         ${logoHtml}
@@ -165,11 +192,12 @@ Deno.serve(async (req) => {
         ${dueHtml}
         ${renderPaymentInstructionsHTML(company?.payment_instructions, tenantPrimary)}
         <p style="font-size: 13px; color: #888; margin-top: 24px;">A PDF copy is attached. Questions? Just reply to this email.</p>
-        <p style="font-size: 12px; color: #999; margin-top: 16px; line-height: 1.5;">Interested in how RivetDog can make your estimating and jobs easier? <a href="https://rivetdog.com/?utm_source=lite_invoice&utm_medium=email&utm_campaign=gc_referral" style="color: #999; text-decoration: underline;">Learn more</a></p>
-        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-        <p style="font-size: 11px; color: #999; text-align: center;">Powered by RivetDog</p>
+        ${referralCard}
       </div>
     `
+
+    // Plain-text fallback: headline + full URL + the sent-with line.
+    const text = `Interested in how RivetDog can make your estimating and jobs easier?\n\nSee RivetDog: ${referralUrl}\n\nThis invoice was sent with RivetDog Time & Pay Lite.`
 
     // 9. Send via Resend — reply-to the sub who sent it.
     const resendRes = await fetch('https://api.resend.com/emails', {
@@ -184,6 +212,7 @@ Deno.serve(async (req) => {
         to: recipients,
         subject: `Invoice ${invoice.invoice_number} from ${companyName}`,
         html,
+        text,
         attachments: [
           {
             filename: `${String(invoice.invoice_number).replace(/[^a-zA-Z0-9_\- ]/g, '')}.pdf`,
