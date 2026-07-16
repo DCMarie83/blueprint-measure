@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { User, Settings, Users, LogOut, ChevronDown, DollarSign } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useIsLite } from '../hooks/useIsLite'
 import ThemeToggle from './ThemeToggle'
 import styles from './UserMenu.module.css'
 
@@ -14,6 +15,7 @@ const ROLE_LABELS = {
 
 export default function UserMenu() {
   const { user, isSuperAdmin } = useAuth()
+  const { isLite } = useIsLite()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [role, setRole] = useState(null)
@@ -82,13 +84,13 @@ export default function UserMenu() {
               <Settings size={15} />
               <span>Settings</span>
             </button>
-            {(role === 'contractor_admin' || isSuperAdmin) && (
+            {!isLite && (role === 'contractor_admin' || isSuperAdmin) && (
               <button className={styles.menuItem} onClick={() => { navigate('/pricing'); setOpen(false) }}>
                 <DollarSign size={15} />
                 <span>Pricing Library</span>
               </button>
             )}
-            {role === 'contractor_admin' && (
+            {!isLite && role === 'contractor_admin' && (
               <button className={styles.menuItem} onClick={() => { navigate('/dashboard/team'); setOpen(false) }}>
                 <Users size={15} />
                 <span>Manage Team</span>

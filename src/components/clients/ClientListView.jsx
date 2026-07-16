@@ -12,6 +12,7 @@ function getSubtitle(client) {
   const addr = client.property_address
   const loc = [addr?.city, addr?.state].filter(Boolean).join(', ')
   if (loc) return loc
+  if (client.client_type === 'general_contractor') return 'General contractor'
   return client.client_type === 'commercial' ? 'Commercial client' : 'Residential client'
 }
 

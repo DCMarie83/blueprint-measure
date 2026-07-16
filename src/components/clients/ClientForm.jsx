@@ -46,6 +46,8 @@ export default function ClientForm({ initialClient = null, initialContacts = [],
   const [error, setError] = useState('')
 
   const propertyTypes = clientType === 'commercial' ? COMMERCIAL_PROPERTY_TYPES : RESIDENTIAL_PROPERTY_TYPES
+  // General contractors are a business-shaped client too — they carry a business name.
+  const showBusiness = clientType === 'commercial' || clientType === 'general_contractor'
   const canSubmit = !!displayName.trim()
 
   function addTag() {
@@ -81,11 +83,11 @@ export default function ClientForm({ initialClient = null, initialContacts = [],
     setSubmitting(true)
     setError('')
     try {
-      const effectiveDisplayName = clientType === 'commercial' && !displayName.trim() ? businessName.trim() : displayName.trim()
+      const effectiveDisplayName = showBusiness && !displayName.trim() ? businessName.trim() : displayName.trim()
       const payload = {
         client_type: clientType,
         display_name: effectiveDisplayName,
-        business_name: clientType === 'commercial' ? businessName.trim() || null : null,
+        business_name: showBusiness ? businessName.trim() || null : null,
         primary_email: primaryEmail.trim() || null,
         primary_phone: primaryPhone.trim() || null,
         preferred_contact_method: preferredContactMethod || null,
@@ -130,16 +132,19 @@ export default function ClientForm({ initialClient = null, initialContacts = [],
             setClientType('commercial')
             setContacts(prev => prev.length === 0 ? [{ ...emptyContact }] : prev)
           }}>Commercial</button>
+          <button type="button" className={`${styles.typeBtn} ${clientType === 'general_contractor' ? styles.typeBtnActive : ''}`} onClick={() => {
+            setClientType('general_contractor')
+          }}>General Contractor</button>
         </div>
       </div>
 
       {/* Identity */}
       <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>{clientType === 'commercial' ? 'Business Info' : 'Client Info'}</h3>
-        {clientType === 'commercial' && (
+        <h3 className={styles.sectionTitle}>{showBusiness ? 'Business Info' : 'Client Info'}</h3>
+        {showBusiness && (
           <label className={styles.field}><span>Business Name</span><input className={styles.input} value={businessName} onChange={e => { setBusinessName(e.target.value); if (!displayName || displayName === businessName) setDisplayName(e.target.value) }} placeholder="Acme Corp" /></label>
         )}
-        <label className={styles.field}><span>{clientType === 'commercial' ? 'Display Name' : 'Client Name(s)'}</span><input className={styles.input} value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder={clientType === 'commercial' ? 'How this client appears in lists' : 'John & Mary Smith'} required /></label>
+        <label className={styles.field}><span>{showBusiness ? 'Display Name' : 'Client Name(s)'}</span><input className={styles.input} value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder={showBusiness ? 'How this client appears in lists' : 'John & Mary Smith'} required /></label>
       </div>
 
       {/* Contact */}

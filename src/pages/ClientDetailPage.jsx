@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Home, Building2, Mail, Phone, Tag, FileText, Briefcase, Trash2, Edit, DollarSign, Clock } from 'lucide-react'
+import { Home, Building2, HardHat, Mail, Phone, Tag, FileText, Briefcase, Trash2, Edit, DollarSign, Clock } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import BackLink from '../components/BackLink'
 import Modal from '../components/ui/Modal'
@@ -65,7 +65,11 @@ export default function ClientDetailPage() {
             />
             <div className={styles.topLeft}>
               <span className={styles.typeBadge}>
-                {client.client_type === 'commercial' ? <Building2 size={14} /> : <Home size={14} />} {client.client_type}
+                {client.client_type === 'general_contractor'
+                  ? <><HardHat size={14} /> general contractor</>
+                  : client.client_type === 'commercial'
+                    ? <><Building2 size={14} /> commercial</>
+                    : <><Home size={14} /> residential</>}
               </span>
               <h1 className={styles.name}>{client.display_name}</h1>
               {client.business_name && <div className={styles.bizName}>{client.business_name}</div>}

@@ -12,8 +12,10 @@ const QuickClientForm = forwardRef(function QuickClientForm({ onCreated, onCance
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
+  const showBusiness = clientType === 'commercial' || clientType === 'general_contractor'
+
   async function handleSubmit() {
-    const name = displayName.trim() || (clientType === 'commercial' ? businessName.trim() : '')
+    const name = displayName.trim() || (showBusiness ? businessName.trim() : '')
     if (!name) { setError('Client name is required'); return null }
     setSaving(true)
     setError('')
@@ -21,7 +23,7 @@ const QuickClientForm = forwardRef(function QuickClientForm({ onCreated, onCance
       const payload = {
         client_type: clientType,
         display_name: name,
-        business_name: clientType === 'commercial' ? businessName.trim() || null : null,
+        business_name: showBusiness ? businessName.trim() || null : null,
         primary_email: primaryEmail.trim() || null,
         primary_phone: primaryPhone.trim() || null,
       }
@@ -44,11 +46,12 @@ const QuickClientForm = forwardRef(function QuickClientForm({ onCreated, onCance
       <div className={styles.typeRow}>
         <button type="button" className={`${styles.typeBtn} ${clientType === 'residential' ? styles.typeBtnActive : ''}`} onClick={() => setClientType('residential')}>Residential</button>
         <button type="button" className={`${styles.typeBtn} ${clientType === 'commercial' ? styles.typeBtnActive : ''}`} onClick={() => setClientType('commercial')}>Commercial</button>
+        <button type="button" className={`${styles.typeBtn} ${clientType === 'general_contractor' ? styles.typeBtnActive : ''}`} onClick={() => setClientType('general_contractor')}>General Contractor</button>
       </div>
-      {clientType === 'commercial' && (
+      {showBusiness && (
         <label className={styles.field}><span>Business Name</span><input className={styles.input} value={businessName} onChange={e => { setBusinessName(e.target.value); if (!displayName) setDisplayName(e.target.value) }} placeholder="Acme Corp" /></label>
       )}
-      <label className={styles.field}><span>{clientType === 'commercial' ? 'Display Name' : 'Client Name *'}</span><input className={styles.input} value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder={clientType === 'commercial' ? 'How they appear in lists' : 'John & Mary Smith'} /></label>
+      <label className={styles.field}><span>{showBusiness ? 'Display Name' : 'Client Name *'}</span><input className={styles.input} value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder={showBusiness ? 'How they appear in lists' : 'John & Mary Smith'} /></label>
       <div className={styles.row}>
         <label className={styles.field}><span>Email</span><input className={styles.input} type="email" value={primaryEmail} onChange={e => setPrimaryEmail(e.target.value)} placeholder="client@email.com" /></label>
         <label className={styles.field}><span>Phone</span><input className={styles.input} type="tel" value={primaryPhone} onChange={e => setPrimaryPhone(e.target.value)} placeholder="(555) 123-4567" /></label>

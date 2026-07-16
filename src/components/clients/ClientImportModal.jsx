@@ -127,7 +127,7 @@ export default function ClientImportModal({ onClose, onImported }) {
       })
       // Resolve client_type
       const rawType = (mapped.client_type || '').toLowerCase()
-      mapped.client_type = (rawType === 'residential' || rawType === 'commercial') ? rawType : defaultType
+      mapped.client_type = (rawType === 'residential' || rawType === 'commercial' || rawType === 'general_contractor') ? rawType : defaultType
 
       // Validation
       const flags = []

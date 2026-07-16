@@ -81,9 +81,9 @@ export default function ClientsPage() {
           </div>
           <div className={styles.filterRight}>
             <div className={styles.chips}>
-              {['all', 'residential', 'commercial'].map(t => (
+              {[['all', 'All'], ['residential', 'Residential'], ['commercial', 'Commercial'], ['general_contractor', 'GCs']].map(([t, label]) => (
                 <button key={t} className={`${styles.chip} ${typeFilter === t ? styles.chipActive : ''}`} onClick={() => setTypeFilter(t)}>
-                  {t === 'all' ? 'All' : t.charAt(0).toUpperCase() + t.slice(1)}
+                  {label}
                 </button>
               ))}
             </div>

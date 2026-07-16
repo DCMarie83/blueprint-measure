@@ -1,6 +1,12 @@
 import { useState, useRef, useEffect } from 'react'
-import { Home, Building2, X } from 'lucide-react'
+import { Home, Building2, HardHat, X } from 'lucide-react'
 import styles from './ClientPicker.module.css'
+
+function typeIcon(type, size = 14) {
+  if (type === 'general_contractor') return <HardHat size={size} />
+  if (type === 'commercial') return <Building2 size={size} />
+  return <Home size={size} />
+}
 
 export default function ClientPicker({ clients, value, onChange, placeholder = 'Search clients...' }) {
   const [search, setSearch] = useState('')
@@ -33,7 +39,7 @@ export default function ClientPicker({ clients, value, onChange, placeholder = '
     return (
       <div className={styles.selected}>
         <span className={styles.selectedIcon}>
-          {selected.client_type === 'commercial' ? <Building2 size={14} /> : <Home size={14} />}
+          {typeIcon(selected.client_type)}
         </span>
         <span className={styles.selectedName}>{selected.display_name}</span>
         <button type="button" className={styles.clearBtn} onClick={() => onChange(null)} aria-label="Clear selection">
@@ -58,11 +64,11 @@ export default function ClientPicker({ clients, value, onChange, placeholder = '
           {filtered.map(c => (
             <div key={c.id} className={styles.row} onClick={() => handleSelect(c.id)}>
               <span className={styles.rowIcon}>
-                {c.client_type === 'commercial' ? <Building2 size={14} /> : <Home size={14} />}
+                {typeIcon(c.client_type)}
               </span>
               <div className={styles.rowInfo}>
                 <span className={styles.rowName}>{c.display_name}</span>
-                {c.business_name && c.client_type === 'commercial' && (
+                {c.business_name && (c.client_type === 'commercial' || c.client_type === 'general_contractor') && (
                   <span className={styles.rowSub}>{c.business_name}</span>
                 )}
                 {c.primary_email && <span className={styles.rowSub}>{c.primary_email}</span>}
