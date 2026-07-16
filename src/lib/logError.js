@@ -12,6 +12,19 @@ function computeFingerprint(error) {
 }
 
 export async function logError(error, severity = 'error', extraContext = {}) {
+  // Dev guard — never write dev/localhost errors to the production
+  // client_errors table. import.meta.env.DEV is Vite's build-time flag, so
+  // this whole branch compiles out of the prod bundle. The hostname check is
+  // belt-and-braces for a prod build served locally (`vite preview`).
+  if (
+    import.meta.env.DEV ||
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1'
+  ) {
+    console.error('[logError] (dev, not sent):', error, { severity, ...extraContext });
+    return;
+  }
+
   try {
     if (extraContext && Object.keys(extraContext).length > 0) {
       addBreadcrumb({

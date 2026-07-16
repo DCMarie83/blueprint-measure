@@ -62,7 +62,11 @@
         // plus timezone/locale/viewport, mirroring src/lib/logError.js so
         // these rows are attributable (internal Asia/Bangkok vs real market).
         try {
-          if (typeof fetch === 'function') {
+          // Dev guard — %VITE_% substitution also happens on the dev server,
+          // so without this a localhost hit would write to the prod table.
+          var isDevHost = window.location.hostname === 'localhost' ||
+            window.location.hostname === '127.0.0.1';
+          if (!isDevHost && typeof fetch === 'function') {
             var tz = '';
             try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
             fetch('%VITE_SUPABASE_URL%' + '/rest/v1/client_errors', {
