@@ -1,13 +1,13 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, FileText, HardHat, ChevronRight, Check } from 'lucide-react'
 import AppHeader from '../../components/AppHeader'
 import Logo from '../../components/brand/Logo'
-import { useAuth } from '../../context/AuthContext'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
+import { useAuth } from '../../context/AuthContext'
 import { useLiteHomeStats } from '../../hooks/useLiteHomeStats'
 import { fmtMoney } from '../../lib/lite'
-import { timeGreeting, randomTagline } from '../../lib/liteVoice'
+import { getEffectiveTimeZone, formatHeaderDateTime, zoneShortName } from '../../lib/effectiveTime'
 import styles from './lite.module.css'
 
 // The Lite home. Hero "Owed to you", quick actions, a 2×2 earnings grid, and
@@ -16,15 +16,21 @@ import styles from './lite.module.css'
 // are pun-free; only the brand-new welcome line is allowed a wag.
 export default function LiteHomePage() {
   const navigate = useNavigate()
+  const { companyId } = useEffectiveCompany()
   const { userProfile } = useAuth()
-  const { companyId, company } = useEffectiveCompany()
+  const tz = getEffectiveTimeZone(userProfile)
   const {
     owed, earnedMTD, earnedYTD, loggedThisWeek, outstanding, paidCount,
     oldestUnpaid, jumpBackIn, flags, loading,
   } = useLiteHomeStats(companyId)
 
-  // Tagline holds steady within a session, rotates on reload (mount-time pick).
-  const [tagline] = useState(randomTagline)
+  // Live wall clock in the effective zone. Ticks each minute (no seconds shown),
+  // cleaned up on unmount. Kept before any early return so hook order is stable.
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60000)
+    return () => clearInterval(id)
+  }, [])
 
   // Hold the shell until the effective company resolves (impersonation-safe).
   if (!companyId || loading) {
@@ -39,6 +45,11 @@ export default function LiteHomePage() {
   const isBrandNew = !flags.hasEntry && !flags.hasInvoice
   const allStepsDone = flags.hasGC && flags.hasEntry && flags.hasInvoice
 
+  // "Friday, July 17 · 4:12 PM". The zone suffix (e.g. "ET") shows only when the
+  // sub has set a non-automatic zone, so an automatic device zone stays clutter-free.
+  const clock = formatHeaderDateTime(tz, now)
+  const tzSuffix = userProfile?.timezone ? zoneShortName(tz, now) : ''
+
   const steps = [
     { done: flags.hasGC, label: 'Add your GC', to: '/gcs' },
     { done: flags.hasEntry, label: 'Set your rates as you log', to: '/log' },
@@ -49,18 +60,14 @@ export default function LiteHomePage() {
     <div className={styles.page}>
       <AppHeader />
       <main className={styles.main}>
-        <div className={styles.header}>
-          <div>
-            <h1 className={styles.title}>{company?.name || 'Home'}</h1>
-            <p className={styles.subtitle}>Here's where you stand today.</p>
-          </div>
+        {/* Identity-first header: the long-form logo, centered and capped, then
+            one section line above the money hero. */}
+        <div className={styles.homeLogoRow}>
+          <Logo variant="full" className={styles.homeLogo} />
         </div>
-
-        {/* Mascot greeting — personality block, kept visually apart from money. */}
-        <div className={styles.greeting}>
-          <Logo variant="mark" className={styles.greetingMark} />
-          <div className={styles.greetingText}>{timeGreeting(userProfile?.full_name)}</div>
-          <div className={styles.greetingTag}>{tagline}</div>
+        <div className={styles.standRow}>
+          <div className={styles.sectionLine}>Here's where you stand</div>
+          <div className={styles.clockLine}>{clock}{tzSuffix ? ` (${tzSuffix})` : ''}</div>
         </div>
 
         {/* Hero */}
@@ -73,7 +80,7 @@ export default function LiteHomePage() {
         ) : (
           <div className={styles.hero}>
             <div className={styles.heroLabel}>Owed to you</div>
-            <div className={styles.heroValue}>{fmtMoney(owed.total)}</div>
+            <div className={`${styles.heroValue} ${styles.moneyDue}`}>{fmtMoney(owed.total)}</div>
             <p className={styles.heroSub}>
               {fmtMoney(owed.invoicedAwaiting)} invoiced awaiting payment · {fmtMoney(owed.loggedNotInvoiced)} logged, not yet invoiced
             </p>
@@ -107,11 +114,11 @@ export default function LiteHomePage() {
             <div className={styles.statGrid}>
               <div className={styles.statCard}>
                 <div className={styles.statLabel}>Earned MTD</div>
-                <div className={styles.statValue}>{fmtMoney(earnedMTD)}</div>
+                <div className={`${styles.statValue} ${styles.moneyIn}`}>{fmtMoney(earnedMTD)}</div>
               </div>
               <div className={styles.statCard}>
                 <div className={styles.statLabel}>Earned YTD</div>
-                <div className={styles.statValue}>{fmtMoney(earnedYTD)}</div>
+                <div className={`${styles.statValue} ${styles.moneyIn}`}>{fmtMoney(earnedYTD)}</div>
               </div>
               <div className={styles.statCard}>
                 <div className={styles.statLabel}>Logged this week</div>
@@ -119,7 +126,7 @@ export default function LiteHomePage() {
               </div>
               <div className={styles.statCard}>
                 <div className={styles.statLabel}>Outstanding</div>
-                <div className={styles.statValue}>{fmtMoney(outstanding.amount)}</div>
+                <div className={`${styles.statValue} ${styles.moneyDue}`}>{fmtMoney(outstanding.amount)}</div>
                 <div className={styles.entryMeta} style={{ marginTop: 2 }}>{outstanding.count} open · {paidCount} paid</div>
               </div>
             </div>
@@ -129,7 +136,7 @@ export default function LiteHomePage() {
                 <div className={styles.entryMain}>
                   <div className={styles.listSub}>Jump back in</div>
                   <div className={styles.listName}>{jumpBackIn.name}</div>
-                  <div className={styles.listSub}>{jumpBackIn.gcName} · {fmtMoney(jumpBackIn.unbilled)} unbilled</div>
+                  <div className={styles.listSub}>{jumpBackIn.gcName} · <span className={styles.moneyDue}>{fmtMoney(jumpBackIn.unbilled)}</span> unbilled</div>
                 </div>
                 <ChevronRight size={18} className={styles.muted} />
               </button>
@@ -140,7 +147,7 @@ export default function LiteHomePage() {
                 <div className={styles.entryMain}>
                   <div className={styles.listSub}>Oldest unpaid</div>
                   <div className={styles.listName}>{oldestUnpaid.invoice_number}</div>
-                  <div className={styles.listSub}>{oldestUnpaid.gcName} · {oldestUnpaid.days} day{oldestUnpaid.days === 1 ? '' : 's'} outstanding</div>
+                  <div className={styles.listSub}>{oldestUnpaid.gcName} · <span className={oldestUnpaid.overdue ? styles.moneyOverdue : styles.moneyDue}>{oldestUnpaid.days} day{oldestUnpaid.days === 1 ? '' : 's'} {oldestUnpaid.overdue ? 'overdue' : 'outstanding'}</span></div>
                 </div>
                 <ChevronRight size={18} className={styles.muted} />
               </button>

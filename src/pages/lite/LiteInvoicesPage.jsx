@@ -62,7 +62,12 @@ export default function LiteInvoicesPage() {
                 <div className={styles.listSub}>{gcNameFor(inv)}{inv.created_at ? ` · ${fmtDate(inv.created_at)}` : ''}</div>
               </div>
               <div className={styles.listRight}>
-                <div className={styles.entryAmount}>{fmtMoney(inv.total)}</div>
+                <div className={`${styles.entryAmount} ${
+                  inv.status === 'paid' ? styles.moneyIn
+                    : inv.status === 'void' ? ''
+                    : isOverdue(inv) ? styles.moneyOverdue
+                    : styles.moneyDue
+                }`}>{fmtMoney(inv.total)}</div>
                 <div style={{ marginTop: 4 }}><InvoiceStatusBadge status={inv.status} isOverdue={isOverdue(inv)} /></div>
                 {(() => {
                   const r = gcResponseFor(inv)

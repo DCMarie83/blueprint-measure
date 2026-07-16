@@ -18,15 +18,6 @@ export const HOME_TAGLINES = [
   "Good dogs get paid. Let's log it.",
 ]
 
-// Time-of-day salutation + the user's first name. Falls back to a bare greeting
-// when we have no name yet ("Morning.").
-export function timeGreeting(fullName) {
-  const h = new Date().getHours()
-  const part = h < 12 ? 'Morning' : h < 17 ? 'Afternoon' : 'Evening'
-  const first = String(fullName || '').trim().split(/\s+/)[0]
-  return first ? `${part}, ${first}.` : `${part}.`
-}
-
 // Pick a random tagline. Call once per mount (e.g. in a useState initializer) so
 // it holds steady within a session but rotates on reload.
 export function randomTagline() {

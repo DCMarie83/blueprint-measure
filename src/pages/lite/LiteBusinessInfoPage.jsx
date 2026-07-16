@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
 import AppHeader from '../../components/AppHeader'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
+import { updateUserPrefs } from '../../lib/userPrefs'
+import { isValidTimeZone, COMMON_US_TIMEZONES } from '../../lib/effectiveTime'
 import styles from './lite.module.css'
 
 // Lite "Business info" — the sub's letterhead + how they want to be paid. These
@@ -15,11 +17,12 @@ import styles from './lite.module.css'
 export default function LiteBusinessInfoPage() {
   const navigate = useNavigate()
   const { company, companyId } = useEffectiveCompany()
-  const { refreshCompany } = useAuth()
+  const { user, userProfile, refreshCompany, refreshUserProfile } = useAuth()
 
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [payText, setPayText] = useState('')
+  const [timezone, setTimezone] = useState('') // '' = Automatic (device time)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
   const [savedOk, setSavedOk] = useState(false)
@@ -31,8 +34,25 @@ export default function LiteBusinessInfoPage() {
     setPayText(company.payment_instructions?.other?.instructions || '')
   }, [company])
 
+  useEffect(() => {
+    setTimezone(userProfile?.timezone || '')
+  }, [userProfile])
+
+  // Full canonical IANA list, built once. The common US zones are pinned at the
+  // top; this list is everything else, so a sub anywhere can still find theirs.
+  const allZones = useMemo(() => {
+    try { return Intl.supportedValuesOf('timeZone') } catch { return [] }
+  }, [])
+
   async function handleSave() {
     if (!companyId) return
+    // Empty select = Automatic (device time), stored as null. A chosen value must
+    // pass the same canonical check the list is built from before it can save.
+    const tzToSave = timezone ? timezone : null
+    if (tzToSave && !isValidTimeZone(tzToSave)) {
+      setError('That time zone isn’t recognized. Pick one from the list.')
+      return
+    }
     setSaving(true); setError(null); setSavedOk(false)
     try {
       // Preserve any other structured payment keys; only touch the free-text slot.
@@ -52,6 +72,12 @@ export default function LiteBusinessInfoPage() {
         })
         .eq('id', companyId)
       if (updErr) throw new Error(updErr.message)
+
+      // Time zone lives on the user profile (the person), not the company.
+      if (user?.id) {
+        await updateUserPrefs(supabase, user.id, { timezone: tzToSave })
+        await refreshUserProfile()
+      }
 
       await refreshCompany()
       setSavedOk(true)
@@ -85,6 +111,20 @@ export default function LiteBusinessInfoPage() {
           <div className={styles.field} style={{ marginBottom: 12 }}>
             <span className={styles.fieldLabel}>Phone</span>
             <input className={styles.input} value={phone} onChange={e => setPhone(e.target.value)} placeholder="(555) 555-5555" />
+          </div>
+
+          <div className={styles.field} style={{ marginBottom: 12 }}>
+            <span className={styles.fieldLabel}>Time zone</span>
+            <select className={styles.select} value={timezone} onChange={e => setTimezone(e.target.value)}>
+              <option value="">Automatic (device time)</option>
+              <optgroup label="Common (US)">
+                {COMMON_US_TIMEZONES.map(z => <option key={z.value} value={z.value}>{z.label}</option>)}
+              </optgroup>
+              <optgroup label="All time zones">
+                {allZones.map(z => <option key={z} value={z}>{z}</option>)}
+              </optgroup>
+            </select>
+            <p className={styles.helper}>Sets “today” for your logs, week, and totals. Leave on Automatic to follow this device.</p>
           </div>
 
           <div className={styles.field}>

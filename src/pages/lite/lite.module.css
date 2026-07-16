@@ -1,6 +1,22 @@
 /* Time & Pay Lite — mobile-first surfaces. No native/browser-storage APIs so a
    future Capacitor wrap stays clean; pure layout + CSS variables from the app theme. */
 
+/* ── Money color semantics ──────────────────────────────────────────
+   One source of truth for what a dollar figure MEANS on Lite. Only the amount
+   TEXT is tinted; card backgrounds are untouched. Mapped onto the platform's
+   existing semantic tokens so both themes stay honest. Note the platform DOES
+   distinguish its positive green (--color-success) from the brand teal #26464C
+   (which is --color-surface, a background — never a "money in" signal), so
+   money-in uses the success green, not the teal. */
+:root {
+  --money-in: var(--color-success);      /* platform success green */
+  --money-due: var(--color-primary);     /* brand orange #F27243 */
+  --money-overdue: var(--color-danger);  /* platform red */
+}
+.moneyIn { color: var(--money-in); }
+.moneyDue { color: var(--money-due); }
+.moneyOverdue { color: var(--money-overdue); }
+
 .page {
   min-height: 100vh;
   background: var(--color-bg, #f6f7f9);
@@ -417,6 +433,36 @@
   margin-top: 16px;
 }
 
+/* Done-for-today closer — the mascot's home. A top divider keeps it visually
+   apart from the totals above; the money lines stay pun-free. */
+.doneCloser {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border);
+}
+
+.doneMark {
+  height: 44px;
+  width: auto;
+  flex-shrink: 0;
+}
+
+.doneCloserLine {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text, #1a1a1a);
+  margin: 0;
+}
+
+.doneCloserTag {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin: 2px 0 0;
+}
+
 /* Log-first type-ahead: merged catalog + library dropdown. Tap targets ≥ 44px. */
 .searchResults {
   margin-top: 6px;
@@ -467,35 +513,67 @@
 }
 
 /* ── Home dashboard ─────────────────────────────────────────────── */
-/* Mascot greeting — personality block, deliberately borderless so it reads as
-   voice, not a data card, and stays visually apart from the money hero below. */
-.greeting {
+/* Identity-first header — the long-form RivetDog logo, centered. Phone-first and
+   width-driven: it spans nearly the full content column on a phone (the lockup's
+   3.35:1 aspect makes ~380px wide ≈ 114px tall). Desktop caps it back to a
+   masthead. Still short enough that the logo + section line + date line + full
+   owed-to-you hero all sit inside the first phone screen with quick actions
+   peeking. */
+.homeLogoRow {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 4px;
-  padding: 8px 0 16px;
+  justify-content: center;
+  padding: 4px 0 12px;
 }
 
-.greetingMark {
-  /* Roughly double the old 56px, but fluid so the mascot never grows tall
-     enough to push the owed-to-you hero below the first phone screen. On a
-     360px phone this floors at 96px; on desktop it caps at 120px. */
-  height: clamp(96px, 24vw, 120px);
-  width: auto;
-  margin-bottom: 4px;
+.homeLogo {
+  width: 100%;
+  max-width: 380px;
+  height: auto;
+  object-fit: contain;
 }
 
-.greetingText {
-  font-size: 20px;
+/* Desktop: pull the masthead back to a capped lockup (~+45% over the prior
+   174px render), so it reads as brand rather than a banner on wide screens. */
+@media (min-width: 640px) {
+  .homeLogo {
+    max-width: 260px;
+  }
+}
+
+/* Section line + live clock — one row above the money hero. The section label
+   sits left; the effective-zone clock is pushed to the right on desktop and
+   drops beneath the label on phones. The row owns the 14px bottom margin. */
+.standRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.sectionLine {
+  font-size: 15px;
   font-weight: 700;
-  color: var(--color-text, #1a1a1a);
+  color: var(--color-text-muted);
+  margin: 0;
 }
 
-.greetingTag {
+.clockLine {
   font-size: 13px;
   color: var(--color-text-muted);
+  text-align: right;
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .standRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+  .clockLine {
+    text-align: left;
+  }
 }
 
 .hero {

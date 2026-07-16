@@ -2,8 +2,10 @@ import { useState, useEffect, useMemo } from 'react'
 import { Download } from 'lucide-react'
 import AppHeader from '../../components/AppHeader'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
+import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { GC_CLIENT_TYPE, fmtMoney } from '../../lib/lite'
+import { getEffectiveTimeZone, presetRange } from '../../lib/effectiveTime'
 import { generateLiteReportXLSX } from '../../lib/generateLiteReportXLSX'
 import styles from './lite.module.css'
 
@@ -18,28 +20,6 @@ const STATUS_LABELS = {
   partial: 'Partial', paid: 'Paid', void: 'Void',
 }
 
-function localDateStr(d) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
-// Browser-local window boundaries, matching useLiteHomeStats exactly.
-function presetRange(key, now = new Date()) {
-  const y = now.getFullYear()
-  const m = now.getMonth()
-  switch (key) {
-    case 'this_month':
-      return { label: 'This month', from: localDateStr(new Date(y, m, 1)), to: localDateStr(new Date(y, m + 1, 0)) }
-    case 'last_month':
-      return { label: 'Last month', from: localDateStr(new Date(y, m - 1, 1)), to: localDateStr(new Date(y, m, 0)) }
-    case 'this_year':
-      return { label: 'This year', from: localDateStr(new Date(y, 0, 1)), to: localDateStr(new Date(y, 11, 31)) }
-    case 'last_year':
-      return { label: 'Last year', from: localDateStr(new Date(y - 1, 0, 1)), to: localDateStr(new Date(y - 1, 11, 31)) }
-    default:
-      return { label: 'This month', from: localDateStr(new Date(y, m, 1)), to: localDateStr(new Date(y, m + 1, 0)) }
-  }
-}
-
 const PRESETS = [
   { key: 'this_month', label: 'This month' },
   { key: 'last_month', label: 'Last month' },
@@ -52,17 +32,19 @@ const day = d => String(d || '').slice(0, 10)
 
 export default function LiteReportsPage() {
   const { companyId, company } = useEffectiveCompany()
+  const { userProfile } = useAuth()
+  const tz = getEffectiveTimeZone(userProfile)
   const [preset, setPreset] = useState('this_month')
-  const [customFrom, setCustomFrom] = useState(() => presetRange('this_month').from)
-  const [customTo, setCustomTo] = useState(() => presetRange('this_month').to)
+  const [customFrom, setCustomFrom] = useState(() => presetRange('this_month', tz).from)
+  const [customTo, setCustomTo] = useState(() => presetRange('this_month', tz).to)
   const [raw, setRaw] = useState(null) // { invoices, payments, entries, gcNameById, projById, invoiceById }
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState(false)
 
   const range = useMemo(() => {
     if (preset === 'custom') return { label: 'Custom', from: customFrom, to: customTo }
-    return presetRange(preset)
-  }, [preset, customFrom, customTo])
+    return presetRange(preset, tz)
+  }, [preset, customFrom, customTo, tz])
 
   // One batched company-scoped read of the full dataset; the window is applied
   // client-side so switching presets never re-hits the network.
@@ -272,7 +254,7 @@ export default function LiteReportsPage() {
             <div className={styles.card}>
               <div className={styles.rowBetween}>
                 <h2 className={styles.title} style={{ fontSize: 18 }}>Payments received</h2>
-                <div className={styles.statValue} style={{ fontSize: 20 }}>{fmtMoney(report.paymentsTotal)}</div>
+                <div className={`${styles.statValue} ${styles.moneyIn}`} style={{ fontSize: 20 }}>{fmtMoney(report.paymentsTotal)}</div>
               </div>
               {report.paymentRows.length === 0 ? (
                 <p className={styles.muted} style={{ marginTop: 8 }}>No payments recorded in this period.</p>
@@ -289,7 +271,7 @@ export default function LiteReportsPage() {
                           <td>{r.invoiceNumber}</td>
                           <td>{r.gcName}</td>
                           <td>{r.method}</td>
-                          <td style={{ textAlign: 'right' }}>{fmtMoney(r.amount)}</td>
+                          <td className={styles.moneyIn} style={{ textAlign: 'right' }}>{fmtMoney(r.amount)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -321,7 +303,7 @@ export default function LiteReportsPage() {
                             <td>{new Date(r.issuedDate).toLocaleDateString()}</td>
                             <td style={{ textAlign: 'right' }}>{fmtMoney(r.total)}</td>
                             <td>{STATUS_LABELS[r.status] || r.status}</td>
-                            <td style={{ textAlign: 'right' }}>{fmtMoney(r.balance)}</td>
+                            <td className={r.balance > 0 ? styles.moneyDue : undefined} style={{ textAlign: 'right' }}>{fmtMoney(r.balance)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -329,8 +311,8 @@ export default function LiteReportsPage() {
                   </div>
                   <div className={styles.rowBetween} style={{ marginTop: 10 }}>
                     <span className={styles.muted}>Issued {fmtMoney(report.invoicedTotal)}</span>
-                    <span className={styles.muted}>Collected {fmtMoney(report.collectedTotal)}</span>
-                    <span className={styles.muted}>Outstanding {fmtMoney(report.outstandingTotal)}</span>
+                    <span className={styles.muted}>Collected <span className={styles.moneyIn}>{fmtMoney(report.collectedTotal)}</span></span>
+                    <span className={styles.muted}>Outstanding <span className={styles.moneyDue}>{fmtMoney(report.outstandingTotal)}</span></span>
                   </div>
                 </>
               )}
@@ -340,7 +322,7 @@ export default function LiteReportsPage() {
             <div className={styles.card}>
               <div className={styles.rowBetween}>
                 <h2 className={styles.title} style={{ fontSize: 18 }}>Unbilled work</h2>
-                <div className={styles.statValue} style={{ fontSize: 20 }}>{fmtMoney(report.unbilledTotal)}</div>
+                <div className={`${styles.statValue} ${styles.moneyDue}`} style={{ fontSize: 20 }}>{fmtMoney(report.unbilledTotal)}</div>
               </div>
               {report.unbilledRows.length === 0 ? (
                 <p className={styles.muted} style={{ marginTop: 8 }}>No unbilled work in this period.</p>
@@ -356,7 +338,7 @@ export default function LiteReportsPage() {
                           <td>{r.jobName}</td>
                           <td>{r.gcName}</td>
                           <td style={{ textAlign: 'right' }}>{r.count}</td>
-                          <td style={{ textAlign: 'right' }}>{fmtMoney(r.total)}</td>
+                          <td className={styles.moneyDue} style={{ textAlign: 'right' }}>{fmtMoney(r.total)}</td>
                         </tr>
                       ))}
                     </tbody>

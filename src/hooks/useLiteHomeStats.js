@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
 import { GC_CLIENT_TYPE } from '../lib/lite'
+import { getEffectiveTimeZone, startOfToday, startOfMonth, startOfYear, weekRange } from '../lib/effectiveTime'
 
 // One aggregate read for the Lite home. Five batched company-scoped queries run
 // in parallel (invoices, work_entries, invoice_payments, clients, projects) —
@@ -11,10 +13,6 @@ import { GC_CLIENT_TYPE } from '../lib/lite'
 // Statuses that count as "owed / outstanding": sent, viewed, partial. 'draft'
 // is not yet billed to anyone; 'void' is dead; 'paid' only feeds paidCount.
 const OUTSTANDING_STATUSES = new Set(['sent', 'viewed', 'partial'])
-
-function localDateStr(d) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
 
 const EMPTY = {
   owed: { total: 0, invoicedAwaiting: 0, loggedNotInvoiced: 0 },
@@ -29,6 +27,8 @@ const EMPTY = {
 }
 
 export function useLiteHomeStats(companyId) {
+  const { userProfile } = useAuth()
+  const tz = getEffectiveTimeZone(userProfile)
   const [stats, setStats] = useState(EMPTY)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -38,21 +38,16 @@ export function useLiteHomeStats(companyId) {
     setLoading(true)
     setError(null)
     try {
-      // ── Local-time window boundaries (browser tz) ──────────────────
-      const now = new Date()
-      const monthStartStr = localDateStr(new Date(now.getFullYear(), now.getMonth(), 1))
-      const yearStartStr = localDateStr(new Date(now.getFullYear(), 0, 1))
-      const dow = now.getDay() // 0 Sun … 6 Sat
-      const mondayOffset = (dow + 6) % 7 // days back to Monday
-      const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - mondayOffset)
-      const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6)
-      const weekStartStr = localDateStr(monday)
-      const weekEndStr = localDateStr(sunday)
+      // ── Window boundaries in the user's effective zone ─────────────
+      const todayStr = startOfToday(tz)
+      const monthStartStr = startOfMonth(tz)
+      const yearStartStr = startOfYear(tz)
+      const { from: weekStartStr, to: weekEndStr } = weekRange(tz)
 
       // ── Five parallel, company-scoped reads ────────────────────────
       const [invRes, entRes, payRes, cliRes, projRes] = await Promise.all([
         supabase.from('invoices')
-          .select('id, invoice_number, status, total, paid_amount, sent_at, created_at, client_id, project_id')
+          .select('id, invoice_number, status, total, paid_amount, sent_at, created_at, due_date, client_id, project_id')
           .eq('company_id', companyId),
         supabase.from('work_entries')
           .select('project_id, amount, invoice_id, work_date, created_at')
@@ -126,6 +121,9 @@ export function useLiteHomeStats(companyId) {
             invoice_number: inv.invoice_number,
             gcName: gcNameById[inv.client_id] || 'No GC',
             days: Math.max(0, Math.floor((Date.now() - new Date(ref).getTime()) / 86400000)),
+            // Overdue ONLY when a due date is set and today is strictly past it.
+            // No due date → never red (stays "outstanding" orange downstream).
+            overdue: !!inv.due_date && todayStr > String(inv.due_date).slice(0, 10),
             _ref: ref,
           }
         }
@@ -176,7 +174,7 @@ export function useLiteHomeStats(companyId) {
     } finally {
       setLoading(false)
     }
-  }, [companyId])
+  }, [companyId, tz])
 
   useEffect(() => { fetch() }, [fetch])
 

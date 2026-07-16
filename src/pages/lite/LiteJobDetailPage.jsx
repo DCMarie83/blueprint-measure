@@ -224,7 +224,7 @@ export default function LiteJobDetailPage() {
           </div>
           <div className={styles.statCard}>
             <div className={styles.statLabel}>Unbilled</div>
-            <div className={styles.statValue}>{fmtMoney(rollup.unbilled)}</div>
+            <div className={`${styles.statValue} ${styles.moneyDue}`}>{fmtMoney(rollup.unbilled)}</div>
           </div>
           <div className={styles.statCard}>
             <div className={styles.statLabel}>Invoiced</div>
@@ -312,7 +312,7 @@ export default function LiteJobDetailPage() {
 
             <div className={styles.rowBetween} style={{ padding: '8px 0' }}>
               <span className={styles.entryMeta}>{invPreview.rows.length} unbilled {invPreview.rows.length === 1 ? 'entry' : 'entries'}</span>
-              <span className={styles.entryAmount}>{fmtMoney(invPreview.total)}</span>
+              <span className={`${styles.entryAmount} ${styles.moneyDue}`}>{fmtMoney(invPreview.total)}</span>
             </div>
 
             {invError && <div className={styles.error}>{invError}</div>}

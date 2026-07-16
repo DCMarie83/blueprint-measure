@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
 import AppHeader from '../../components/AppHeader'
+import Logo from '../../components/brand/Logo'
 import NewJobSheet from '../../components/lite/NewJobSheet'
 import WorkItemSearch from '../../components/lite/WorkItemSearch'
 import { useProjects } from '../../hooks/useProjects'
@@ -10,22 +11,24 @@ import { useWorkItems } from '../../hooks/useWorkItems'
 import { useWorkEntries } from '../../hooks/useWorkEntries'
 import { supabase } from '../../lib/supabase'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
+import { useAuth } from '../../context/AuthContext'
 import { useSheetSignal } from '../../hooks/useSheetSignal'
 import { GC_CLIENT_TYPE, LITE_UNITS, unitLabel, fmtMoney } from '../../lib/lite'
-import { TOASTS, DONE_CLOSER } from '../../lib/liteVoice'
+import { getEffectiveTimeZone, startOfToday } from '../../lib/effectiveTime'
+import { TOASTS, DONE_CLOSER, randomTagline } from '../../lib/liteVoice'
 import styles from './lite.module.css'
-
-const todayStr = () => new Date().toISOString().slice(0, 10)
 
 export default function LogPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const initialJob = searchParams.get('job')
   const { companyId, company } = useEffectiveCompany()
+  const { userProfile } = useAuth()
+  const tz = getEffectiveTimeZone(userProfile)
   const { projects, createProject } = useProjects()
   const { clients, createClient } = useClients()
 
-  const [date, setDate] = useState(todayStr())
+  const [date, setDate] = useState(() => startOfToday(tz))
   const [projectId, setProjectId] = useState(initialJob || '')
   const [mode, setMode] = useState('piece')
   const [toast, setToast] = useState('')
@@ -53,6 +56,9 @@ export default function LogPage() {
 
   // "Done for today" summary sheet — purely presentational, writes nothing.
   const [doneSheet, setDoneSheet] = useState(null) // null | { count, total, otherAmount, otherJobs }
+  // Rotating done-for-today tagline — holds steady in a session, rotates on
+  // reload (mount-time pick). Personality only; never sits with the totals.
+  const [doneTagline] = useState(randomTagline)
 
   // Hide the floating feedback FAB while the done-for-today sheet is open.
   useSheetSignal(!!doneSheet)
@@ -537,7 +543,15 @@ export default function LogPage() {
               </p>
             )}
 
-            <p className={styles.muted} style={{ marginTop: 12 }}>{DONE_CLOSER}</p>
+            {/* Mascot + rotating tagline — personality, set apart from the money
+                above by a divider. The totals stay pun-free. */}
+            <div className={styles.doneCloser}>
+              <Logo variant="mark" className={styles.doneMark} />
+              <div>
+                <p className={styles.doneCloserLine}>{DONE_CLOSER}</p>
+                <p className={styles.doneCloserTag}>{doneTagline}</p>
+              </div>
+            </div>
 
             <div className={styles.sheetActions}>
               <button className={styles.secondaryBtn} onClick={() => setDoneSheet(null)}>Keep logging</button>

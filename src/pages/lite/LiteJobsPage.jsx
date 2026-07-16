@@ -105,7 +105,7 @@ export default function LiteJobsPage() {
                     {job.last_activity ? ` · ${new Date(job.last_activity).toLocaleDateString()}` : ''}
                   </div>
                   <div className={styles.listSub}>
-                    {fmtMoney(s.unbilled)} unbilled · {fmtMoney(s.total)} logged
+                    <span className={styles.moneyDue}>{fmtMoney(s.unbilled)}</span> unbilled · {fmtMoney(s.total)} logged
                   </div>
                 </div>
                 <ChevronRight size={18} className={styles.muted} />
