@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
 import AppHeader from '../../components/AppHeader'
 import NewJobSheet from '../../components/lite/NewJobSheet'
+import WorkItemSearch from '../../components/lite/WorkItemSearch'
 import { useProjects } from '../../hooks/useProjects'
 import { useClients } from '../../hooks/useClients'
 import { useWorkItems } from '../../hooks/useWorkItems'
@@ -26,9 +27,7 @@ export default function LogPage() {
   const [mode, setMode] = useState('piece')
   const [toast, setToast] = useState('')
 
-  // Piece composer — type-ahead over the GC catalog + the platform library.
-  const [search, setSearch] = useState('')
-  const [debounced, setDebounced] = useState('')
+  // Piece composer — type-ahead (WorkItemSearch) over the GC catalog + library.
   const [pick, setPick] = useState(null) // null | {type:'catalog',item} | {type:'library',row} | {type:'custom',name}
   const [inlineRate, setInlineRate] = useState('')
   const [customUnit, setCustomUnit] = useState('each')
@@ -38,10 +37,13 @@ export default function LogPage() {
   const searchRef = useRef(null)
   const didFocusRef = useRef(false)
 
-  // Hourly composer
+  // Hourly composer — same type-ahead, hour-appropriate: catalog pick locks the
+  // saved rate; library pick asks a rate then two-inserts; the custom pick keeps
+  // the typed text as a plain free-text description (no catalog item).
+  const [hourlyPick, setHourlyPick] = useState(null) // null | {type:'catalog',item} | {type:'library',row} | {type:'custom',text}
   const [hours, setHours] = useState('')
-  const [hourlyDesc, setHourlyDesc] = useState('')
   const [hourlyRate, setHourlyRate] = useState('')
+  const hoursRef = useRef(null)
 
   // New job
   const [showNewJob, setShowNewJob] = useState(false)
@@ -54,7 +56,6 @@ export default function LogPage() {
   const gcId = job?.client_id || null
 
   const { items: catalog, loading: catalogLoading, createItem, createFromLibrary } = useWorkItems(gcId)
-  const activeItems = useMemo(() => catalog.filter(i => i.is_active), [catalog])
   const { entries, loading: entriesLoading, createEntry, deleteEntry } = useWorkEntries(projectId, { dateFrom: date, dateTo: date })
 
   const dayTotal = entries.reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
@@ -79,15 +80,10 @@ export default function LogPage() {
     return () => { cancelled = true }
   }, [tradeVertical])
 
-  // Debounce the search box (250ms); nothing searches under 2 chars.
+  // Reset both composers' selections when the job (and thus GC catalog) changes.
   useEffect(() => {
-    const t = setTimeout(() => setDebounced(search), 250)
-    return () => clearTimeout(t)
-  }, [search])
-
-  // Reset the composer selection when the job (and thus the GC catalog) changes.
-  useEffect(() => {
-    setPick(null); setSearch(''); setDebounced(''); setInlineRate(''); setPieceQty(''); setCustomUnit('each')
+    setPick(null); setInlineRate(''); setPieceQty(''); setCustomUnit('each')
+    setHourlyPick(null); setHours('')
   }, [projectId])
 
   // Arriving from a job detail (/log?job=<id>): once that job resolves, focus the
@@ -99,17 +95,6 @@ export default function LogPage() {
       searchRef.current?.focus()
     }
   }, [initialJob, job])
-
-  // Merged results: GC catalog first (capped 5), then library minus items already
-  // in this GC's catalog (capped 6). Case-insensitive substring on name.
-  const results = useMemo(() => {
-    const q = debounced.trim().toLowerCase()
-    if (q.length < 2) return { catalog: [], library: [] }
-    const catMatches = activeItems.filter(i => i.name?.toLowerCase().includes(q)).slice(0, 5)
-    const existingLibIds = new Set(catalog.map(i => i.library_item_id).filter(Boolean))
-    const libMatches = library.filter(l => !existingLibIds.has(l.id) && l.name?.toLowerCase().includes(q)).slice(0, 6)
-    return { catalog: catMatches, library: libMatches }
-  }, [debounced, activeItems, catalog, library])
 
   // Prefill hourly rate from the sub's last hourly entry for this GC.
   useEffect(() => {
@@ -155,17 +140,37 @@ export default function LogPage() {
   const rateOk = !inlineNeedsRate || Number(inlineRate) > 0
   const qtyOk = Number(pieceQty) > 0
   const canAddPiece = !!pick && qtyOk && rateOk && (!isCustomPick || !!pick.name.trim())
-  const hourlyPreview = (Number(hours) || 0) * (Number(hourlyRate) || 0)
+
+  // Hourly derived — mirrors piece. Catalog rate is locked; library asks a rate
+  // (>0, it freezes into the catalog); custom keeps the prefilled/typed rate.
+  const isHCatalog = hourlyPick?.type === 'catalog'
+  const isHLibrary = hourlyPick?.type === 'library'
+  const isHCustom = hourlyPick?.type === 'custom'
+  const hourlyName = isHCatalog ? hourlyPick.item.name : isHLibrary ? hourlyPick.row.name : isHCustom ? hourlyPick.text : ''
+  const hEffRate = isHCatalog ? (Number(hourlyPick.item.rate) || 0) : (Number(hourlyRate) || 0)
+  const hourlyPreview = (Number(hours) || 0) * hEffRate
+  const hRateOk = isHLibrary ? Number(hourlyRate) > 0 : !!hourlyRate
+  const canAddHourly = !!hourlyPick && Number(hours) > 0 && hRateOk
 
   function pickCatalog(item) {
-    setPick({ type: 'catalog', item }); setSearch(''); setDebounced(''); setPieceQty('')
+    setPick({ type: 'catalog', item }); setPieceQty('')
     setTimeout(() => qtyRef.current?.focus(), 0)
   }
   function pickLibrary(row) { setPick({ type: 'library', row }); setInlineRate(''); setPieceQty('') }
   function pickCustom(name) { setPick({ type: 'custom', name }); setCustomUnit('each'); setInlineRate(''); setPieceQty('') }
   function resetComposer() {
-    setPick(null); setSearch(''); setDebounced(''); setInlineRate(''); setPieceQty(''); setCustomUnit('each')
+    setPick(null); setInlineRate(''); setPieceQty(''); setCustomUnit('each')
   }
+
+  // Hourly pick handlers. Catalog locks the saved rate and jumps to hours;
+  // library clears the rate to force an entry; custom keeps the prefilled rate.
+  function pickHourlyCatalog(item) {
+    setHourlyPick({ type: 'catalog', item }); setHourlyRate(String(item.rate ?? '')); setHours('')
+    setTimeout(() => hoursRef.current?.focus(), 0)
+  }
+  function pickHourlyLibrary(row) { setHourlyPick({ type: 'library', row }); setHourlyRate(''); setHours('') }
+  function pickHourlyCustom(text) { setHourlyPick({ type: 'custom', text }); setHours('') }
+  function resetHourly() { setHourlyPick(null); setHours('') }
 
   function handleJobCreated(proj) {
     setProjectId(proj.id)
@@ -234,24 +239,82 @@ export default function LogPage() {
   }
 
   async function addHourly() {
-    if (!hours || !hourlyRate) return
+    if (!canAddHourly) return
+    const h = Number(hours)
+
+    // Catalog HOUR item: log against the existing item, rate locked as before.
+    if (isHCatalog) {
+      const it = hourlyPick.item
+      try {
+        await createEntry({
+          entry_type: 'hourly',
+          work_item_id: it.id,
+          unit: 'hour',
+          quantity: null,
+          hours: h,
+          rate_snapshot: Number(it.rate) || 0,
+          amount: h * (Number(it.rate) || 0),
+          description: it.name,
+          work_date: date,
+        })
+        resetHourly()
+        flash('Logged it — good dog!')
+      } catch (err) {
+        alert('Failed to add entry: ' + err.message)
+      }
+      return
+    }
+
+    // Free-text HOUR entry: no catalog item, work_item_id null (as today).
+    if (isHCustom) {
+      const rate = Number(hourlyRate)
+      try {
+        await createEntry({
+          entry_type: 'hourly',
+          work_item_id: null,
+          unit: 'hour',
+          quantity: null,
+          hours: h,
+          rate_snapshot: rate,
+          amount: h * rate,
+          description: hourlyPick.text.trim() || null,
+          work_date: date,
+        })
+        resetHourly()
+        flash('Logged it — good dog!')
+      } catch (err) {
+        alert('Failed to add entry: ' + err.message)
+      }
+      return
+    }
+
+    // Library HOUR item: work_items insert FIRST (createFromLibrary), then the
+    // work_entry — same two-insert safety as the piece inline-create path.
+    const rate = Number(hourlyRate)
+    let newItem
+    try {
+      newItem = await createFromLibrary(hourlyPick.row, rate)
+    } catch (err) {
+      alert('Failed to save item: ' + err.message)
+      return
+    }
     try {
       await createEntry({
         entry_type: 'hourly',
-        work_item_id: null,
+        work_item_id: newItem.id,
         unit: 'hour',
         quantity: null,
-        hours: Number(hours),
-        rate_snapshot: Number(hourlyRate),
-        amount: (Number(hours) || 0) * (Number(hourlyRate) || 0),
-        description: hourlyDesc.trim() || null,
+        hours: h,
+        rate_snapshot: rate,
+        amount: h * rate,
+        description: newItem.name,
         work_date: date,
       })
-      setHours('')
-      setHourlyDesc('')
-      flash('Logged it — good dog!')
+      resetHourly()
+      flash('New item saved — good dog!')
     } catch (err) {
-      alert('Failed to add entry: ' + err.message)
+      alert('Item saved to your catalog, but logging the entry failed: ' + err.message + '\nSearch it again to log against it.')
+      resetHourly()
     }
   }
 
@@ -309,31 +372,15 @@ export default function LogPage() {
 
             {mode === 'piece' ? (
               !pick ? (
-                <div className={styles.field} style={{ marginBottom: 0 }}>
-                  <span className={styles.fieldLabel}>What did you work on?</span>
-                  <input ref={searchRef} className={styles.input} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search items…" />
-                  {debounced.trim().length >= 2 && (
-                    <div className={styles.searchResults}>
-                      {results.catalog.length > 0 && <div className={styles.searchSection}>Your catalog</div>}
-                      {results.catalog.map(i => (
-                        <button key={i.id} type="button" className={styles.searchItem} onClick={() => pickCatalog(i)}>
-                          <span className={styles.searchName}>{i.name}</span>
-                          <span className={styles.searchMeta}>{unitLabel(i.unit)} · {fmtMoney(i.rate)}</span>
-                        </button>
-                      ))}
-                      {results.library.length > 0 && <div className={styles.searchSection}>Add from library</div>}
-                      {results.library.map(l => (
-                        <button key={l.id} type="button" className={styles.searchItem} onClick={() => pickLibrary(l)}>
-                          <span className={styles.searchName}>{l.name}</span>
-                          <span className={styles.searchMeta}>{unitLabel(l.unit)}{l.billing_note ? ` · ${l.billing_note}` : ''}</span>
-                        </button>
-                      ))}
-                      <button type="button" className={styles.searchItem} onClick={() => pickCustom(debounced.trim())}>
-                        <span className={styles.searchName}>Add “{debounced.trim()}” as a custom item</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
+                <WorkItemSearch
+                  ref={searchRef}
+                  mode="piece"
+                  catalog={catalog}
+                  library={library}
+                  onPickCatalog={pickCatalog}
+                  onPickLibrary={pickLibrary}
+                  onPickCustom={pickCustom}
+                />
               ) : (
                 <>
                   <div className={styles.rowBetween} style={{ marginBottom: 10 }}>
@@ -367,26 +414,37 @@ export default function LogPage() {
                 </>
               )
             ) : (
-              <>
-                <div className={styles.fieldRow}>
-                  <div className={styles.field}>
-                    <span className={styles.fieldLabel}>Hours</span>
-                    <input className={styles.input} type="number" step="0.01" min="0" value={hours} onChange={e => setHours(e.target.value)} placeholder="0" />
+              !hourlyPick ? (
+                <WorkItemSearch
+                  mode="hourly"
+                  catalog={catalog}
+                  library={library}
+                  onPickCatalog={pickHourlyCatalog}
+                  onPickLibrary={pickHourlyLibrary}
+                  onPickCustom={pickHourlyCustom}
+                />
+              ) : (
+                <>
+                  <div className={styles.rowBetween} style={{ marginBottom: 10 }}>
+                    <div className={styles.entryName}>{hourlyName}</div>
+                    <button type="button" className={styles.linkBtn} onClick={resetHourly}>Change</button>
                   </div>
-                  <div className={styles.field}>
-                    <span className={styles.fieldLabel}>Rate ($/hr)</span>
-                    <input className={styles.input} type="number" step="0.01" min="0" value={hourlyRate} onChange={e => setHourlyRate(e.target.value)} placeholder="0.00" />
+                  <div className={styles.fieldRow}>
+                    <div className={styles.field}>
+                      <span className={styles.fieldLabel}>Hours</span>
+                      <input ref={hoursRef} className={styles.input} type="number" step="0.01" min="0" value={hours} onChange={e => setHours(e.target.value)} placeholder="0" />
+                    </div>
+                    <div className={styles.field}>
+                      <span className={styles.fieldLabel}>{isHLibrary ? 'Your rate for this GC ($/hr)' : 'Rate ($/hr)'}</span>
+                      <input className={styles.input} type="number" step="0.01" min={isHLibrary ? '0.01' : '0'} value={hourlyRate} onChange={e => setHourlyRate(e.target.value)} placeholder="0.00" readOnly={isHCatalog} autoFocus={isHLibrary} />
+                    </div>
                   </div>
-                </div>
-                <div className={styles.field} style={{ marginBottom: 10 }}>
-                  <span className={styles.fieldLabel}>Description (optional)</span>
-                  <input className={styles.input} value={hourlyDesc} onChange={e => setHourlyDesc(e.target.value)} placeholder="What did you work on?" />
-                </div>
-                <div className={styles.rowBetween}>
-                  <span className={styles.amountPreview}>{fmtMoney(hourlyPreview)}</span>
-                  <button className={styles.primaryBtn} disabled={!hours || !hourlyRate} onClick={addHourly}><Plus size={16} /> Add</button>
-                </div>
-              </>
+                  <div className={styles.rowBetween}>
+                    <span className={styles.amountPreview}>{fmtMoney(hourlyPreview)}</span>
+                    <button className={styles.primaryBtn} disabled={!canAddHourly} onClick={addHourly}><Plus size={16} /> Add</button>
+                  </div>
+                </>
+              )
             )}
           </div>
         )}

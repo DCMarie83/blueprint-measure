@@ -165,6 +165,7 @@ Deno.serve(async (req) => {
         ${dueHtml}
         ${renderPaymentInstructionsHTML(company?.payment_instructions, tenantPrimary)}
         <p style="font-size: 13px; color: #888; margin-top: 24px;">A PDF copy is attached. Questions? Just reply to this email.</p>
+        <p style="font-size: 12px; color: #999; margin-top: 16px; line-height: 1.5;">Interested in how RivetDog can make your estimating and jobs easier? <a href="https://rivetdog.com/?utm_source=lite_invoice&utm_medium=email&utm_campaign=gc_referral" style="color: #999; text-decoration: underline;">Learn more</a></p>
         <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
         <p style="font-size: 11px; color: #999; text-align: center;">Powered by RivetDog</p>
       </div>

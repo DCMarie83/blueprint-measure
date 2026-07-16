@@ -151,6 +151,14 @@ export async function generateLiteInvoiceXLSX({ invoice, lineItems, client, comp
   totCell.font = { bold: true, size: 12 }
   totalRow.commit()
 
+  // ── Attribution footer — muted, one row below the totals ────────
+  currentRow += 2
+  const footerRow = ws.getRow(currentRow)
+  const footerCell = footerRow.getCell(1)
+  footerCell.value = 'Powered by RivetDog - rivetdog.com'
+  footerCell.font = { size: 9, italic: true, color: { argb: 'FF999999' } }
+  footerRow.commit()
+
   // ── Download ────────────────────────────────────────────────────
   const buffer = await workbook.xlsx.writeBuffer()
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })

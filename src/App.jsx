@@ -61,6 +61,7 @@ import BillingSuccessPage from './pages/BillingSuccessPage'
 import BillingCancelPage from './pages/BillingCancelPage'
 
 // Time & Pay Lite surfaces
+import LiteHomePage from './pages/lite/LiteHomePage'
 import LogPage from './pages/lite/LogPage'
 import LiteJobsPage from './pages/lite/LiteJobsPage'
 import LiteJobDetailPage from './pages/lite/LiteJobDetailPage'
@@ -294,7 +295,7 @@ export default function App() {
       {/* Protected routes — require login + completed setup */}
       <Route
         path="/dashboard"
-        element={<ProtectedRoute><FamilyGate allow="contractor" redirectTo="/log"><DashboardPage /></FamilyGate></ProtectedRoute>}
+        element={<ProtectedRoute><FamilyGate allow="contractor" redirectTo="/home"><DashboardPage /></FamilyGate></ProtectedRoute>}
       />
       <Route
         path="/project/:projectId"
@@ -350,6 +351,10 @@ export default function App() {
       />
 
       {/* Time & Pay Lite — sub-facing surfaces (contractor tenants redirected to /dashboard) */}
+      <Route
+        path="/home"
+        element={<ProtectedRoute><FamilyGate allow="lite" redirectTo="/dashboard"><LiteHomePage /></FamilyGate></ProtectedRoute>}
+      />
       <Route
         path="/log"
         element={<ProtectedRoute><FamilyGate allow="lite" redirectTo="/dashboard"><LogPage /></FamilyGate></ProtectedRoute>}

@@ -19,8 +19,9 @@ const CONTRACTOR_NAV = [
   { to: '/reports', label: 'Reports' },
 ]
 
-// Lite tenants get a deliberately tiny nav — Log is home, no contractor surfaces.
+// Lite tenants get a deliberately tiny nav — Home leads, Log stays the composer.
 const LITE_NAV = [
+  { to: '/home', label: 'Home' },
   { to: '/log', label: 'Log' },
   { to: '/jobs', label: 'Jobs' },
   { to: '/gcs', label: 'GCs' },
@@ -49,7 +50,7 @@ export default function AppHeader({ extras = null }) {
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + '/')
 
   const primaryNav = isLite ? LITE_NAV : CONTRACTOR_NAV
-  const homeLink = isLite ? '/log' : '/dashboard'
+  const homeLink = isLite ? '/home' : '/dashboard'
   const hasTenantLogo = company?.logo_url && !logoError
 
   return (

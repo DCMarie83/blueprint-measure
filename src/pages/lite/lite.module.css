@@ -313,6 +313,7 @@
   font-weight: 700;
   color: var(--color-text, #1a1a1a);
   margin-top: 4px;
+  font-variant-numeric: tabular-nums;
 }
 
 .empty {
@@ -460,4 +461,111 @@
 .searchMeta {
   font-size: 13px;
   color: var(--color-text-muted);
+}
+
+/* ── Home dashboard ─────────────────────────────────────────────── */
+.hero {
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 20px 18px;
+  margin-bottom: 14px;
+}
+
+.heroLabel {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.heroValue {
+  font-size: 38px;
+  font-weight: 800;
+  line-height: 1.05;
+  color: var(--color-text, #1a1a1a);
+  margin: 6px 0 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.heroSub {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.quickRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.quickAction {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px 8px;
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 10px);
+  color: var(--color-text, #1a1a1a);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+}
+
+.stepStrip {
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 10px);
+  padding: 4px 14px;
+  margin-bottom: 14px;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 0;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  color: var(--color-text, #1a1a1a);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.step:last-child { border-bottom: none; }
+
+.stepNum {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.stepNumDone {
+  background: var(--color-success);
+  border-color: var(--color-success);
+  color: #fff;
+}
+
+.stepDone {
+  color: var(--color-text-muted);
+  font-weight: 500;
 }

@@ -315,6 +315,9 @@ export function generateInvoicePDF({ invoice, lineItems, project, client, compan
   doc.setTextColor(...MUTED)
   doc.text(companyName, margin, pageHeight - 12)
   doc.text(invNumber, pageWidth - margin, pageHeight - 12, { align: 'right' })
+  // Platform attribution — every client-facing output carries it (white-label
+  // removal is Ultra-tier). Centered so it never collides with the edge labels.
+  doc.text('Powered by RivetDog', pageWidth / 2, pageHeight - 12, { align: 'center' })
 
   // ── Output ───────────────────────────────────────────────
   const filename = `${sanitizeFilename(invNumber)}${client?.display_name ? '_' + sanitizeFilename(client.display_name) : ''}.pdf`
