@@ -375,3 +375,52 @@
   position: relative;
   display: inline-block;
 }
+
+/* Log-first type-ahead: merged catalog + library dropdown. Tap targets ≥ 44px. */
+.searchResults {
+  margin-top: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 10px);
+  background: var(--color-surface, #fff);
+}
+
+.searchSection {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  padding: 8px 12px 4px;
+}
+
+.searchItem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: none;
+  border-top: 1px solid var(--color-border);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.searchItem:active {
+  background: color-mix(in srgb, var(--color-action-open) 8%, transparent);
+}
+
+.searchName {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text, #1a1a1a);
+}
+
+.searchMeta {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}

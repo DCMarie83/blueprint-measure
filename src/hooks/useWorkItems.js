@@ -46,6 +46,21 @@ export function useWorkItems(clientId) {
     return data
   }
 
+  // Log-first path: turn a work_item_library row into a GC catalog item in one
+  // insert, carrying category/unit/segment from the library row and the sub's
+  // entered rate. Returns the new row so the composer can log against it.
+  async function createFromLibrary(libraryRow, rate) {
+    return createItem({
+      library_item_id: libraryRow.id,
+      category: libraryRow.category || null,
+      name: libraryRow.name,
+      unit: libraryRow.unit,
+      segment: libraryRow.segment || null,
+      rate,
+      is_active: true,
+    })
+  }
+
   async function createManyItems(rows) {
     if (!companyId || !clientId) throw new Error('No company/GC context')
     if (rows.length === 0) return
@@ -67,5 +82,5 @@ export function useWorkItems(clientId) {
     setItems(prev => prev.filter(i => i.id !== id))
   }
 
-  return { items, loading, error, refetch: fetchItems, createItem, createManyItems, updateItem, deleteItem }
+  return { items, loading, error, refetch: fetchItems, createItem, createFromLibrary, createManyItems, updateItem, deleteItem }
 }
