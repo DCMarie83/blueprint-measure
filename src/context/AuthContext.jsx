@@ -58,6 +58,11 @@ export function AuthProvider({ children }) {
         const completed = await checkSetupComplete(u.id)
         setSetupComplete(completed)
       }
+    }).catch(() => {
+      // getSession can reject (e.g. auth lock contention on slow iOS Safari).
+      // Treat as "no session" — anonymous pages like /signup must still render.
+      setUser(null)
+    }).finally(() => {
       setLoading(false)
     })
 

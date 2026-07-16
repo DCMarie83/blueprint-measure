@@ -17,8 +17,15 @@ import './lib/fetchInstrumentation'
 import { logError } from './lib/logError'
 import { addBreadcrumb } from './lib/breadcrumbs'
 
+// auth-js lock-acquire timeouts (e.g. NavigatorLockAcquireTimeoutError) are
+// recoverable lock-recovery noise, not failures — keep them out of System Errors.
+function isAuthLockTimeout(err) {
+  return !!err && (err.isAcquireTimeout === true || /LockAcquireTimeoutError/.test(err.name || ''))
+}
+
 // Global error listeners
 window.addEventListener('error', (event) => {
+  if (isAuthLockTimeout(event.error)) return
   logError(event.error || event.message, 'error', {
     source: 'window_error',
     filename: event.filename,
@@ -27,6 +34,7 @@ window.addEventListener('error', (event) => {
 })
 
 window.addEventListener('unhandledrejection', (event) => {
+  if (isAuthLockTimeout(event.reason)) return
   const error = event.reason instanceof Error ? event.reason : new Error(String(event.reason))
   logError(error, 'error', { source: 'unhandled_rejection' })
 })
