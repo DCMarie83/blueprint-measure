@@ -33,9 +33,9 @@ function loadImageDimensions(url) {
 // ── Column-width heuristics ─────────────────────────────────────────────────
 
 const COL_WIDTHS = {
-  'Zone Name': 22, 'Description': 26, 'Surface Type': 14, 'Coats': 8,
-  'Surface Finish': 14, 'Type': 8, 'Result': 12, 'Unit': 8,
-  'Max Reach (ft)': 14, 'Est. Paint (gal)': 16, 'Notes': 30,
+  'Zone Name': 22, 'Description': 26, 'Surface Type': 14,
+  'Type': 8, 'Result': 12, 'Unit': 8,
+  'Max Reach (ft)': 14, 'Notes': 30,
 }
 
 // ── Header style constants ──────────────────────────────────────────────────
@@ -46,15 +46,15 @@ const HEADER_FONT = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 }
 // ── Numeric column indices (relative to headers array) ──────────────────────
 
 function numericIndices(headers) {
-  const names = new Set(['Coats', 'Result', 'Max Reach (ft)', 'Est. Paint (gal)'])
+  const names = new Set(['Result', 'Max Reach (ft)'])
   return headers.reduce((acc, h, i) => { if (names.has(h)) acc.push(i); return acc }, [])
 }
 
 // ── Main export ─────────────────────────────────────────────────────────────
 
-export async function exportXLSX(session, zones, enabledFeatures, company) {
+export async function exportXLSX(session, zones, company) {
   const ExcelJS = (await import('exceljs')).default
-  const { headers, rows, summary } = buildExportData(session, zones, enabledFeatures)
+  const { headers, rows, summary } = buildExportData(session, zones)
 
   const workbook = new ExcelJS.Workbook()
   const ws = workbook.addWorksheet('Takeoff')

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import InfoTooltip from '../ui/InfoTooltip'
 import Chip from '../ui/Chip'
 import styles from './ZoneList.module.css'
-import { getMaxReach, estimatePaint, applyDeductions } from '../../utils/measurements'
+import { getMaxReach, applyDeductions } from '../../utils/measurements'
 import { parseFeetInches, formatFeetInches, formatSF, formatLF } from '../../utils/fractions'
 import { evaluateZoneTest, computeExpectedTotal } from '../../utils/testEvaluation'
 
@@ -64,8 +64,6 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
   const [editName, setEditName] = useState('')
   const [editDescription, setEditDescription] = useState('')
   const [editSurfaceType, setEditSurfaceType] = useState('')
-  const [editCoatCount, setEditCoatCount] = useState(1)
-  const [editSurfaceFinish, setEditSurfaceFinish] = useState('smooth')
   const [editNotes, setEditNotes] = useState('')
 
   // Ceiling edit fields
@@ -116,8 +114,6 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
     setEditName(zone.name)
     setEditDescription(zone.description ?? '')
     setEditSurfaceType(zone.surface_type ?? '')
-    setEditCoatCount(zone.coat_count ?? 1)
-    setEditSurfaceFinish(zone.surface_finish ?? 'smooth')
     setEditNotes(zone.notes ?? '')
     setEditCeilingType(zone.ceiling_type ?? 'flat')
     setEditCeilingPeakHeight(zone.ceiling_peak_height    ? formatFeetInches(zone.ceiling_peak_height)    : '')
@@ -158,8 +154,6 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
         name: editName.trim(),
         description: editDescription.trim() || null,
         surface_type: editSurfaceType || null,
-        coat_count: editCoatCount,
-        surface_finish: editSurfaceFinish,
         notes: editNotes.trim() || null,
         ceiling_type: isCeiling ? editCeilingType : null,
         ceiling_pitch_rise: isCeiling && editPitchMode && (editCeilingType === 'vaulted' || editCeilingType === 'shed') ? editPitchRise : null,
@@ -265,8 +259,8 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                 {editSurfaceType === 'Ceiling' && editCeilingType === 'vaulted' && (
                   <>
                     <div className={styles.editHeightRow}>
-                      <button type="button" className={`${styles.editCoatBtn} ${!editPitchMode ? styles.editCoatActive : ''}`} onClick={() => setEditPitchMode(false)}>Use heights</button>
-                      <button type="button" className={`${styles.editCoatBtn} ${editPitchMode ? styles.editCoatActive : ''}`} onClick={() => setEditPitchMode(true)}>Use pitch <InfoTooltip>Roof pitch describes the steepness as rise over run. A pitch of 8/12 means the roof rises 8 inches for every 12 inches of horizontal distance. Common residential pitches: 4/12 (low slope), 6/12 (medium), 8/12 (medium-steep), 10/12 (steep — most common for vaulted ceilings), 12/12 (very steep, 45°).</InfoTooltip></button>
+                      <button type="button" className={`${styles.editStepBtn} ${!editPitchMode ? styles.editStepActive : ''}`} onClick={() => setEditPitchMode(false)}>Use heights</button>
+                      <button type="button" className={`${styles.editStepBtn} ${editPitchMode ? styles.editStepActive : ''}`} onClick={() => setEditPitchMode(true)}>Use pitch <InfoTooltip>Roof pitch describes the steepness as rise over run. A pitch of 8/12 means the roof rises 8 inches for every 12 inches of horizontal distance. Common residential pitches: 4/12 (low slope), 6/12 (medium), 8/12 (medium-steep), 10/12 (steep — most common for vaulted ceilings), 12/12 (very steep, 45°).</InfoTooltip></button>
                     </div>
                     {editPitchMode ? (
                       <>
@@ -328,8 +322,8 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                 {editSurfaceType === 'Ceiling' && editCeilingType === 'shed' && (
                   <>
                     <div className={styles.editHeightRow}>
-                      <button type="button" className={`${styles.editCoatBtn} ${!editPitchMode ? styles.editCoatActive : ''}`} onClick={() => setEditPitchMode(false)}>Use heights</button>
-                      <button type="button" className={`${styles.editCoatBtn} ${editPitchMode ? styles.editCoatActive : ''}`} onClick={() => setEditPitchMode(true)}>Use pitch <InfoTooltip>Roof pitch describes the steepness as rise over run. Common pitches: 4/12 (low), 6/12 (medium), 10/12 (steep, most common), 12/12 (45°).</InfoTooltip></button>
+                      <button type="button" className={`${styles.editStepBtn} ${!editPitchMode ? styles.editStepActive : ''}`} onClick={() => setEditPitchMode(false)}>Use heights</button>
+                      <button type="button" className={`${styles.editStepBtn} ${editPitchMode ? styles.editStepActive : ''}`} onClick={() => setEditPitchMode(true)}>Use pitch <InfoTooltip>Roof pitch describes the steepness as rise over run. Common pitches: 4/12 (low), 6/12 (medium), 10/12 (steep, most common), 12/12 (45°).</InfoTooltip></button>
                     </div>
                     {editPitchMode ? (
                       <>
@@ -363,7 +357,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
 
                 {/* Wall height & openings — shown when editing a Wall/SF zone */}
                 {editSurfaceType === 'Wall' && !enabledFeatures.wall_calculator && (
-                  <div className={styles.zonePaintLocked}>
+                  <div className={styles.zoneWallLocked}>
                     🔒 Wall calculator — available on Plus plan
                   </div>
                 )}
@@ -402,15 +396,15 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                           </div>
                         ))}
                         <div className={styles.editFinishBtns}>
-                          <button type="button" className={styles.editCoatBtn}
+                          <button type="button" className={styles.editStepBtn}
                             onClick={() => setEditOpenings(prev => [...prev, { id: Date.now(), name: 'Door', sf: 21 }])}>
                             + Door
                           </button>
-                          <button type="button" className={styles.editCoatBtn}
+                          <button type="button" className={styles.editStepBtn}
                             onClick={() => setEditOpenings(prev => [...prev, { id: Date.now() + 1, name: 'Window', sf: 15 }])}>
                             + Window
                           </button>
-                          <button type="button" className={styles.editCoatBtn}
+                          <button type="button" className={styles.editStepBtn}
                             onClick={() => setEditOpenings(prev => [...prev, { id: Date.now() + 2, name: 'Opening', sf: 0 }])}>
                             + Custom
                           </button>
@@ -420,29 +414,6 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                   </div>
                 )}
 
-                {/* Coats UI removed — estimating concern, handled by EstimateBuilder.
-                   editCoatCount state + save payload kept intact (default 1). */}
-
-                {enabledFeatures.paint_calculator && (
-                  <div className={styles.editFinishGroup}>
-                    <span className={styles.editFinishLabel}>Surface finish <InfoTooltip>Coverage rate per gallon. Smooth surfaces (drywall, trim) cover ~350 SF/gal. Textured (popcorn, stucco) cover ~275 SF/gal.</InfoTooltip></span>
-                    <div className={styles.editFinishBtns}>
-                      {[
-                        { value: 'smooth',   label: 'Smooth' },
-                        { value: 'textured', label: 'Textured' },
-                      ].map(({ value, label }) => (
-                        <button
-                          key={value}
-                          type="button"
-                          className={`${styles.editCoatBtn} ${editSurfaceFinish === value ? styles.editCoatActive : ''}`}
-                          onClick={() => setEditSurfaceFinish(value)}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
                 <textarea
                   className={styles.editTextarea}
                   value={editNotes}
@@ -523,7 +494,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                         </div>
                       )
                     })}
-                    <button type="button" className={styles.editCoatBtn}
+                    <button type="button" className={styles.editStepBtn}
                       onClick={() => setEditDeductions(prev => [...prev, { id: crypto.randomUUID(), name: '', value: '', source: 'manual' }])}>
                       + Add deduction
                     </button>
@@ -646,7 +617,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
 
                 {/* Wall breakdown — shown when wall_height is set and feature enabled */}
                 {zone.wall_height && zone.gross_wall_sf && enabledFeatures.wall_calculator && (
-                  <div className={styles.zonePaintEstimate}>
+                  <div className={styles.zoneWallBreakdown}>
                     <div>Wall: {formatFeetInches(zone.wall_height)} high · Gross {zone.gross_wall_sf} sf</div>
                     {zone.opening_deductions?.length > 0 && (
                       <div>Deductions: −{(zone.opening_deductions).reduce((s, o) => s + (o.sf ?? 0), 0)} sf ({zone.opening_deductions.length} openings)</div>

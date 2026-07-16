@@ -35,7 +35,6 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
   hiddenZoneIds,
   onLabelOffsetChange,
   orthoMode = false,
-  enabledFeatures = {},
 }, ref) {
   const canvasRef = useRef(null)
   const imageRef = useRef(null)
@@ -152,7 +151,7 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
     visibleZones.forEach(({ zone, colorIdx, lp }) => {
       const color = zone.color ?? ZONE_COLORS[colorIdx % ZONE_COLORS.length]
       drawZone(ctx, zone.points, color, zone.measurement_type, zone.name, zone.result, false,
-        zone.description, zone.surface_type, zone.coat_count, zone.ceiling_type,
+        zone.description, zone.surface_type, zone.ceiling_type,
         lp.x, lp.y, lp.centX, lp.centY)
     })
 
@@ -226,7 +225,7 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
       const colorIdx = (activeZone.colorIndex ?? zones.length) % ZONE_COLORS.length
       const color = activeZone.color ?? ZONE_COLORS[colorIdx]
       drawZone(ctx, activeZone.points, color, activeZone.measurement_type, '', null, true,
-        null, null, null, null, null, null, null, null)
+        null, null, null, null, null, null, null)
     }
 
     // Rubber-band line from last placed point to cursor position
@@ -372,7 +371,7 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
   // labelX/labelY: resolved position for the label (null to skip label).
   // centX/centY: the zone centroid (used to draw connector line when label is offset).
   function drawZone(ctx, points, color, type, name, result, isActive,
-    description, surfaceType, coatCount, ceilingType, labelX, labelY, centX, centY) {
+    description, surfaceType, ceilingType, labelX, labelY, centX, centY) {
     if (points.length === 0) return
     ctx.save()
 
@@ -467,7 +466,6 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
         : surfaceType || null
       const metaParts = [
         surfaceLabel,
-        enabledFeatures.paint_calculator && coatCount > 1 ? `${coatCount} coats` : null,
       ].filter(Boolean)
       if (metaParts.length > 0) labelParts.push(metaParts.join(' · '))
       if (result != null) {

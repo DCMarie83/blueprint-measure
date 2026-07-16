@@ -40,7 +40,6 @@ export default function ZoneDrawPanel({
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [surfaceType, setSurfaceType] = useState('')
-  const [coatCount, setCoatCount] = useState(1)
   const [typeLocal, setTypeLocal] = useState(selectedType ?? 'SF')
   const type = selectedType ?? typeLocal
   function setType(t) { setTypeLocal(t); onTypeChange?.(t) }
@@ -82,7 +81,6 @@ export default function ZoneDrawPanel({
       name: name.trim(),
       description: description.trim() || null,
       surface_type: surfaceType || null,
-      coat_count: coatCount,
       type,
       color: color ?? null,
       ceiling_type: isCeiling ? ceilingType : null,
@@ -447,9 +445,6 @@ export default function ZoneDrawPanel({
           </div>
         )
       )}
-
-      {/* Coat count UI removed — coats are an estimating concern handled in EstimateBuilder.
-         State kept at default 1 for downstream consumers (ZoneList, canvas labels, CSV). */}
 
       {/* Measurement type + color picker moved to Toolbar (Phase B).
          Controlled via selectedType/selectedColor props. */}

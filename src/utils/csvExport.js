@@ -1,8 +1,8 @@
 // Generates and triggers a CSV download for all zones in a session.
 import { buildExportData, buildExportFilename } from './exportData'
 
-export function exportCSV(session, zones, enabledFeatures = {}) {
-  const { headers, rows, summary } = buildExportData(session, zones, enabledFeatures)
+export function exportCSV(session, zones) {
+  const { headers, rows, summary } = buildExportData(session, zones)
 
   const allRows = []
   allRows.push(headers)

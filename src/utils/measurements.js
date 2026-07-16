@@ -169,25 +169,15 @@ export function calculateCeilingSF(baseSF, ceilingType, params, points, pixelsPe
   return { adjustedSF: baseSF, adjustment: 0 }
 }
 
-// Paint coverage rates, in SF per gallon. Single source of truth for paint math.
-const PAINT_COVERAGE = { smooth: 350, textured: 275 }
-
 // Raw (unrounded) paint gallons for one SF zone. Internal helper so that
 // estimateMaterials can sum raw gallons across a group and round ONCE,
 // instead of rounding per-zone (which over-buys).
+// Coverage fixed at 350 SF/gal (smooth). Finish and coats are pricing concerns
+// owned by the estimate builder / Gridiron. Per-trade coverage lands in the
+// Materials Depth build.
 function rawPaintGallons(zone) {
   if (zone.measurement_type !== 'SF' || !zone.result || Number(zone.result) <= 0) return 0
-  const coverage = zone.surface_finish === 'textured' ? PAINT_COVERAGE.textured : PAINT_COVERAGE.smooth
-  const coats = zone.coat_count && zone.coat_count > 0 ? zone.coat_count : 1
-  return (Number(zone.result) * coats) / coverage
-}
-
-// Estimates paint quantity in gallons for a single zone.
-// Returns null when result is 0 or measurement type isn't SF.
-export function estimatePaint(zone) {
-  const raw = rawPaintGallons(zone)
-  if (raw <= 0) return null
-  return Math.ceil(raw * 4) / 4 // round up to nearest 0.25 gal
+  return Number(zone.result) / 350
 }
 
 // Deterministic material quantity estimator. Produces suggested material line
@@ -214,14 +204,12 @@ function estimatePaintMaterials(zones, defaultOverage) {
   const paintZones = zones.filter(z => z.measurement_type === 'SF' && Number(z.result) > 0)
   if (paintZones.length === 0) return []
 
-  // Group by surface_type + surface_finish (wall vs ceiling, smooth vs textured).
+  // Group by surface_type (wall vs ceiling).
   const groups = new Map()
   for (const z of paintZones) {
     const surfaceType = z.surface_type || 'Surface'
-    const finish = z.surface_finish === 'textured' ? 'textured' : 'smooth'
-    const key = `${surfaceType}|${finish}`
-    if (!groups.has(key)) groups.set(key, { surfaceType, finish, zones: [], rawGallons: 0 })
-    const g = groups.get(key)
+    if (!groups.has(surfaceType)) groups.set(surfaceType, { surfaceType, zones: [], rawGallons: 0 })
+    const g = groups.get(surfaceType)
     g.zones.push(z)
     g.rawGallons += rawPaintGallons(z)
   }
@@ -231,7 +219,7 @@ function estimatePaintMaterials(zones, defaultOverage) {
     if (g.rawGallons <= 0) continue
     const gallons = Math.ceil(g.rawGallons * 4) / 4 // round the GROUP total up to 0.25
     lines.push({
-      description: paintLineLabel(g.surfaceType, g.finish, uniqueCoats(g.zones)),
+      description: `${g.surfaceType} paint`,
       unit: 'gallon',
       quantity: gallons,
       overage_pct: defaultOverage,
@@ -246,17 +234,6 @@ function estimatePaintMaterials(zones, defaultOverage) {
     })
   }
   return lines.sort((a, b) => a.description.localeCompare(b.description))
-}
-
-function uniqueCoats(zones) {
-  const set = new Set(zones.map(z => (z.coat_count && z.coat_count > 0 ? z.coat_count : 1)))
-  return [...set].sort((a, b) => a - b)
-}
-
-function paintLineLabel(surfaceType, finish, coats) {
-  const base = `${surfaceType} paint — ${finish}`
-  if (coats.length === 1) return `${base}, ${coats[0]} ${coats[0] === 1 ? 'coat' : 'coats'}`
-  return `${base}, ${coats[0]}–${coats[coats.length - 1]} coats`
 }
 
 function sourceSummary(zones) {

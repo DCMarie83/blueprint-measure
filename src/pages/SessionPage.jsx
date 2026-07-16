@@ -567,13 +567,13 @@ export default function SessionPage() {
     }
   }
 
-  function handleStartDrawing({ name, description, surface_type, coat_count, type,
+  function handleStartDrawing({ name, description, surface_type, type,
     ceiling_type, ceiling_peak_height, ceiling_wall_height,
     ceiling_tray_perimeter, ceiling_drop_depth,
     ceiling_low_wall_height, ceiling_high_wall_height, color,
     wall_height, opening_deductions }) {
     setActiveZoneMeta({
-      name, description, surface_type, coat_count, type,
+      name, description, surface_type, type,
       ceiling_type: ceiling_type ?? null,
       ceiling_peak_height:    ceiling_peak_height    ?? null,
       ceiling_wall_height:    ceiling_wall_height    ?? null,
@@ -597,7 +597,6 @@ export default function SessionPage() {
       name: zone.name,
       description: zone.description,
       surface_type: zone.surface_type,
-      coat_count: zone.coat_count,
       type: zone.measurement_type,
       notes: zone.notes,
       ceiling_type: zone.ceiling_type ?? null,
@@ -720,7 +719,6 @@ export default function SessionPage() {
           name: activeZoneMeta.name,
           description: activeZoneMeta.description,
           surface_type: activeZoneMeta.surface_type,
-          coat_count: activeZoneMeta.coat_count,
           ceiling_type: activeZoneMeta.ceiling_type ?? null,
           ceiling_peak_height:    activeZoneMeta.ceiling_peak_height    ?? null,
           ceiling_wall_height:    activeZoneMeta.ceiling_wall_height    ?? null,
@@ -816,7 +814,6 @@ export default function SessionPage() {
           name: activeZoneMeta.name,
           description: activeZoneMeta.description,
           surface_type: activeZoneMeta.surface_type,
-          coat_count: activeZoneMeta.coat_count,
           ceiling_type: activeZoneMeta.ceiling_type ?? null,
           ceiling_peak_height:    activeZoneMeta.ceiling_peak_height    ?? null,
           ceiling_wall_height:    activeZoneMeta.ceiling_wall_height    ?? null,
@@ -887,7 +884,7 @@ export default function SessionPage() {
       const deductionFieldsProvided = 'deductions' in updates && 'result' in updates
 
       // Only recalculate the stored result when ceiling-specific fields actually
-      // changed. Editing name, notes, or coat_count should never silently alter
+      // changed. Editing name or notes should never silently alter
       // the measurement result.
       if (!deductionFieldsProvided && zone && pixelsPerFoot && zone.points && zone.measurement_type === 'SF') {
         const ceilingParamsChanged =
@@ -973,7 +970,7 @@ export default function SessionPage() {
       alert('Nothing to fetch yet.')
       return
     }
-    exportCSV(session, zones, enabledFeatures)
+    exportCSV(session, zones)
   }
 
   async function handleExportXLSX() {
@@ -983,7 +980,7 @@ export default function SessionPage() {
     }
     setDownloadingXlsx(true)
     try {
-      await exportXLSX(session, zones, enabledFeatures, company)
+      await exportXLSX(session, zones, company)
     } catch (err) {
       console.error('Excel export failed:', err)
       alert('Excel export failed: ' + err.message)
@@ -1905,7 +1902,6 @@ export default function SessionPage() {
             hiddenZoneIds={hiddenZoneIds}
             onLabelOffsetChange={handleLabelOffsetChange}
             orthoMode={orthoMode}
-            enabledFeatures={enabledFeatures}
           />
         )}
 

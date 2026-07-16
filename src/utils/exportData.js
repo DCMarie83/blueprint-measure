@@ -1,16 +1,11 @@
 // Single source of truth for measurement export data.
 // Both CSV and XLSX exports consume this to stay in sync.
-import { getMaxReach, estimatePaint } from './measurements'
+import { getMaxReach } from './measurements'
 
-export function buildExportData(session, zones, enabledFeatures = {}) {
-  const hasPaint = !!enabledFeatures.paint_calculator
-
+export function buildExportData(session, zones) {
   // Header row
-  const headers = ['Zone Name', 'Description', 'Surface Type']
-  if (hasPaint) headers.push('Coats', 'Surface Finish')
-  headers.push('Type', 'Result', 'Unit', 'Max Reach (ft)')
-  if (hasPaint) headers.push('Est. Paint (gal)')
-  headers.push('Notes')
+  const headers = ['Zone Name', 'Description', 'Surface Type',
+    'Type', 'Result', 'Unit', 'Max Reach (ft)', 'Notes']
 
   // Data rows
   const rows = zones.map(zone => {
@@ -26,16 +21,8 @@ export function buildExportData(session, zones, enabledFeatures = {}) {
       zone.description ?? '',
       zone.surface_type ?? '',
     ]
-    if (hasPaint) {
-      row.push(zone.coat_count ?? 1)
-      row.push(zone.surface_finish ?? 'smooth')
-    }
     row.push(zone.measurement_type, result, unit)
     row.push(maxReach !== null ? maxReach : null)
-    if (hasPaint) {
-      const paintGal = estimatePaint(zone)
-      row.push(paintGal !== null ? paintGal : null)
-    }
     row.push(zone.notes ?? '')
     return row
   })

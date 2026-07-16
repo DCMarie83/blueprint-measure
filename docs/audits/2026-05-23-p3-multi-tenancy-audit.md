@@ -200,7 +200,7 @@ Features are gated via `companies.features` (JSONB dictionary). The flow:
 
 1. `useSession.js:56-68` — Queries `user_profiles.company_id`, then `companies.features`
 2. Stores result in `enabledFeatures` state
-3. Components check `enabledFeatures.paint_calculator`, `enabledFeatures.ai_scale_detection`, etc.
+3. Components check `enabledFeatures.ai_scale_detection`, `enabledFeatures.wall_calculator`, etc.
 4. Super-admin bypass: `useSession.js:44` — `if (user.email === 'main@ngautomationhub.com')` gets all features hardcoded true
 
 ### C2. Feature Gate Locations
@@ -209,15 +209,8 @@ Features are gated via `companies.features` (JSONB dictionary). The flow:
 |------|---------|---------------|---------------|---------------|
 | `src/hooks/useSession.js` | 44-54 | All features | Super-admin hardcoded email check | ⚠️ Keep bypass but update company feature loading for flat-tier |
 | `src/hooks/useSession.js` | 62-68 | All features | `company?.features ?? {}` | ⚠️ With flat pricing, all paying tenants get `{}` → all true. Need default-true logic. |
-| `src/utils/csvExport.js` | 7 | Paint columns in CSV | `!!enabledFeatures.paint_calculator` | ⚠️ Will always be true for paying tenants |
-| `src/components/zones/ZoneList.jsx` | 378 | Paint calculator UI | `enabledFeatures.paint_calculator && (` | ⚠️ Same |
-| `src/components/canvas/BlueprintCanvas.jsx` | 405 | Paint coat display | `enabledFeatures.paint_calculator && coatCount > 1` | ⚠️ Same |
 | `src/pages/SessionPage.jsx` | 400 | AI scale detection | `enabledFeatures?.ai_scale_detection` | ⚠️ Same |
 | `src/pages/SessionPage.jsx` | 1539 | Test mode | `isAdmin \|\| enabledFeatures?.test_mode` | ⚠️ Same |
-
-### C3. `paint_calculator` — Master Switch Verification
-
-Searched for any separate paint flag beyond `paint_calculator`: **none found**. Confirmed: `paint_calculator` in `companies.features` is the single master switch for all paint-related functionality. No separate `paint_enabled`, `show_paint`, or similar flags exist.
 
 ### C4. `subscription_status` Gating
 
@@ -381,4 +374,3 @@ Ordered by risk and dependency — schema migrations first since they enable eve
 - **Hardcoded "RivetDog" in tenant-facing output:** 8 locations
 - **`subscription_status` frontend checks:** 0 (critical gap)
 - **Bad RLS subquery pattern:** 0 (clean)
-- **Separate paint flags beyond `paint_calculator`:** 0 (confirmed single master switch)

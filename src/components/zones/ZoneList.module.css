@@ -146,14 +146,14 @@
   letter-spacing: 0.01em;
 }
 
-.zonePaintEstimate {
+.zoneWallBreakdown {
   font-size: 12px;
   font-weight: 500;
   color: var(--color-text-muted);
   margin-bottom: 4px;
 }
 
-.zonePaintLocked {
+.zoneWallLocked {
   font-size: 12px;
   font-weight: 400;
   color: var(--color-text-muted);
@@ -356,12 +356,7 @@
   opacity: 0.8;
 }
 
-.editCoatGroup {
-  display: flex;
-  gap: 6px;
-}
-
-.editCoatBtn {
+.editStepBtn {
   flex: 1;
   padding: 6px 4px;
   background: var(--color-bg);
@@ -373,7 +368,7 @@
   transition: border-color 0.15s, color 0.15s;
 }
 
-.editCoatActive {
+.editStepActive {
   border-color: var(--color-primary);
   color: var(--color-primary);
   background: rgba(46, 139, 255, 0.08);

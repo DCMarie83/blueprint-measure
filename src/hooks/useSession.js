@@ -89,7 +89,7 @@ export function useSession(sessionId) {
   }, [fetchSession])
 
   async function saveZone(zoneData) {
-    // zoneData: { name, description, notes, surface_type, coat_count,
+    // zoneData: { name, description, notes, surface_type,
     //             ceiling_type, ceiling_peak_height, ceiling_wall_height,
     //             ceiling_tray_perimeter, ceiling_drop_depth,
     //             ceiling_low_wall_height, ceiling_high_wall_height,
@@ -100,7 +100,6 @@ export function useSession(sessionId) {
       description: zoneData.description ?? null,
       notes: zoneData.notes ?? null,
       surface_type: zoneData.surface_type ?? null,
-      coat_count: zoneData.coat_count ?? 1,
       ceiling_type: zoneData.ceiling_type ?? null,
       ceiling_peak_height:    zoneData.ceiling_peak_height    ?? null,
       ceiling_wall_height:    zoneData.ceiling_wall_height    ?? null,
@@ -142,8 +141,6 @@ export function useSession(sessionId) {
       description: updates.description ?? null,
       notes: updates.notes ?? null,
       surface_type: updates.surface_type ?? null,
-      coat_count: updates.coat_count ?? 1,
-      surface_finish: updates.surface_finish ?? 'smooth',
       ceiling_type: updates.ceiling_type ?? null,
       ceiling_peak_height:    updates.ceiling_peak_height    ?? null,
       ceiling_wall_height:    updates.ceiling_wall_height    ?? null,
