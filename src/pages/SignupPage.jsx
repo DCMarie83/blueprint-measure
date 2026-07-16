@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { BRAND } from '../lib/config'
+import { BRAND, FOUNDER_SPOTS_SCARCITY_THRESHOLD } from '../lib/config'
 import { formatAuthError } from '../lib/authErrors'
 import Logo from '../components/brand/Logo'
 import { US_STATES } from '../data/usStates'
@@ -28,9 +28,6 @@ const NARRATIVE = [
   { step: '3', title: 'Perform the Job', desc: 'Track crew time, materials, and expenses against the bid — live.', icon: Clock },
   { step: '4', title: 'Get Paid', desc: 'Invoice from the accepted estimate. Clients pay through their portal.', icon: DollarSign },
 ]
-
-const FOUNDERS_PLAN_KEY = 'founding_500' // matches plan_key the RPC returns — independent of display name
-const FOUNDER_GIFT_LINE = 'Plus a special thank-you gift after 90 days as an active subscriber.' // EDIT: finalize swag copy
 
 function DemoCard({ id, label }) {
   const [playing, setPlaying] = useState(false);
@@ -263,59 +260,45 @@ export default function SignupPage() {
             )}
 
             {(() => {
-              if (scarcityLoading || !heroState) return null
-              if (!scarcity) {
-                // Neutral fallback — no quota row for this state
+              // No state selected, RPC in flight, errored, or returned nothing
+              // -> render NOTHING. Silence beats a false promise.
+              if (scarcityLoading || !heroState || !scarcity) return null
+
+              const capStatement = (
+                <>
+                  <p className={s.scarcityLine}>
+                    Only {scarcity.spots_total} founder spots per state.
+                  </p>
+                  <p className={s.scarcitySub}>
+                    When {stateName} fills, the price goes up.
+                  </p>
+                </>
+              )
+
+              // Branch A — plenty left: cap statement, no live count.
+              if (scarcity.spots_remaining > FOUNDER_SPOTS_SCARCITY_THRESHOLD) {
+                return capStatement
+              }
+
+              // Branch B — nearly full: live count.
+              if (scarcity.spots_remaining > 0) {
                 return (
                   <p className={s.scarcityLine}>
-                    Founder pricing available — $79.99/mo. Cancel anytime.
+                    Only {scarcity.spots_remaining} founder {scarcity.spots_remaining === 1 ? 'spot' : 'spots'} left in {stateName}.
                   </p>
                 )
               }
-              const isFoundersTier = scarcity.plan_key === FOUNDERS_PLAN_KEY
 
-              // Branch A — Founders tier, completely open
-              if (isFoundersTier && scarcity.spots_remaining === scarcity.spots_total) {
-                return (
-                  <>
-                    <p className={s.scarcityLine}>Claim founder #1 in {stateName}</p>
-                    <p className={s.scarcitySub}>
-                      Be the first trade pro in your state to lock ${scarcity.monthly_price}/mo for life. {FOUNDER_GIFT_LINE}
-                    </p>
-                  </>
-                )
+              // Branch C — full: point at the next tier, but never render
+              // "Join at $/mo" with holes. Missing next tier -> cap statement.
+              if (scarcity.next_tier_name == null || scarcity.next_tier_price == null) {
+                return capStatement
               }
-
-              // Branch B — Founders tier, partially claimed
-              if (isFoundersTier && scarcity.spots_remaining > 0) {
-                return (
-                  <>
-                    <p className={s.scarcityLine}>
-                      Only {scarcity.spots_remaining} founder {scarcity.spots_remaining === 1 ? 'spot' : 'spots'} left in {stateName}
-                    </p>
-                    <p className={s.scarcitySub}>
-                      After the first {scarcity.spots_total}, it's {scarcity.next_tier_name} at ${scarcity.next_tier_price}/mo — your rate stays locked.
-                    </p>
-                  </>
-                )
-              }
-
-              // Branch C — Founders full, now showing a non-founders tier with room
-              if (!isFoundersTier && scarcity.spots_remaining > 0) {
-                return (
-                  <>
-                    <p className={s.scarcityLine}>Founder spots in {stateName} are full</p>
-                    <p className={s.scarcitySub}>
-                      {scarcity.spots_remaining} {scarcity.plan_name} {scarcity.spots_remaining === 1 ? 'spot' : 'spots'} left at ${scarcity.monthly_price}/mo — still locked for life.
-                    </p>
-                  </>
-                )
-              }
-
-              // Branch D — This tier is full (spots_remaining === 0)
               return (
                 <>
-                  <p className={s.scarcityLine}>{scarcity.plan_name} in {stateName} is full</p>
+                  <p className={s.scarcityLine}>
+                    {scarcity.plan_name} in {stateName} is full.
+                  </p>
                   <p className={s.scarcitySub}>
                     Join {scarcity.next_tier_name} at ${scarcity.next_tier_price}/mo.
                   </p>

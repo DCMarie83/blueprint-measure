@@ -34,5 +34,11 @@ export const GOOGLE_ADS_SIGNUP_CONVERSION_LABEL = '73_wCPj00MwcEPKjhJVE';
 // Recurly public key (browser-safe, Recurly.js).
 export const RECURLY_PUBLIC_KEY = 'ewr1-5FyjbrwzjnEJiFBVHibzyZ';
 
+// Founder-spots scarcity: show the live remaining count only at or below this
+// number. Above it, show the cap statement instead ("Only N spots per state")
+// — a nearly-full count reads as scarcity, a full count reads as vacancy.
+// Also drives the /try demo end screen.
+export const FOUNDER_SPOTS_SCARCITY_THRESHOLD = 10;
+
 // GHL onboarding booking calendar (public link).
 export const ONBOARDING_CALENDAR_URL = 'https://api.leadconnectorhq.com/widget/booking/JqBPdsARvHo9H7xbnu0q';
