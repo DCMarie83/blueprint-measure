@@ -476,7 +476,10 @@
 }
 
 .greetingMark {
-  height: 56px;
+  /* Roughly double the old 56px, but fluid so the mascot never grows tall
+     enough to push the owed-to-you hero below the first phone screen. On a
+     360px phone this floors at 96px; on desktop it caps at 120px. */
+  height: clamp(96px, 24vw, 120px);
   width: auto;
   margin-bottom: 4px;
 }

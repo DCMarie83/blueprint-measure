@@ -26,6 +26,7 @@ const LITE_NAV = [
   { to: '/jobs', label: 'Jobs' },
   { to: '/gcs', label: 'GCs' },
   { to: '/invoices', label: 'Invoices' },
+  { to: '/reports', label: 'Reports' },
 ]
 
 function NavLink({ to, label, active, onClick }) {

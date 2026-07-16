@@ -70,6 +70,7 @@ import GCCatalogPage from './pages/lite/GCCatalogPage'
 import LiteInvoicesPage from './pages/lite/LiteInvoicesPage'
 import LiteInvoiceDetailPage from './pages/lite/LiteInvoiceDetailPage'
 import LiteBusinessInfoPage from './pages/lite/LiteBusinessInfoPage'
+import LiteReportsPage from './pages/lite/LiteReportsPage'
 
 // ProtectedRoute wraps pages that require login + completed setup.
 // bypassSubscriptionGate: if true, skip the subscription check (for /settings, /account, /subscribe)
@@ -244,6 +245,18 @@ function InvoiceDetailRouter() {
   return isLite ? <LiteInvoiceDetailPage /> : <InvoiceDetailPage />
 }
 
+function ReportsRouter() {
+  const { isLite, resolved } = useIsLite()
+  if (!resolved) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+        <div className="spinner" />
+      </div>
+    )
+  }
+  return isLite ? <LiteReportsPage /> : <ReportsPage />
+}
+
 function RouteBreadcrumbs() {
   const location = useLocation()
   useEffect(() => {
@@ -405,7 +418,7 @@ export default function App() {
       />
       <Route
         path="/reports"
-        element={<ProtectedRoute><FamilyGate allow="contractor" redirectTo="/log"><ReportsPage /></FamilyGate></ProtectedRoute>}
+        element={<ProtectedRoute><ReportsRouter /></ProtectedRoute>}
       />
       <Route
         path="/account"
