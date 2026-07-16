@@ -74,13 +74,35 @@ Deno.serve(async (req) => {
     // 4. Resolve company + locked price
     const { data: company, error: compErr } = await adminClient
       .from('companies')
-      .select('id, name, locked_price_monthly, canceled_at, recurly_account_code')
+      .select('id, name, plan_key, locked_price_monthly, canceled_at, recurly_account_code')
       .eq('id', companyId)
       .single();
     if (compErr || !company) return json({ error: 'Company not found' }, 404);
 
-    if (company.locked_price_monthly == null) {
-      return json({ error: 'No locked_price_monthly set — cannot determine charge amount' }, 400);
+    // 4a. No plan assigned -> .eq('key', null) returns zero rows and .single()
+    // fails, which would surface below as the misleading 'missing
+    // recurly_plan_code'. Name the real cause instead.
+    if (!company.plan_key) {
+      return json({ error: 'company has no plan assigned' }, 400);
+    }
+
+    // 4b. Resolve the company's plan — the Recurly plan code comes from data,
+    // never hardcoded. A plan without a recurly_plan_code is not billable.
+    const { data: plan } = await adminClient
+      .from('plans')
+      .select('recurly_plan_code, monthly_price')
+      .eq('key', company.plan_key)
+      .single();
+    if (!plan || !plan.recurly_plan_code) {
+      return json({ error: 'plan is not billable: missing recurly_plan_code' }, 400);
+    }
+
+    // 4c. Effective price: per-company lock first, else the plan's live price.
+    // Always sent as unit_amount — the override is how app-side pricing
+    // (including future promo prices) reaches Recurly without dashboard edits.
+    const effectivePrice = company.locked_price_monthly ?? plan.monthly_price;
+    if (effectivePrice == null) {
+      return json({ error: 'No price available — locked_price_monthly and plan.monthly_price are both null' }, 400);
     }
 
     // 5. Get owner email for Recurly account
@@ -125,11 +147,11 @@ Deno.serve(async (req) => {
       return json({ error: acctRes.data?.error?.message || 'Failed to create Recurly account' }, 502);
     }
 
-    // 8. Create subscription with lifetime-lock price override
-    const unitAmount = Number(company.locked_price_monthly);
+    // 8. Create subscription with the effective price override
+    const unitAmount = Number(effectivePrice);
     const isReturning = company.canceled_at != null || company.recurly_account_code != null;
     const subBody: Record<string, unknown> = {
-      plan_code: 'founders-monthly',
+      plan_code: plan.recurly_plan_code,
       account: { code: companyId },
       currency: 'USD',
       unit_amount: unitAmount,

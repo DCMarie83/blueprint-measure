@@ -5,7 +5,8 @@ import { ONBOARDING_CALENDAR_URL } from '../lib/config'
 const STATUS_MESSAGES = {
   trial_expired: {
     headline: 'Your free trial has ended',
-    body: 'Your 14-day free trial is over. Subscribe now to keep your account and all your data.',
+    // body is built in the component — trial length comes from the company row.
+    body: null,
     cta: 'Subscribe now',
     ctaTo: '/subscribe',
   },
@@ -41,6 +42,9 @@ export default function BillingBlockedPage({ company, reason }) {
   const key = reason || company?.subscription_status || 'suspended'
   const msg = STATUS_MESSAGES[key] ?? STATUS_MESSAGES.suspended
   const isTrialExpired = key === 'trial_expired'
+  const body = isTrialExpired
+    ? `Your ${company?.trial_duration_days ?? 14}-day free trial is over. Subscribe now to keep your account and all your data.`
+    : msg.body
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -66,7 +70,7 @@ export default function BillingBlockedPage({ company, reason }) {
           color: 'var(--color-text-muted)', fontSize: 15,
           lineHeight: 1.6, marginBottom: 32,
         }}>
-          {msg.body}
+          {body}
         </p>
 
         <Link

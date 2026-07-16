@@ -31,6 +31,14 @@ export const GOOGLE_ADS_TAG_ID = 'AW-18297721330';
 // Google Ads signup_completed conversion label (the string after AW-18297721330/).
 export const GOOGLE_ADS_SIGNUP_CONVERSION_LABEL = '73_wCPj00MwcEPKjhJVE';
 
+// Time & Pay Lite conversion label — null until Dee supplies the real label.
+// Covers the whole timepay_lite* family (founders, next tier, future state
+// promos); the tracker branches on the plan_key prefix, not one exact key.
+// While null, Lite signups fire NO conversion and conversion_fired_at stays
+// unset, so early Lite signups still convert once the label lands.
+export const GOOGLE_ADS_TIMEPAY_CONVERSION_LABEL = null;
+export const GOOGLE_ADS_TIMEPAY_CONVERSION_VALUE = 24.99;
+
 // Recurly public key (browser-safe, Recurly.js).
 export const RECURLY_PUBLIC_KEY = 'ewr1-5FyjbrwzjnEJiFBVHibzyZ';
 

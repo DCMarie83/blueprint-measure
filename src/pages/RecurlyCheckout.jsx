@@ -236,7 +236,9 @@ export default function RecurlyCheckout() {
   }
 
   const blocked = recurlyFailed || mountTimeout
-  const price = company.locked_price_monthly
+  // Effective price: useCompanyPlan already resolves locked_price_monthly ??
+  // plan.monthly_price — a NULL company lock falls back to the live plan price.
+  const price = companyPlan?.monthly_price ?? company.locked_price_monthly
   const planName = companyPlan?.display_name || 'Founders'
 
   return (
@@ -254,7 +256,7 @@ export default function RecurlyCheckout() {
             </p>
             {company.subscription_status === 'trialing' && company.trial_ends_at && (
               <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 4 }}>
-                Your 14-day free trial starts today. You won't be charged until it ends.
+                Your {company.trial_duration_days ?? 14}-day free trial starts today. You won't be charged until it ends.
               </p>
             )}
           </div>

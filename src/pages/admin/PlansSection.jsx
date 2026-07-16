@@ -41,6 +41,7 @@ export default function PlansSection() {
       trial_days: plan.trial_days ?? 0,
       is_active: plan.is_active ?? true,
       is_intro_tier: plan.is_intro_tier ?? false,
+      price_locked: plan.price_locked ?? false,
       display_order: plan.display_order ?? 0,
       features: plan.features ?? {},
     })
@@ -69,6 +70,7 @@ export default function PlansSection() {
         trial_days: parseInt(editState.trial_days) || 0,
         is_active: editState.is_active,
         is_intro_tier: editState.is_intro_tier,
+        price_locked: editState.price_locked,
         display_order: parseInt(editState.display_order) || 0,
         features: editState.features,
       }
@@ -176,6 +178,12 @@ export default function PlansSection() {
                     <label className={styles.planToggleRow}>
                       <input type="checkbox" checked={editState.is_intro_tier} onChange={e => updateField('is_intro_tier', e.target.checked)} />
                       <span>Intro Tier</span>
+                    </label>
+                  </div>
+                  <div className={styles.planField}>
+                    <label className={styles.planToggleRow}>
+                      <input type="checkbox" checked={editState.price_locked} onChange={e => updateField('price_locked', e.target.checked)} />
+                      <span>Lifetime price lock</span>
                     </label>
                   </div>
                 </div>

@@ -6,6 +6,7 @@ import { addBreadcrumb } from './lib/breadcrumbs'
 import { useConversionTracker } from './hooks/useConversionTracker'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
+import LiteSignupPage from './pages/LiteSignupPage'
 import TermsPage from './pages/TermsPage'
 import PrivacyPage from './pages/PrivacyPage'
 import RegisterPage from './pages/RegisterPage'
@@ -196,6 +197,10 @@ export default function App() {
       <Route
         path="/signup"
         element={user ? <Navigate to="/dashboard" replace /> : <SignupPage />}
+      />
+      <Route
+        path="/signup/lite"
+        element={user ? <Navigate to="/dashboard" replace /> : <LiteSignupPage />}
       />
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
