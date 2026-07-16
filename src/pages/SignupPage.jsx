@@ -17,13 +17,13 @@ const selectStyle = {
 
 const DEMOS = [
   { id: '3LpU-EHk9OY', label: 'Measure', caption: 'Blueprint takeoff in seconds.' },
-  { id: 'gTEhwPVKymg', label: 'Estimate', caption: 'Good / Better / Best estimates, fast.' },
+  { id: 'gTEhwPVKymg', label: 'Estimate', caption: 'Polished estimates from your measurements, fast.' },
   { id: 'qOaL4Mzg6HA', label: 'Manage', caption: 'Crew hours, tracked to the job.' },
 ]
 
 const NARRATIVE = [
   { step: '1', title: 'Start the Bid', desc: 'Upload a blueprint, set scale, measure every zone in minutes.', icon: Ruler },
-  { step: '2', title: 'Win the Bid', desc: 'Send a polished Good / Better / Best estimate your client picks from.', icon: FileText },
+  { step: '2', title: 'Win the Bid', desc: 'Send a polished estimate your client accepts right from their portal.', icon: FileText },
   { step: '3', title: 'Perform the Job', desc: 'Track crew time, materials, and expenses against the bid — live.', icon: Clock },
   { step: '4', title: 'Get Paid', desc: 'Invoice from the accepted estimate. Clients pay through their portal.', icon: DollarSign },
 ]
