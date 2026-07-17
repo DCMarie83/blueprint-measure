@@ -297,6 +297,27 @@
   width: 100%;
 }
 
+/* "Remind" pill on the home oldest-unpaid card. Fixed brand orange (the "owed"
+   money semantic) so it reads as a payment nudge, not a primary action. */
+.remindChip {
+  flex: none;
+  align-self: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--money-due);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 6px 12px;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.remindChip:hover {
+  background: var(--color-surface-2, #f2f2f2);
+}
+
 .listName {
   font-size: 16px;
   font-weight: 600;

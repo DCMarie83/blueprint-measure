@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
-import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
-import { ChevronLeft, Download, Send, CheckCircle, FileSpreadsheet } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { useParams, useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom'
+import { ChevronLeft, Download, Send, CheckCircle, FileSpreadsheet, BellRing } from 'lucide-react'
 import AppHeader from '../../components/AppHeader'
 import InvoiceStatusBadge from '../../components/invoices/InvoiceStatusBadge'
 import { useInvoice, useInvoiceMutations, isOverdue } from '../../hooks/useInvoices'
@@ -28,6 +28,17 @@ function fmtDate(d) {
   return new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
+// A reminder can go out at most once every 72 hours. Same window governs the
+// button's disabled state here and the home card's "Remind" affordance.
+const REMIND_THROTTLE_MS = 72 * 60 * 60 * 1000
+const REMINDABLE_STATUSES = ['sent', 'viewed', 'partial']
+
+function remindedLabel(ts) {
+  const days = Math.floor((Date.now() - new Date(ts).getTime()) / 86400000)
+  if (days <= 0) return 'Reminded today'
+  return `Reminded ${days} day${days === 1 ? '' : 's'} ago`
+}
+
 export default function LiteInvoiceDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -35,6 +46,7 @@ export default function LiteInvoiceDetailPage() {
   // When arrived from Reports, location.state.backTo holds the exact /reports URL
   // (preset + custom range) so the back action returns with the range intact.
   const backTo = location.state?.backTo
+  const [searchParams, setSearchParams] = useSearchParams()
   const { company } = useEffectiveCompany()
   const { invoice, lineItems, payments, loading, error, refetch } = useInvoice(id)
   const { recordPayment } = useInvoiceMutations()
@@ -44,6 +56,8 @@ export default function LiteInvoiceDetailPage() {
   const [busy, setBusy] = useState(false)
   const [actionError, setActionError] = useState(null)
   const [sendOk, setSendOk] = useState(false)
+  const [remindOk, setRemindOk] = useState(false)
+  const remindAutoFired = useRef(false)
 
   // Mark paid sheet
   const [showPaySheet, setShowPaySheet] = useState(false)
@@ -134,6 +148,48 @@ export default function LiteInvoiceDetailPage() {
     finally { setBusy(false) }
   }
 
+  // Remind GC — same send rail with mode 'reminder', then stamp last_reminded_at
+  // so the 72h throttle engages. Regenerates the PDF exactly like a normal send.
+  async function handleRemind() {
+    const email = gc?.primary_email
+    if (!email) return
+    const name = gc.business_name || gc.display_name || 'this GC'
+    if (!window.confirm(`Email a payment reminder to ${name} <${email}>?`)) return
+    setBusy(true); setActionError(null); setRemindOk(false)
+    try {
+      const companyData = await buildBranding()
+      const pdfBase64 = generateInvoicePDF({ invoice, lineItems, project, client: gc, company: companyData, returnAs: 'base64' })
+      const { error: fnErr } = await supabase.functions.invoke('send-lite-invoice-email', {
+        body: { invoice_id: id, pdf_base64: pdfBase64, mode: 'reminder' },
+      })
+      if (fnErr) throw new Error(fnErr.message || 'Reminder failed')
+      const { error: upErr } = await supabase
+        .from('invoices')
+        .update({ last_reminded_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .eq('id', id)
+      if (upErr) throw new Error(upErr.message)
+      setRemindOk(true)
+      setTimeout(() => setRemindOk(false), 3000)
+      await refetch()
+    } catch (err) { setActionError(err.message) }
+    finally { setBusy(false) }
+  }
+
+  // Deep-link from the home oldest-unpaid card (?remind=1): open the reminder
+  // confirm once the GC has resolved. Guarded so it fires a single time, and the
+  // param is cleared so a refresh or back-nav doesn't re-trigger it.
+  useEffect(() => {
+    if (remindAutoFired.current) return
+    if (searchParams.get('remind') !== '1') return
+    if (!invoice || !gc) return
+    remindAutoFired.current = true
+    searchParams.delete('remind')
+    setSearchParams(searchParams, { replace: true })
+    const remindable = REMINDABLE_STATUSES.includes(invoice.status) &&
+      (!invoice.last_reminded_at || Date.now() - new Date(invoice.last_reminded_at).getTime() >= REMIND_THROTTLE_MS)
+    if (remindable && gc.primary_email) handleRemind()
+  }, [invoice, gc, searchParams, setSearchParams])
+
   function openPaySheet() {
     const balance = Math.max(0, (Number(invoice.total) || 0) - (Number(invoice.paid_amount) || 0))
     setPayMode('full')
@@ -168,6 +224,13 @@ export default function LiteInvoiceDetailPage() {
   const gcName = gc ? (gc.business_name || gc.display_name) : '—'
   const canPay = invoice.status !== 'void' && balanceDue > 0
   const hasEmail = !!gc?.primary_email
+
+  // Remind GC — button shows for sent/viewed/partial (never draft/paid/void).
+  // The 72h throttle disables it, with the "Reminded …" stamp as the explanation.
+  const remindEligible = REMINDABLE_STATUSES.includes(invoice.status)
+  const remindedAt = invoice.last_reminded_at
+  const remindThrottled = !!remindedAt && (Date.now() - new Date(remindedAt).getTime() < REMIND_THROTTLE_MS)
+  const remindStamp = remindedAt ? remindedLabel(remindedAt) : null
 
   // The GC's online response, if they've reviewed the invoice. Any value
   // starting with "approv" is an approval; anything else set means they asked
@@ -222,11 +285,18 @@ export default function LiteInvoiceDetailPage() {
             {canPay && (
               <button className={styles.secondaryBtn} onClick={openPaySheet} disabled={busy}><CheckCircle size={15} /> Mark paid</button>
             )}
+            {remindEligible && (
+              <button className={styles.secondaryBtn} onClick={handleRemind} disabled={busy || remindThrottled || !hasEmail}>
+                <BellRing size={15} /> Remind GC
+              </button>
+            )}
           </div>
           {!hasEmail && (
             <p className={styles.helper}>No email on file for this GC. <Link to="/gcs" className={styles.linkBtn}>Add an email for this GC</Link> to send.</p>
           )}
+          {remindEligible && remindStamp && <p className={styles.helper}>{remindStamp}{remindThrottled ? ' · you can remind again 72 hours after the last reminder' : ''}</p>}
           {sendOk && <p className={styles.helper} style={{ color: 'var(--color-success)' }}>Sent to {gcName}.</p>}
+          {remindOk && <p className={styles.helper} style={{ color: 'var(--color-success)' }}>Reminder sent to {gcName}.</p>}
           {actionError && <div className={styles.error} style={{ marginTop: 10, marginBottom: 0 }}>{actionError}</div>}
         </div>
 

@@ -149,6 +149,18 @@ export default function LiteHomePage() {
                   <div className={styles.listName}>{oldestUnpaid.invoice_number}</div>
                   <div className={styles.listSub}>{oldestUnpaid.gcName} · <span className={oldestUnpaid.overdue ? styles.moneyOverdue : styles.moneyDue}>{oldestUnpaid.days} day{oldestUnpaid.days === 1 ? '' : 's'} {oldestUnpaid.overdue ? 'overdue' : 'outstanding'}</span></div>
                 </div>
+                {oldestUnpaid.remindable && (
+                  // A span (not a nested <button>, which is invalid inside this
+                  // button card). stopPropagation keeps the card's own navigate
+                  // from firing; the deep-link opens the reminder confirm on land.
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    className={styles.remindChip}
+                    onClick={e => { e.stopPropagation(); navigate(`/invoices/${oldestUnpaid.id}?remind=1`) }}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); e.preventDefault(); navigate(`/invoices/${oldestUnpaid.id}?remind=1`) } }}
+                  >Remind</span>
+                )}
                 <ChevronRight size={18} className={styles.muted} />
               </button>
             )}

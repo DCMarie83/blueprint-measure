@@ -14,6 +14,9 @@ import { getEffectiveTimeZone, startOfToday, startOfMonth, startOfYear, weekRang
 // is not yet billed to anyone; 'void' is dead; 'paid' only feeds paidCount.
 const OUTSTANDING_STATUSES = new Set(['sent', 'viewed', 'partial'])
 
+// A reminder can go out at most once every 72 hours (mirrors the invoice detail).
+const REMIND_THROTTLE_MS = 72 * 60 * 60 * 1000
+
 const EMPTY = {
   owed: { total: 0, invoicedAwaiting: 0, loggedNotInvoiced: 0 },
   earnedMTD: 0,
@@ -47,7 +50,7 @@ export function useLiteHomeStats(companyId) {
       // ── Five parallel, company-scoped reads ────────────────────────
       const [invRes, entRes, payRes, cliRes, projRes] = await Promise.all([
         supabase.from('invoices')
-          .select('id, invoice_number, status, total, paid_amount, sent_at, created_at, due_date, client_id, project_id')
+          .select('id, invoice_number, status, total, paid_amount, sent_at, created_at, due_date, last_reminded_at, client_id, project_id')
           .eq('company_id', companyId),
         supabase.from('work_entries')
           .select('project_id, amount, invoice_id, work_date, created_at')
@@ -124,6 +127,9 @@ export function useLiteHomeStats(companyId) {
             // Overdue ONLY when a due date is set and today is strictly past it.
             // No due date → never red (stays "outstanding" orange downstream).
             overdue: !!inv.due_date && todayStr > String(inv.due_date).slice(0, 10),
+            // Remindable = eligible status (guaranteed here) AND outside the 72h
+            // throttle. Drives the home card's "Remind" affordance.
+            remindable: !inv.last_reminded_at || (Date.now() - new Date(inv.last_reminded_at).getTime() >= REMIND_THROTTLE_MS),
             _ref: ref,
           }
         }

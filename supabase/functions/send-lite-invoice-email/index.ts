@@ -62,10 +62,12 @@ Deno.serve(async (req) => {
     const { data: { user }, error: userErr } = await anonClient.auth.getUser()
     if (userErr || !user) return json({ error: 'Invalid auth' }, 401)
 
-    // 2. Parse input
-    const { invoice_id, pdf_base64 } = await req.json()
+    // 2. Parse input. `mode: 'reminder'` is an optional nudge variant — when it
+    // is absent the behavior is byte-for-byte the original send.
+    const { invoice_id, pdf_base64, mode } = await req.json()
     if (!invoice_id) return json({ error: 'invoice_id required' }, 400)
     if (!pdf_base64) return json({ error: 'pdf_base64 required' }, 400)
+    const isReminder = mode === 'reminder'
 
     // 3. Service-role client
     const adminClient = createClient(
@@ -77,7 +79,7 @@ Deno.serve(async (req) => {
     // 4. Fetch invoice + project
     const { data: invoice, error: invErr } = await adminClient
       .from('invoices')
-      .select('id, invoice_number, title, status, total, due_date, project_id, company_id, client_id, portal_token')
+      .select('id, invoice_number, title, status, total, paid_amount, due_date, sent_at, created_at, project_id, company_id, client_id, portal_token')
       .eq('id', invoice_id)
       .single()
     if (invErr || !invoice) return json({ error: 'Invoice not found' }, 404)
@@ -139,14 +141,35 @@ Deno.serve(async (req) => {
       ? new Date(invoice.due_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
       : null
 
+    // Reminder-only figures: what's still owed and how long the invoice has been
+    // out. Days-outstanding prefers sent_at (stamped on the draft→sent transition);
+    // when that's missing it falls back to created_at and the copy says "created"
+    // rather than "sent" so the email is honest about which timestamp it used.
+    const paidAmount = Number(invoice.paid_amount || 0)
+    const balanceDue = Math.max(0, Number(invoice.total || 0) - paidAmount)
+    const balanceFmt = balanceDue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    const sinceRef = invoice.sent_at || invoice.created_at
+    const daysSince = sinceRef ? Math.max(0, Math.floor((Date.now() - new Date(sinceRef).getTime()) / 86400000)) : null
+    const sinceVerb = invoice.sent_at ? 'sent' : 'created'
+    const amountLabel = isReminder ? 'Balance Due' : 'Invoice Total'
+    const amountValue = isReminder ? balanceFmt : totalFmt
+
+    // Body opener — reminder leads with the outstanding balance and age; the
+    // normal send keeps its original "attached as a PDF" line. Pun-free either way.
+    const introHtml = isReminder
+      ? `<p style="font-size: 15px; color: #1b2426; line-height: 1.5;">Hi ${escapeHtml(gcName)},</p>
+        <p style="font-size: 15px; color: #1b2426; line-height: 1.5;">This is a reminder that invoice <strong>${escapeHtml(invoice.invoice_number)}</strong> has an outstanding balance of <strong>$${balanceFmt}</strong>${daysSince != null ? `. It was ${sinceVerb} ${daysSince} day${daysSince === 1 ? '' : 's'} ago` : ''}. A PDF copy is attached.</p>`
+      : `<p style="font-size: 15px; color: #1b2426; line-height: 1.5;">Hi ${escapeHtml(gcName)},</p>
+        <p style="font-size: 15px; color: #1b2426; line-height: 1.5;">Please find invoice <strong>${escapeHtml(invoice.invoice_number)}</strong> attached as a PDF.</p>`
+
     const logoHtml = tenantLogoUrl
       ? `<img src="${tenantLogoUrl}" alt="${escapeHtml(companyName)} logo" style="max-height: 60px; max-width: 200px; display: block; margin: 0 auto 20px;" />`
       : ''
 
     const totalRow = `<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="width: 100%; margin: 16px 0; border-collapse: separate; border-spacing: 0;">
       <tr>
-        <td style="padding: 14px 16px; background: #1b2426; border-radius: 8px 0 0 8px; color: #ffffff; font-size: 15px; font-weight: 600;">Invoice Total</td>
-        <td style="padding: 14px 16px; background: #1b2426; border-radius: 0 8px 8px 0; color: ${tenantPrimary}; font-size: 20px; font-weight: 700; font-family: monospace; text-align: right; white-space: nowrap;">$${totalFmt}</td>
+        <td style="padding: 14px 16px; background: #1b2426; border-radius: 8px 0 0 8px; color: #ffffff; font-size: 15px; font-weight: 600;">${amountLabel}</td>
+        <td style="padding: 14px 16px; background: #1b2426; border-radius: 0 8px 8px 0; color: ${tenantPrimary}; font-size: 20px; font-weight: 700; font-family: monospace; text-align: right; white-space: nowrap;">$${amountValue}</td>
       </tr>
     </table>`
 
@@ -195,10 +218,7 @@ Deno.serve(async (req) => {
       <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
         ${logoHtml}
         <h2 style="color: ${tenantPrimary}; margin: 0 0 16px 0;">${escapeHtml(companyName)}</h2>
-        <p style="font-size: 15px; color: #1b2426; line-height: 1.5;">Hi ${escapeHtml(gcName)},</p>
-        <p style="font-size: 15px; color: #1b2426; line-height: 1.5;">
-          Please find invoice <strong>${escapeHtml(invoice.invoice_number)}</strong> attached as a PDF.
-        </p>
+        ${introHtml}
         ${totalRow}
         ${dueHtml}
         ${renderPaymentInstructionsHTML(company?.payment_instructions, tenantPrimary)}
@@ -223,7 +243,9 @@ Deno.serve(async (req) => {
         from: `${companyName} via RivetDog <noreply@rivetdog.com>`,
         reply_to: user.email,
         to: recipients,
-        subject: `Invoice ${invoice.invoice_number} from ${companyName}`,
+        subject: isReminder
+          ? `Reminder: Invoice ${invoice.invoice_number} from ${companyName}`
+          : `Invoice ${invoice.invoice_number} from ${companyName}`,
         html,
         text,
         attachments: [
@@ -241,8 +263,10 @@ Deno.serve(async (req) => {
       return json({ error: 'Email send failed' }, 502)
     }
 
-    // 10. Update invoice status (draft → sent)
-    if (invoice.status === 'draft') {
+    // 10. Update invoice status (draft → sent). Reminders never change status —
+    // they only fire on already-sent invoices, and the throttle stamp is written
+    // by the caller.
+    if (!isReminder && invoice.status === 'draft') {
       await adminClient
         .from('invoices')
         .update({ status: 'sent', sent_at: new Date().toISOString(), updated_at: new Date().toISOString() })
@@ -256,9 +280,9 @@ Deno.serve(async (req) => {
         company_id: invoice.company_id,
         user_id: user.id,
         activity_type: 'invoice_sent',
-        title: `Invoice ${invoice.invoice_number} sent`,
+        title: isReminder ? `Invoice ${invoice.invoice_number} reminder sent` : `Invoice ${invoice.invoice_number} sent`,
         is_automated: true,
-        metadata: { invoice_id: invoice.id, invoice_number: invoice.invoice_number, recipient_count: recipients.length },
+        metadata: { invoice_id: invoice.id, invoice_number: invoice.invoice_number, recipient_count: recipients.length, ...(isReminder ? { reminder: true } : {}) },
       })
     } catch (err) {
       console.warn('Failed to log invoice_sent activity:', err)
