@@ -17,9 +17,10 @@ const SECTION_ORDER = ['start_here', 'core', 'advanced']
 const SECTION_LABELS = { start_here: 'Start Here', core: 'Core', advanced: 'Advanced' }
 
 // Stable per-family audience sets (module-level so the load effect dep is a
-// stable reference). Tenant surfaces never include 'admin'.
-const LITE_AUDIENCES = ['all', 'lite']
-const FIELDOS_AUDIENCES = ['all', 'fieldos']
+// stable reference). Matched against each row's audiences[] via array-overlap;
+// tenant surfaces never include 'admin'.
+const LITE_AUDIENCES = ['lite']
+const FIELDOS_AUDIENCES = ['fieldos']
 
 export default function AcademyPage() {
   const { user, company } = useAuth()

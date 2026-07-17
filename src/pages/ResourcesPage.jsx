@@ -8,8 +8,9 @@ import { US_STATES } from '../data/usStates'
 import styles from './DashboardPage.module.css'
 
 // Stable per-family audience sets (module-level for a stable effect dep).
-const LITE_AUDIENCES = ['all', 'lite']
-const FIELDOS_AUDIENCES = ['all', 'fieldos']
+// Matched against each row's audiences[] via array-overlap.
+const LITE_AUDIENCES = ['lite']
+const FIELDOS_AUDIENCES = ['fieldos']
 
 const filterLabel = { fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)', marginBottom: 6 }
 const filterInput = { padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', background: 'var(--color-bg)', color: 'var(--color-text)', fontSize: 13 }

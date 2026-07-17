@@ -21,28 +21,29 @@ export function extractYouTubeId(input) {
 
 // ── Public queries (authenticated users) ─────────────────────────────────
 
-// Tenant-facing reads are scoped to the caller's plan-family audience set —
-// lite sees ['all','lite'], contractor sees ['all','fieldos']. 'admin' content
-// is deliberately NOT in any tenant set; it surfaces only in the super-admin
-// CRUD (getAllModules/getAllVideos). audiences defaults to ['all'] as a safe
-// floor so a missing arg can never leak the admin lane.
-export async function getAcademyModules({ audiences = ['all'] } = {}) {
+// Tenant-facing reads are scoped to the caller's plan-family audience — lite sees
+// ['lite'], contractor sees ['fieldos'] — via an array-overlap on audiences[].
+// 'admin' content is deliberately NOT in any tenant set; it surfaces only in the
+// super-admin CRUD (getAllModules/getAllVideos). audiences defaults to [] as a
+// safe floor: an empty overlap matches nothing, so a missing arg can never leak
+// the admin lane.
+export async function getAcademyModules({ audiences = [] } = {}) {
   const { data, error } = await supabase
     .from('academy_modules')
     .select('*')
     .eq('is_active', true)
-    .in('audience', audiences)
+    .overlaps('audiences', audiences)
     .order('sort_order', { ascending: true })
   if (error) throw error
   return data ?? []
 }
 
-export async function getAcademyVideos({ tradeVertical, audiences = ['all'] } = {}) {
+export async function getAcademyVideos({ tradeVertical, audiences = [] } = {}) {
   const query = supabase
     .from('academy_videos')
     .select('*')
     .eq('is_active', true)
-    .in('audience', audiences)
+    .overlaps('audiences', audiences)
     .order('sort_order', { ascending: true })
 
   const { data, error } = await query

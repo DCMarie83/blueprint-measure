@@ -5,25 +5,14 @@ import {
   extractYouTubeId,
 } from '../../data/academyVideos'
 import { supabase } from '../../lib/supabase'
+import { AudienceCheckboxes, AudienceBadges } from '../../components/admin/AudienceControls'
 import styles from './sections.module.css'
 
-// New rows default to 'fieldos' on the form — a deliberate authoring default
-// (the column's own DB default is separate). Full audience set is the live
-// four-value CHECK: all / fieldos / lite / admin.
-const EMPTY_MODULE = { title: '', description: '', sort_order: 0, is_active: true, audience: 'fieldos', module_group: 'core' }
-const EMPTY_VIDEO = { module_id: '', title: '', description: '', youtube_id: '', duration: '', audience: 'fieldos', trade_vertical: 'all', sort_order: 0, is_active: true }
-
-const AUDIENCE_OPTIONS = [
-  { value: 'all', label: 'Everyone' },
-  { value: 'fieldos', label: 'Contractors' },
-  { value: 'lite', label: 'Time & Pay Lite' },
-  { value: 'admin', label: 'Internal' },
-]
-const AUDIENCE_LABELS = Object.fromEntries(AUDIENCE_OPTIONS.map(o => [o.value, o.label]))
-
-function AudienceBadge({ value }) {
-  return <span className={styles.badge}>{AUDIENCE_LABELS[value] || value || '—'}</span>
-}
+// New rows default to Contractors — a deliberate authoring default. audiences is a
+// text[]; writes are explicit families only (never 'all'). The legacy singular
+// `audience` column is no longer written and drops after deploy.
+const EMPTY_MODULE = { title: '', description: '', sort_order: 0, is_active: true, audiences: ['fieldos'], module_group: 'core' }
+const EMPTY_VIDEO = { module_id: '', title: '', description: '', youtube_id: '', duration: '', audiences: ['fieldos'], trade_vertical: 'all', sort_order: 0, is_active: true }
 
 export default function AcademyAdminPage() {
   const [tab, setTab] = useState('content')
@@ -82,27 +71,19 @@ export default function AcademyAdminPage() {
 
   async function handleModuleSave(e) {
     e.preventDefault()
+    if (!(moduleModal.audiences?.length)) { alert('Pick at least one audience.'); return }
     setModuleSaving(true)
     try {
-      if (moduleModal.id) {
-        await updateModule(moduleModal.id, {
-          title: moduleModal.title,
-          description: moduleModal.description || null,
-          sort_order: parseInt(moduleModal.sort_order) || 0,
-          is_active: moduleModal.is_active,
-          audience: moduleModal.audience || 'fieldos',
-          module_group: moduleModal.module_group || 'core',
-        })
-      } else {
-        await createModule({
-          title: moduleModal.title,
-          description: moduleModal.description || null,
-          sort_order: parseInt(moduleModal.sort_order) || 0,
-          is_active: moduleModal.is_active,
-          audience: moduleModal.audience || 'fieldos',
-          module_group: moduleModal.module_group || 'core',
-        })
+      const payload = {
+        title: moduleModal.title,
+        description: moduleModal.description || null,
+        sort_order: parseInt(moduleModal.sort_order) || 0,
+        is_active: moduleModal.is_active,
+        audiences: moduleModal.audiences,
+        module_group: moduleModal.module_group || 'core',
       }
+      if (moduleModal.id) await updateModule(moduleModal.id, payload)
+      else await createModule(payload)
       setModuleModal(null)
       await loadContent()
     } catch (err) {
@@ -126,6 +107,7 @@ export default function AcademyAdminPage() {
 
   async function handleVideoSave(e) {
     e.preventDefault()
+    if (!(videoModal.audiences?.length)) { alert('Pick at least one audience.'); return }
     setVideoSaving(true)
     try {
       const payload = {
@@ -134,7 +116,7 @@ export default function AcademyAdminPage() {
         description: videoModal.description || null,
         youtube_id: extractYouTubeId(videoModal.youtube_id),
         duration: videoModal.duration || null,
-        audience: videoModal.audience,
+        audiences: videoModal.audiences,
         trade_vertical: videoModal.trade_vertical,
         sort_order: parseInt(videoModal.sort_order) || 0,
         is_active: videoModal.is_active,
@@ -234,7 +216,7 @@ export default function AcademyAdminPage() {
                       <tr key={mod.id} className={styles.tr}>
                         <td className={styles.td}>{mod.sort_order}</td>
                         <td className={styles.td} style={{ fontWeight: 600 }}>{mod.title}</td>
-                        <td className={styles.td}><AudienceBadge value={mod.audience} /></td>
+                        <td className={styles.td}><AudienceBadges value={mod.audiences} /></td>
                         <td className={styles.td}>
                           <span className={`${styles.badge} ${mod.is_active ? styles.badgeActive : styles.badgeInactive}`}>
                             {mod.is_active ? 'Active' : 'Inactive'}
@@ -294,7 +276,7 @@ export default function AcademyAdminPage() {
                             {vid.duration && <span style={{ marginLeft: 8, fontWeight: 400, color: 'var(--color-text-muted)', fontSize: 12 }}>{vid.duration}</span>}
                           </td>
                           <td className={styles.td}>{mod?.title ?? '—'}</td>
-                          <td className={styles.td}><AudienceBadge value={vid.audience} /></td>
+                          <td className={styles.td}><AudienceBadges value={vid.audiences} /></td>
                           <td className={styles.td}>{vid.trade_vertical}</td>
                           <td className={styles.td}>
                             <span className={`${styles.badge} ${vid.is_active ? styles.badgeActive : styles.badgeInactive}`}>
@@ -393,9 +375,7 @@ export default function AcademyAdminPage() {
             <div className={styles.formGrid}>
               <div className={styles.formField}>
                 <label className={styles.formLabel}>Audience</label>
-                <select className={styles.formSelect} value={moduleModal.audience || 'fieldos'} onChange={e => setModuleModal(m => ({ ...m, audience: e.target.value }))}>
-                  {AUDIENCE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
+                <AudienceCheckboxes value={moduleModal.audiences} onChange={next => setModuleModal(m => ({ ...m, audiences: next }))} />
               </div>
               <div className={styles.formField}>
                 <label className={styles.formLabel}>Section</label>
@@ -461,9 +441,7 @@ export default function AcademyAdminPage() {
             <div className={styles.formGrid}>
               <div className={styles.formField}>
                 <label className={styles.formLabel}>Audience</label>
-                <select className={styles.formSelect} value={videoModal.audience || 'fieldos'} onChange={e => setVideoModal(v => ({ ...v, audience: e.target.value }))}>
-                  {AUDIENCE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
+                <AudienceCheckboxes value={videoModal.audiences} onChange={next => setVideoModal(v => ({ ...v, audiences: next }))} />
               </div>
               <div className={styles.formField}>
                 <label className={styles.formLabel}>Trade Vertical</label>

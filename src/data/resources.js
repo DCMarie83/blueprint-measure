@@ -12,15 +12,16 @@ export async function getResourceCategories() {
   return data ?? []
 }
 
-// Tenant-facing read scoped to the caller's plan-family audience set — lite
-// sees ['all','lite'], contractor sees ['all','fieldos']. audiences defaults to
-// ['all'] as a safe floor. Super-admin CRUD uses getAllResources (unfiltered).
-export async function getResources({ audiences = ['all'] } = {}) {
+// Tenant-facing read scoped to the caller's plan-family audience — lite sees
+// ['lite'], contractor sees ['fieldos'] — via an array-overlap on audiences[].
+// audiences defaults to [] as a safe floor (empty overlap matches nothing).
+// Super-admin CRUD uses getAllResources (unfiltered).
+export async function getResources({ audiences = [] } = {}) {
   const { data, error } = await supabase
     .from('resources')
     .select('*')
     .eq('is_active', true)
-    .in('audience', audiences)
+    .overlaps('audiences', audiences)
     .order('is_featured', { ascending: false })
     .order('sort_order', { ascending: true })
   if (error) throw error

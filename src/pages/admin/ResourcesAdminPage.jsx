@@ -5,12 +5,13 @@ import {
   createResource, updateResource, deleteResource,
 } from '../../data/resources'
 import { US_STATES } from '../../data/usStates'
+import { AudienceCheckboxes, AudienceBadges } from '../../components/admin/AudienceControls'
 import styles from './sections.module.css'
 
 const EMPTY_CAT = { key: '', label: '', sort_order: 0, is_active: true }
 const EMPTY_RES = {
   category_id: '', name: '', slug: '', description: '', website_url: '', phone: '', email: '',
-  service_area_text: '', is_featured: false, is_active: true, sort_order: 0, states: [],
+  service_area_text: '', is_featured: false, is_active: true, sort_order: 0, states: [], audiences: ['fieldos'],
 }
 
 export default function ResourcesAdminPage() {
@@ -54,7 +55,9 @@ export default function ResourcesAdminPage() {
 
   // ── Resource CRUD ──────────────────────────────────────────────────────
   async function handleResSave(e) {
-    e.preventDefault(); setResSaving(true)
+    e.preventDefault()
+    if (!(resModal.audiences?.length)) { alert('Pick at least one audience.'); return }
+    setResSaving(true)
     try {
       const payload = {
         category_id: resModal.category_id || null, name: resModal.name,
@@ -65,6 +68,7 @@ export default function ResourcesAdminPage() {
         is_featured: resModal.is_featured, is_active: resModal.is_active,
         sort_order: parseInt(resModal.sort_order) || 0,
         states: resModal.states || [],
+        audiences: resModal.audiences,
       }
       if (resModal.id) await updateResource(resModal.id, payload)
       else await createResource(payload)
@@ -130,7 +134,7 @@ export default function ResourcesAdminPage() {
         {resources.length === 0 ? <div className={styles.empty}>No resources.</div> : (
           <div className={styles.tableWrap}><table className={styles.table}>
             <thead><tr>
-              <th className={styles.th}>Name</th><th className={styles.th}>Category</th><th className={styles.th}>States</th>
+              <th className={styles.th}>Name</th><th className={styles.th}>Category</th><th className={styles.th}>Audience</th><th className={styles.th}>States</th>
               <th className={styles.th}>Featured</th><th className={styles.th}>Status</th><th className={styles.th}></th>
             </tr></thead>
             <tbody>{resources.map(r => {
@@ -139,11 +143,12 @@ export default function ResourcesAdminPage() {
                 <tr key={r.id} className={styles.tr}>
                   <td className={styles.td} style={{ fontWeight: 600 }}>{r.name}</td>
                   <td className={styles.td}>{cat?.label || '—'}</td>
+                  <td className={styles.td}><AudienceBadges value={r.audiences} /></td>
                   <td className={styles.td} style={{ fontSize: 12 }}>{r.states?.length ? r.states.join(', ') : 'National'}</td>
                   <td className={styles.td}>{r.is_featured ? '★' : ''}</td>
                   <td className={styles.td}><span className={`${styles.badge} ${r.is_active ? styles.badgeActive : styles.badgeInactive}`}>{r.is_active ? 'Active' : 'Inactive'}</span></td>
                   <td className={styles.td}>
-                    <button className={styles.iconBtn} onClick={() => setResModal({ ...r, states: r.states || [] })}>Edit</button>
+                    <button className={styles.iconBtn} onClick={() => setResModal({ ...r, states: r.states || [], audiences: r.audiences || [] })}>Edit</button>
                     <button className={styles.deleteBtn} style={{ marginLeft: 6 }} onClick={() => handleResDelete(r.id)}>Delete</button>
                   </td>
                 </tr>
@@ -204,6 +209,11 @@ export default function ResourcesAdminPage() {
             <div className={styles.formField} style={{ marginBottom: 12 }}>
               <label className={styles.formLabel}>Service Area (display text)</label>
               <input className={styles.formInput} value={resModal.service_area_text ?? ''} onChange={e => setResModal(r => ({ ...r, service_area_text: e.target.value }))} placeholder="e.g. Columbus metro" />
+            </div>
+
+            <div className={styles.formField} style={{ marginBottom: 12 }}>
+              <label className={styles.formLabel}>Audience</label>
+              <AudienceCheckboxes value={resModal.audiences} onChange={next => setResModal(r => ({ ...r, audiences: next }))} />
             </div>
 
             {/* Geo: states */}
