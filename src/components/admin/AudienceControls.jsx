@@ -1,14 +1,13 @@
-// Multi-audience controls shared by the Academy + Resources admin CRUD.
-// `audiences` is a text[] on academy_videos / academy_modules / resources listing
-// exactly who sees a row. New writes are always explicit families — never the
-// legacy 'all'. Internal (admin) is exclusive: admin content is internal-only, so
-// mixing it with a tenant family is an authoring mistake — checking it clears and
-// locks the tenant boxes. The "Everyone" convenience toggle checks Contractors +
-// Lite together (it never writes 'all').
+// Audience controls shared by the Academy + Resources admin CRUD.
+// `audiences` (text[]) lists the FAMILIES a row is published to — Contractors
+// (fieldos) and/or Time & Pay Lite (lite). Writes are always explicit families;
+// there is no 'all'. Academy rows additionally carry `admin_only` (a ROLE lane):
+// when true the row is visible only to company admins, not crew members. Pass the
+// `adminOnly`/`onAdminOnlyChange` pair to surface the "Admins only" toggle (academy
+// forms); omit it and the toggle is hidden (resources, which have no admin_only).
 export const AUDIENCE_FAMILIES = [
   { value: 'fieldos', label: 'Contractors', chip: 'C' },
   { value: 'lite', label: 'Time & Pay Lite', chip: 'L' },
-  { value: 'admin', label: 'Internal only', chip: 'Internal' },
 ]
 
 const cbLabel = { display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }
@@ -18,18 +17,13 @@ const chipStyle = {
   color: 'var(--color-text)', marginRight: 4, border: '1px solid var(--color-border)',
 }
 
-export function AudienceCheckboxes({ value, onChange }) {
+export function AudienceCheckboxes({ value, onChange, adminOnly, onAdminOnlyChange }) {
   const arr = value || []
   const has = fam => arr.includes(fam)
-  const internal = has('admin')
-  const everyone = has('fieldos') && has('lite') && !internal
+  const everyone = has('fieldos') && has('lite')
 
   function toggleFamily(fam) {
-    if (internal) return // tenant boxes locked while Internal is checked
     onChange(has(fam) ? arr.filter(a => a !== fam) : [...arr, fam])
-  }
-  function toggleInternal() {
-    onChange(internal ? [] : ['admin'])
   }
   function toggleEveryone() {
     onChange(everyone ? [] : ['fieldos', 'lite'])
@@ -38,29 +32,43 @@ export function AudienceCheckboxes({ value, onChange }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <label style={cbLabel}>
-        <input type="checkbox" checked={has('fieldos')} disabled={internal} onChange={() => toggleFamily('fieldos')} />
+        <input type="checkbox" checked={has('fieldos')} onChange={() => toggleFamily('fieldos')} />
         Contractors
       </label>
       <label style={cbLabel}>
-        <input type="checkbox" checked={has('lite')} disabled={internal} onChange={() => toggleFamily('lite')} />
+        <input type="checkbox" checked={has('lite')} onChange={() => toggleFamily('lite')} />
         Time &amp; Pay Lite
       </label>
-      <label style={cbLabel}>
-        <input type="checkbox" checked={internal} onChange={toggleInternal} />
-        Internal only
-      </label>
       <label style={{ ...cbLabel, color: 'var(--color-text-muted)' }}>
-        <input type="checkbox" checked={everyone} disabled={internal} onChange={toggleEveryone} />
+        <input type="checkbox" checked={everyone} onChange={toggleEveryone} />
         Everyone (Contractors + Lite)
       </label>
+
+      {onAdminOnlyChange && (
+        <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--color-border)' }}>
+          <label style={cbLabel}>
+            <input type="checkbox" checked={!!adminOnly} onChange={e => onAdminOnlyChange(e.target.checked)} />
+            Admins only
+          </label>
+          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2, marginLeft: 22 }}>
+            Visible only to company admins, not crew members.
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-export function AudienceBadges({ value }) {
+export function AudienceBadges({ value, adminOnly }) {
   const arr = value || []
-  if (arr.includes('all')) return <span style={chipStyle}>Everyone</span> // legacy backfill only
-  const fams = AUDIENCE_FAMILIES.filter(f => arr.includes(f.value))
-  if (!fams.length) return <span style={{ color: 'var(--color-text-muted)' }}>—</span>
-  return <>{fams.map(f => <span key={f.value} style={chipStyle}>{f.chip}</span>)}</>
+  const fams = arr.includes('all')
+    ? AUDIENCE_FAMILIES // legacy backfill safety only
+    : AUDIENCE_FAMILIES.filter(f => arr.includes(f.value))
+  if (!fams.length && !adminOnly) return <span style={{ color: 'var(--color-text-muted)' }}>—</span>
+  return (
+    <>
+      {fams.map(f => <span key={f.value} style={chipStyle}>{f.chip}</span>)}
+      {adminOnly && <span style={chipStyle}>Admins</span>}
+    </>
+  )
 }

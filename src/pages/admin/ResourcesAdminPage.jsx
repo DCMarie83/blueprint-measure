@@ -6,7 +6,18 @@ import {
 } from '../../data/resources'
 import { US_STATES } from '../../data/usStates'
 import { AudienceCheckboxes, AudienceBadges } from '../../components/admin/AudienceControls'
+import { visibilitySummary } from '../../lib/academyVisibility'
 import styles from './sections.module.css'
+
+// Reachability indicator via the shared rule (same one the tenant pages use).
+function VisibleTo({ row }) {
+  const s = visibilitySummary(row)
+  return (
+    <span style={{ fontSize: 12, fontWeight: 600, color: s.reason ? 'var(--color-danger, #dc2626)' : 'var(--color-text)' }}>
+      {s.reason ? `Nobody (${s.reason})` : s.text}
+    </span>
+  )
+}
 
 const EMPTY_CAT = { key: '', label: '', sort_order: 0, is_active: true }
 const EMPTY_RES = {
@@ -134,7 +145,7 @@ export default function ResourcesAdminPage() {
         {resources.length === 0 ? <div className={styles.empty}>No resources.</div> : (
           <div className={styles.tableWrap}><table className={styles.table}>
             <thead><tr>
-              <th className={styles.th}>Name</th><th className={styles.th}>Category</th><th className={styles.th}>Audience</th><th className={styles.th}>States</th>
+              <th className={styles.th}>Name</th><th className={styles.th}>Category</th><th className={styles.th}>Audience</th><th className={styles.th}>Visible to</th><th className={styles.th}>States</th>
               <th className={styles.th}>Featured</th><th className={styles.th}>Status</th><th className={styles.th}></th>
             </tr></thead>
             <tbody>{resources.map(r => {
@@ -144,6 +155,7 @@ export default function ResourcesAdminPage() {
                   <td className={styles.td} style={{ fontWeight: 600 }}>{r.name}</td>
                   <td className={styles.td}>{cat?.label || '—'}</td>
                   <td className={styles.td}><AudienceBadges value={r.audiences} /></td>
+                  <td className={styles.td}><VisibleTo row={r} /></td>
                   <td className={styles.td} style={{ fontSize: 12 }}>{r.states?.length ? r.states.join(', ') : 'National'}</td>
                   <td className={styles.td}>{r.is_featured ? '★' : ''}</td>
                   <td className={styles.td}><span className={`${styles.badge} ${r.is_active ? styles.badgeActive : styles.badgeInactive}`}>{r.is_active ? 'Active' : 'Inactive'}</span></td>

@@ -50,8 +50,13 @@ export async function getAcademyVideos({ tradeVertical, audiences = [] } = {}) {
   if (error) throw error
   const rows = data ?? []
 
+  // Trade is a SOFT sort, never a wall: matching-trade or 'all' videos float to the
+  // top, everything else follows — a mismatched company trade can never empty a page
+  // that has family-tagged videos. Order within each partition is preserved (stable).
   if (!tradeVertical || tradeVertical === 'all') return rows
-  return rows.filter(v => v.trade_vertical === 'all' || v.trade_vertical === tradeVertical)
+  const matches = rows.filter(v => v.trade_vertical === 'all' || v.trade_vertical === tradeVertical)
+  const rest = rows.filter(v => !(v.trade_vertical === 'all' || v.trade_vertical === tradeVertical))
+  return [...matches, ...rest]
 }
 
 export async function getPublishedQuestions() {

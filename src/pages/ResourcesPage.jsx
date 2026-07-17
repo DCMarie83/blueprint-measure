@@ -4,6 +4,7 @@ import { useIsLite } from '../hooks/useIsLite'
 import AppHeader from '../components/AppHeader'
 import ResourceCard from '../components/resources/ResourceCard'
 import { getResourceCategories, getResources } from '../data/resources'
+import { UNCATEGORIZED_KEY, UNCATEGORIZED_LABEL, isVisible } from '../lib/academyVisibility'
 import { US_STATES } from '../data/usStates'
 import styles from './DashboardPage.module.css'
 
@@ -40,6 +41,7 @@ export default function ResourcesPage() {
   const [categories, setCategories] = useState([])
   const [resources, setResources] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
   const [resourceType, setResourceType] = useState('partners')
   const [searchQuery, setSearchQuery] = useState('')
   const [stateFilter, setStateFilter] = useState(companyState || '__all')
@@ -51,10 +53,15 @@ export default function ResourcesPage() {
     if (!resolved) return
     let cancelled = false
     ;(async () => {
+      setLoadError(null)
       try {
         const [cats, ress] = await Promise.all([getResourceCategories(), getResources({ audiences })])
         if (!cancelled) { setCategories(cats); setResources(ress) }
-      } catch (err) { if (!cancelled) alert(err.message) }
+      } catch (err) {
+        // A query 400 must render as a visible error state, never a silent empty page.
+        console.error('Resources load:', err)
+        if (!cancelled) { setLoadError(err.message || 'Failed to load resources.'); setCategories([]); setResources([]) }
+      }
       finally { if (!cancelled) setLoading(false) }
     })()
     return () => { cancelled = true }
@@ -79,12 +86,24 @@ export default function ResourcesPage() {
   const grouped = useMemo(() => {
     const map = new Map()
     for (const cat of categories) map.set(cat.id, { category: cat, items: [] })
+    // Orphan rescue: a resource whose category is missing or inactive still surfaces,
+    // under an "Other" group, rather than silently dropping out of the page.
+    const other = { category: { id: UNCATEGORIZED_KEY, key: UNCATEGORIZED_KEY, label: UNCATEGORIZED_LABEL }, items: [] }
     for (const res of filteredResources) {
       const g = map.get(res.category_id)
       if (g) g.items.push(res)
+      else other.items.push(res)
     }
+    if (other.items.length) map.set(UNCATEGORIZED_KEY, other)
     return map
   }, [categories, filteredResources])
+
+  // Upstream count for this viewer's family via the shared rule (drift-proof). A
+  // non-zero count with nothing rendered means a client filter, not "no resources".
+  // Resources have no admin_only column → role gate is a no-op (viewerIsAdmin: true).
+  const viewerFamily = isLite ? 'lite' : 'fieldos'
+  const familyPublishedCount = resources.filter(r => isVisible({ audiences: r.audiences, admin_only: false, viewerFamily, viewerIsAdmin: true })).length
+  const renderedCount = [...grouped.values()].reduce((n, g) => n + g.items.length, 0)
 
   function handleJumpTo(value) {
     setJumpTo(value)
@@ -162,13 +181,32 @@ export default function ResourcesPage() {
             </div>
           </div>
 
-          {loading ? (
+          {loadError ? (
+            <div style={{ padding: '40px 24px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, textAlign: 'center' }}>
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 8px' }}>Couldn't load resources</h2>
+              <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: '0 0 8px' }}>Something went wrong fetching partners. Please refresh — if it keeps happening, let us know.</p>
+              <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>{loadError}</p>
+            </div>
+          ) : loading ? (
             <>
               <style>{`@keyframes skPulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }`}</style>
               {[1, 2, 3].map(i => (
                 <div key={i} style={{ height: 96, borderRadius: 12, background: 'var(--color-surface-2)', marginBottom: 12, animation: 'skPulse 1.5s ease-in-out infinite' }} />
               ))}
             </>
+          ) : renderedCount === 0 && familyPublishedCount > 0 ? (
+            // Partners ARE published for this plan — the blank is a client-side filter.
+            (() => {
+              console.warn('[Resources] rendered empty with', familyPublishedCount, 'family-published resources. Active gates:',
+                { search: searchQuery.trim() || null, state: stateFilter !== '__all' ? stateFilter : null })
+              return (
+                <div style={{ padding: '40px 24px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, textAlign: 'center' }}>
+                  <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>
+                    {familyPublishedCount} {familyPublishedCount === 1 ? 'partner is' : 'partners are'} published for your plan but hidden by your current filters ({stateLabel.toLowerCase()}{searchQuery.trim() ? ` · “${searchQuery.trim()}”` : ''}).
+                  </p>
+                </div>
+              )
+            })()
           ) : (
             [...grouped.values()]
               .filter(({ items }) => items.length > 0)

@@ -9,6 +9,7 @@ import {
   getPublishedQuestions, getMyQuestions, submitQuestion,
 } from '../data/academyVideos'
 import { useAcademyBookmarks } from '../hooks/useAcademyBookmarks'
+import { UNCATEGORIZED_KEY, UNCATEGORIZED_LABEL, isVisible } from '../lib/academyVisibility'
 import { ONBOARDING_CALENDAR_URL } from '../lib/config'
 import VideoModal from '../components/academy/VideoModal'
 import styles from './AcademyPage.module.css'
@@ -17,13 +18,12 @@ const SECTION_ORDER = ['start_here', 'core', 'advanced']
 const SECTION_LABELS = { start_here: 'Start Here', core: 'Core', advanced: 'Advanced' }
 
 // Stable per-family audience sets (module-level so the load effect dep is a
-// stable reference). Matched against each row's audiences[] via array-overlap;
-// tenant surfaces never include 'admin'.
+// stable reference). Matched against each row's audiences[] via array-overlap.
 const LITE_AUDIENCES = ['lite']
 const FIELDOS_AUDIENCES = ['fieldos']
 
 export default function AcademyPage() {
-  const { user, company } = useAuth()
+  const { user, company, isSuperAdmin, userProfile } = useAuth()
   const { companyId: effectiveCompanyId } = useEffectiveCompany()
   const { isLite, resolved } = useIsLite()
   const { isBookmarked, toggle, count } = useAcademyBookmarks()
@@ -32,6 +32,7 @@ export default function AcademyPage() {
   const [modules, setModules] = useState([])
   const [videos, setVideos] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
 
   const [searchQuery, setSearchQuery] = useState('')
   const [showBookmarksOnly, setShowBookmarksOnly] = useState(false)
@@ -51,6 +52,11 @@ export default function AcademyPage() {
 
   const tradeVertical = company?.trade_vertical || 'all'
   const audiences = isLite ? LITE_AUDIENCES : FIELDOS_AUDIENCES
+  const viewerFamily = isLite ? 'lite' : 'fieldos'
+  // admin_only is a role lane. Lite subs are single-seat owners → always count as
+  // admin (so admin_only never hides lite content). On the contractor path, admin =
+  // super admin or contractor_admin; crew (contractor_user) are gated out.
+  const viewerIsAdmin = isLite || isSuperAdmin || userProfile?.role === 'contractor_admin'
 
   // Load lessons — held until the plan family resolves so a Lite tenant never
   // fetches with the contractor audience set (or vice-versa) on first paint.
@@ -58,6 +64,7 @@ export default function AcademyPage() {
     if (!resolved) return
     let cancelled = false
     ;(async () => {
+      setLoadError(null)
       try {
         const [mods, vids] = await Promise.all([
           getAcademyModules({ audiences }),
@@ -65,7 +72,10 @@ export default function AcademyPage() {
         ])
         if (!cancelled) { setModules(mods); setVideos(vids) }
       } catch (err) {
+        // A query 400 (e.g. a dropped column) must LOOK like an error, not an
+        // empty "coming soon" page — surface it into state for a visible banner.
         console.error('Academy load:', err)
+        if (!cancelled) { setLoadError(err.message || 'Failed to load lessons.'); setModules([]); setVideos([]) }
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -95,26 +105,39 @@ export default function AcademyPage() {
     if (tab === 'qa') loadQA()
   }, [tab, loadQA])
 
+  // Role gate (family match is already applied by the data-layer fetch; this layer
+  // enforces the admin_only ROLE lane so crew never see RivetPay-admin content).
+  // Shared isVisible() is the ONLY place the family-AND-role rule lives.
+  const roleVisibleVideos = useMemo(
+    () => videos.filter(v => isVisible({ audiences: v.audiences, admin_only: v.admin_only, viewerFamily, viewerIsAdmin })),
+    [videos, viewerFamily, viewerIsAdmin],
+  )
+  const roleVisibleModules = useMemo(
+    () => modules.filter(m => isVisible({ audiences: m.audiences, admin_only: m.admin_only, viewerFamily, viewerIsAdmin })),
+    [modules, viewerFamily, viewerIsAdmin],
+  )
+
   // Filter videos by search + bookmarks
   const filteredVideos = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
-    return videos.filter(v => {
+    return roleVisibleVideos.filter(v => {
       if (showBookmarksOnly && !isBookmarked(v.id)) return false
       if (q && !v.title.toLowerCase().includes(q) && !(v.description || '').toLowerCase().includes(q)) return false
       return true
     })
-  }, [videos, searchQuery, showBookmarksOnly, isBookmarked])
+  }, [roleVisibleVideos, searchQuery, showBookmarksOnly, isBookmarked])
 
   // Group modules into sections, with only modules that have visible videos
   const sections = useMemo(() => {
     const videosByModule = {}
     for (const v of filteredVideos) {
-      const mid = v.module_id || '__none'
+      const mid = v.module_id || UNCATEGORIZED_KEY
       if (!videosByModule[mid]) videosByModule[mid] = []
       videosByModule[mid].push(v)
     }
 
-    const visibleModules = modules.filter(m => videosByModule[m.id]?.length > 0)
+    const knownModuleIds = new Set(roleVisibleModules.map(m => m.id))
+    const visibleModules = roleVisibleModules.filter(m => videosByModule[m.id]?.length > 0)
 
     const grouped = {}
     for (const m of visibleModules) {
@@ -135,8 +158,29 @@ export default function AcademyPage() {
         modules: grouped[g].map(m => ({ ...m, videos: videosByModule[m.id] || [] })),
       })
     }
+
+    // Orphan rescue: any active, family-tagged video whose module is NOT visible to
+    // this family (mis-tagged module) or has no module falls into "Uncategorized" —
+    // it surfaces instead of vanishing. This is the fix for the Stage 8 silent-hide.
+    const orphanVideos = []
+    for (const [mid, vids] of Object.entries(videosByModule)) {
+      if (mid === UNCATEGORIZED_KEY || !knownModuleIds.has(mid)) orphanVideos.push(...vids)
+    }
+    if (orphanVideos.length) {
+      result.push({
+        key: UNCATEGORIZED_KEY,
+        label: UNCATEGORIZED_LABEL,
+        featured: false,
+        modules: [{ id: UNCATEGORIZED_KEY, title: '', description: null, videos: orphanVideos }],
+      })
+    }
     return result
-  }, [filteredVideos, modules])
+  }, [filteredVideos, roleVisibleModules])
+
+  // Upstream count of rows genuinely published for this viewer's family (computed via
+  // the shared visibility rule so it can't drift from the data-layer fetch). If this
+  // is non-zero but nothing renders, the emptiness is a client filter, not "no content".
+  const familyPublishedCount = roleVisibleVideos.length
 
   // Q&A search
   const qaTerm = qaSearch.trim().toLowerCase()
@@ -250,7 +294,14 @@ export default function AcademyPage() {
               </div>
             )}
 
-            {loading ? (
+            {loadError ? (
+              <div className={styles.emptyState}>
+                <GraduationCap size={48} />
+                <h2>Couldn't load lessons</h2>
+                <p>Something went wrong fetching training content. Please refresh — if it keeps happening, let us know.</p>
+                <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{loadError}</p>
+              </div>
+            ) : loading ? (
               <div className={styles.emptyState}><div className="spinner" /></div>
             ) : videos.length === 0 ? (
               <div className={styles.emptyState}>
@@ -259,18 +310,28 @@ export default function AcademyPage() {
                 <p>Dee is in the studio. Check back soon for training content.</p>
               </div>
             ) : sections.length === 0 ? (
-              <div className={styles.filterEmpty}>
-                <p>{showBookmarksOnly ? 'No bookmarked lessons match.' : 'No lessons match your search.'}</p>
-              </div>
+              // Rows ARE published for this plan — the blank is a client-side filter,
+              // never missing content. Say so, and name the active gates in the console.
+              (() => {
+                console.warn('[Academy] rendered empty with', familyPublishedCount, 'family-published videos. Active gates:',
+                  { search: searchQuery.trim() || null, bookmarksOnly: showBookmarksOnly })
+                return (
+                  <div className={styles.filterEmpty}>
+                    <p>{familyPublishedCount} {familyPublishedCount === 1 ? 'lesson is' : 'lessons are'} published for your plan but hidden by your current {showBookmarksOnly ? 'bookmark and search filters' : 'search'}.</p>
+                  </div>
+                )
+              })()
             ) : (
               sections.map(section => (
                 <div key={section.key} className={section.featured ? styles.featuredSection : styles.normalSection}>
                   <h2 className={section.featured ? styles.featuredHeading : styles.sectionHeading}>{section.label}</h2>
                   {section.modules.map(mod => (
                     <div key={mod.id} className={styles.moduleBlock}>
-                      <h3 className={styles.moduleHeading}>
-                        {mod.title}
-                      </h3>
+                      {mod.title && (
+                        <h3 className={styles.moduleHeading}>
+                          {mod.title}
+                        </h3>
+                      )}
                       {mod.description && <p className={styles.moduleDesc}>{mod.description}</p>}
                       <div className={styles.grid}>
                         {mod.videos.map(v => renderVideoCard(v))}

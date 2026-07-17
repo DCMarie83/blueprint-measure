@@ -6,13 +6,25 @@ import {
 } from '../../data/academyVideos'
 import { supabase } from '../../lib/supabase'
 import { AudienceCheckboxes, AudienceBadges } from '../../components/admin/AudienceControls'
+import { visibilitySummary } from '../../lib/academyVisibility'
 import styles from './sections.module.css'
 
-// New rows default to Contractors — a deliberate authoring default. audiences is a
-// text[]; writes are explicit families only (never 'all'). The legacy singular
-// `audience` column is no longer written and drops after deploy.
-const EMPTY_MODULE = { title: '', description: '', sort_order: 0, is_active: true, audiences: ['fieldos'], module_group: 'core' }
-const EMPTY_VIDEO = { module_id: '', title: '', description: '', youtube_id: '', duration: '', audiences: ['fieldos'], trade_vertical: 'all', sort_order: 0, is_active: true }
+// Reachability indicator, computed by the SAME shared rule the tenant pages use — so
+// the badge can never claim a visibility the viewer doesn't actually get.
+function VisibleTo({ row }) {
+  const s = visibilitySummary(row)
+  return (
+    <span style={{ fontSize: 12, fontWeight: 600, color: s.reason ? 'var(--color-danger, #dc2626)' : 'var(--color-text)' }}>
+      {s.reason ? `Nobody (${s.reason})` : s.text}
+    </span>
+  )
+}
+
+// New rows default to Contractors, non-admin — a deliberate authoring default.
+// audiences is a text[] of families (never 'all'); admin_only is the role lane
+// (visible to company admins only when true).
+const EMPTY_MODULE = { title: '', description: '', sort_order: 0, is_active: true, audiences: ['fieldos'], admin_only: false, module_group: 'core' }
+const EMPTY_VIDEO = { module_id: '', title: '', description: '', youtube_id: '', duration: '', audiences: ['fieldos'], admin_only: false, trade_vertical: 'all', sort_order: 0, is_active: true }
 
 export default function AcademyAdminPage() {
   const [tab, setTab] = useState('content')
@@ -80,6 +92,7 @@ export default function AcademyAdminPage() {
         sort_order: parseInt(moduleModal.sort_order) || 0,
         is_active: moduleModal.is_active,
         audiences: moduleModal.audiences,
+        admin_only: !!moduleModal.admin_only,
         module_group: moduleModal.module_group || 'core',
       }
       if (moduleModal.id) await updateModule(moduleModal.id, payload)
@@ -117,6 +130,7 @@ export default function AcademyAdminPage() {
         youtube_id: extractYouTubeId(videoModal.youtube_id),
         duration: videoModal.duration || null,
         audiences: videoModal.audiences,
+        admin_only: !!videoModal.admin_only,
         trade_vertical: videoModal.trade_vertical,
         sort_order: parseInt(videoModal.sort_order) || 0,
         is_active: videoModal.is_active,
@@ -206,6 +220,7 @@ export default function AcademyAdminPage() {
                       <th className={styles.th}>Order</th>
                       <th className={styles.th}>Title</th>
                       <th className={styles.th}>Audience</th>
+                      <th className={styles.th}>Visible to</th>
                       <th className={styles.th}>Status</th>
                       <th className={styles.th}>Videos</th>
                       <th className={styles.th}></th>
@@ -216,7 +231,8 @@ export default function AcademyAdminPage() {
                       <tr key={mod.id} className={styles.tr}>
                         <td className={styles.td}>{mod.sort_order}</td>
                         <td className={styles.td} style={{ fontWeight: 600 }}>{mod.title}</td>
-                        <td className={styles.td}><AudienceBadges value={mod.audiences} /></td>
+                        <td className={styles.td}><AudienceBadges value={mod.audiences} adminOnly={mod.admin_only} /></td>
+                        <td className={styles.td}><VisibleTo row={mod} /></td>
                         <td className={styles.td}>
                           <span className={`${styles.badge} ${mod.is_active ? styles.badgeActive : styles.badgeInactive}`}>
                             {mod.is_active ? 'Active' : 'Inactive'}
@@ -252,6 +268,7 @@ export default function AcademyAdminPage() {
                       <th className={styles.th}>Title</th>
                       <th className={styles.th}>Module</th>
                       <th className={styles.th}>Audience</th>
+                      <th className={styles.th}>Visible to</th>
                       <th className={styles.th}>Trade</th>
                       <th className={styles.th}>Status</th>
                       <th className={styles.th}></th>
@@ -276,7 +293,8 @@ export default function AcademyAdminPage() {
                             {vid.duration && <span style={{ marginLeft: 8, fontWeight: 400, color: 'var(--color-text-muted)', fontSize: 12 }}>{vid.duration}</span>}
                           </td>
                           <td className={styles.td}>{mod?.title ?? '—'}</td>
-                          <td className={styles.td}><AudienceBadges value={vid.audiences} /></td>
+                          <td className={styles.td}><AudienceBadges value={vid.audiences} adminOnly={vid.admin_only} /></td>
+                          <td className={styles.td}><VisibleTo row={vid} /></td>
                           <td className={styles.td}>{vid.trade_vertical}</td>
                           <td className={styles.td}>
                             <span className={`${styles.badge} ${vid.is_active ? styles.badgeActive : styles.badgeInactive}`}>
@@ -375,7 +393,12 @@ export default function AcademyAdminPage() {
             <div className={styles.formGrid}>
               <div className={styles.formField}>
                 <label className={styles.formLabel}>Audience</label>
-                <AudienceCheckboxes value={moduleModal.audiences} onChange={next => setModuleModal(m => ({ ...m, audiences: next }))} />
+                <AudienceCheckboxes
+                  value={moduleModal.audiences}
+                  onChange={next => setModuleModal(m => ({ ...m, audiences: next }))}
+                  adminOnly={moduleModal.admin_only}
+                  onAdminOnlyChange={next => setModuleModal(m => ({ ...m, admin_only: next }))}
+                />
               </div>
               <div className={styles.formField}>
                 <label className={styles.formLabel}>Section</label>
@@ -441,7 +464,12 @@ export default function AcademyAdminPage() {
             <div className={styles.formGrid}>
               <div className={styles.formField}>
                 <label className={styles.formLabel}>Audience</label>
-                <AudienceCheckboxes value={videoModal.audiences} onChange={next => setVideoModal(v => ({ ...v, audiences: next }))} />
+                <AudienceCheckboxes
+                  value={videoModal.audiences}
+                  onChange={next => setVideoModal(v => ({ ...v, audiences: next }))}
+                  adminOnly={videoModal.admin_only}
+                  onAdminOnlyChange={next => setVideoModal(v => ({ ...v, admin_only: next }))}
+                />
               </div>
               <div className={styles.formField}>
                 <label className={styles.formLabel}>Trade Vertical</label>
