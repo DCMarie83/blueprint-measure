@@ -10,12 +10,20 @@
    money-in uses the success green, not the teal. */
 :root {
   --money-in: var(--color-success);      /* platform success green */
-  --money-due: var(--color-primary);     /* brand orange #F27243 */
+  --money-due: #f27243;                  /* fixed brand orange — NOT var(--color-primary):
+                                            ThemeContext overrides --color-primary at runtime
+                                            with each tenant's brand color, which would recolor
+                                            the "owed" semantic per company. The money meaning
+                                            must stay constant, so pin the literal orange. */
   --money-overdue: var(--color-danger);  /* platform red */
 }
-.moneyIn { color: var(--money-in); }
-.moneyDue { color: var(--money-due); }
-.moneyOverdue { color: var(--money-overdue); }
+/* Doubled selectors bump specificity to 0-2-0 so the semantic money color
+   always wins over the amount classes it's paired with (.entryAmount, .statValue,
+   .heroValue — all 0-1-0 and declared later) and over `.table td` (0-1-1) on the
+   Reports cells. Without this the amount text falls back to --color-text. */
+.moneyIn.moneyIn { color: var(--money-in); }
+.moneyDue.moneyDue { color: var(--money-due); }
+.moneyOverdue.moneyOverdue { color: var(--money-overdue); }
 
 .page {
   min-height: 100vh;
