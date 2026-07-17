@@ -132,6 +132,19 @@ export function formatHeaderDateTime(timeZone, date = new Date()) {
   return `${datePart} · ${timePart}`
 }
 
+// A single clock time (e.g. "8:04 AM") for a timestamp, rendered in the given
+// zone. Used by the punch timer, the invoice line descriptions, and the PDF
+// Time-detail rows so every "in/out" reads in the sub's effective zone.
+export function formatTimeOnly(timeZone, date = new Date()) {
+  try {
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone, hour: 'numeric', minute: '2-digit', hour12: true,
+    }).format(date instanceof Date ? date : new Date(date))
+  } catch {
+    return ''
+  }
+}
+
 // The zone's short name for the current instant (e.g. "EDT", "PST"). Used only
 // as a small suffix when a non-automatic zone is set. Empty on failure.
 export function zoneShortName(timeZone, date = new Date()) {

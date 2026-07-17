@@ -1,19 +1,21 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, Clock } from 'lucide-react'
 import AppHeader from '../../components/AppHeader'
 import Logo from '../../components/brand/Logo'
 import NewJobSheet from '../../components/lite/NewJobSheet'
 import WorkItemSearch from '../../components/lite/WorkItemSearch'
+import OpenPunchBar from '../../components/lite/OpenPunchBar'
 import { useProjects } from '../../hooks/useProjects'
 import { useClients } from '../../hooks/useClients'
 import { useWorkItems } from '../../hooks/useWorkItems'
 import { useWorkEntries } from '../../hooks/useWorkEntries'
+import { useOpenPunch } from '../../hooks/useOpenPunch'
 import { supabase } from '../../lib/supabase'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import { useAuth } from '../../context/AuthContext'
 import { useSheetSignal } from '../../hooks/useSheetSignal'
-import { GC_CLIENT_TYPE, LITE_UNITS, unitLabel, fmtMoney } from '../../lib/lite'
+import { GC_CLIENT_TYPE, LITE_UNITS, unitLabel, fmtMoney, isOpenPunch } from '../../lib/lite'
 import { getEffectiveTimeZone, startOfToday } from '../../lib/effectiveTime'
 import { TOASTS, DONE_CLOSER, randomTagline } from '../../lib/liteVoice'
 import styles from './lite.module.css'
@@ -23,7 +25,7 @@ export default function LogPage() {
   const [searchParams] = useSearchParams()
   const initialJob = searchParams.get('job')
   const { companyId, company } = useEffectiveCompany()
-  const { userProfile } = useAuth()
+  const { user, userProfile } = useAuth()
   const tz = getEffectiveTimeZone(userProfile)
   const { projects, createProject } = useProjects()
   const { clients, createClient } = useClients()
@@ -71,11 +73,82 @@ export default function LogPage() {
   const gcId = job?.client_id || null
 
   const { items: catalog, loading: catalogLoading, createItem, createFromLibrary } = useWorkItems(gcId)
-  const { entries, loading: entriesLoading, createEntry, deleteEntry } = useWorkEntries(projectId, { dateFrom: date, dateTo: date })
+  const { entries, loading: entriesLoading, createEntry, deleteEntry, refetch: refetchEntries } = useWorkEntries(projectId, { dateFrom: date, dateTo: date })
+  const { openPunch, refetch: refetchPunch } = useOpenPunch(companyId)
 
-  const dayTotal = entries.reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
+  // Clock-in guard message (shown when a punch is already open elsewhere).
+  const [clockMsg, setClockMsg] = useState(null)
+  const [clockingIn, setClockingIn] = useState(false)
+
+  // The open punch is NOT billable work until it closes — keep it out of the
+  // ledger + day total (the timer bar represents it instead).
+  const closedEntries = entries.filter(e => !isOpenPunch(e))
+  const dayTotal = closedEntries.reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
 
   function flash(msg) { setToast(msg); setTimeout(() => setToast(''), 2200) }
+
+  // Clock IN — inserts the OPEN punch (hours/amount null-until-close). Requires a
+  // selected job; blocked when a punch is already open (the partial unique index
+  // backs this server-side too). Geo is requested once and stamped best-effort;
+  // a denial proceeds silently and never blocks the punch.
+  async function clockIn() {
+    if (!job || !companyId) return
+    if (openPunch) {
+      setClockMsg({ name: openPunch.projects?.name || 'another job', projectId: openPunch.project_id })
+      return
+    }
+    setClockingIn(true); setClockMsg(null)
+    try {
+      const rateSnapshot = Number(hourlyRate) || 0
+      const { data, error } = await supabase
+        .from('work_entries')
+        .insert({
+          company_id: companyId,
+          project_id: projectId,
+          created_by: user?.id,
+          entry_type: 'hourly',
+          unit: 'hour',
+          quantity: null,
+          hours: null,
+          rate_snapshot: rateSnapshot,
+          amount: 0,
+          description: isHCustom && hourlyPick?.text?.trim() ? hourlyPick.text.trim() : null,
+          work_date: startOfToday(tz),
+          clock_in_at: new Date().toISOString(),
+        })
+        .select()
+        .single()
+      if (error) {
+        // Unique-index violation → a punch is already open. Reflect it honestly.
+        if (error.code === '23505' || /unique|duplicate/i.test(error.message)) {
+          await refetchPunch()
+          setClockMsg({ name: 'another job', projectId: null })
+          return
+        }
+        throw new Error(error.message)
+      }
+      await refetchPunch()
+      flash('Clocked in')
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          pos => supabase.from('work_entries')
+            .update({ clock_in_lat: pos.coords.latitude, clock_in_lng: pos.coords.longitude })
+            .eq('id', data.id),
+          () => {},
+          { timeout: 10000 },
+        )
+      }
+    } catch (e) {
+      alert('Failed to clock in: ' + e.message)
+    } finally {
+      setClockingIn(false)
+    }
+  }
+
+  async function handleClockedOut() {
+    await Promise.all([refetchPunch(), refetchEntries()])
+    flash('Clocked out — entry saved')
+  }
 
   // Library fetched once per trade vertical and cached for the session (≈95
   // rows), then filtered client-side per keystroke — no per-keystroke query.
@@ -196,17 +269,18 @@ export default function LogPage() {
   // Open the day-summary sheet. Reads only — the entries are already saved on
   // Add. One extra company-scoped read tallies same-date entries on OTHER jobs.
   async function openDoneSheet() {
-    const base = { count: entries.length, total: dayTotal, otherAmount: 0, otherJobs: 0 }
+    const base = { count: closedEntries.length, total: dayTotal, otherAmount: 0, otherJobs: 0 }
     if (!companyId) { setDoneSheet(base); return }
     const { data } = await supabase
       .from('work_entries')
-      .select('project_id, amount')
+      .select('project_id, amount, clock_in_at, clock_out_at')
       .eq('company_id', companyId)
       .eq('work_date', date)
       .neq('project_id', projectId)
-    if (data && data.length) {
-      base.otherAmount = data.reduce((s, e) => s + (Number(e.amount) || 0), 0)
-      base.otherJobs = new Set(data.map(e => e.project_id)).size
+    const others = (data || []).filter(e => !isOpenPunch(e))
+    if (others.length) {
+      base.otherAmount = others.reduce((s, e) => s + (Number(e.amount) || 0), 0)
+      base.otherJobs = new Set(others.map(e => e.project_id)).size
     }
     setDoneSheet(base)
   }
@@ -361,6 +435,9 @@ export default function LogPage() {
 
         {toast && <div className={styles.card} style={{ background: 'var(--color-action-open)', color: '#fff', borderColor: 'transparent' }}>{toast}</div>}
 
+        {/* Persistent running-punch timer — DB-derived, survives app closes. */}
+        {openPunch && <OpenPunchBar punch={openPunch} onDone={handleClockedOut} />}
+
         {/* Date + job */}
         <div className={styles.card}>
           <div className={styles.fieldRow}>
@@ -447,7 +524,26 @@ export default function LogPage() {
                 </>
               )
             ) : (
-              !hourlyPick ? (
+              <>
+              {/* Clock in — alongside the manual hours path. Some days are
+                  remembered (typed), some are punched; this offers the punch. */}
+              {!openPunch && (
+                <div className={styles.rowBetween} style={{ marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid var(--color-border)' }}>
+                  <span className={styles.entryMeta}>Working now? Start the clock.</span>
+                  <button className={styles.secondaryBtn} onClick={clockIn} disabled={clockingIn}>
+                    <Clock size={15} /> {clockingIn ? 'Starting…' : 'Clock in'}
+                  </button>
+                </div>
+              )}
+              {clockMsg && (
+                <div className={styles.card} style={{ marginBottom: 12 }}>
+                  You're still clocked in on {clockMsg.name}.{' '}
+                  {clockMsg.projectId && (
+                    <Link to={`/log?job=${clockMsg.projectId}`} className={styles.linkBtn} style={{ textDecoration: 'underline' }}>Go to that job</Link>
+                  )}
+                </div>
+              )}
+              {!hourlyPick ? (
                 <WorkItemSearch
                   mode="hourly"
                   catalog={catalog}
@@ -477,7 +573,8 @@ export default function LogPage() {
                     <button className={styles.primaryBtn} disabled={!canAddHourly} onClick={addHourly}><Plus size={16} /> Add</button>
                   </div>
                 </>
-              )
+              )}
+              </>
             )}
           </div>
         )}
@@ -488,11 +585,11 @@ export default function LogPage() {
             <div className={styles.fieldLabel} style={{ marginBottom: 6 }}>Entries · {date}</div>
             {entriesLoading ? (
               <div className={styles.muted} style={{ padding: '12px 0' }}>Loading…</div>
-            ) : entries.length === 0 ? (
+            ) : closedEntries.length === 0 ? (
               <div className={styles.muted} style={{ padding: '12px 0' }}>No entries yet for this day.</div>
             ) : (
               <>
-                {entries.map(e => (
+                {closedEntries.map(e => (
                   <div key={e.id} className={styles.entryRow}>
                     <div className={styles.entryMain}>
                       <div className={styles.entryName}>{e.description || e.work_items?.name || (e.entry_type === 'hourly' ? 'Hourly' : 'Piece work')}</div>
@@ -518,7 +615,7 @@ export default function LogPage() {
         )}
 
         {/* Done for today — only once this job has an entry on this date. */}
-        {job && entries.length > 0 && (
+        {job && closedEntries.length > 0 && (
           <button className={styles.primaryBtn} style={{ width: '100%' }} onClick={openDoneSheet}>
             Done for today
           </button>

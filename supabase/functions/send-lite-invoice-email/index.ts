@@ -127,6 +127,29 @@ Deno.serve(async (req) => {
       .eq('id', invoice.company_id)
       .single()
 
+    // Punch-backed hours on this invoice — closed clock entries only (both stamps
+    // set). Feeds a single honest body line; the per-punch time detail lives on
+    // the attached PDF, so here we only summarize total hours across distinct days.
+    let clockedHours = 0
+    let clockedDays = 0
+    {
+      const { data: punchRows } = await adminClient
+        .from('work_entries')
+        .select('work_date, hours')
+        .eq('invoice_id', invoice_id)
+        .not('clock_in_at', 'is', null)
+        .not('clock_out_at', 'is', null)
+      if (punchRows && punchRows.length > 0) {
+        const days = new Set<string>()
+        for (const r of punchRows) {
+          clockedHours += Number(r.hours) || 0
+          if (r.work_date) days.add(String(r.work_date))
+        }
+        clockedHours = Math.round(clockedHours * 100) / 100
+        clockedDays = days.size
+      }
+    }
+
     // 7. Recipient — the GC's primary email.
     if (!client.primary_email) return json({ error: 'No email recipients' }, 400)
     const recipients = [client.primary_email]
@@ -161,6 +184,13 @@ Deno.serve(async (req) => {
         <p style="font-size: 15px; color: #1b2426; line-height: 1.5;">This is a reminder that invoice <strong>${escapeHtml(invoice.invoice_number)}</strong> has an outstanding balance of <strong>$${balanceFmt}</strong>${daysSince != null ? `. It was ${sinceVerb} ${daysSince} day${daysSince === 1 ? '' : 's'} ago` : ''}. A PDF copy is attached.</p>`
       : `<p style="font-size: 15px; color: #1b2426; line-height: 1.5;">Hi ${escapeHtml(gcName)},</p>
         <p style="font-size: 15px; color: #1b2426; line-height: 1.5;">Please find invoice <strong>${escapeHtml(invoice.invoice_number)}</strong> attached as a PDF.</p>`
+
+    // One honest summary line for clocked time — present in BOTH normal and
+    // reminder bodies whenever the invoice carries punch-backed hours. The
+    // per-punch breakdown rides the attached PDF's Time detail section.
+    const clockedHtml = clockedHours > 0
+      ? `<p style="font-size: 14px; color: #1b2426; line-height: 1.5;">Includes ${clockedHours.toFixed(2)} clocked hours across ${clockedDays} day${clockedDays === 1 ? '' : 's'}, time detail on the attached PDF.</p>`
+      : ''
 
     const logoHtml = tenantLogoUrl
       ? `<img src="${tenantLogoUrl}" alt="${escapeHtml(companyName)} logo" style="max-height: 60px; max-width: 200px; display: block; margin: 0 auto 20px;" />`
@@ -219,6 +249,7 @@ Deno.serve(async (req) => {
         ${logoHtml}
         <h2 style="color: ${tenantPrimary}; margin: 0 0 16px 0;">${escapeHtml(companyName)}</h2>
         ${introHtml}
+        ${clockedHtml}
         ${totalRow}
         ${dueHtml}
         ${renderPaymentInstructionsHTML(company?.payment_instructions, tenantPrimary)}

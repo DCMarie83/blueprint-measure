@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { GC_CLIENT_TYPE } from '../lib/lite'
 import { getEffectiveTimeZone, startOfToday, startOfMonth, startOfYear, weekRange } from '../lib/effectiveTime'
+import { isOpenPunch } from '../lib/lite'
 
 // One aggregate read for the Lite home. Five batched company-scoped queries run
 // in parallel (invoices, work_entries, invoice_payments, clients, projects) —
@@ -53,7 +54,7 @@ export function useLiteHomeStats(companyId) {
           .select('id, invoice_number, status, total, paid_amount, sent_at, created_at, due_date, last_reminded_at, client_id, project_id')
           .eq('company_id', companyId),
         supabase.from('work_entries')
-          .select('project_id, amount, invoice_id, work_date, created_at')
+          .select('project_id, amount, invoice_id, work_date, created_at, clock_in_at, clock_out_at')
           .eq('company_id', companyId),
         supabase.from('invoice_payments')
           .select('amount, payment_date')
@@ -70,7 +71,10 @@ export function useLiteHomeStats(companyId) {
         if (r.error) throw new Error(r.error.message)
       }
       const invoices = invRes.data ?? []
-      const entries = entRes.data ?? []
+      // Open (running) punches are not billable work yet — they carry no hours or
+      // amount. Drop them from EVERY entry-derived figure below; the timer bar
+      // surfaces the live punch on its own.
+      const entries = (entRes.data ?? []).filter(e => !isOpenPunch(e))
       const payments = payRes.data ?? []
       const clients = cliRes.data ?? []
       const projects = projRes.data ?? []

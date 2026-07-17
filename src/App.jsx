@@ -270,6 +270,13 @@ function RouteBreadcrumbs() {
   return null
 }
 
+// /founders is a marketing entry point that must funnel to signup while carrying
+// its tracking query string intact (e.g. /founders?utm_source=x → /signup?utm_source=x).
+function FoundersRedirect() {
+  const location = useLocation()
+  return <Navigate to={{ pathname: '/signup', search: location.search }} replace />
+}
+
 export default function App() {
   const { user, loading } = useAuth()
 
@@ -294,6 +301,7 @@ export default function App() {
         path="/signup/lite"
         element={user ? <Navigate to="/dashboard" replace /> : <LiteSignupPage />}
       />
+      <Route path="/founders" element={<FoundersRedirect />} />
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/portal/:token" element={<PortalPage />} />

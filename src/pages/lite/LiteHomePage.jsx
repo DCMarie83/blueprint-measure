@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { Plus, FileText, HardHat, ChevronRight, Check } from 'lucide-react'
 import AppHeader from '../../components/AppHeader'
 import Logo from '../../components/brand/Logo'
+import OpenPunchBar from '../../components/lite/OpenPunchBar'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import { useAuth } from '../../context/AuthContext'
 import { useLiteHomeStats } from '../../hooks/useLiteHomeStats'
+import { useOpenPunch } from '../../hooks/useOpenPunch'
 import { fmtMoney } from '../../lib/lite'
 import { getEffectiveTimeZone, formatHeaderDateTime, zoneShortName } from '../../lib/effectiveTime'
 import styles from './lite.module.css'
@@ -21,8 +23,13 @@ export default function LiteHomePage() {
   const tz = getEffectiveTimeZone(userProfile)
   const {
     owed, earnedMTD, earnedYTD, loggedThisWeek, outstanding, paidCount,
-    oldestUnpaid, jumpBackIn, flags, loading,
+    oldestUnpaid, jumpBackIn, flags, loading, refetch: refetchStats,
   } = useLiteHomeStats(companyId)
+  const { openPunch, refetch: refetchPunch } = useOpenPunch(companyId)
+
+  async function handleClockedOut() {
+    await Promise.all([refetchPunch(), refetchStats()])
+  }
 
   // Live wall clock in the effective zone. Ticks each minute (no seconds shown),
   // cleaned up on unmount. Kept before any early return so hook order is stable.
@@ -69,6 +76,9 @@ export default function LiteHomePage() {
           <div className={styles.sectionLine}>Here's where you stand</div>
           <div className={styles.clockLine}>{clock}{tzSuffix ? ` (${tzSuffix})` : ''}</div>
         </div>
+
+        {/* Running-punch indicator — same DB-derived bar as the log page. */}
+        {openPunch && <OpenPunchBar punch={openPunch} onDone={handleClockedOut} compact />}
 
         {/* Hero */}
         {isBrandNew ? (

@@ -5,7 +5,7 @@ import AppHeader from '../../components/AppHeader'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
-import { GC_CLIENT_TYPE, fmtMoney } from '../../lib/lite'
+import { GC_CLIENT_TYPE, fmtMoney, isOpenPunch } from '../../lib/lite'
 import { getEffectiveTimeZone, presetRange } from '../../lib/effectiveTime'
 import { generateLiteReportXLSX } from '../../lib/generateLiteReportXLSX'
 import styles from './lite.module.css'
@@ -81,7 +81,7 @@ export default function LiteReportsPage() {
           .select('id, invoice_id, amount, payment_method, payment_date')
           .eq('company_id', companyId),
         supabase.from('work_entries')
-          .select('id, project_id, work_date, entry_type, unit, quantity, hours, rate_snapshot, amount, description, invoice_id, work_items(name)')
+          .select('id, project_id, work_date, entry_type, unit, quantity, hours, rate_snapshot, amount, description, invoice_id, clock_in_at, clock_out_at, work_items(name)')
           .eq('company_id', companyId),
         supabase.from('clients')
           .select('id, display_name, business_name, client_type')
@@ -118,7 +118,10 @@ export default function LiteReportsPage() {
   const report = useMemo(() => {
     if (!raw) return null
     const { from, to } = range
-    const { invoices, payments, entries, gcNameById, projById, invoiceById } = raw
+    const { invoices, payments, entries: allEntries, gcNameById, projById, invoiceById } = raw
+    // Open (running) punches are not billable work yet — exclude from the unbilled
+    // section and the work log.
+    const entries = allEntries.filter(e => !isOpenPunch(e))
     const inWindow = d => { const x = day(d); return x && x >= from && x <= to }
 
     // Section 1 — Payments received (per-payment rows: the mark-paid source).

@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { hexToRgb, normalizedPrimary } from '../utils/colorUtils'
+import { formatTimeOnly } from './effectiveTime'
 
 const DARK = [27, 36, 38]
 const MUTED = [138, 144, 150]
@@ -72,10 +73,14 @@ function renderPaymentInstructions(doc, pi, x, y, primaryRgb, pageWidth, pageHei
  * @param {Object} opts.project - { name, address }
  * @param {Object} opts.client - { display_name, business_name } (nullable)
  * @param {Object} opts.company - { name, primary_color, logo_data } (nullable)
+ * @param {Array}  [opts.timeDetail] - closed clock punches backing this invoice:
+ *   { work_date, clock_in_at, clock_out_at, hours }. When non-empty a "Time
+ *   detail" section renders after the totals. Never carries geo.
+ * @param {string} [opts.timeZone] - sub's effective zone for the in/out times.
  * @param {'blob'|'base64'|'save'} opts.returnAs - Output format
  * @returns {Blob|string|void}
  */
-export function generateInvoicePDF({ invoice, lineItems, project, client, company, returnAs = 'blob' }) {
+export function generateInvoicePDF({ invoice, lineItems, project, client, company, timeDetail = [], timeZone, returnAs = 'blob' }) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
@@ -254,6 +259,43 @@ export function generateInvoicePDF({ invoice, lineItems, project, client, compan
   doc.text('TOTAL', pageWidth - margin - 76, y + 9)
   doc.text(fmtMoney(totalNum), pageWidth - margin - 4, y + 9, { align: 'right' })
   y += 22
+
+  // ── Time detail (clocked punches only) ───────────────────
+  // Rendered only when this invoice contains punch-backed hourly entries. One
+  // row per punch — date, clock in, clock out, hours — in the sub's zone. No geo.
+  if (Array.isArray(timeDetail) && timeDetail.length > 0) {
+    if (y > pageHeight - 60) { doc.addPage(); y = margin }
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(...primaryRgb)
+    doc.text('TIME DETAIL', margin, y)
+    y += 4
+
+    const timeBody = timeDetail.map(p => [
+      fmtDate(p.work_date),
+      formatTimeOnly(timeZone, p.clock_in_at),
+      formatTimeOnly(timeZone, p.clock_out_at),
+      Number(p.hours || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+    ])
+
+    autoTable(doc, {
+      startY: y,
+      margin: { left: margin, right: margin },
+      head: [['Date', 'Clock in', 'Clock out', 'Hours']],
+      body: timeBody,
+      theme: 'grid',
+      headStyles: { fillColor: DARK, textColor: WHITE, fontStyle: 'bold', fontSize: 9 },
+      styles: { fontSize: 9, textColor: DARK, cellPadding: { top: 2.5, bottom: 2.5, left: 4, right: 4 } },
+      columnStyles: {
+        0: { cellWidth: 'auto' },
+        1: { halign: 'right', cellWidth: 30 },
+        2: { halign: 'right', cellWidth: 30 },
+        3: { halign: 'right', cellWidth: 22 },
+      },
+      alternateRowStyles: { fillColor: STRIPE },
+    })
+    y = doc.lastAutoTable.finalY + 8
+  }
 
   // ── Payment instructions ────────────────────────────────
   y = renderPaymentInstructions(doc, company?.payment_instructions, margin, y, primaryRgb, pageWidth, pageHeight, margin)

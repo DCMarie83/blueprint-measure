@@ -24,6 +24,22 @@ export function unitLabel(unit) {
   return UNIT_LABELS[unit] || unit || ''
 }
 
+// An OPEN clock-in punch: clocked in, not yet clocked out (hours/amount not yet
+// computed). This is the ONE row shape every money aggregate must skip — it is
+// not billable work until it closes. NOTE: we key on the clock fields, not on
+// `hours IS NULL`, because piece entries also carry hours:null and must stay in
+// the sums. A punch is punch-BACKED (closed, invoiceable) when BOTH clock stamps
+// are set — see punchBacked().
+export function isOpenPunch(e) {
+  return !!e?.clock_in_at && !e?.clock_out_at
+}
+
+// A CLOSED clock punch — carries both stamps, so it rides the invoice with its
+// times. Manual hourly/piece entries have no clock_in_at and return false.
+export function punchBacked(e) {
+  return !!e?.clock_in_at && !!e?.clock_out_at
+}
+
 // Money math is client-side everywhere in Lite (no DB total triggers),
 // mirroring the invoice precedent.
 export function fmtMoney(val) {

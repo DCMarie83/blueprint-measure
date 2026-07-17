@@ -9,7 +9,8 @@ import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import { useSheetSignal } from '../../hooks/useSheetSignal'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
-import { GC_CLIENT_TYPE, unitLabel, fmtMoney, invoiceDueDate } from '../../lib/lite'
+import { GC_CLIENT_TYPE, unitLabel, fmtMoney, invoiceDueDate, isOpenPunch, punchBacked } from '../../lib/lite'
+import { getEffectiveTimeZone, formatTimeOnly } from '../../lib/effectiveTime'
 import styles from './lite.module.css'
 
 function todayStr() {
@@ -25,7 +26,8 @@ export default function LiteJobDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { companyId } = useEffectiveCompany()
-  const { user } = useAuth()
+  const { user, userProfile } = useAuth()
+  const tz = getEffectiveTimeZone(userProfile)
   const { projects, loading: projectsLoading } = useProjects()
   const { clients } = useClients()
   const { entries, loading: entriesLoading, refetch: refetchEntries, updateEntry, deleteEntry } = useWorkEntries(id)
@@ -50,9 +52,14 @@ export default function LiteJobDetailPage() {
   const gc = clients.find(c => c.id === job?.client_id && c.client_type === GC_CLIENT_TYPE) || null
   const gcName = gc ? (gc.business_name || gc.display_name) : 'No GC'
 
+  // Open (running) punches are not billable work yet — exclude them from every
+  // money view on this page (rollup, ledger, invoice range). The timer bar (on
+  // /log and /home) is where a live punch lives until it closes.
+  const closedEntries = useMemo(() => entries.filter(e => !isOpenPunch(e)), [entries])
+
   // Unbilled = never rolled into an invoice. Invoiced entries can never be
   // re-invoiced, so they never appear in the range preview.
-  const unbilled = useMemo(() => entries.filter(e => !e.invoice_id), [entries])
+  const unbilled = useMemo(() => closedEntries.filter(e => !e.invoice_id), [closedEntries])
 
   const invPreview = useMemo(() => {
     const rows = unbilled.filter(e => {
@@ -113,13 +120,18 @@ export default function LiteJobDetailPage() {
         .single()
       if (insErr) throw new Error(insErr.message)
 
-      // One line item per work_entry — no aggregation.
+      // One line item per work_entry — no aggregation. Punch-backed hourly rows
+      // carry their clock in/out times in the description (in the sub's zone);
+      // manual entries keep the plain "<label> - <date>" shape.
       const lineRows = ordered.map((e, i) => {
         const label = e.description || e.work_items?.name || (e.entry_type === 'hourly' ? 'Hourly' : 'Piece work')
         const qty = e.entry_type === 'hourly' ? e.hours : e.quantity
+        const description = punchBacked(e)
+          ? `${label} - ${e.work_date} (${formatTimeOnly(tz, e.clock_in_at)} to ${formatTimeOnly(tz, e.clock_out_at)})`
+          : `${label} - ${e.work_date}`
         return {
           invoice_id: invoice.id,
-          description: `${label} - ${e.work_date}`,
+          description,
           category_name: null,
           item_type: 'labor',
           unit: e.unit ?? 'each',
@@ -154,22 +166,22 @@ export default function LiteJobDetailPage() {
 
   const rollup = useMemo(() => {
     let total = 0, unbilled = 0, invoiced = 0
-    for (const e of entries) {
+    for (const e of closedEntries) {
       const amt = Number(e.amount) || 0
       total += amt
       if (e.invoice_id) invoiced += amt
       else unbilled += amt
     }
     return { total, unbilled, invoiced }
-  }, [entries])
+  }, [closedEntries])
 
   const visible = useMemo(() => {
-    return entries.filter(e => {
+    return closedEntries.filter(e => {
       if (dateFrom && e.work_date < dateFrom) return false
       if (dateTo && e.work_date > dateTo) return false
       return true
     })
-  }, [entries, dateFrom, dateTo])
+  }, [closedEntries, dateFrom, dateTo])
 
   function startEdit(e) {
     setEditId(e.id)

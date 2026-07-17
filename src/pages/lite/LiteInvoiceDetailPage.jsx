@@ -6,10 +6,12 @@ import InvoiceStatusBadge from '../../components/invoices/InvoiceStatusBadge'
 import { useInvoice, useInvoiceMutations, isOverdue } from '../../hooks/useInvoices'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import { useSheetSignal } from '../../hooks/useSheetSignal'
+import { useAuth } from '../../context/AuthContext'
 import { generateInvoicePDF } from '../../lib/generateInvoicePDF'
 import { generateLiteInvoiceXLSX } from '../../lib/generateLiteInvoiceXLSX'
 import { supabase } from '../../lib/supabase'
 import { unitLabel, fmtMoney } from '../../lib/lite'
+import { getEffectiveTimeZone } from '../../lib/effectiveTime'
 import styles from './lite.module.css'
 
 // Lite payment methods map onto the invoices.payment_method CHECK
@@ -48,11 +50,15 @@ export default function LiteInvoiceDetailPage() {
   const backTo = location.state?.backTo
   const [searchParams, setSearchParams] = useSearchParams()
   const { company } = useEffectiveCompany()
+  const { userProfile } = useAuth()
+  const tz = getEffectiveTimeZone(userProfile)
   const { invoice, lineItems, payments, loading, error, refetch } = useInvoice(id)
   const { recordPayment } = useInvoiceMutations()
 
   const [gc, setGc] = useState(null)
   const [project, setProject] = useState(null)
+  // Closed clock punches backing this invoice (for the PDF Time-detail section).
+  const [timeDetail, setTimeDetail] = useState([])
   const [busy, setBusy] = useState(false)
   const [actionError, setActionError] = useState(null)
   const [sendOk, setSendOk] = useState(false)
@@ -86,6 +92,24 @@ export default function LiteInvoiceDetailPage() {
     return () => { cancelled = true }
   }, [invoice])
 
+  // Load the closed punches rolled into this invoice — drives the PDF Time detail
+  // and the email's clocked-hours line. Only punch-backed rows (both clock stamps).
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const { data } = await supabase
+        .from('work_entries')
+        .select('work_date, clock_in_at, clock_out_at, hours')
+        .eq('invoice_id', id)
+        .not('clock_in_at', 'is', null)
+        .not('clock_out_at', 'is', null)
+        .order('work_date', { ascending: true })
+        .order('clock_in_at', { ascending: true })
+      if (!cancelled) setTimeDetail(data ?? [])
+    })()
+    return () => { cancelled = true }
+  }, [id])
+
   async function buildBranding() {
     const companyData = {
       name: company?.name,
@@ -109,7 +133,7 @@ export default function LiteInvoiceDetailPage() {
     setBusy(true); setActionError(null)
     try {
       const companyData = await buildBranding()
-      const pdf = generateInvoicePDF({ invoice, lineItems, project, client: gc, company: companyData, returnAs: 'blob' })
+      const pdf = generateInvoicePDF({ invoice, lineItems, project, client: gc, company: companyData, timeDetail, timeZone: tz, returnAs: 'blob' })
       const url = URL.createObjectURL(pdf)
       const a = document.createElement('a')
       a.href = url
@@ -136,7 +160,7 @@ export default function LiteInvoiceDetailPage() {
     setBusy(true); setActionError(null); setSendOk(false)
     try {
       const companyData = await buildBranding()
-      const pdfBase64 = generateInvoicePDF({ invoice, lineItems, project, client: gc, company: companyData, returnAs: 'base64' })
+      const pdfBase64 = generateInvoicePDF({ invoice, lineItems, project, client: gc, company: companyData, timeDetail, timeZone: tz, returnAs: 'base64' })
       const { error: fnErr } = await supabase.functions.invoke('send-lite-invoice-email', {
         body: { invoice_id: id, pdf_base64: pdfBase64 },
       })
@@ -158,7 +182,7 @@ export default function LiteInvoiceDetailPage() {
     setBusy(true); setActionError(null); setRemindOk(false)
     try {
       const companyData = await buildBranding()
-      const pdfBase64 = generateInvoicePDF({ invoice, lineItems, project, client: gc, company: companyData, returnAs: 'base64' })
+      const pdfBase64 = generateInvoicePDF({ invoice, lineItems, project, client: gc, company: companyData, timeDetail, timeZone: tz, returnAs: 'base64' })
       const { error: fnErr } = await supabase.functions.invoke('send-lite-invoice-email', {
         body: { invoice_id: id, pdf_base64: pdfBase64, mode: 'reminder' },
       })
