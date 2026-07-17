@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import { ChevronLeft, Download, Send, CheckCircle, FileSpreadsheet } from 'lucide-react'
 import AppHeader from '../../components/AppHeader'
 import InvoiceStatusBadge from '../../components/invoices/InvoiceStatusBadge'
@@ -31,6 +31,10 @@ function fmtDate(d) {
 export default function LiteInvoiceDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  // When arrived from Reports, location.state.backTo holds the exact /reports URL
+  // (preset + custom range) so the back action returns with the range intact.
+  const backTo = location.state?.backTo
   const { company } = useEffectiveCompany()
   const { invoice, lineItems, payments, loading, error, refetch } = useInvoice(id)
   const { recordPayment } = useInvoiceMutations()
@@ -176,7 +180,7 @@ export default function LiteInvoiceDetailPage() {
     <div className={styles.page}>
       <AppHeader />
       <main className={styles.main}>
-        <button className={styles.backLink} onClick={() => navigate('/invoices')}><ChevronLeft size={15} /> Invoices</button>
+        <button className={styles.backLink} onClick={() => navigate(backTo || '/invoices')}><ChevronLeft size={15} /> {backTo ? 'Reports' : 'Invoices'}</button>
 
         <div className={styles.header}>
           <div>

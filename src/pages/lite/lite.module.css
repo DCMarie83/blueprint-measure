@@ -389,6 +389,28 @@
   color: var(--color-text, #1a1a1a);
 }
 
+/* Reports rows are doors — the whole <tr> taps through to the invoice or job
+   detail. Cursor + hover mirror the div-based .listRow affordance; the trailing
+   chevron cell nudges discoverability. Mobile bumps each row to a ≥44px target. */
+.reportRow {
+  cursor: pointer;
+}
+.reportRow:hover {
+  background: var(--color-surface-2, #f2f2f2);
+}
+.reportChevron {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+  color: var(--color-text-muted);
+  vertical-align: middle;
+}
+@media (max-width: 640px) {
+  .reportRow td {
+    height: 44px;
+  }
+}
+
 .muted { color: var(--color-text-muted); }
 
 .tooltipWrap {

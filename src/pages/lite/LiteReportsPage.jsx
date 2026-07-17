@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Download } from 'lucide-react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Download, ChevronRight } from 'lucide-react'
 import AppHeader from '../../components/AppHeader'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import { useAuth } from '../../context/AuthContext'
@@ -31,12 +32,19 @@ const PRESETS = [
 const day = d => String(d || '').slice(0, 10)
 
 export default function LiteReportsPage() {
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { companyId, company } = useEffectiveCompany()
   const { userProfile } = useAuth()
   const tz = getEffectiveTimeZone(userProfile)
-  const [preset, setPreset] = useState('this_month')
-  const [customFrom, setCustomFrom] = useState(() => presetRange('this_month', tz).from)
-  const [customTo, setCustomTo] = useState(() => presetRange('this_month', tz).to)
+  // The chosen window lives in the URL so a row can tap through to a detail and
+  // the browser back button (or the detail's back link) returns here with the
+  // range intact. State seeds FROM the URL on mount, then mirrors back to it.
+  const initialPreset = PRESETS.some(p => p.key === searchParams.get('preset'))
+    ? searchParams.get('preset') : 'this_month'
+  const [preset, setPreset] = useState(initialPreset)
+  const [customFrom, setCustomFrom] = useState(() => searchParams.get('from') || presetRange('this_month', tz).from)
+  const [customTo, setCustomTo] = useState(() => searchParams.get('to') || presetRange('this_month', tz).to)
   const [raw, setRaw] = useState(null) // { invoices, payments, entries, gcNameById, projById, invoiceById }
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState(false)
@@ -45,6 +53,18 @@ export default function LiteReportsPage() {
     if (preset === 'custom') return { label: 'Custom', from: customFrom, to: customTo }
     return presetRange(preset, tz)
   }, [preset, customFrom, customTo, tz])
+
+  // Mirror the window into the URL (replace, so preset flips don't stack history).
+  // This is the mechanism the detail pages read back on return.
+  useEffect(() => {
+    const next = preset === 'custom' ? { preset, from: customFrom, to: customTo } : { preset }
+    setSearchParams(next, { replace: true })
+  }, [preset, customFrom, customTo, setSearchParams])
+
+  // The exact Reports URL to hand a detail page so its back returns here intact.
+  const backTo = `/reports?${new URLSearchParams(
+    preset === 'custom' ? { preset, from: customFrom, to: customTo } : { preset }
+  ).toString()}`
 
   // One batched company-scoped read of the full dataset; the window is applied
   // client-side so switching presets never re-hits the network.
@@ -107,6 +127,7 @@ export default function LiteReportsPage() {
       .map(p => {
         const inv = invoiceById[p.invoice_id]
         return {
+          invoiceId: inv?.id || null,
           date: day(p.payment_date),
           invoiceNumber: inv?.invoice_number || '—',
           gcName: inv ? (gcNameById[inv.client_id] || 'No GC') : 'No GC',
@@ -124,6 +145,7 @@ export default function LiteReportsPage() {
         const total = Number(inv.total) || 0
         const collected = Number(inv.paid_amount) || 0
         return {
+          id: inv.id,
           invoiceNumber: inv.invoice_number,
           gcName: gcNameById[inv.client_id] || 'No GC',
           issuedDate: inv.created_at,
@@ -145,6 +167,7 @@ export default function LiteReportsPage() {
       const proj = projById[e.project_id]
       const key = e.project_id
       const g = unbilledByJob[key] || (unbilledByJob[key] = {
+        projectId: key,
         jobName: proj?.name || 'Unknown job',
         gcName: proj ? (gcNameById[proj.client_id] || 'No GC') : 'No GC',
         count: 0, total: 0,
@@ -262,16 +285,21 @@ export default function LiteReportsPage() {
                 <div className={styles.tableWrap}>
                   <table className={styles.table}>
                     <thead>
-                      <tr><th>Date</th><th>Invoice</th><th>GC</th><th>Method</th><th style={{ textAlign: 'right' }}>Amount</th></tr>
+                      <tr><th>Date</th><th>Invoice</th><th>GC</th><th>Method</th><th style={{ textAlign: 'right' }}>Amount</th><th aria-hidden="true"></th></tr>
                     </thead>
                     <tbody>
                       {report.paymentRows.map((r, i) => (
-                        <tr key={i}>
+                        <tr
+                          key={i}
+                          className={r.invoiceId ? styles.reportRow : undefined}
+                          onClick={r.invoiceId ? () => navigate(`/invoices/${r.invoiceId}`, { state: { backTo } }) : undefined}
+                        >
                           <td>{new Date(r.date).toLocaleDateString()}</td>
                           <td>{r.invoiceNumber}</td>
                           <td>{r.gcName}</td>
                           <td>{r.method}</td>
                           <td className={styles.moneyIn} style={{ textAlign: 'right' }}>{fmtMoney(r.amount)}</td>
+                          <td className={styles.reportChevron}>{r.invoiceId ? <ChevronRight size={16} /> : null}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -293,17 +321,22 @@ export default function LiteReportsPage() {
                   <div className={styles.tableWrap}>
                     <table className={styles.table}>
                       <thead>
-                        <tr><th>Invoice</th><th>GC</th><th>Issued</th><th style={{ textAlign: 'right' }}>Total</th><th>Status</th><th style={{ textAlign: 'right' }}>Balance</th></tr>
+                        <tr><th>Invoice</th><th>GC</th><th>Issued</th><th style={{ textAlign: 'right' }}>Total</th><th>Status</th><th style={{ textAlign: 'right' }}>Balance</th><th aria-hidden="true"></th></tr>
                       </thead>
                       <tbody>
                         {report.invoiceRows.map((r, i) => (
-                          <tr key={i}>
+                          <tr
+                            key={i}
+                            className={styles.reportRow}
+                            onClick={() => navigate(`/invoices/${r.id}`, { state: { backTo } })}
+                          >
                             <td>{r.invoiceNumber}</td>
                             <td>{r.gcName}</td>
                             <td>{new Date(r.issuedDate).toLocaleDateString()}</td>
                             <td style={{ textAlign: 'right' }}>{fmtMoney(r.total)}</td>
                             <td>{STATUS_LABELS[r.status] || r.status}</td>
                             <td className={r.balance > 0 ? styles.moneyDue : undefined} style={{ textAlign: 'right' }}>{fmtMoney(r.balance)}</td>
+                            <td className={styles.reportChevron}><ChevronRight size={16} /></td>
                           </tr>
                         ))}
                       </tbody>
@@ -330,15 +363,20 @@ export default function LiteReportsPage() {
                 <div className={styles.tableWrap}>
                   <table className={styles.table}>
                     <thead>
-                      <tr><th>Job</th><th>GC</th><th style={{ textAlign: 'right' }}>Entries</th><th style={{ textAlign: 'right' }}>Amount</th></tr>
+                      <tr><th>Job</th><th>GC</th><th style={{ textAlign: 'right' }}>Entries</th><th style={{ textAlign: 'right' }}>Amount</th><th aria-hidden="true"></th></tr>
                     </thead>
                     <tbody>
                       {report.unbilledRows.map((r, i) => (
-                        <tr key={i}>
+                        <tr
+                          key={i}
+                          className={r.projectId ? styles.reportRow : undefined}
+                          onClick={r.projectId ? () => navigate(`/log/job/${r.projectId}`) : undefined}
+                        >
                           <td>{r.jobName}</td>
                           <td>{r.gcName}</td>
                           <td style={{ textAlign: 'right' }}>{r.count}</td>
                           <td className={styles.moneyDue} style={{ textAlign: 'right' }}>{fmtMoney(r.total)}</td>
+                          <td className={styles.reportChevron}>{r.projectId ? <ChevronRight size={16} /> : null}</td>
                         </tr>
                       ))}
                     </tbody>
