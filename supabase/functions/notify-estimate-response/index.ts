@@ -30,14 +30,14 @@ Deno.serve(async (req) => {
     // 1. Fetch estimate
     const { data: estimate, error: estErr } = await adminClient
       .from('estimates')
-      .select('id, estimate_number, title, status, good_total, better_total, best_total, project_id, company_id, response_notified_at')
+      .select('id, estimate_number, title, status, good_total, better_total, best_total, project_id, company_id, response_notified_at, change_request_comment')
       .eq('id', estimate_id)
       .single()
     if (estErr || !estimate) return json({ error: 'Estimate not found' }, 404)
 
-    // 2. Validate status is accepted or declined
-    if (!['accepted', 'declined'].includes(estimate.status)) {
-      return json({ error: 'Estimate status is not accepted or declined' }, 400)
+    // 2. Validate status is accepted, declined, or changes_requested
+    if (!['accepted', 'declined', 'changes_requested'].includes(estimate.status)) {
+      return json({ error: 'Estimate status is not a client response' }, 400)
     }
 
     // 3. Replay protection: response_notified_at must be NULL or older than 90s
@@ -83,22 +83,29 @@ Deno.serve(async (req) => {
 
     // 7. Build email
     const estTitle = estimate.title || estimate.estimate_number
-    const statusVerb = estimate.status === 'accepted' ? 'accepted' : 'declined'
-    const statusColor = estimate.status === 'accepted' ? '#16a34a' : '#dc2626'
+    const isChanges = estimate.status === 'changes_requested'
+    const statusVerb = estimate.status === 'accepted' ? 'accepted' : estimate.status === 'declined' ? 'declined' : 'requested changes to'
+    const statusColor = estimate.status === 'accepted' ? '#16a34a' : estimate.status === 'declined' ? '#dc2626' : '#f27243'
+    const headline = isChanges ? 'Your client requested changes' : `Your estimate has been ${statusVerb}`
     const siteUrl = Deno.env.get('SITE_URL') || 'https://app.rivetdog.com'
     const estimateUrl = `${siteUrl}/estimates/${estimate.id}`
+
+    const commentBlock = isChanges && estimate.change_request_comment
+      ? `<div style="background: #f9fafb; border-left: 3px solid #f27243; border-radius: 6px; padding: 12px 16px; margin: 12px 0; font-size: 14px; color: #1b2426; line-height: 1.5;">${escapeHtml(estimate.change_request_comment)}</div>`
+      : ''
 
     const html = `
       <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
         <h2 style="color: #f27243; margin: 0 0 16px 0;">${escapeHtml(companyName)}</h2>
         <p style="font-size: 16px; color: #1b2426; line-height: 1.5;">
-          Your estimate has been <strong style="color: ${statusColor};">${statusVerb}</strong>
+          <strong style="color: ${statusColor};">${headline}</strong>
         </p>
         <p style="font-size: 14px; color: #555; line-height: 1.5;">
           <strong>${escapeHtml(clientName)}</strong> ${statusVerb} estimate
           <strong>${escapeHtml(estTitle)}</strong> for project
           <strong>${escapeHtml(project.name)}</strong>.
         </p>
+        ${commentBlock}
         <a href="${estimateUrl}" style="display: inline-block; margin: 16px 0; padding: 12px 24px; background: #f27243; color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">View Estimate</a>
         <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
         <p style="font-size: 11px; color: #999; text-align: center;">Powered by RivetDog</p>
@@ -115,7 +122,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         from: `${companyName} via RivetDog <noreply@rivetdog.com>`,
         to: [contractor.email],
-        subject: `Estimate ${statusVerb}: ${escapeHtml(estTitle)} from ${escapeHtml(clientName)}`,
+        subject: `Estimate ${isChanges ? 'changes requested' : statusVerb}: ${escapeHtml(estTitle)} from ${escapeHtml(clientName)}`,
         html,
       }),
     })

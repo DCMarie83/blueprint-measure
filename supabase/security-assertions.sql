@@ -41,6 +41,7 @@ expected_anon_fns(fn) AS (
     ('get_portal_estimate'),
     ('get_portal_invoice'),
     ('get_portal_project'),
+    ('request_estimate_changes'),
     ('rivetpay_accept_terms'),
     ('rivetpay_clock_in'),
     ('rivetpay_clock_out'),
@@ -474,6 +475,38 @@ a16 AS (
          CASE WHEN (SELECT count(*) FROM a16_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
          coalesce('PROBLEMS: ' || (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a16_bad),
                   'cash writer installed and pinned; legacy writer dead')::text
+),
+
+-- ── A17 ────────────────────────────────────────────────────────────
+-- Portal request-changes: the status vocabulary includes changes_requested,
+-- the comment fields exist, and the anon RPC is present and pinned. A1 holds
+-- the anon grant; A4 holds the pin globally; this pins the feature's shape.
+a17_bad AS (
+  SELECT 'status-check-missing-changes_requested'::text AS problem
+  WHERE NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'estimates'::regclass AND conname = 'estimates_status_check'
+      AND pg_get_constraintdef(oid) ILIKE '%changes_requested%')
+  UNION ALL
+  SELECT ('missing-column:' || want.c)::text
+  FROM (VALUES ('change_request_comment'), ('changes_requested_at')) AS want(c)
+  WHERE NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'estimates' AND column_name = want.c)
+  UNION ALL
+  SELECT 'rpc-missing-or-unpinned'
+  WHERE NOT EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname = 'request_estimate_changes'
+      AND EXISTS (SELECT 1 FROM unnest(coalesce(p.proconfig, '{}')) cfg
+                  WHERE cfg LIKE 'search_path=%'))
+),
+a17 AS (
+  SELECT 'A17'::text,
+         'estimates: changes_requested in status check; comment fields present; anon RPC installed and pinned'::text,
+         CASE WHEN (SELECT count(*) FROM a17_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
+         coalesce('PROBLEMS: ' || (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a17_bad),
+                  'request-changes shape complete')::text
 )
 
 SELECT * FROM a1
@@ -492,4 +525,5 @@ UNION ALL SELECT * FROM a13
 UNION ALL SELECT * FROM a14
 UNION ALL SELECT * FROM a15
 UNION ALL SELECT * FROM a16
+UNION ALL SELECT * FROM a17
 ORDER BY id;

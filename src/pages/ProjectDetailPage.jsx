@@ -535,8 +535,8 @@ export default function ProjectDetailPage() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span style={{ fontWeight: 600, fontSize: 14 }}>{est.title || est.estimate_number}</span>
-                      <span style={{ fontSize: 12, padding: '2px 8px', borderRadius: 9999, background: est.status === 'accepted' ? 'var(--color-success-bg, rgba(74,222,128,0.12))' : est.status === 'declined' ? 'var(--color-danger-bg, rgba(220,38,38,0.08))' : 'var(--color-surface-2)', color: est.status === 'accepted' ? 'var(--color-success)' : est.status === 'declined' ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
-                        {est.status}
+                      <span style={{ fontSize: 12, padding: '2px 8px', borderRadius: 9999, background: est.status === 'accepted' ? 'var(--color-success-bg, rgba(74,222,128,0.12))' : est.status === 'declined' ? 'var(--color-danger-bg, rgba(220,38,38,0.08))' : est.status === 'changes_requested' ? 'rgba(242,114,67,0.14)' : 'var(--color-surface-2)', color: est.status === 'accepted' ? 'var(--color-success)' : est.status === 'declined' ? 'var(--color-danger)' : est.status === 'changes_requested' ? '#F27243' : 'var(--color-text-muted)' }}>
+                        {est.status === 'changes_requested' ? 'Changes requested' : est.status}
                       </span>
                       {est.smart_created && <SmartBadge size="sm" />}
                     </div>

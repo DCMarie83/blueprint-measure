@@ -232,7 +232,7 @@ Deno.serve(async (req) => {
     if (selected_variant) {
       updatePatch.selected_variant = selected_variant
     }
-    if (estimate.status === 'draft') {
+    if (estimate.status === 'draft' || estimate.status === 'changes_requested') {
       updatePatch.status = 'sent'
       updatePatch.sent_at = new Date().toISOString()
     }

@@ -51,7 +51,7 @@ function useAnimatedNumber(value, duration = 500) {
   return display
 }
 
-const STATUS_OPTIONS = ['draft', 'sent', 'accepted', 'declined', 'expired']
+const STATUS_OPTIONS = ['draft', 'sent', 'accepted', 'declined', 'expired', 'changes_requested']
 
 const STATUS_CLASS = {
   draft: styles.statusDraft,
@@ -481,8 +481,8 @@ export default function EstimateDetailPage() {
     setPickerZone(null)
   }
 
-  const canSend = isAdmin && (estimate.status === 'draft' || estimate.status === 'sent')
-  const sendLabel = estimate.status === 'sent' ? 'Resend to Client' : 'Send to Client'
+  const canSend = isAdmin && (estimate.status === 'draft' || estimate.status === 'sent' || estimate.status === 'changes_requested')
+  const sendLabel = (estimate.status === 'sent' || estimate.status === 'changes_requested') ? 'Resend to Client' : 'Send to Client'
 
   return (
     <div className={styles.page}>
@@ -519,7 +519,7 @@ export default function EstimateDetailPage() {
                   onChange={e => handleStatusChange(e.target.value)}
                 >
                   {STATUS_OPTIONS.map(s => (
-                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ')}</option>
                   ))}
                 </select>
               ) : (
@@ -637,6 +637,19 @@ export default function EstimateDetailPage() {
                 {scenarioNotice && (
                   <div style={{ marginTop: 8, fontSize: 12, fontWeight: 600, color: '#F27243' }}>{scenarioNotice}</div>
                 )}
+              </div>
+            )}
+
+            {estimate.status === 'changes_requested' && (
+              <div style={{ background: 'rgba(242,114,67,0.14)', borderLeft: '3px solid #F27243', borderRadius: 'var(--radius-md)', padding: '12px 16px', marginBottom: 16 }}>
+                <div style={{ fontWeight: 700, color: 'var(--color-text, #1b2426)', marginBottom: 4 }}>Client requested changes</div>
+                {estimate.change_request_comment && (
+                  <div style={{ fontSize: 14, color: 'var(--color-text, #1b2426)', lineHeight: 1.5, marginBottom: 6 }}>{estimate.change_request_comment}</div>
+                )}
+                {estimate.changes_requested_at && (
+                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 4 }}>{timeAgo(estimate.changes_requested_at)}</div>
+                )}
+                <div style={{ fontSize: 13, color: 'var(--color-text, #1b2426)' }}>Revise the estimate and resend.</div>
               </div>
             )}
 

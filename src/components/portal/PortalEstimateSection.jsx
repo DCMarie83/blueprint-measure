@@ -19,9 +19,11 @@ function fmtDate(dateStr) {
 export default function PortalEstimateSection({ estimate, lineItems, portalToken }) {
   const [showAccept, setShowAccept] = useState(false)
   const [showDecline, setShowDecline] = useState(false)
+  const [showChanges, setShowChanges] = useState(false)
   const [typedName, setTypedName] = useState('')
   const [acceptChecked, setAcceptChecked] = useState(false)
   const [declineReason, setDeclineReason] = useState('')
+  const [changeComment, setChangeComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
   const [responseStatus, setResponseStatus] = useState(estimate.status)
@@ -88,6 +90,29 @@ export default function PortalEstimateSection({ estimate, lineItems, portalToken
     }
   }
 
+  async function handleRequestChanges() {
+    setSubmitting(true)
+    setError(null)
+    try {
+      const { data, error: rpcErr } = await supabase.rpc('request_estimate_changes', {
+        p_estimate_id: estimate.id,
+        p_portal_token: portalToken,
+        p_comment: changeComment,
+      })
+      if (rpcErr) throw rpcErr
+      setResponseStatus('changes_requested')
+      setShowChanges(false)
+
+      supabase.functions.invoke('notify-estimate-response', {
+        body: { estimate_id: estimate.id },
+      }).catch(() => {})
+    } catch (err) {
+      setError(err.message || 'Failed to send request')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   return (
     <div className={styles.section}>
       {/* Header */}
@@ -112,6 +137,12 @@ export default function PortalEstimateSection({ estimate, lineItems, portalToken
           {estimate.decline_reason && (
             <div className={styles.declineReason}>{estimate.decline_reason}</div>
           )}
+        </div>
+      )}
+      {responseStatus === 'changes_requested' && (
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.12)', borderRadius: 8, padding: '12px 16px', margin: '12px 0', fontSize: 14, color: '#1b2426', lineHeight: 1.5 }}>
+          <AlertCircle size={18} style={{ flexShrink: 0, marginTop: 1 }} />
+          <span>Your request was sent. The contractor will follow up with an updated estimate.</span>
         </div>
       )}
 
@@ -190,10 +221,13 @@ export default function PortalEstimateSection({ estimate, lineItems, portalToken
         </div>
       )}
 
-      {responseStatus === 'sent' && !showAccept && !showDecline && (
+      {responseStatus === 'sent' && !showAccept && !showDecline && !showChanges && (
         <div className={styles.actionRow}>
           <button className={styles.acceptBtn} onClick={() => setShowAccept(true)}>
             <Check size={16} /> Accept Estimate
+          </button>
+          <button className={styles.declineBtn} onClick={() => setShowChanges(true)}>
+            Request changes
           </button>
           <button className={styles.declineBtn} onClick={() => setShowDecline(true)}>
             <X size={16} /> Decline
@@ -243,6 +277,22 @@ export default function PortalEstimateSection({ estimate, lineItems, portalToken
             <button className={styles.cancelFormBtn} onClick={() => { setShowDecline(false); setDeclineReason('') }}>Cancel</button>
             <button className={styles.confirmDeclineBtn} onClick={handleDecline} disabled={submitting}>
               {submitting ? 'Submitting...' : 'Confirm Decline'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showChanges && (
+        <div className={styles.responseForm}>
+          <h3 className={styles.formTitle}>Request Changes</h3>
+          <div className={styles.field}>
+            <label className={styles.fieldLabel}>What would you like changed?</label>
+            <textarea className={styles.fieldTextarea} value={changeComment} onChange={e => setChangeComment(e.target.value)} placeholder="Describe the changes you'd like..." rows={4} autoFocus />
+          </div>
+          <div className={styles.formActions}>
+            <button className={styles.cancelFormBtn} onClick={() => { setShowChanges(false); setChangeComment('') }}>Cancel</button>
+            <button className={styles.confirmDeclineBtn} onClick={handleRequestChanges} disabled={!changeComment.trim() || submitting}>
+              {submitting ? 'Submitting...' : 'Send Request'}
             </button>
           </div>
         </div>
