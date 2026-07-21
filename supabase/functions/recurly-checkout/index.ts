@@ -59,6 +59,9 @@ Deno.serve(async (req) => {
     const billingToken: string | undefined = body.billing_token;
     const companyId: string | undefined = body.company_id;
     const threeDSResultToken: string | undefined = body.three_d_secure_action_result_token_id;
+    // Default to 'monthly' for any missing/unexpected value so existing callers
+    // (which send no term) are unchanged.
+    const term: string = body.term === 'yearly' ? 'yearly' : 'monthly';
 
     if (!billingToken || !companyId) {
       return json({ error: 'billing_token and company_id are required' }, 400);
@@ -96,7 +99,7 @@ Deno.serve(async (req) => {
     // 4. Resolve company + locked price
     const { data: company, error: compErr } = await adminClient
       .from('companies')
-      .select('id, name, plan_key, locked_price_monthly, canceled_at, recurly_account_code')
+      .select('id, name, plan_key, locked_price_monthly, locked_price_annual, canceled_at, recurly_account_code')
       .eq('id', companyId)
       .single();
     if (compErr || !company) return json({ error: 'Company not found' }, 404);
@@ -112,19 +115,35 @@ Deno.serve(async (req) => {
     // never hardcoded. A plan without a recurly_plan_code is not billable.
     const { data: plan } = await adminClient
       .from('plans')
-      .select('recurly_plan_code, monthly_price')
+      .select('recurly_plan_code, recurly_plan_code_annual, monthly_price, annual_price')
       .eq('key', company.plan_key)
       .single();
-    if (!plan || !plan.recurly_plan_code) {
+    if (!plan) {
       return json({ error: 'plan is not billable: missing recurly_plan_code' }, 400);
     }
 
-    // 4c. Effective price: per-company lock first, else the plan's live price.
-    // Always sent as unit_amount — the override is how app-side pricing
-    // (including future promo prices) reaches Recurly without dashboard edits.
-    const effectivePrice = company.locked_price_monthly ?? plan.monthly_price;
+    // 4c. Resolve the term-specific Recurly plan code + effective price. The
+    // plan code comes from data, never hardcoded. Effective price is the
+    // per-company lock first, else the plan's live price — always sent as
+    // unit_amount so app-side pricing reaches Recurly without dashboard edits.
+    let planCode: string | null;
+    let effectivePrice: number | null;
+    if (term === 'yearly') {
+      planCode = plan.recurly_plan_code_annual;
+      effectivePrice = company.locked_price_annual ?? plan.annual_price;
+      // A tier with no annual code must NOT silently bill monthly.
+      if (!planCode) {
+        return json({ error: 'annual billing is not available for this plan' }, 400);
+      }
+    } else {
+      planCode = plan.recurly_plan_code;
+      effectivePrice = company.locked_price_monthly ?? plan.monthly_price;
+      if (!planCode) {
+        return json({ error: 'plan is not billable: missing recurly_plan_code' }, 400);
+      }
+    }
     if (effectivePrice == null) {
-      return json({ error: 'No price available — locked_price_monthly and plan.monthly_price are both null' }, 400);
+      return json({ error: `No price available — locked_price_${term === 'yearly' ? 'annual' : 'monthly'} and plan.${term === 'yearly' ? 'annual_price' : 'monthly_price'} are both null` }, 400);
     }
 
     // 5. Get owner email for Recurly account
@@ -173,7 +192,7 @@ Deno.serve(async (req) => {
     const unitAmount = Number(effectivePrice);
     const isReturning = company.canceled_at != null || company.recurly_account_code != null;
     const subBody: Record<string, unknown> = {
-      plan_code: plan.recurly_plan_code,
+      plan_code: planCode,
       account: { code: companyId },
       currency: 'USD',
       unit_amount: unitAmount,
