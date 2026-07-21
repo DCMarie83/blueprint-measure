@@ -113,6 +113,7 @@ export function useSessions() {
       .from('sessions')
       .insert({
         user_id: user.id,
+        company_id: effectiveCompanyId || null,
         project_id: resolvedProjectId,
         description: description ?? null,
         project_name: projectName || 'Blueprint',
@@ -134,6 +135,7 @@ export function useSessions() {
           .from('sessions')
           .insert({
             user_id: user.id,
+            company_id: effectiveCompanyId || null,
             project_id: projectId,
             project_name: name || 'Blueprint',
           })
