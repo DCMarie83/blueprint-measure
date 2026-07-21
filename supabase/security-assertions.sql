@@ -348,6 +348,45 @@ a12 AS (
          CASE WHEN (SELECT count(*) FROM a12_missing) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
          coalesce('MISSING: ' || (SELECT string_agg(col, ', ' ORDER BY col) FROM a12_missing),
                   'all three provenance columns present')::text
+),
+
+-- ── A13 ────────────────────────────────────────────────────────────
+-- Gridiron benchmark tables: anon has zero grants, every FOR ALL (write)
+-- policy gates on is_super_admin, and RLS is enabled on all five.
+a13_tables(tbl) AS (
+  VALUES ('benchmark_sources'), ('benchmark_taxonomy'), ('benchmark_items'),
+         ('benchmark_regions'), ('benchmark_region_multipliers')
+),
+a13_bad AS (
+  -- anon holds any table privilege on a benchmark table
+  SELECT ('anon-grant:' || g.table_name)::text AS problem
+  FROM information_schema.role_table_grants g
+  WHERE g.table_schema = 'public'
+    AND g.table_name IN (SELECT tbl FROM a13_tables)
+    AND g.grantee = 'anon'
+  UNION ALL
+  -- a FOR ALL (write) policy that does not gate on is_super_admin
+  SELECT ('write-ungated:' || tablename || '.' || policyname)::text
+  FROM pg_policies
+  WHERE schemaname = 'public'
+    AND tablename IN (SELECT tbl FROM a13_tables)
+    AND cmd = 'ALL'
+    AND (coalesce(qual, '') || coalesce(with_check, '')) NOT ILIKE '%is_super_admin%'
+  UNION ALL
+  -- RLS not enabled on a benchmark table
+  SELECT ('rls-off:' || c.relname)::text
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public' AND c.relkind = 'r'
+    AND c.relname IN (SELECT tbl FROM a13_tables)
+    AND c.relrowsecurity = false
+),
+a13 AS (
+  SELECT 'A13'::text,
+         'benchmark tables: anon has zero grants; FOR ALL policies gate is_super_admin; RLS enabled on all five'::text,
+         CASE WHEN (SELECT count(*) FROM a13_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
+         coalesce('PROBLEMS: ' || (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a13_bad),
+                  'anon locked out; all write policies super-admin-gated; RLS on')::text
 )
 
 SELECT * FROM a1
@@ -362,4 +401,5 @@ UNION ALL SELECT * FROM a9
 UNION ALL SELECT * FROM a10
 UNION ALL SELECT * FROM a11
 UNION ALL SELECT * FROM a12
+UNION ALL SELECT * FROM a13
 ORDER BY id;
