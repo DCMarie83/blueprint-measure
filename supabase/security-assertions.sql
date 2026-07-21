@@ -260,10 +260,15 @@ a9_bad AS (
   WHERE schemaname = 'public' AND tablename = 'company_material_prices'
     AND (coalesce(qual, '') || coalesce(with_check, '')) NOT ILIKE '%user_profiles%'
     AND (coalesce(qual, '') || coalesce(with_check, '')) NOT ILIKE '%is_super_admin%'
+  UNION ALL
+  -- anon holds any table privilege on company_material_prices
+  SELECT 'anon-grant'::text
+  FROM information_schema.role_table_grants
+  WHERE table_schema = 'public' AND table_name = 'company_material_prices' AND grantee = 'anon'
 ),
 a9 AS (
   SELECT 'A9'::text,
-         'company_material_prices: 4 policies, TO authenticated, company-scoped or super admin'::text,
+         'company_material_prices: anon has no access; 4 policies, TO authenticated, company-scoped or super admin'::text,
          CASE WHEN (SELECT count(*) FROM a9_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
          coalesce('PROBLEMS: ' || (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a9_bad),
                   'all four policies present, authenticated, and scoped')::text
@@ -282,10 +287,15 @@ a10_bad AS (
   SELECT ('forbidden-' || cmd || ':' || policyname)::text
   FROM pg_policies
   WHERE schemaname = 'public' AND tablename = 'product_events' AND cmd IN ('UPDATE', 'DELETE')
+  UNION ALL
+  -- anon holds any table privilege on product_events
+  SELECT 'anon-grant'::text
+  FROM information_schema.role_table_grants
+  WHERE table_schema = 'public' AND table_name = 'product_events' AND grantee = 'anon'
 ),
 a10 AS (
   SELECT 'A10'::text,
-         'product_events: select gates on is_super_admin; no update/delete policies exist'::text,
+         'product_events: anon has no access; select gates on is_super_admin; no update/delete policies exist'::text,
          CASE WHEN (SELECT count(*) FROM a10_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
          coalesce('PROBLEMS: ' || (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a10_bad),
                   'select is super-admin only; no update/delete policies')::text
