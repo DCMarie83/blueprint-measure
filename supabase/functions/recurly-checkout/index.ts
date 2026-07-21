@@ -71,6 +71,28 @@ Deno.serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } },
     );
 
+    // 3a. Ownership gate: the caller may only check out their OWN company. A
+    //     verified super admin bypasses the company match; everyone else must
+    //     match. Without this, any authenticated user could create a real
+    //     subscription on another company's account.
+    const { data: superAdminRow } = await adminClient
+      .from('super_admins')
+      .select('email')
+      .eq('email', user.email)
+      .maybeSingle();
+    const isSuperAdmin = !!superAdminRow;
+    if (!isSuperAdmin) {
+      const { data: callerProfile } = await adminClient
+        .from('user_profiles')
+        .select('company_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      const callerCompanyId = callerProfile?.company_id ?? null;
+      if (!callerCompanyId || callerCompanyId !== companyId) {
+        return json({ error: 'Forbidden' }, 403);
+      }
+    }
+
     // 4. Resolve company + locked price
     const { data: company, error: compErr } = await adminClient
       .from('companies')
