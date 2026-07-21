@@ -387,6 +387,33 @@ a13 AS (
          CASE WHEN (SELECT count(*) FROM a13_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
          coalesce('PROBLEMS: ' || (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a13_bad),
                   'anon locked out; all write policies super-admin-gated; RLS on')::text
+),
+
+-- ── A14 ────────────────────────────────────────────────────────────
+-- Smart Bid foundation columns: estimate_line_items carries priced_from +
+-- benchmark_item_id; estimates carries the six Smart Bid / snapshot columns.
+-- A missing column silently drops provenance or the send-time snapshot.
+a14_missing AS (
+  SELECT (want.tbl || '.' || want.col)::text AS col
+  FROM (VALUES
+    ('estimate_line_items', 'priced_from'),
+    ('estimate_line_items', 'benchmark_item_id'),
+    ('estimates', 'smart_created'),
+    ('estimates', 'est_labor_cost'),
+    ('estimates', 'bid_position'),
+    ('estimates', 'benchmark_typical_total'),
+    ('estimates', 'pricing_source_mix'),
+    ('estimates', 'position_snapshot_at')
+  ) AS want(tbl, col)
+  WHERE NOT EXISTS (SELECT 1 FROM information_schema.columns
+                    WHERE table_schema = 'public' AND table_name = want.tbl AND column_name = want.col)
+),
+a14 AS (
+  SELECT 'A14'::text,
+         'Smart Bid columns exist on estimate_line_items (priced_from, benchmark_item_id) and estimates (smart_created + 5 snapshot cols)'::text,
+         CASE WHEN (SELECT count(*) FROM a14_missing) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
+         coalesce('MISSING: ' || (SELECT string_agg(col, ', ' ORDER BY col) FROM a14_missing),
+                  'all Smart Bid columns present')::text
 )
 
 SELECT * FROM a1
@@ -402,4 +429,5 @@ UNION ALL SELECT * FROM a10
 UNION ALL SELECT * FROM a11
 UNION ALL SELECT * FROM a12
 UNION ALL SELECT * FROM a13
+UNION ALL SELECT * FROM a14
 ORDER BY id;

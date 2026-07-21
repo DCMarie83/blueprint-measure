@@ -103,16 +103,17 @@ export function trackMaterials(eventName, payload = {}) {
     storeId = null,
     entityType = 'material_order',
     entityId = null,
+    surface = 'materials',
     ...metadata
   } = payload
 
-  capture(eventName, { surface: 'materials', store_id: storeId, entity_id: entityId, ...metadata })
+  capture(eventName, { surface, store_id: storeId, entity_id: entityId, ...metadata })
 
   // Fire-and-forget — do not await.
   logProductEvent({
     eventName,
     companyId,
-    surface: 'materials',
+    surface,
     entityType,
     entityId,
     storeId,

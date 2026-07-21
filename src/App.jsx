@@ -44,6 +44,7 @@ import ClientDetailPage from './pages/ClientDetailPage'
 import PricingPage from './pages/PricingPage'
 import EstimateDetailPage from './pages/EstimateDetailPage'
 import MaterialOrderBuilderPage from './pages/MaterialOrderBuilderPage'
+import SmartBidPage from './pages/SmartBidPage'
 import PortalPage from './pages/PortalPage'
 import RivetPayLinkPage from './pages/RivetPayLinkPage'
 import AcademyPage from './pages/AcademyPage'
@@ -370,6 +371,10 @@ export default function App() {
       <Route
         path="/pricing"
         element={<ContractorAdminRoute><FamilyGate allow="contractor" redirectTo="/log"><PricingPage /></FamilyGate></ContractorAdminRoute>}
+      />
+      <Route
+        path="/projects/:projectId/smart-bid"
+        element={<ProtectedRoute><FamilyGate allow="contractor" redirectTo="/log"><SmartBidPage /></FamilyGate></ProtectedRoute>}
       />
       <Route
         path="/estimates/:id"

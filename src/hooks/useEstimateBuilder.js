@@ -118,6 +118,8 @@ export function useEstimateBuilder(estimateId) {
       source_zone_id: item.source_zone_id || null,
       source_zone_name: item.source_zone_name || null,
       source_measurement_type: item.source_measurement_type || null,
+      priced_from: item.priced_from ?? null,
+      benchmark_item_id: item.benchmark_item_id ?? null,
       sort_order: lineItems.length,
       _isNew: true,
     }
@@ -191,6 +193,8 @@ export function useEstimateBuilder(estimateId) {
           source_zone_id: li.source_zone_id || null,
           source_zone_name: li.source_zone_name || null,
           source_measurement_type: li.source_measurement_type || null,
+          priced_from: li.priced_from ?? null,
+          benchmark_item_id: li.benchmark_item_id || null,
           sort_order: idx,
         }))
         const { error: insErr } = await supabase

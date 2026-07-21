@@ -52,6 +52,24 @@ export default function ProjectDetailPage() {
 
   const [showAddBlueprint, setShowAddBlueprint] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
+  const [showEstimateFork, setShowEstimateFork] = useState(false)
+  const [hasMeasuredZones, setHasMeasuredZones] = useState(false)
+
+  // Smart Bid needs measured zones — check once the project's sessions are known.
+  useEffect(() => {
+    const ids = (sessions || []).map(s => s.id)
+    if (ids.length === 0) { setHasMeasuredZones(false); return }
+    let cancelled = false
+    ;(async () => {
+      const { count } = await supabase
+        .from('zones')
+        .select('id', { count: 'exact', head: true })
+        .in('session_id', ids)
+        .not('result', 'is', null)
+      if (!cancelled) setHasMeasuredZones((count ?? 0) > 0)
+    })()
+    return () => { cancelled = true }
+  }, [sessions])
 
   // Company plan (for storage limit checks)
   const companyPlan = useCompanyPlan(company)
@@ -458,20 +476,51 @@ export default function ProjectDetailPage() {
             <h3 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Estimates ({estimates.length})</h3>
             {isAdmin && (
               <button
-                onClick={async () => {
-                  try {
-                    const est = await createEstimate(projectId)
-                    navigate(`/estimates/${est.id}`)
-                  } catch (err) {
-                    alert('Failed to create estimate: ' + err.message)
-                  }
-                }}
+                onClick={() => setShowEstimateFork(true)}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'var(--color-primary)', color: 'var(--color-on-primary, #fff)', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
               >
                 + Generate Estimate
               </button>
             )}
           </div>
+
+          {showEstimateFork && (
+            <Modal title="New Estimate" onClose={() => setShowEstimateFork(false)}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, padding: 8, maxWidth: 560 }}>
+                <button
+                  onClick={() => {
+                    if (!hasMeasuredZones) return
+                    trackMaterials('smart_bid_started', { companyId: company?.id, project_id: projectId, surface: 'estimates' })
+                    setShowEstimateFork(false)
+                    navigate(`/projects/${projectId}/smart-bid`)
+                  }}
+                  disabled={!hasMeasuredZones}
+                  title={hasMeasuredZones ? '' : 'Measure this job first'}
+                  style={{ textAlign: 'left', padding: 16, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)', cursor: hasMeasuredZones ? 'pointer' : 'not-allowed', opacity: hasMeasuredZones ? 1 : 0.55 }}
+                >
+                  <div style={{ fontWeight: 700, marginBottom: 6 }}>Smart Bid</div>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                    {hasMeasuredZones ? 'Priced from your measurements, your library, and market data.' : 'Measure this job first.'}
+                  </div>
+                </button>
+                <button
+                  onClick={async () => {
+                    setShowEstimateFork(false)
+                    try {
+                      const est = await createEstimate(projectId)
+                      navigate(`/estimates/${est.id}`)
+                    } catch (err) {
+                      alert('Failed to create estimate: ' + err.message)
+                    }
+                  }}
+                  style={{ textAlign: 'left', padding: 16, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)', cursor: 'pointer' }}
+                >
+                  <div style={{ fontWeight: 700, marginBottom: 6 }}>Manual Estimate</div>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>Build it line by line, the existing flow unchanged.</div>
+                </button>
+              </div>
+            </Modal>
+          )}
           {estimates.length === 0 ? (
             <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>No estimates yet. Click Generate to fetch one.</p>
           ) : (

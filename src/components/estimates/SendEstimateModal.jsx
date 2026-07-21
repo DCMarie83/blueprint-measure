@@ -4,6 +4,8 @@ import Modal from '../ui/Modal'
 import { generateEstimatePDF } from '../../lib/generateEstimatePDF'
 import { getDisplayTotal } from '../../lib/estimateDisplay'
 import { supabase } from '../../lib/supabase'
+import { snapshotEstimateOnSend } from '../../lib/smartBid'
+import { trackMaterials } from '../../lib/analytics'
 import styles from './SendEstimateModal.module.css'
 
 function fmtMoney(val) {
@@ -45,6 +47,23 @@ export default function SendEstimateModal({ estimate, lineItems, project, client
 
       if (fnErr) throw new Error(fnErr.message || 'Failed to send estimate')
       if (data?.error) throw new Error(data.error)
+
+      // Send-time market-position snapshot for Smart / benchmark-priced estimates.
+      // Never blocks or fails the send: catch, warn, continue.
+      try {
+        const snap = await snapshotEstimateOnSend(supabase, { estimate, lineItems, companyState: company?.state })
+        if (snap) {
+          trackMaterials('smart_bid_sent_snapshot', {
+            companyId: company?.id,
+            entityType: 'estimate',
+            entityId: estimate.id,
+            surface: 'estimates',
+            bid_position: snap.bid_position,
+          })
+        }
+      } catch (snapErr) {
+        console.warn('[smart-bid] send snapshot failed:', snapErr?.message || snapErr)
+      }
 
       onSent()
     } catch (err) {

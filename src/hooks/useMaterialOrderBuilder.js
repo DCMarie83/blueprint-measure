@@ -1,52 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { estimateMaterials, isCoverageLine } from '../utils/measurements'
+import { humanizeSlug, resolveSlug, buildSlugMap, buildOverrideMap, computeSundryLines } from '../lib/materialsResolve'
 
 function tempId() {
   return 'tmp_' + (globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2))
-}
-
-// Turn a taxonomy_slug into a readable, generic line description. Grade-specific
-// product/brand names live in product_premium/standard/commercial, not here.
-function humanizeSlug(slug) {
-  return String(slug || '')
-    .split('-')
-    .filter(Boolean)
-    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ')
-}
-
-// Effective unit price for a catalog row: the company's override if set, else
-// the catalog's typical_price, else null.
-function priceForRow(row, overrideMap) {
-  if (!row) return null
-  const ov = overrideMap.get(row.id)
-  return ov != null ? ov : (row.typical_price ?? null)
-}
-
-// Resolve one taxonomy_slug to the graded product names, effective costs, and
-// provenance ids. Returns null when the slug isn't in the catalog.
-function resolveSlug(slug, slugMap, overrideMap) {
-  const grades = slugMap.get(slug)
-  if (!grades) return null
-  const premium = grades.premium || null
-  const standard = grades.standard || null
-  const commercial = grades.commercial || null
-  const displayRow = standard || premium || commercial || null
-  return {
-    displayRow,
-    fields: {
-      product_premium: premium?.name ?? null,
-      product_standard: standard?.name ?? null,
-      product_commercial: commercial?.name ?? null,
-      cost_premium: priceForRow(premium, overrideMap),
-      cost_standard: priceForRow(standard, overrideMap),
-      cost_commercial: priceForRow(commercial, overrideMap),
-      catalog_item_premium_id: premium?.id ?? null,
-      catalog_item_standard_id: standard?.id ?? null,
-      catalog_item_commercial_id: commercial?.id ?? null,
-    },
-  }
 }
 
 // Clamp coats to the DB check range (1..5). Non-coverage lines always buy at
@@ -160,13 +118,7 @@ export function useMaterialOrderBuilder(orderId) {
       if (catErr) throw catErr
       const catList = catRows || []
       setCatalog(catList)
-      const sm = new Map()
-      let maxAsOf = null
-      for (const r of catList) {
-        if (!sm.has(r.taxonomy_slug)) sm.set(r.taxonomy_slug, {})
-        sm.get(r.taxonomy_slug)[r.grade] = r
-        if (r.price_as_of && (!maxAsOf || r.price_as_of > maxAsOf)) maxAsOf = r.price_as_of
-      }
+      const { slugMap: sm, maxPriceAsOf: maxAsOf } = buildSlugMap(catList)
       setSlugMap(sm)
       setMaxPriceAsOf(maxAsOf)
 
@@ -176,9 +128,7 @@ export function useMaterialOrderBuilder(orderId) {
         .select('catalog_item_id, price')
         .eq('company_id', ord.company_id)
       if (priceErr) throw priceErr
-      const om = new Map()
-      for (const p of (priceRows || [])) om.set(p.catalog_item_id, Number(p.price))
-      setOverrideMap(om)
+      setOverrideMap(buildOverrideMap(priceRows))
 
       // Project estimates (non-fatal).
       try {
@@ -228,61 +178,12 @@ export function useMaterialOrderBuilder(orderId) {
       return { error: 'No paintable measurements found on this job.' }
     }
 
-    // Total painted base SF — coats NOT multiplied — drives per_area sundries.
-    const totalPaintedSF = zones.reduce(
-      (s, z) => (z.measurement_type === 'SF' && Number(z.result) > 0 ? s + Number(z.result) : s),
-      0
-    )
-
     const lines = paintLines.map((m, idx) => ({ ...m, sort_order: idx }))
-    const seenSlugs = new Set(lines.map(l => l.taxonomy_slug).filter(Boolean))
-    const seenDescriptions = new Set(lines.map(l => (l.description || '').trim().toLowerCase()))
-
-    // Collect sundry slugs (per_area / per_job), stable-ordered.
-    const sundrySlugs = []
-    for (const [slug, grades] of slugMap.entries()) {
-      const anyRow = grades.standard || grades.premium || grades.commercial
-      if (!anyRow) continue
-      if (anyRow.quantity_rule !== 'per_area' && anyRow.quantity_rule !== 'per_job') continue
-      sundrySlugs.push({ slug, anyRow })
-    }
-    sundrySlugs.sort((a, b) =>
-      (a.anyRow.display_order ?? 0) - (b.anyRow.display_order ?? 0) || a.slug.localeCompare(b.slug))
-
-    let sundryCount = 0
-    for (const { slug, anyRow } of sundrySlugs) {
-      const desc = humanizeSlug(slug)
-      if (seenSlugs.has(slug) || seenDescriptions.has(desc.trim().toLowerCase())) continue
-
-      let qty
-      if (anyRow.quantity_rule === 'per_area') {
-        const per1000 = Number(anyRow.qty_per_1000sf) || 0
-        qty = Math.max(1, Math.ceil((totalPaintedSF / 1000) * per1000))
-      } else {
-        qty = Number(anyRow.qty_per_job) || 1
-      }
-
-      const resolved = resolveSlug(slug, slugMap, overrideMap)
-      const dr = resolved?.displayRow
-      lines.push({
-        taxonomy_slug: slug,
-        description: desc,
-        unit: dr?.purchase_unit || '',
-        quantity: qty,
-        coats: 1,
-        overage_pct: 0,
-        source_zone_name: '',
-        ai_suggested: false,
-        ...(resolved?.fields || {}),
-        sort_order: lines.length,
-      })
-      seenSlugs.add(slug)
-      seenDescriptions.add(desc.trim().toLowerCase())
-      sundryCount++
-    }
+    const sundries = computeSundryLines({ zones, slugMap, overrideMap, existingLines: lines })
+    for (const s of sundries) lines.push({ ...s, sort_order: lines.length })
 
     setItems(lines.map((m, idx) => toLine({ ...m, sort_order: idx }, true)))
-    return { count: paintLines.length, sundries: sundryCount }
+    return { count: paintLines.length, sundries: sundries.length }
   }, [zones, slugMap, overrideMap])
 
   const seedFromEstimate = async (estimateId) => {
