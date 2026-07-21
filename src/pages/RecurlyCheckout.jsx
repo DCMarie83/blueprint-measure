@@ -71,6 +71,7 @@ export default function RecurlyCheckout() {
   const [message, setMessage] = useState('')
   const [cardMounted, setCardMounted] = useState(false)
   const [mountTimeout, setMountTimeout] = useState(false)
+  const [term, setTerm] = useState('monthly')
 
   // Configure Recurly + mount card element
   useEffect(() => {
@@ -108,7 +109,7 @@ export default function RecurlyCheckout() {
     setStatus('submitting')
     setMessage('Setting up your subscription...')
     try {
-      const body = { billing_token: billingToken, company_id: company.id }
+      const body = { billing_token: billingToken, company_id: company.id, term }
       if (threeDSResult) {
         body.three_d_secure_action_result_token_id = threeDSResult
       }
@@ -134,7 +135,7 @@ export default function RecurlyCheckout() {
       setStatus('error')
       setMessage(err.message)
     }
-  }, [company?.id, navigate, refreshCompany, isImpersonating])
+  }, [company?.id, navigate, refreshCompany, isImpersonating, term])
 
   function handle3DS(actionTokenId, billingToken) {
     setStatus('3ds')
@@ -243,9 +244,17 @@ export default function RecurlyCheckout() {
   }
 
   const blocked = recurlyFailed || mountTimeout
-  // Effective price: useCompanyPlan already resolves locked_price_monthly ??
-  // plan.monthly_price — a NULL company lock falls back to the live plan price.
-  const price = companyPlan?.monthly_price ?? company.locked_price_monthly
+  // Effective prices: useCompanyPlan already resolves locked_price_* ??
+  // plan.*_price — a NULL company lock falls back to the live plan price.
+  const monthlyPrice = companyPlan?.monthly_price ?? company.locked_price_monthly
+  const annualPrice = companyPlan?.annual_price ?? company.locked_price_annual
+  // No annual price -> hide the annual option so an unbuyable term can't be picked.
+  const annualAvailable = annualPrice != null
+  const price = term === 'yearly' ? annualPrice : monthlyPrice
+  const priceSuffix = term === 'yearly' ? '/yr' : '/mo'
+  const annualSavings = (annualAvailable && monthlyPrice != null)
+    ? (Number(monthlyPrice) * 12 - Number(annualPrice))
+    : null
   const planName = companyPlan?.display_name || 'Founders'
 
   return (
@@ -258,9 +267,30 @@ export default function RecurlyCheckout() {
             <h1 style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, color: '#26464c', marginBottom: 6 }}>
               Subscribe to RivetDog
             </h1>
+            {annualAvailable && (
+              <div style={{ display: 'inline-flex', border: '1px solid var(--color-border)', borderRadius: 8, overflow: 'hidden', margin: '10px 0 12px' }}>
+                <button type="button" onClick={() => setTerm('monthly')}
+                  style={{ padding: '6px 16px', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer',
+                    background: term === 'monthly' ? '#f27243' : 'transparent',
+                    color: term === 'monthly' ? '#fff' : 'var(--color-text-muted)' }}>
+                  Monthly
+                </button>
+                <button type="button" onClick={() => setTerm('yearly')}
+                  style={{ padding: '6px 16px', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer',
+                    background: term === 'yearly' ? '#f27243' : 'transparent',
+                    color: term === 'yearly' ? '#fff' : 'var(--color-text-muted)' }}>
+                  Annual · Save 15%
+                </button>
+              </div>
+            )}
             <p style={{ fontSize: 15, color: 'var(--color-text-muted)', margin: 0 }}>
-              {planName} — ${price != null ? Number(price).toFixed(2) : '—'}/mo
+              {planName} — ${price != null ? Number(price).toFixed(2) : '—'}{priceSuffix}
             </p>
+            {term === 'yearly' && annualSavings != null && annualSavings > 0 && (
+              <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 4 }}>
+                Save ${annualSavings.toFixed(2)} vs monthly
+              </p>
+            )}
             {company.subscription_status === 'trialing' && company.trial_ends_at && (
               <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 4 }}>
                 Your {company.trial_duration_days ?? 14}-day free trial starts today. You won't be charged until it ends.
@@ -344,7 +374,7 @@ export default function RecurlyCheckout() {
                 {status === 'tokenizing' ? 'Securing card...'
                   : status === 'submitting' ? 'Setting up subscription...'
                   : status === '3ds' ? 'Completing verification...'
-                  : `Subscribe — $${price != null ? Number(price).toFixed(2) : '??'}/mo`}
+                  : `Subscribe — $${price != null ? Number(price).toFixed(2) : '??'}${priceSuffix}`}
               </button>
             </form>
           )}
