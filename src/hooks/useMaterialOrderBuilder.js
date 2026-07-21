@@ -56,6 +56,7 @@ export function useMaterialOrderBuilder(orderId) {
   const [overrideMap, setOverrideMap] = useState(() => new Map())
   const [storeNameById, setStoreNameById] = useState(() => new Map())
   const [maxPriceAsOf, setMaxPriceAsOf] = useState(null)
+  const [loadWarnings, setLoadWarnings] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [aiSuggesting, setAiSuggesting] = useState(false)
@@ -65,21 +66,39 @@ export function useMaterialOrderBuilder(orderId) {
     if (!orderId) { setLoading(false); return }
     setLoading(true)
     setError(null)
+    setLoadWarnings([])
+
+    // ── FATAL: the order and its items ARE the page. If this fails, stop. ──
+    let ord
     try {
-      const { data: ord, error: ordErr } = await supabase
+      const { data, error: ordErr } = await supabase
         .from('material_orders')
         .select('*, material_order_items(*)')
         .eq('id', orderId)
         .single()
       if (ordErr) throw ordErr
+      ord = data
       setOrder(ord)
       const sorted = (ord.material_order_items || [])
         .slice()
         .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
         .map(r => toLine(r))
       setItems(sorted)
+    } catch (err) {
+      setError(err.message)
+      setLoading(false)
+      return
+    }
 
-      // Job zones: sessions for this project -> zones with a result.
+    // ── NON-FATAL: each secondary fetch is individually guarded (sequential
+    //    with per-fetch guards — each depends only on `ord`, and catalog must
+    //    build slugMap in order). One failure never blocks the others; each
+    //    reads its own error field, warns, sets a safe default, and appends a
+    //    human string to warnings. ──
+    const warnings = []
+
+    // Job zones: sessions for this project -> zones with a result.
+    try {
       const { data: sessions, error: sessErr } = await supabase
         .from('sessions')
         .select('id')
@@ -97,8 +116,14 @@ export function useMaterialOrderBuilder(orderId) {
       } else {
         setZones([])
       }
+    } catch (err) {
+      console.warn('[materials] zones load failed:', err?.message || err)
+      setZones([])
+      warnings.push("Couldn't load this job's measurements.")
+    }
 
-      // Active stores for the picker (is_active filter so super-admin sees the same list contractors do).
+    // Active stores for the picker.
+    try {
       const { data: storeRows, error: storeErr } = await supabase
         .from('stores')
         .select('*')
@@ -107,8 +132,15 @@ export function useMaterialOrderBuilder(orderId) {
       if (storeErr) throw storeErr
       setStores(storeRows || [])
       setStoreNameById(new Map((storeRows || []).map(s => [s.id, s.name])))
+    } catch (err) {
+      console.warn('[materials] stores load failed:', err?.message || err)
+      setStores([])
+      setStoreNameById(new Map())
+      warnings.push("Couldn't load stores.")
+    }
 
-      // Painting catalog (active) -> slug -> grade rows map + max price_as_of.
+    // Painting catalog (active) -> slug -> grade rows map + max price_as_of.
+    try {
       const { data: catRows, error: catErr } = await supabase
         .from('materials_catalog')
         .select('*')
@@ -121,31 +153,65 @@ export function useMaterialOrderBuilder(orderId) {
       const { slugMap: sm, maxPriceAsOf: maxAsOf } = buildSlugMap(catList)
       setSlugMap(sm)
       setMaxPriceAsOf(maxAsOf)
+    } catch (err) {
+      console.warn('[materials] catalog load failed:', err?.message || err)
+      setCatalog([])
+      setSlugMap(new Map())
+      setMaxPriceAsOf(null)
+      warnings.push("Couldn't load the materials catalog.")
+    }
 
-      // This company's price overrides, keyed by catalog_item_id.
+    // This company's price overrides, keyed by catalog_item_id.
+    try {
       const { data: priceRows, error: priceErr } = await supabase
         .from('company_material_prices')
         .select('catalog_item_id, price')
         .eq('company_id', ord.company_id)
       if (priceErr) throw priceErr
       setOverrideMap(buildOverrideMap(priceRows))
-
-      // Project estimates (non-fatal).
-      try {
-        const { data: estData } = await supabase
-          .from('estimates')
-          .select('*')
-          .eq('project_id', ord.project_id)
-          .order('created_at', { ascending: false })
-        setEstimates(estData || [])
-      } catch {
-        setEstimates([])
-      }
     } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
+      console.warn('[materials] price overrides load failed:', err?.message || err)
+      setOverrideMap(new Map())
+      warnings.push("Couldn't load your saved prices.")
     }
+
+    // Project estimates (reads its OWN error field now, not just data).
+    try {
+      const { data: estData, error: estErr } = await supabase
+        .from('estimates')
+        .select('*')
+        .eq('project_id', ord.project_id)
+        .order('created_at', { ascending: false })
+      if (estErr) throw estErr
+      let list = estData || []
+
+      // C5: a DB-linked estimate must always render selected. If the order's
+      // estimate_id isn't in the project list, fetch that one estimate and
+      // prepend it; on failure, prepend an "unavailable" sentinel the picker
+      // renders as a disabled option.
+      if (ord.estimate_id && !list.some(e => e.id === ord.estimate_id)) {
+        try {
+          const { data: linked, error: linkedErr } = await supabase
+            .from('estimates')
+            .select('*')
+            .eq('id', ord.estimate_id)
+            .single()
+          if (linkedErr) throw linkedErr
+          if (linked) list = [linked, ...list]
+        } catch (err2) {
+          console.warn('[materials] linked estimate fetch failed:', err2?.message || err2)
+          list = [{ id: ord.estimate_id, __unavailable: true }, ...list]
+        }
+      }
+      setEstimates(list)
+    } catch (err) {
+      console.warn('[materials] estimates load failed:', err?.message || err)
+      setEstimates([])
+      warnings.push("Couldn't load estimates for this job.")
+    }
+
+    setLoadWarnings(warnings)
+    setLoading(false)
   }, [orderId])
 
   useEffect(() => { load() }, [load])
@@ -166,9 +232,34 @@ export function useMaterialOrderBuilder(orderId) {
     setOrder(prev => (prev ? { ...prev, ...patch } : prev))
   }, [])
 
+  // Persist estimate_id immediately with a targeted id-scoped update so the link
+  // survives navigating away before Save. Local state is updated by the caller;
+  // returns { error } on failure so the caller can surface it. (store_id stays
+  // Save-gated this pass.)
+  const persistEstimateId = useCallback(async (estimateId) => {
+    const id = order?.id
+    if (!id) return { error: 'No order loaded.' }
+    const { error: err } = await supabase
+      .from('material_orders')
+      .update({ estimate_id: estimateId ?? null })
+      .eq('id', id)
+    if (err) return { error: err.message }
+    return { error: null }
+  }, [order?.id])
+
+  // Shared seeding: build paint (coverage) lines from a zone list, append
+  // deterministic sundries (per_area / per_job) resolved from the catalog, and
+  // set them as the order's items. Returns { paint, sundries, total }.
+  const seedZonesInto = useCallback((zoneList) => {
+    const paintLines = estimateMaterials(zoneList, { vertical: 'paint' })
+    const lines = paintLines.map((m, idx) => ({ ...m, sort_order: idx }))
+    const sundries = computeSundryLines({ zones: zoneList, slugMap, overrideMap, existingLines: lines })
+    for (const s of sundries) lines.push({ ...s, sort_order: lines.length })
+    setItems(lines.map((m, idx) => toLine({ ...m, sort_order: idx }, true)))
+    return { paint: paintLines.length, sundries: sundries.length, total: lines.length }
+  }, [slugMap, overrideMap])
+
   // Seed line items directly from the job's measured zones — no estimate needed.
-  // Builds the paint (coverage) lines, then appends deterministic sundries from
-  // the catalog (per_area / per_job rules), resolving products/costs/provenance.
   const seedFromZones = useCallback(() => {
     if (!zones || zones.length === 0) {
       return { error: 'This job has no measured zones to build a materials list from.' }
@@ -177,14 +268,9 @@ export function useMaterialOrderBuilder(orderId) {
     if (paintLines.length === 0) {
       return { error: 'No paintable measurements found on this job.' }
     }
-
-    const lines = paintLines.map((m, idx) => ({ ...m, sort_order: idx }))
-    const sundries = computeSundryLines({ zones, slugMap, overrideMap, existingLines: lines })
-    for (const s of sundries) lines.push({ ...s, sort_order: lines.length })
-
-    setItems(lines.map((m, idx) => toLine({ ...m, sort_order: idx }, true)))
-    return { count: paintLines.length, sundries: sundries.length }
-  }, [zones, slugMap, overrideMap])
+    const r = seedZonesInto(zones)
+    return { count: r.paint, sundries: r.sundries }
+  }, [zones, seedZonesInto])
 
   const seedFromEstimate = async (estimateId) => {
     if (!estimateId) return { error: 'No estimate selected.' }
@@ -195,13 +281,26 @@ export function useMaterialOrderBuilder(orderId) {
       .not('source_zone_id', 'is', null)
     if (liErr) return { error: liErr.message }
     const zoneIds = [...new Set((lineItems || []).map((li) => li.source_zone_id))]
-    if (zoneIds.length === 0) {
+
+    // Primary path: the estimate's lines carry source_zone_id — seed from those.
+    if (zoneIds.length > 0) {
+      const scopedZones = zones.filter((z) => zoneIds.includes(z.id))
+      const r = seedZonesInto(scopedZones)
+      return { count: r.paint }
+    }
+
+    // C2 fallback: Smart Bid estimates group multiple zones per line, so their
+    // lines carry source_zone_id null. The estimate belongs to THIS job, so seed
+    // from all of the order's measured zones through the same path.
+    if (!zones || zones.length === 0) {
       return { error: 'This estimate has no measured zones to build a materials list from.' }
     }
-    const scopedZones = zones.filter((z) => zoneIds.includes(z.id))
-    const materials = estimateMaterials(scopedZones, { vertical: 'paint' })
-    setItems(materials.map((m, idx) => toLine({ ...m, sort_order: idx }, true)))
-    return { count: materials.length }
+    const paintLines = estimateMaterials(zones, { vertical: 'paint' })
+    if (paintLines.length === 0) {
+      return { error: 'This estimate has no measured zones to build a materials list from.' }
+    }
+    const r = seedZonesInto(zones)
+    return { count: r.total, fallback: true }
   }
 
   // AI mapper: send the compact active catalog + lines, resolve the returned
@@ -344,8 +443,8 @@ export function useMaterialOrderBuilder(orderId) {
   }, [order, items, load])
 
   return {
-    order, items, zones, stores, estimates, catalog, overrideMap, maxPriceAsOf, loading, saving, error,
-    addItem, updateItem, removeItem, updateOrderField,
+    order, items, zones, stores, estimates, catalog, overrideMap, maxPriceAsOf, loadWarnings, loading, saving, error,
+    addItem, updateItem, removeItem, updateOrderField, persistEstimateId,
     seedFromEstimate, seedFromZones, aiSuggest, aiSuggesting, saveAll, reload: load,
   }
 }

@@ -91,8 +91,8 @@ export default function MaterialOrderBuilderPage() {
   const isAdmin = userProfile?.role === 'contractor_admin' || isSuperAdmin
 
   const {
-    order, items, zones, stores, estimates, catalog, overrideMap, maxPriceAsOf, loading, saving, error,
-    addItem, updateItem, removeItem, updateOrderField,
+    order, items, zones, stores, estimates, catalog, overrideMap, maxPriceAsOf, loadWarnings, loading, saving, error,
+    addItem, updateItem, removeItem, updateOrderField, persistEstimateId,
     seedFromEstimate, seedFromZones, aiSuggest, aiSuggesting, saveAll,
   } = useMaterialOrderBuilder(orderId)
 
@@ -211,7 +211,16 @@ export default function MaterialOrderBuilderPage() {
   }
 
   const handleEstimateChange = async (estimateId) => {
-    updateOrderField({ estimate_id: estimateId || null })
+    const nextId = estimateId || null
+    updateOrderField({ estimate_id: nextId })
+
+    // Persist the link immediately so navigating away doesn't lose it.
+    const persistRes = await persistEstimateId(nextId)
+    if (persistRes?.error) {
+      setNotice(`Couldn't save the estimate link: ${persistRes.error}`)
+      return
+    }
+
     if (estimateId && items.length === 0) {
       setNotice('Building your materials list from the estimate…')
       const r = await seedFromEstimate(estimateId)
@@ -223,7 +232,9 @@ export default function MaterialOrderBuilderPage() {
           line_count: r.count,
           estimate_id: estimateId,
         })
-        setNotice(`Built ${r.count} material line${r.count === 1 ? '' : 's'} from the estimate. Pick a store and suggest products to fill in pricing.`)
+        setNotice(r.fallback
+          ? `Built ${r.count} lines from this job's measurements for the linked estimate.`
+          : `Built ${r.count} material line${r.count === 1 ? '' : 's'} from the estimate. Pick a store and suggest products to fill in pricing.`)
       }
     }
   }
@@ -242,7 +253,9 @@ export default function MaterialOrderBuilderPage() {
         estimate_id: order.estimate_id,
         rebuild: true,
       })
-      setNotice(`Rebuilt ${r.count} material line${r.count === 1 ? '' : 's'} from the estimate.`)
+      setNotice(r.fallback
+        ? `Built ${r.count} lines from this job's measurements for the linked estimate.`
+        : `Rebuilt ${r.count} material line${r.count === 1 ? '' : 's'} from the estimate.`)
     }
   }
 
@@ -317,7 +330,9 @@ export default function MaterialOrderBuilderPage() {
               >
                 <option value="">Select an estimate…</option>
                 {estimates.map((est) => (
-                  <option key={est.id} value={est.id}>{estimateLabel(est)}</option>
+                  est.__unavailable
+                    ? <option key={est.id} value={est.id} disabled>Linked estimate unavailable</option>
+                    : <option key={est.id} value={est.id}>{estimateLabel(est)}</option>
                 ))}
               </select>
             </label>
@@ -382,6 +397,12 @@ export default function MaterialOrderBuilderPage() {
               </button>
             )}
 
+          </div>
+        )}
+
+        {loadWarnings && loadWarnings.length > 0 && (
+          <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 8 }}>
+            {loadWarnings.map((w, i) => <div key={i}>{w}</div>)}
           </div>
         )}
 
