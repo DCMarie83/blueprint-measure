@@ -162,22 +162,34 @@ export function useSessions() {
       console.warn('[deleteSession] Storage cleanup failed, proceeding with delete:', e)
     }
 
-    const { error } = await supabase
+    // Scope by the acted-on tenant's company when impersonating (a super admin's
+    // auth id won't match the tenant's rows); otherwise keep the user_id filter.
+    let delQuery = supabase
       .from('sessions')
       .delete()
       .eq('id', sessionId)
-      .eq('user_id', user.id)
+    delQuery = isImpersonating
+      ? delQuery.eq('company_id', effectiveCompanyId)
+      : delQuery.eq('user_id', user.id)
+
+    const { error } = await delQuery
 
     if (error) throw new Error(error.message)
     setSessions(prev => prev.filter(s => s.id !== sessionId))
   }
 
   async function updateSession(sessionId, updates) {
-    const { data, error } = await supabase
+    // Scope by the acted-on tenant's company when impersonating (a super admin's
+    // auth id won't match the tenant's rows); otherwise keep the user_id filter.
+    let query = supabase
       .from('sessions')
       .update(updates)
       .eq('id', sessionId)
-      .eq('user_id', user.id)
+    query = isImpersonating
+      ? query.eq('company_id', effectiveCompanyId)
+      : query.eq('user_id', user.id)
+
+    const { data, error } = await query
       .select()
       .single()
     if (error) throw new Error(error.message)

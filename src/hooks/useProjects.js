@@ -5,7 +5,7 @@ import { useEffectiveCompany } from './useEffectiveCompany'
 
 export function useProjects() {
   const { user } = useAuth()
-  const { companyId } = useEffectiveCompany()
+  const { companyId, isImpersonating } = useEffectiveCompany()
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -89,11 +89,17 @@ export function useProjects() {
   }
 
   async function softDeleteProject(projectId) {
-    const { error } = await supabase
+    // Scope by the acted-on tenant's company when impersonating (a super admin's
+    // auth id won't match the tenant's rows); otherwise keep the user_id filter.
+    let query = supabase
       .from('projects')
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', projectId)
-      .eq('user_id', user.id)
+    query = isImpersonating
+      ? query.eq('company_id', companyId)
+      : query.eq('user_id', user.id)
+
+    const { error } = await query
 
     if (error) throw new Error(error.message)
     setProjects(prev => prev.filter(p => p.id !== projectId))

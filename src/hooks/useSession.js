@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useEffectiveCompany } from './useEffectiveCompany'
 import { resolveEntitlements } from '../lib/entitlements'
 
 // Loads a single session plus all its zones from the database.
 export function useSession(sessionId) {
   const { user, isSuperAdmin } = useAuth()
+  const { companyId, isImpersonating } = useEffectiveCompany()
   const [session, setSession] = useState(null)
   const [zones, setZones] = useState([])
   const [enabledFeatures, setEnabledFeatures] = useState({})
@@ -14,14 +16,22 @@ export function useSession(sessionId) {
 
   const fetchSession = useCallback(async () => {
     if (!user || !sessionId) return
+    // While impersonating, hold until the effective company resolves so we
+    // never fire with an undefined company id.
+    if (isImpersonating && !companyId) return
     setLoading(true)
 
-    const { data: sessionData, error: sessionError } = await supabase
+    // Scope by the acted-on tenant's company when impersonating (a super admin's
+    // auth id won't match the tenant's rows); otherwise keep the user_id filter.
+    let query = supabase
       .from('sessions')
       .select('*')
       .eq('id', sessionId)
-      .eq('user_id', user.id)
-      .single()
+    query = isImpersonating
+      ? query.eq('company_id', companyId)
+      : query.eq('user_id', user.id)
+
+    const { data: sessionData, error: sessionError } = await query.single()
 
     if (sessionError) {
       setError('Session not found.')
@@ -82,7 +92,7 @@ export function useSession(sessionId) {
     }
 
     setLoading(false)
-  }, [user, sessionId])
+  }, [user, sessionId, companyId, isImpersonating])
 
   useEffect(() => {
     fetchSession()
