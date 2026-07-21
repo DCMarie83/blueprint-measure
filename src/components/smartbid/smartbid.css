@@ -1,0 +1,35 @@
+/* Smart Bid brand motion. All animation is opt-in via these classes and is
+   fully disabled under prefers-reduced-motion. */
+
+.sb-marker {
+  transition: left 300ms ease;
+}
+
+.sb-fadein {
+  animation: sbFadeIn 200ms ease both;
+}
+
+@keyframes sbFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.sb-pulse {
+  animation: sbPulse 600ms ease;
+}
+
+@keyframes sbPulse {
+  from { background-color: rgba(242, 114, 67, 0.18); }
+  to   { background-color: transparent; }
+}
+
+.sb-progress-fill {
+  transition: width 300ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sb-marker,
+  .sb-progress-fill { transition: none; }
+  .sb-fadein,
+  .sb-pulse { animation: none; }
+}

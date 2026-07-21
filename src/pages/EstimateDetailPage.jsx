@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { Save, Trash2, Plus, Package, Download, Send, FileText } from 'lucide-react'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { Save, Trash2, Plus, Package, Download, Send, FileText, Check } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import BackLink from '../components/BackLink'
 import ZoneAggregationPanel from '../components/estimates/ZoneAggregationPanel'
@@ -15,7 +15,41 @@ import { supabase } from '../lib/supabase'
 import { generateEstimatePDF } from '../lib/generateEstimatePDF'
 import { calculateDepositPercent, getReferenceTotal } from '../lib/depositMath'
 import { getDisplayTotal } from '../lib/estimateDisplay'
+import { isSmartEstimate, fetchBenchmarksByItemIds } from '../lib/smartBid'
+import { materialBuyQuantity } from '../utils/measurements'
+import { trackMaterials } from '../lib/analytics'
+import SmartBadge from '../components/smartbid/SmartBadge'
+import MarketBand from '../components/smartbid/MarketBand'
 import styles from './EstimateDetailPage.module.css'
+
+// Display-only number tween (~500ms, cubic ease-out). Snaps under reduced motion.
+// Stored values are written once through the normal update path; this only eases
+// the on-screen figure.
+function useAnimatedNumber(value, duration = 500) {
+  const [display, setDisplay] = useState(Number(value) || 0)
+  const fromRef = useRef(Number(value) || 0)
+  const rafRef = useRef(null)
+  useEffect(() => {
+    const target = Number(value) || 0
+    const from = Number(fromRef.current) || 0
+    if (from === target) { setDisplay(target); return }
+    const reduce = typeof window !== 'undefined' && window.matchMedia
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduce) { fromRef.current = target; setDisplay(target); return }
+    let start = null
+    const step = (ts) => {
+      if (start == null) start = ts
+      const p = Math.min(1, (ts - start) / duration)
+      const eased = 1 - Math.pow(1 - p, 3)
+      setDisplay(from + (target - from) * eased)
+      if (p < 1) rafRef.current = requestAnimationFrame(step)
+      else fromRef.current = target
+    }
+    rafRef.current = requestAnimationFrame(step)
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
+  }, [value, duration])
+  return display
+}
 
 const STATUS_OPTIONS = ['draft', 'sent', 'accepted', 'declined', 'expired']
 
@@ -46,6 +80,7 @@ function timeAgo(dateStr) {
 export default function EstimateDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { user, userProfile, isSuperAdmin } = useAuth()
   const isAdmin = userProfile?.role === 'contractor_admin' || isSuperAdmin
 
@@ -64,6 +99,29 @@ export default function EstimateDetailPage() {
   const [depositValue, setDepositValue] = useState(null)
   const [pdfMenuOpen, setPdfMenuOpen] = useState(false)
   const pdfMenuRef = useRef(null)
+
+  // Smart Bid layer state
+  const [benchmarkMap, setBenchmarkMap] = useState(() => new Map())
+  const [benchLoading, setBenchLoading] = useState(false)
+  const [materials, setMaterials] = useState({ cost: null, linked: false })
+  const [laborValue, setLaborValue] = useState(null)
+  const [customMult, setCustomMult] = useState('1.00')
+  const [includeLibraryInCustom, setIncludeLibraryInCustom] = useState(false)
+  const [lastScenario, setLastScenario] = useState(null)
+  const [pulseIds, setPulseIds] = useState(() => new Set())
+  const [scenarioNotice, setScenarioNotice] = useState(null)
+  const [showCreatedToast, setShowCreatedToast] = useState(false)
+
+  // One-time branded toast when arriving fresh from the Smart Bid wizard.
+  useEffect(() => {
+    if (location.state?.smartBidCreated) {
+      setShowCreatedToast(true)
+      navigate(location.pathname, { replace: true, state: null })
+      const t = setTimeout(() => setShowCreatedToast(false), 6000)
+      return () => clearTimeout(t)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -106,7 +164,7 @@ export default function EstimateDetailPage() {
     if (proj.company_id) {
       const { data: co } = await supabase
         .from('companies')
-        .select('id, name, logo_url, primary_color, payment_instructions')
+        .select('id, name, logo_url, primary_color, payment_instructions, state')
         .eq('id', proj.company_id)
         .single()
       if (co) {
@@ -134,6 +192,57 @@ export default function EstimateDetailPage() {
     fetchProjectClientCompany()
   }, [estimate?.project_id])
 
+  // Resolve regional benchmarks for the distinct benchmark_item_ids on the lines.
+  const benchIdsKey = (builder.lineItems || [])
+    .filter(li => li.benchmark_item_id)
+    .map(li => li.benchmark_item_id)
+    .sort()
+    .join(',')
+  useEffect(() => {
+    const ids = benchIdsKey ? benchIdsKey.split(',') : []
+    if (ids.length === 0) { setBenchmarkMap(new Map()); setBenchLoading(false); return }
+    let cancelled = false
+    setBenchLoading(true)
+    ;(async () => {
+      try {
+        const map = await fetchBenchmarksByItemIds(supabase, companyData?.state, ids)
+        if (!cancelled) setBenchmarkMap(map)
+      } catch (err) {
+        console.warn('[smart-bid] benchmark fetch failed:', err?.message || err)
+      } finally {
+        if (!cancelled) setBenchLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [benchIdsKey, companyData?.state])
+
+  const animatedBidTotal = useAnimatedNumber(builder.total)
+
+  // Materials cost from a linked materials order (if any).
+  useEffect(() => {
+    if (!estimate?.id) return
+    let cancelled = false
+    ;(async () => {
+      const { data: orders } = await supabase
+        .from('material_orders')
+        .select('id, selected_variant, material_order_items(*)')
+        .eq('estimate_id', estimate.id)
+      if (cancelled) return
+      if (!orders || orders.length === 0) { setMaterials({ cost: null, linked: false }); return }
+      let cost = 0
+      for (const ord of orders) {
+        const variant = ord.selected_variant || 'standard'
+        for (const it of (ord.material_order_items || [])) {
+          const c = Number(it[`cost_${variant}`])
+          if (!c || c < 0) continue
+          cost += materialBuyQuantity(it) * c
+        }
+      }
+      setMaterials({ cost, linked: true })
+    })()
+    return () => { cancelled = true }
+  }, [estimate?.id])
+
   if (builder.loading) {
     return (
       <div className={styles.page}>
@@ -160,6 +269,84 @@ export default function EstimateDetailPage() {
   const terms = termsValue ?? estimate.terms ?? ''
   const depositAmount = depositValue ?? estimate.deposit_amount ?? ''
   const depositPercent = calculateDepositPercent(depositAmount, getReferenceTotal(estimate))
+
+  // ── Smart Bid derived values (live from current lines) ──────────────────
+  const smart = isSmartEstimate(estimate, lineItems)
+  const laborAmount = laborValue ?? estimate.est_labor_cost ?? ''
+  const bidTotal = total
+
+  let bandLow = 0, bandTyp = 0, bandHigh = 0, bandAny = false
+  for (const li of lineItems) {
+    if (!li.benchmark_item_id) continue
+    const b = benchmarkMap.get(li.benchmark_item_id)
+    if (!b) continue
+    bandAny = true
+    const q = Number(li.quantity) || 0
+    bandLow += q * (Number(b.local_low) || 0)
+    bandTyp += q * (Number(b.local_typical) || 0)
+    bandHigh += q * (Number(b.local_high) || 0)
+  }
+  const bidPosition = bandAny ? (bidTotal < bandLow ? 'below' : bidTotal > bandHigh ? 'above' : 'within') : null
+  const hasBenchLines = lineItems.some(li => li.benchmark_item_id)
+  const sourceName = (() => { for (const v of benchmarkMap.values()) if (v?.source_name) return v.source_name; return null })()
+  const regionForLoading = companyData?.state || 'US'
+  const VERDICT_LABEL = { within: 'Within market', below: 'Below market', above: 'Above market' }
+  const verdictWithin = bidPosition === 'within'
+
+  const laborNum = laborAmount === '' || laborAmount == null ? null : Number(laborAmount)
+  const materialsCost = materials.cost
+  const grossAfterMaterials = bidTotal - (materialsCost || 0)
+  const projectedMargin = laborNum != null ? grossAfterMaterials - laborNum : null
+  const projectedMarginPct = projectedMargin != null && bidTotal > 0 ? (projectedMargin / bidTotal) * 100 : null
+
+  const readiness = smart ? [
+    { label: 'Every line priced', done: lineItems.length > 0 && lineItems.every(li => Number(li.rate_good) > 0) },
+    { label: 'Deposit set', done: depositAmount !== '' && depositAmount != null && Number(depositAmount) > 0 },
+    { label: 'Terms present', done: (terms || '').trim() !== '' },
+    { label: 'Labor cost entered', done: laborAmount !== '' && laborAmount != null },
+    { label: 'Measurements & materials reviewed', done: !!estimate.smart_created },
+  ] : []
+  const readyCount = readiness.filter(r => r.done).length
+
+  async function handleLaborBlur() {
+    const parsed = laborValue === '' || laborValue == null ? null : Number(laborValue)
+    if (parsed === (estimate?.est_labor_cost ?? null)) return
+    if (parsed != null && (isNaN(parsed) || parsed < 0)) return
+    try { await builder.updateEstimate({ est_labor_cost: parsed }) }
+    catch (err) { console.error('Labor save failed:', err) }
+  }
+
+  // Reprice through the existing line-update path so totals recompute identically.
+  // Aggressive/Market/Premium touch benchmark lines only; Custom multiplies each
+  // benchmark line's typical, and (when toggled) library lines' current rate.
+  function applyScenario(scenario) {
+    const mult = scenario === 'custom' ? (Number(customMult) || 0) : 1
+    const repriced = []
+    for (const li of lineItems) {
+      if (li.priced_from === 'benchmark' && li.benchmark_item_id) {
+        const b = benchmarkMap.get(li.benchmark_item_id)
+        if (!b) continue
+        let rate
+        if (scenario === 'aggressive') rate = Number(b.local_low) || 0
+        else if (scenario === 'market') rate = Number(b.local_typical) || 0
+        else if (scenario === 'premium') rate = Number(b.local_high) || 0
+        else if (scenario === 'custom') rate = (Number(b.local_typical) || 0) * mult
+        else continue
+        builder.updateLineItem(li.id, { rate_good: Number(rate.toFixed(2)) })
+        repriced.push(li.id)
+      } else if (scenario === 'custom' && includeLibraryInCustom && li.priced_from === 'library') {
+        const rate = (Number(li.rate_good) || 0) * mult
+        builder.updateLineItem(li.id, { rate_good: Number(rate.toFixed(2)) })
+        repriced.push(li.id)
+      }
+    }
+    setLastScenario(scenario)
+    setPulseIds(new Set(repriced))
+    setTimeout(() => setPulseIds(new Set()), 650)
+    setScenarioNotice(`${repriced.length} market lines repriced. Your call from here.`)
+    setTimeout(() => setScenarioNotice(null), 3500)
+    trackMaterials('smart_scenario_applied', { companyId: estimate.company_id, entityId: estimate.id, scenario, surface: 'estimates' })
+  }
 
   async function handleSave() {
     try {
@@ -301,6 +488,12 @@ export default function EstimateDetailPage() {
     <div className={styles.page}>
       <AppHeader />
       <main className={styles.main}>
+        {showCreatedToast && (
+          <div className="sb-fadein" style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 1000, display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)', border: '1px solid var(--color-border)', boxShadow: '0 6px 24px rgba(0,0,0,0.16)' }}>
+            <SmartBadge />
+            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text, #1b2426)' }}>Smart Bid ready. Every number has a reason.</span>
+          </div>
+        )}
         <BackLink to={`/project/${estimate.project_id}`} label="Back to project" />
 
         {/* Header: editable title + estimate number + status */}
@@ -337,7 +530,33 @@ export default function EstimateDetailPage() {
               {estimate.sent_at && (
                 <span className={styles.sentIndicator}>Sent {timeAgo(estimate.sent_at)}</span>
               )}
+              {smart && <SmartBadge />}
             </div>
+            {smart && hasBenchLines && (
+              <div style={{ marginTop: 10, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)', padding: 12, maxWidth: 560 }}>
+                {benchLoading && !bandAny ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-muted)' }}>
+                    <div className="spinner" style={{ width: 14, height: 14 }} />
+                    Sniffing out {regionForLoading} market rates...
+                  </div>
+                ) : bandAny ? (
+                  <>
+                    <MarketBand low={bandLow} typical={bandTyp} high={bandHigh} value={animatedBidTotal} />
+                    <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span>Market range for this scope: {fmtMoney(bandLow)} to {fmtMoney(bandHigh)}. Your bid: {fmtMoney(animatedBidTotal)}.</span>
+                      <span style={{
+                        padding: '2px 10px', borderRadius: 9999, fontSize: 11, fontWeight: 700,
+                        background: verdictWithin ? 'rgba(38,70,76,0.12)' : 'rgba(242,114,67,0.14)',
+                        color: verdictWithin ? '#26464C' : '#F27243',
+                      }}>{VERDICT_LABEL[bidPosition]}</span>
+                    </div>
+                    {sourceName && (
+                      <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 6 }}>Powered by {sourceName} market data</div>
+                    )}
+                  </>
+                ) : null}
+              </div>
+            )}
           </div>
           {isAdmin && (
             <div className={styles.headerActions}>
@@ -387,11 +606,48 @@ export default function EstimateDetailPage() {
               </div>
             )}
 
+            {smart && isAdmin && (
+              <div style={{ marginBottom: 12, padding: '10px 12px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)' }}>Price scope:</span>
+                  {[['aggressive', 'Aggressive'], ['market', 'Market'], ['premium', 'Premium']].map(([key, label]) => {
+                    const active = lastScenario === key
+                    return (
+                      <button key={key} onClick={() => applyScenario(key)} style={{
+                        padding: '5px 12px', borderRadius: 9999, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                        border: active ? '1px solid #F27243' : '1px solid var(--color-border)',
+                        background: active ? '#F27243' : 'var(--color-surface)',
+                        color: active ? '#fff' : 'var(--color-text, #1b2426)',
+                      }}>{label}</button>
+                    )
+                  })}
+                  <span style={{ width: 1, height: 20, background: 'var(--color-border)' }} />
+                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Custom ×</span>
+                  <input type="number" step="0.01" min="0" value={customMult} onChange={e => setCustomMult(e.target.value)}
+                    style={{ width: 70, padding: '5px 8px', fontSize: 13, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', background: 'var(--color-bg, #fff)', color: 'var(--color-text, #1b2426)' }} />
+                  <button onClick={() => applyScenario('custom')} style={{
+                    padding: '5px 12px', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none',
+                    background: lastScenario === 'custom' ? '#F27243' : 'var(--color-primary)', color: '#fff',
+                  }}>Apply</button>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--color-text-muted)' }}>
+                    <input type="checkbox" checked={includeLibraryInCustom} onChange={e => setIncludeLibraryInCustom(e.target.checked)} />
+                    Include library-priced lines
+                  </label>
+                </div>
+                {scenarioNotice && (
+                  <div style={{ marginTop: 8, fontSize: 12, fontWeight: 600, color: '#F27243' }}>{scenarioNotice}</div>
+                )}
+              </div>
+            )}
+
             <LineItemsTable
               lineItems={lineItems}
               onUpdate={builder.updateLineItem}
               onRemove={builder.removeLineItem}
               readOnly={!isAdmin}
+              smart={smart}
+              benchmarkMap={benchmarkMap}
+              pulseIds={pulseIds}
             />
 
             <div className={styles.totalsCard}>
@@ -402,6 +658,55 @@ export default function EstimateDetailPage() {
                 </span>
               </div>
             </div>
+
+            {smart && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12, marginTop: 12 }}>
+                {/* Margin panel */}
+                <div style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)', padding: 14 }}>
+                  <div style={{ fontWeight: 700, marginBottom: 10 }}>Margin</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13 }}><span>Bid total</span><strong>{fmtMoney(animatedBidTotal)}</strong></div>
+                  {materials.linked ? (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13 }}><span>Materials cost</span><span>{fmtMoney(materialsCost)}</span></div>
+                  ) : (
+                    <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 6 }}>No materials order linked to this estimate yet.</div>
+                  )}
+                  {isAdmin && (
+                    <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6, fontSize: 13 }}>
+                      <span>Your estimated labor cost</span>
+                      <input type="number" step="0.01" min="0" placeholder="optional"
+                        value={laborAmount === 0 || laborAmount == null ? '' : laborAmount}
+                        onChange={e => setLaborValue(e.target.value)}
+                        onBlur={handleLaborBlur}
+                        style={{ width: 120, padding: '5px 8px', fontSize: 13, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', background: 'var(--color-bg, #fff)', color: 'var(--color-text, #1b2426)' }} />
+                    </label>
+                  )}
+                  {laborNum == null ? (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, paddingTop: 6, borderTop: '1px solid var(--color-border)' }}>
+                      <span>Gross after materials</span><strong>{fmtMoney(grossAfterMaterials)}</strong>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, paddingTop: 6, borderTop: '1px solid var(--color-border)' }}>
+                      <span>Projected margin</span>
+                      <strong>{fmtMoney(projectedMargin)}{projectedMarginPct != null ? ` (${projectedMarginPct.toFixed(1)}%)` : ''}</strong>
+                    </div>
+                  )}
+                </div>
+
+                {/* Readiness checklist */}
+                <div style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)', padding: 14 }}>
+                  <div style={{ fontWeight: 700, marginBottom: 8 }}>Bid readiness <span style={{ fontWeight: 500, color: 'var(--color-text-muted)', fontSize: 13 }}>({readyCount} of {readiness.length} complete)</span></div>
+                  <div style={{ height: 8, borderRadius: 9999, background: 'var(--color-border, #d4d4d4)', overflow: 'hidden', marginBottom: 12 }}>
+                    <div className="sb-progress-fill" style={{ height: '100%', width: `${readiness.length ? (readyCount / readiness.length) * 100 : 0}%`, background: 'var(--color-primary, #26464C)', borderRadius: 9999 }} />
+                  </div>
+                  {readiness.map(r => (
+                    <div key={r.label} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 5, color: r.done ? 'var(--color-text, #1b2426)' : 'var(--color-text-muted)' }}>
+                      <Check size={14} style={{ color: r.done ? 'var(--color-success, #16a34a)' : 'var(--color-border, #d4d4d4)' }} />
+                      {r.label}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Send to Client CTA */}
             {canSend && (

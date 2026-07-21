@@ -13,8 +13,10 @@ import {
   matchLibraryItem, fetchRegionalBenchmarks, pickBenchmark,
 } from '../lib/smartBid'
 import { trackMaterials } from '../lib/analytics'
+import { PawPrint } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import BackLink from '../components/BackLink'
+import '../components/smartbid/smartbid.css'
 
 const GRADES = ['premium', 'standard', 'commercial']
 
@@ -29,22 +31,32 @@ function money(n) {
 
 const STEPS = ['Measurements', 'Materials', 'Smart Bid']
 
-function StepHeader({ step }) {
+const heroBtn = {
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+  padding: '13px 26px', borderRadius: 'var(--radius-md)', border: 'none',
+  background: 'linear-gradient(135deg, #F27243, #d95f33)', color: '#fff',
+  fontSize: 15, fontWeight: 700, cursor: 'pointer',
+}
+
+// Three-dot progress rail: dots connected by a line, filling orange as steps
+// complete, with labels beneath.
+function StepRail({ step }) {
   return (
-    <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+    <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', maxWidth: 420, margin: '0 auto 24px' }}>
+      <div style={{ position: 'absolute', top: 11, left: 12, right: 12, height: 2, background: 'var(--color-border, #d4d4d4)', zIndex: 0 }} />
       {STEPS.map((label, i) => {
         const n = i + 1
-        const active = n === step
-        const done = n < step
+        const filled = n <= step
         return (
-          <div key={label} style={{
-            display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 9999,
-            fontSize: 13, fontWeight: 600,
-            background: active ? 'var(--color-primary)' : done ? 'var(--color-surface-2)' : 'var(--color-surface)',
-            color: active ? 'var(--color-on-primary, #fff)' : 'var(--color-text-muted)',
-            border: '1px solid var(--color-border)',
-          }}>
-            <span>{n}</span><span>{label}</span>
+          <div key={label} style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flex: 1 }}>
+            <span style={{
+              width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 12, fontWeight: 700,
+              background: filled ? '#F27243' : 'var(--color-surface)',
+              color: filled ? '#fff' : 'var(--color-text-muted)',
+              border: filled ? '1px solid #F27243' : '1px solid var(--color-border)',
+            }}>{n}</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: n === step ? 'var(--color-text, #1b2426)' : 'var(--color-text-muted)' }}>{label}</span>
           </div>
         )
       })}
@@ -347,7 +359,7 @@ export default function SmartBidPage() {
         source_mix: sourceMix,
       })
 
-      navigate(`/estimates/${est.id}`)
+      navigate(`/estimates/${est.id}`, { state: { smartBidCreated: true } })
     } catch (err) {
       setError(err.message)
       setCreating(false)
@@ -368,7 +380,7 @@ export default function SmartBidPage() {
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 20px' }}>
         <BackLink to={`/project/${projectId}`} label="project" />
         <h1 style={{ fontSize: 22, fontWeight: 800, margin: '12px 0 16px' }}>Smart Bid</h1>
-        <StepHeader step={step} />
+        <StepRail step={step} />
 
         {error && (
           <div style={{ background: 'var(--color-danger-bg, #fef2f2)', color: 'var(--color-danger, #dc2626)', border: '1px solid var(--color-danger, #dc2626)', borderRadius: 'var(--radius-md)', padding: '10px 14px', marginBottom: 16, fontSize: 13 }}>{error}</div>
@@ -376,7 +388,7 @@ export default function SmartBidPage() {
 
         {/* ── Step 1: Measurements ── */}
         {step === 1 && (
-          <div>
+          <div className="sb-fadein" key="step1">
             {groups.length === 0 ? (
               <p style={{ color: 'var(--color-text-muted)' }}>No measured zones on this job. Measure it first, then start a Smart Bid.</p>
             ) : (
@@ -407,7 +419,7 @@ export default function SmartBidPage() {
 
         {/* ── Step 2: Materials ── */}
         {step === 2 && (
-          <div>
+          <div className="sb-fadein" key="step2">
             <div style={{ ...card, marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
                 <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Grade:</span>
@@ -457,7 +469,7 @@ export default function SmartBidPage() {
 
         {/* ── Step 3: Smart Bid draft ── */}
         {step === 3 && (
-          <div>
+          <div className="sb-fadein" key="step3">
             <div style={{ ...card, marginBottom: 16, overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead><tr style={{ textAlign: 'left', color: 'var(--color-text-muted)', fontSize: 12 }}>
@@ -520,10 +532,10 @@ export default function SmartBidPage() {
               )}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <button style={secondaryBtn} onClick={() => setStep(2)} disabled={creating}>Back</button>
-              <button style={{ ...primaryBtn, opacity: creating ? 0.6 : 1 }} onClick={handleCreate} disabled={creating}>
-                {creating ? 'Creating…' : 'Create Smart Bid'}
+              <button style={{ ...heroBtn, flex: '1 1 240px', opacity: creating ? 0.6 : 1 }} onClick={handleCreate} disabled={creating}>
+                <PawPrint size={16} /> {creating ? 'Creating…' : 'Create Smart Bid'}
               </button>
             </div>
           </div>

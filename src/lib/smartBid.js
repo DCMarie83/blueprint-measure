@@ -4,6 +4,40 @@
 // query helpers; no React, no hooks.
 // ════════════════════════════════════════════════════════════════════
 
+// True when an estimate should render the Smart layer: it was Smart-created, or
+// any line carries a non-null priced_from. Non-smart estimates render as today.
+export function isSmartEstimate(estimate, lineItems) {
+  if (estimate?.smart_created) return true
+  return (lineItems || []).some(li => li.priced_from != null)
+}
+
+// Fetch regional low/typical/high for a set of benchmark_item_ids at regionCode,
+// falling back to 'US' when the state query returns zero rows. Returns a Map
+// keyed by benchmark_item_id.
+export async function fetchBenchmarksByItemIds(supabase, regionCode, benchmarkItemIds) {
+  const ids = [...new Set((benchmarkItemIds || []).filter(Boolean))]
+  if (ids.length === 0) return new Map()
+  const code = regionCode || 'US'
+  let { data, error } = await supabase
+    .from('v_benchmark_regional')
+    .select('benchmark_item_id, local_low, local_typical, local_high, region_code')
+    .eq('region_code', code)
+    .in('benchmark_item_id', ids)
+  if (error) throw error
+  if (!data || data.length === 0) {
+    const fb = await supabase
+      .from('v_benchmark_regional')
+      .select('benchmark_item_id, local_low, local_typical, local_high, region_code, region_name, source_name')
+      .eq('region_code', 'US')
+      .in('benchmark_item_id', ids)
+    if (fb.error) throw fb.error
+    data = fb.data || []
+  }
+  const map = new Map()
+  for (const r of data) map.set(r.benchmark_item_id, r)
+  return map
+}
+
 // The five painting scopes the wizard prices from measurements, keyed by the
 // surface CATEGORY a measurement group classifies to. taxonomy_slug + work_type
 // (+ surface where the scope needs it) address a row in v_benchmark_regional.
@@ -143,14 +177,14 @@ export async function snapshotEstimateOnSend(supabase, { estimate, lineItems, co
     const code = companyState || 'US'
     let { data, error } = await supabase
       .from('v_benchmark_regional')
-      .select('benchmark_item_id, local_low, local_typical, local_high, region_code')
+      .select('benchmark_item_id, local_low, local_typical, local_high, region_code, region_name, source_name')
       .eq('region_code', code)
       .in('benchmark_item_id', ids)
     if (error) throw error
     if (!data || data.length === 0) {
       const fb = await supabase
         .from('v_benchmark_regional')
-        .select('benchmark_item_id, local_low, local_typical, local_high, region_code')
+        .select('benchmark_item_id, local_low, local_typical, local_high, region_code, region_name, source_name')
         .eq('region_code', 'US')
         .in('benchmark_item_id', ids)
       if (fb.error) throw fb.error

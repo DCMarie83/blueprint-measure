@@ -24,6 +24,7 @@ import { useDateFormat } from '../hooks/useDateFormat'
 import ExpensesSection from '../components/expenses/ExpensesSection'
 import { BRAND } from '../lib/config'
 import { trackMaterials } from '../lib/analytics'
+import SmartBadge from '../components/smartbid/SmartBadge'
 import styles from './DashboardPage.module.css'
 
 function timeAgo(dateStr) {
@@ -537,6 +538,7 @@ export default function ProjectDetailPage() {
                       <span style={{ fontSize: 12, padding: '2px 8px', borderRadius: 9999, background: est.status === 'accepted' ? 'var(--color-success-bg, rgba(74,222,128,0.12))' : est.status === 'declined' ? 'var(--color-danger-bg, rgba(220,38,38,0.08))' : 'var(--color-surface-2)', color: est.status === 'accepted' ? 'var(--color-success)' : est.status === 'declined' ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
                         {est.status}
                       </span>
+                      {est.smart_created && <SmartBadge size="sm" />}
                     </div>
                     {est.title && (
                       <span style={{ fontSize: 11, color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>{est.estimate_number}</span>

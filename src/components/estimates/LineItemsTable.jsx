@@ -1,14 +1,24 @@
 import { Trash2 } from 'lucide-react'
+import MarketBand from '../smartbid/MarketBand'
 import styles from './LineItemsTable.module.css'
 
 const UNIT_LABELS = { sf: 'SF', lf: 'LF', each: 'Each', hour: 'Hour', lump_sum: 'Lump Sum' }
+
+const PROVENANCE_LABEL = { library: 'Library', benchmark: 'Market', manual: 'Manual' }
 
 function fmtMoney(val) {
   if (val == null) return '$0.00'
   return `$${Number(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
-export default function LineItemsTable({ lineItems, onUpdate, onRemove, readOnly }) {
+const chipStyle = (kind) => ({
+  display: 'inline-block', marginLeft: 6, padding: '1px 7px', borderRadius: 9999,
+  fontSize: 10, fontWeight: 700, verticalAlign: 'middle',
+  background: kind === 'library' ? 'rgba(38,70,76,0.10)' : kind === 'benchmark' ? 'rgba(242,114,67,0.12)' : 'var(--color-surface-2)',
+  color: kind === 'library' ? 'var(--color-primary, #26464c)' : kind === 'benchmark' ? 'var(--color-primary, #26464c)' : 'var(--color-text-muted)',
+})
+
+export default function LineItemsTable({ lineItems, onUpdate, onRemove, readOnly, smart = false, benchmarkMap, pulseIds }) {
   if (lineItems.length === 0) {
     return (
       <div className={styles.empty}>
@@ -16,6 +26,8 @@ export default function LineItemsTable({ lineItems, onUpdate, onRemove, readOnly
       </div>
     )
   }
+
+  const benchMap = benchmarkMap || new Map()
 
   const groups = []
   const catOrder = []
@@ -54,6 +66,9 @@ export default function LineItemsTable({ lineItems, onUpdate, onRemove, readOnly
               onUpdate={onUpdate}
               onRemove={onRemove}
               readOnly={readOnly}
+              smart={smart}
+              benchMap={benchMap}
+              pulseIds={pulseIds}
             />
           ))}
         </tbody>
@@ -62,7 +77,8 @@ export default function LineItemsTable({ lineItems, onUpdate, onRemove, readOnly
   )
 }
 
-function GroupRows({ category, items, onUpdate, onRemove, readOnly }) {
+function GroupRows({ category, items, onUpdate, onRemove, readOnly, smart, benchMap, pulseIds }) {
+  const pulses = pulseIds || new Set()
   const colSpan = readOnly ? 5 : 6
   return (
     <>
@@ -71,6 +87,9 @@ function GroupRows({ category, items, onUpdate, onRemove, readOnly }) {
       </tr>
       {items.map(li => {
         const isLump = li.unit === 'lump_sum'
+        const kind = smart ? (li.priced_from || 'manual') : null
+        const band = smart && li.benchmark_item_id ? benchMap.get(li.benchmark_item_id) : null
+        const rateNum = Number(li.rate_good) || 0
         return (
           <tr key={li.id} className={styles.itemRow}>
             <td className={styles.tdDesc}>
@@ -89,6 +108,7 @@ function GroupRows({ category, items, onUpdate, onRemove, readOnly }) {
                   {li.source_zone_name}
                 </span>
               )}
+              {smart && <span style={chipStyle(kind)}>{PROVENANCE_LABEL[kind] || 'Manual'}</span>}
             </td>
             <td className={styles.tdUnit}>
               {readOnly ? (
@@ -130,7 +150,7 @@ function GroupRows({ category, items, onUpdate, onRemove, readOnly }) {
                 <span className={styles.mono}>{fmtMoney(li.rate_good)}</span>
               ) : (
                 <input
-                  className={`${styles.cellInput} ${styles.cellNumber}`}
+                  className={`${styles.cellInput} ${styles.cellNumber} ${pulses.has(li.id) ? 'sb-pulse' : ''}`}
                   type="number"
                   step="0.01"
                   min="0"
@@ -139,6 +159,9 @@ function GroupRows({ category, items, onUpdate, onRemove, readOnly }) {
                   onChange={e => onUpdate(li.id, { rate_good: e.target.value === '' ? 0 : Number(e.target.value) })}
                   onFocus={e => e.target.select()}
                 />
+              )}
+              {band && (
+                <MarketBand compact low={band.local_low} typical={band.local_typical} high={band.local_high} value={rateNum} />
               )}
             </td>
             <td className={styles.tdTotal}>
