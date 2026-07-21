@@ -1,9 +1,17 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
-import { estimateMaterials } from '../utils/measurements'
+import { estimateMaterials, isCoverageLine } from '../utils/measurements'
 
 function tempId() {
   return 'tmp_' + (globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2))
+}
+
+// Clamp coats to the DB check range (1..5). Non-coverage lines always buy at
+// one coat, so their stored coats is pinned to 1 regardless of input.
+function normalizeCoats(row) {
+  const raw = Number(row.coats)
+  const clamped = Number.isFinite(raw) ? Math.max(1, Math.min(5, Math.round(raw))) : 1
+  return isCoverageLine(row) ? clamped : 1
 }
 
 // Normalize a DB row or an estimateMaterials suggestion into a local editable line.
@@ -14,14 +22,15 @@ function toLine(row, isNew = false) {
     description: row.description ?? '',
     unit: row.unit ?? '',
     quantity: row.quantity ?? 0,
+    coats: normalizeCoats(row),
     overage_pct: row.overage_pct ?? 0,
     source_zone_name: row.source_zone_name ?? '',
-    product_good: row.product_good ?? '',
-    product_better: row.product_better ?? '',
-    product_best: row.product_best ?? '',
-    cost_good: row.cost_good ?? '',
-    cost_better: row.cost_better ?? '',
-    cost_best: row.cost_best ?? '',
+    product_premium: row.product_premium ?? '',
+    product_standard: row.product_standard ?? '',
+    product_commercial: row.product_commercial ?? '',
+    cost_premium: row.cost_premium ?? '',
+    cost_standard: row.cost_standard ?? '',
+    cost_commercial: row.cost_commercial ?? '',
     ai_suggested: !!row.ai_suggested,
   }
 }
@@ -123,6 +132,20 @@ export function useMaterialOrderBuilder(orderId) {
     setOrder(prev => (prev ? { ...prev, ...patch } : prev))
   }, [])
 
+  // Seed line items directly from the job's measured zones — no estimate needed.
+  // Uses the zones already loaded by this hook. Returns { count } or { error }.
+  const seedFromZones = useCallback(() => {
+    if (!zones || zones.length === 0) {
+      return { error: 'This job has no measured zones to build a materials list from.' }
+    }
+    const materials = estimateMaterials(zones, { vertical: 'paint' })
+    if (materials.length === 0) {
+      return { error: 'No paintable measurements found on this job.' }
+    }
+    setItems(materials.map((m, idx) => toLine({ ...m, sort_order: idx }, true)))
+    return { count: materials.length }
+  }, [zones])
+
   const seedFromEstimate = async (estimateId) => {
     if (!estimateId) return { error: 'No estimate selected.' }
     const { data: lineItems, error: liErr } = await supabase
@@ -167,12 +190,12 @@ export function useMaterialOrderBuilder(orderId) {
           if (!f) return it
           return {
             ...it,
-            product_good: f.product_good ?? it.product_good,
-            product_better: f.product_better ?? it.product_better,
-            product_best: f.product_best ?? it.product_best,
-            cost_good: f.cost_good ?? it.cost_good,
-            cost_better: f.cost_better ?? it.cost_better,
-            cost_best: f.cost_best ?? it.cost_best,
+            product_premium: f.product_premium ?? it.product_premium,
+            product_standard: f.product_standard ?? it.product_standard,
+            product_commercial: f.product_commercial ?? it.product_commercial,
+            cost_premium: f.cost_premium ?? it.cost_premium,
+            cost_standard: f.cost_standard ?? it.cost_standard,
+            cost_commercial: f.cost_commercial ?? it.cost_commercial,
             ai_suggested: true,
           }
         })
@@ -191,7 +214,7 @@ export function useMaterialOrderBuilder(orderId) {
   const saveAll = useCallback(async () => {
     if (!order) return false
     if (items.length > 0 && !order.selected_variant) {
-      setError('Pick a pricing tier (Good / Better / Best) before saving this order.')
+      setError('Pick a grade (Premium / Standard / Commercial) before saving this order.')
       return false
     }
     setSaving(true)
@@ -216,14 +239,15 @@ export function useMaterialOrderBuilder(orderId) {
           description: it.description || '',
           unit: it.unit || null,
           quantity: num(it.quantity) ?? 0,
+          coats: normalizeCoats(it),
           overage_pct: num(it.overage_pct) ?? 0,
           source_zone_name: it.source_zone_name || null,
-          product_good: it.product_good || null,
-          product_better: it.product_better || null,
-          product_best: it.product_best || null,
-          cost_good: num(it.cost_good),
-          cost_better: num(it.cost_better),
-          cost_best: num(it.cost_best),
+          product_premium: it.product_premium || null,
+          product_standard: it.product_standard || null,
+          product_commercial: it.product_commercial || null,
+          cost_premium: num(it.cost_premium),
+          cost_standard: num(it.cost_standard),
+          cost_commercial: num(it.cost_commercial),
           ai_suggested: !!it.ai_suggested,
           sort_order: idx,
         }))
@@ -246,6 +270,6 @@ export function useMaterialOrderBuilder(orderId) {
   return {
     order, items, zones, stores, estimates, loading, saving, error,
     addItem, updateItem, removeItem, updateOrderField,
-    seedFromEstimate, aiSuggest, aiSuggesting, saveAll, reload: load,
+    seedFromEstimate, seedFromZones, aiSuggest, aiSuggesting, saveAll, reload: load,
   }
 }

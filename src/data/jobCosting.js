@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { materialBuyQuantity } from '../utils/measurements'
 
 function num(v) { return Number(v) || 0 }
 
@@ -16,11 +17,9 @@ function computeMaterialsCost(orders, itemsByOrder) {
     const field = `cost_${v}`
     const items = itemsByOrder[order.id] ?? []
     for (const it of items) {
-      const qty = num(it.quantity)
-      const over = num(it.overage_pct)
       const c = Number(it[field])
       if (!c || c < 0) continue
-      cost += qty * (1 + over / 100) * c
+      cost += materialBuyQuantity(it) * c
     }
   }
   return { cost, incomplete }
@@ -48,7 +47,7 @@ export async function getJobCostingRows(companyId, { from, to } = {}) {
     supabase.from('invoice_payments').select('id, invoice_id, amount, payment_date').eq('company_id', companyId),
     supabase.from('time_entries').select('project_id, hours, cost_rate, work_date').eq('company_id', companyId),
     supabase.from('material_orders').select('id, project_id, selected_variant').eq('company_id', companyId),
-    supabase.from('material_order_items').select('material_order_id, quantity, overage_pct, cost_good, cost_better, cost_best').eq('company_id', companyId),
+    supabase.from('material_order_items').select('material_order_id, quantity, coats, unit, overage_pct, cost_premium, cost_standard, cost_commercial').eq('company_id', companyId),
     supabase.from('expenses').select('project_id, amount, expense_date').eq('company_id', companyId),
   ])
 
@@ -201,7 +200,7 @@ export async function getJobCostingDetail(companyId, projectId) {
     supabase.from('invoices').select('id, project_id, total, status, created_at').eq('project_id', projectId).eq('company_id', companyId).neq('status', 'void'),
     supabase.from('time_entries').select('project_id, hours, cost_rate, crew_member_id, crew_members(name)').eq('project_id', projectId).eq('company_id', companyId),
     supabase.from('material_orders').select('id, project_id, title, selected_variant, stores(name)').eq('project_id', projectId).eq('company_id', companyId),
-    supabase.from('material_order_items').select('material_order_id, quantity, overage_pct, cost_good, cost_better, cost_best').eq('company_id', companyId),
+    supabase.from('material_order_items').select('material_order_id, quantity, coats, unit, overage_pct, cost_premium, cost_standard, cost_commercial').eq('company_id', companyId),
     supabase.from('expenses').select('id, expense_date, category, description, vendor, amount').eq('project_id', projectId).eq('company_id', companyId).order('expense_date', { ascending: false }),
   ])
 
@@ -261,11 +260,9 @@ export async function getJobCostingDetail(companyId, projectId) {
     let orderCost = 0
     if (field) {
       for (const it of items) {
-        const qty = num(it.quantity)
-        const over = num(it.overage_pct)
         const c = Number(it[field])
         if (!c || c < 0) continue
-        orderCost += qty * (1 + over / 100) * c
+        orderCost += materialBuyQuantity(it) * c
       }
     }
     return { title: order.title || 'Untitled', store: order.stores?.name || null, selectedVariant: v, cost: orderCost }

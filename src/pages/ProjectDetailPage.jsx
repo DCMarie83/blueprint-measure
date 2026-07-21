@@ -23,6 +23,7 @@ import { useMaterialOrders } from '../hooks/useMaterialOrders'
 import { useDateFormat } from '../hooks/useDateFormat'
 import ExpensesSection from '../components/expenses/ExpensesSection'
 import { BRAND } from '../lib/config'
+import { trackMaterials } from '../lib/analytics'
 import styles from './DashboardPage.module.css'
 
 function timeAgo(dateStr) {
@@ -364,6 +365,11 @@ export default function ProjectDetailPage() {
                 onClick={async () => {
                   try {
                     const order = await createMaterialOrder(projectId)
+                    trackMaterials('material_order_created', {
+                      companyId: order.company_id,
+                      entityId: order.id,
+                      project_id: projectId,
+                    })
                     navigate(`/materials/${order.id}`)
                   } catch (err) {
                     alert('Failed to create materials order: ' + err.message)
@@ -376,7 +382,7 @@ export default function ProjectDetailPage() {
             )}
           </div>
           {materialOrders.length === 0 ? (
-            <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>No materials orders yet. Generate one from your measurements.</p>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>No materials orders yet. Create one, then seed it from this job's measurements or rebuild it from a linked estimate.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {materialOrders.map(order => {

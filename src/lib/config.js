@@ -42,6 +42,13 @@ export const GOOGLE_ADS_TIMEPAY_CONVERSION_VALUE = 24.99;
 // Recurly public key (browser-safe, Recurly.js).
 export const RECURLY_PUBLIC_KEY = 'ewr1-5FyjbrwzjnEJiFBVHibzyZ';
 
+// PostHog product analytics — PUBLIC, browser-safe by design (the project API
+// key is a write-only ingest key, not a secret). Paste the real key here; while
+// POSTHOG_KEY is empty, initAnalytics() no-ops and capture() silently does
+// nothing, so no analytics initialize until the key lands.
+export const POSTHOG_KEY = '';
+export const POSTHOG_HOST = 'https://us.i.posthog.com';
+
 // Founder-spots scarcity: show the live remaining count only at or below this
 // number. Above it, show the cap statement instead ("Only N spots per state")
 // — a nearly-full count reads as scarcity, a full count reads as vacancy.

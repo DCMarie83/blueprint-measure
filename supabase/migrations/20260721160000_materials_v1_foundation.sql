@@ -1,0 +1,36 @@
+-- Applied live in SQL Editor 2026-07-21. Matches prod. Migration ledger is dead. Never run via CLI.
+
+alter table material_order_items rename column product_best to product_premium;
+alter table material_order_items rename column product_better to product_standard;
+alter table material_order_items rename column product_good to product_commercial;
+alter table material_order_items rename column cost_best to cost_premium;
+alter table material_order_items rename column cost_better to cost_standard;
+alter table material_order_items rename column cost_good to cost_commercial;
+alter table material_order_items add column coats integer not null default 1;
+alter table material_order_items add constraint material_order_items_coats_check check (coats >= 1 and coats <= 5);
+alter table material_orders drop constraint material_orders_selected_variant_check;
+update material_orders set selected_variant = case selected_variant when 'best' then 'premium' when 'better' then 'standard' when 'good' then 'commercial' else selected_variant end;
+alter table material_orders add constraint material_orders_selected_variant_check check (selected_variant is null or selected_variant in ('premium','standard','commercial'));
+create table materials_catalog (id uuid primary key default gen_random_uuid(), taxonomy_slug text not null, name text not null, trade_vertical text not null default 'painting', grade text not null check (grade in ('premium','standard','commercial')), store_id uuid references stores(id) on delete set null, retailer_product_id text, product_url text, purchase_unit text not null check (purchase_unit in ('gallon','quart','each','box','bag','roll','tube','pack','pair','kit','sf','lf')), quantity_rule text not null default 'manual' check (quantity_rule in ('coverage','per_area','per_count','per_job','manual')), coverage_sf_per_unit numeric, qty_per_1000sf numeric, qty_per_count numeric, qty_per_job numeric, typical_price numeric check (typical_price is null or typical_price >= 0), price_as_of date, is_active boolean not null default true, display_order integer not null default 0, notes text, created_at timestamptz not null default now(), updated_at timestamptz not null default now());
+create index materials_catalog_taxonomy_idx on materials_catalog (taxonomy_slug);
+create index materials_catalog_vertical_idx on materials_catalog (trade_vertical);
+create index materials_catalog_store_idx on materials_catalog (store_id);
+alter table materials_catalog enable row level security;
+create policy materials_catalog_select on materials_catalog for select to authenticated using (is_active or is_super_admin());
+create policy materials_catalog_insert on materials_catalog for insert to authenticated with check (is_super_admin());
+create policy materials_catalog_update on materials_catalog for update to authenticated using (is_super_admin());
+create policy materials_catalog_delete on materials_catalog for delete to authenticated using (is_super_admin());
+create table company_material_prices (id uuid primary key default gen_random_uuid(), company_id uuid not null references companies(id) on delete cascade, catalog_item_id uuid not null references materials_catalog(id) on delete cascade, price numeric not null check (price >= 0), note text, created_at timestamptz not null default now(), updated_at timestamptz not null default now(), unique (company_id, catalog_item_id));
+create index company_material_prices_catalog_idx on company_material_prices (catalog_item_id);
+alter table company_material_prices enable row level security;
+create policy company_material_prices_select on company_material_prices for select to authenticated using (company_id in (select up.company_id from user_profiles up where up.user_id = (select auth.uid())) or is_super_admin());
+create policy company_material_prices_insert on company_material_prices for insert to authenticated with check (company_id in (select up.company_id from user_profiles up where up.user_id = (select auth.uid())) or is_super_admin());
+create policy company_material_prices_update on company_material_prices for update to authenticated using (company_id in (select up.company_id from user_profiles up where up.user_id = (select auth.uid())) or is_super_admin());
+create policy company_material_prices_delete on company_material_prices for delete to authenticated using (company_id in (select up.company_id from user_profiles up where up.user_id = (select auth.uid())) or is_super_admin());
+create table product_events (id uuid primary key default gen_random_uuid(), company_id uuid not null references companies(id) on delete cascade, user_id uuid, event_name text not null, surface text not null default 'materials', entity_type text, entity_id uuid, store_id uuid references stores(id) on delete set null, metadata jsonb not null default '{}'::jsonb, created_at timestamptz not null default now());
+create index product_events_name_time_idx on product_events (event_name, created_at desc);
+create index product_events_company_time_idx on product_events (company_id, created_at desc);
+create index product_events_store_idx on product_events (store_id) where store_id is not null;
+alter table product_events enable row level security;
+create policy product_events_insert on product_events for insert to authenticated with check (company_id in (select up.company_id from user_profiles up where up.user_id = (select auth.uid())) or is_super_admin());
+create policy product_events_select on product_events for select to authenticated using (is_super_admin());

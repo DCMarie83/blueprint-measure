@@ -1,29 +1,32 @@
 import { useParams } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import AppHeader from '../components/AppHeader'
 import BackLink from '../components/BackLink'
 import { useAuth } from '../context/AuthContext'
 import { useMaterialOrderBuilder } from '../hooks/useMaterialOrderBuilder'
 import MaterialLineItemsTable from '../components/materials/MaterialLineItemsTable'
+import { materialBuyQuantity } from '../utils/measurements'
+import { trackMaterials } from '../lib/analytics'
 
 const secondaryBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--color-surface)', color: 'var(--color-text, #1b2426)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }
 const primaryBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 20px', background: 'var(--color-primary)', color: 'var(--color-on-primary, #fff)', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 14, fontWeight: 600 }
 
-const TIER_KEYS = ['good', 'better', 'best']
-const tierLabel = (k) => k.charAt(0).toUpperCase() + k.slice(1)
+// Grade keys + display order: Premium, Standard, Commercial. Default is standard.
+const GRADE_KEYS = ['premium', 'standard', 'commercial']
+const DEFAULT_GRADE = 'standard'
+const gradeLabel = (k) => k.charAt(0).toUpperCase() + k.slice(1)
 
 function money(n) {
   return '$' + (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-// Per-tier estimated total: sum of quantity x (1 + overage/100) x tier cost.
-function tierTotal(items, tierKey) {
+// Per-grade estimated total: sum of buy quantity x grade unit cost. Buy quantity
+// already folds in coats, overage, and the 0.25 gallon rounding.
+function gradeTotal(items, gradeKey) {
   return items.reduce((sum, it) => {
-    const qty = Number(it.quantity) || 0
-    const over = Number(it.overage_pct) || 0
-    const cost = Number(it[`cost_${tierKey}`])
+    const cost = Number(it[`cost_${gradeKey}`])
     if (!cost || cost < 0) return sum
-    return sum + qty * (1 + over / 100) * cost
+    return sum + materialBuyQuantity(it) * cost
   }, 0)
 }
 
@@ -43,16 +46,27 @@ function buildShopUrl(store, orderId) {
   }
 }
 
-function exportMaterialsCsv(order, items, tierKey) {
-  const label = tierKey ? tierLabel(tierKey) : 'Selected'
-  const header = ['Description', `Product (${label})`, 'Unit', 'Buy quantity', 'Overage %', 'Est. unit cost', 'Est. line cost']
+// CSV export lists all three grades side by side. Buy quantity folds in coats,
+// overage, and gallon rounding; each grade column is the estimated unit cost.
+function exportMaterialsCsv(order, items) {
+  const header = [
+    'Description', 'Unit', 'Buy quantity', 'Overage %', 'Coats',
+    'Premium product', 'Premium est. cost',
+    'Standard product', 'Standard est. cost',
+    'Commercial product', 'Commercial est. cost',
+  ]
   const rows = items.map(it => {
-    const qty = Number(it.quantity) || 0
-    const over = Number(it.overage_pct) || 0
-    const buyQty = qty * (1 + over / 100)
-    const cost = tierKey ? (Number(it[`cost_${tierKey}`]) || 0) : 0
-    const product = tierKey ? (it[`product_${tierKey}`] || '') : ''
-    return [it.description || '', product, it.unit || '', buyQty, over, cost, (buyQty * cost).toFixed(2)]
+    const buyQty = materialBuyQuantity(it)
+    return [
+      it.description || '',
+      it.unit || '',
+      buyQty,
+      Number(it.overage_pct) || 0,
+      Number(it.coats) || 1,
+      it.product_premium || '', Number(it.cost_premium) || 0,
+      it.product_standard || '', Number(it.cost_standard) || 0,
+      it.product_commercial || '', Number(it.cost_commercial) || 0,
+    ]
   })
   const csv = [header, ...rows]
     .map(r => r.map(c => {
@@ -77,13 +91,24 @@ export default function MaterialOrderBuilderPage() {
   const isAdmin = userProfile?.role === 'contractor_admin' || isSuperAdmin
 
   const {
-    order, items, stores, estimates, loading, saving, error,
+    order, items, zones, stores, estimates, loading, saving, error,
     addItem, updateItem, removeItem, updateOrderField,
-    seedFromEstimate, aiSuggest, aiSuggesting, saveAll,
+    seedFromEstimate, seedFromZones, aiSuggest, aiSuggesting, saveAll,
   } = useMaterialOrderBuilder(orderId)
 
   const [notice, setNotice] = useState(null)
   const [showAiTip, setShowAiTip] = useState(false)
+
+  // Default the grade control to Standard once per order when nothing is picked
+  // yet. Local-only (updateOrderField does not persist until Save), and one-shot
+  // per order id so the Clear button still works afterward.
+  const defaultedForOrderId = useRef(null)
+  useEffect(() => {
+    if (!order?.id) return
+    if (defaultedForOrderId.current === order.id) return
+    defaultedForOrderId.current = order.id
+    if (!order.selected_variant) updateOrderField({ selected_variant: DEFAULT_GRADE })
+  }, [order?.id, order?.selected_variant, updateOrderField])
 
   if (loading) {
     return (
@@ -115,27 +140,68 @@ export default function MaterialOrderBuilderPage() {
     return `Estimate · ${d}${v}${tail}`
   }
 
+  const hasZones = (zones?.length ?? 0) > 0
+
   const handleSave = async () => {
     setNotice(null)
     const ok = await saveAll()
+    if (ok) {
+      trackMaterials('material_order_saved', {
+        companyId: order.company_id,
+        entityId: order.id,
+        storeId: order.store_id || null,
+        line_count: items.length,
+        selected_grade: order.selected_variant || null,
+      })
+    }
     setNotice(ok ? 'Saved.' : 'Save failed — see the error above.')
   }
 
-  const handleAiSuggest = async () => {
-    if (!order?.estimate_id) {
-      setNotice('Pick an estimate first so the list has something to price.')
+  const handleSeedFromZones = async () => {
+    setNotice('Building your materials list from this job\'s measurements…')
+    const r = seedFromZones()
+    if (r?.error) {
+      setNotice(r.error)
       return
     }
+    trackMaterials('order_seeded_from_zones', {
+      companyId: order.company_id,
+      entityId: order.id,
+      line_count: r.count,
+    })
+    setNotice(`Built ${r.count} material line${r.count === 1 ? '' : 's'} from measurements. Pick a store and suggest products to fill in pricing.`)
+  }
+
+  const handleAiSuggest = async () => {
     if (!order?.store_id) {
       setNotice('Pick a store first so I can suggest products it carries.')
       return
     }
+    if (items.length === 0) {
+      setNotice('Add or seed at least one line first so there is something to price.')
+      return
+    }
     const storeName = stores.find((s) => s.id === order.store_id)?.name || 'your store'
     setNotice(`Filling in products and pricing from ${storeName}…`)
+    trackMaterials('ai_suggest_requested', {
+      companyId: order.company_id,
+      entityId: order.id,
+      storeId: order.store_id,
+      store_name: storeName,
+      line_count: items.length,
+    })
     const r = await aiSuggest()
     if (!r || r.error) {
       setNotice(`Couldn't fetch suggestions right now — you can enter products and costs by hand.${r?.error ? ` (${r.error})` : ''}`)
     } else {
+      trackMaterials('ai_suggest_completed', {
+        companyId: order.company_id,
+        entityId: order.id,
+        storeId: order.store_id,
+        store_name: storeName,
+        lines_filled: r.filled,
+        lines_added: r.added,
+      })
       setNotice(`Nice fetch — ${r.filled} product pick${r.filled === 1 ? '' : 's'} from ${storeName}${r.added ? ` plus ${r.added} extra${r.added === 1 ? '' : 's'}` : ''}. Costs are estimates, so double-check before buying.`)
     }
   }
@@ -146,7 +212,15 @@ export default function MaterialOrderBuilderPage() {
       setNotice('Building your materials list from the estimate…')
       const r = await seedFromEstimate(estimateId)
       if (r?.error) setNotice(r.error)
-      else setNotice(`Built ${r.count} material line${r.count === 1 ? '' : 's'} from the estimate. Pick a store and suggest products to fill in pricing.`)
+      else {
+        trackMaterials('order_seeded_from_estimate', {
+          companyId: order.company_id,
+          entityId: order.id,
+          line_count: r.count,
+          estimate_id: estimateId,
+        })
+        setNotice(`Built ${r.count} material line${r.count === 1 ? '' : 's'} from the estimate. Pick a store and suggest products to fill in pricing.`)
+      }
     }
   }
 
@@ -156,7 +230,48 @@ export default function MaterialOrderBuilderPage() {
     setNotice('Rebuilding from the estimate…')
     const r = await seedFromEstimate(order.estimate_id)
     if (r?.error) setNotice(r.error)
-    else setNotice(`Rebuilt ${r.count} material line${r.count === 1 ? '' : 's'} from the estimate.`)
+    else {
+      trackMaterials('order_seeded_from_estimate', {
+        companyId: order.company_id,
+        entityId: order.id,
+        line_count: r.count,
+        estimate_id: order.estimate_id,
+        rebuild: true,
+      })
+      setNotice(`Rebuilt ${r.count} material line${r.count === 1 ? '' : 's'} from the estimate.`)
+    }
+  }
+
+  const handleGradeSelect = (t) => {
+    if (!isAdmin) return
+    const active = variant === t
+    updateOrderField({ selected_variant: active ? null : t })
+    if (!active) {
+      trackMaterials('grade_selected', {
+        companyId: order.company_id,
+        entityId: order.id,
+        grade: t,
+      })
+    }
+  }
+
+  const handleCsvExport = () => {
+    exportMaterialsCsv(order, items)
+    trackMaterials('materials_csv_exported', {
+      companyId: order.company_id,
+      entityId: order.id,
+      storeId: order.store_id || null,
+      line_count: items.length,
+    })
+  }
+
+  const handleShopClick = (store) => {
+    trackMaterials('shop_link_clicked', {
+      companyId: order.company_id,
+      entityId: order.id,
+      storeId: store?.id || null,
+      store_name: store?.name || null,
+    })
   }
 
   const variant = order.selected_variant || null
@@ -217,6 +332,12 @@ export default function MaterialOrderBuilderPage() {
               </select>
             </label>
 
+            {hasZones && (
+              <button onClick={handleSeedFromZones} style={secondaryBtn}>
+                Suggest from measurements
+              </button>
+            )}
+
             <span
               style={{ position: 'relative', display: 'inline-flex' }}
               onMouseEnter={() => setShowAiTip(true)}
@@ -226,8 +347,8 @@ export default function MaterialOrderBuilderPage() {
                 onClick={handleAiSuggest}
                 onFocus={() => setShowAiTip(true)}
                 onBlur={() => setShowAiTip(false)}
-                disabled={aiSuggesting || !order?.estimate_id}
-                style={{ ...secondaryBtn, opacity: (aiSuggesting || !order?.estimate_id) ? 0.6 : 1, cursor: (aiSuggesting || !order?.estimate_id) ? 'default' : 'pointer' }}
+                disabled={aiSuggesting || !order?.store_id || items.length === 0}
+                style={{ ...secondaryBtn, opacity: (aiSuggesting || !order?.store_id || items.length === 0) ? 0.6 : 1, cursor: (aiSuggesting || !order?.store_id || items.length === 0) ? 'default' : 'pointer' }}
               >
                 {aiSuggesting ? 'Filling…' : 'Suggest products & pricing'}
               </button>
@@ -241,7 +362,7 @@ export default function MaterialOrderBuilderPage() {
                     borderRadius: 'var(--radius-sm)', boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
                   }}
                 >
-                  Suggests Good/Better/Best products carried at your selected store, with estimated costs. Costs are estimates — confirm before you buy.
+                  Suggests Premium/Standard/Commercial products carried at your selected store, with estimated costs. Costs are estimates — confirm before you buy.
                 </span>
               )}
             </span>
@@ -270,13 +391,13 @@ export default function MaterialOrderBuilderPage() {
           <h3 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 14px' }}>Order summary</h3>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
-            <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Buying tier:</span>
-            {TIER_KEYS.map(t => {
+            <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Buying grade:</span>
+            {GRADE_KEYS.map(t => {
               const active = variant === t
               return (
                 <button
                   key={t}
-                  onClick={() => isAdmin && updateOrderField({ selected_variant: active ? null : t })}
+                  onClick={() => handleGradeSelect(t)}
                   disabled={!isAdmin}
                   style={{
                     padding: '6px 14px', borderRadius: 'var(--radius-pill, 9999px)', fontSize: 13, fontWeight: 600, cursor: isAdmin ? 'pointer' : 'default',
@@ -285,7 +406,7 @@ export default function MaterialOrderBuilderPage() {
                     color: active ? 'var(--color-on-primary, #fff)' : 'var(--color-text, #1b2426)',
                   }}
                 >
-                  {tierLabel(t)}
+                  {gradeLabel(t)}
                 </button>
               )
             })}
@@ -295,12 +416,12 @@ export default function MaterialOrderBuilderPage() {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 8 }}>
-            {TIER_KEYS.map(t => {
+            {GRADE_KEYS.map(t => {
               const active = variant === t
               return (
                 <div key={t} style={{ border: active ? '2px solid var(--color-primary)' : '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '12px 14px', background: 'var(--color-surface)' }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 4 }}>{tierLabel(t)}</div>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text, #1b2426)' }}>{money(tierTotal(items, t))}</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 4 }}>{gradeLabel(t)}</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text, #1b2426)' }}>{money(gradeTotal(items, t))}</div>
                 </div>
               )
             })}
@@ -314,7 +435,7 @@ export default function MaterialOrderBuilderPage() {
           )}
           {selectedStore && shopUrl && (
             <div>
-              <a href={shopUrl} target="_blank" rel="noopener noreferrer" style={{ ...primaryBtn, textDecoration: 'none' }}>
+              <a href={shopUrl} target="_blank" rel="noopener noreferrer" onClick={() => handleShopClick(selectedStore)} style={{ ...primaryBtn, textDecoration: 'none' }}>
                 Shop at {selectedStore.name}
               </a>
               {selectedStore.affiliate_disclosure && (
@@ -323,7 +444,7 @@ export default function MaterialOrderBuilderPage() {
             </div>
           )}
           {selectedStore && !shopUrl && selectedStore.integration_type === 'affiliate_deeplink' && selectedStore.website_url && (
-            <a href={selectedStore.website_url} target="_blank" rel="noopener noreferrer" style={{ ...primaryBtn, textDecoration: 'none' }}>
+            <a href={selectedStore.website_url} target="_blank" rel="noopener noreferrer" onClick={() => handleShopClick(selectedStore)} style={{ ...primaryBtn, textDecoration: 'none' }}>
               Shop at {selectedStore.name}
             </a>
           )}
@@ -331,7 +452,7 @@ export default function MaterialOrderBuilderPage() {
             <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>No shopping link available for {selectedStore.name} yet.</p>
           )}
           {selectedStore && !shopUrl && selectedStore.integration_type !== 'affiliate_deeplink' && (
-            <button onClick={() => exportMaterialsCsv(order, items, variant)} style={secondaryBtn}>
+            <button onClick={handleCsvExport} style={secondaryBtn}>
               {selectedStore.integration_type === 'placeholder' ? `Export for ${selectedStore.name} (CSV)` : 'Export list (CSV)'}
             </button>
           )}

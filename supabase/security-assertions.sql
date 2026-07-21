@@ -208,6 +208,118 @@ a7 AS (
          CASE WHEN (SELECT count(*) FROM a7_definer_views) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
          coalesce('DEFINER VIEWS GRANTED: ' || (SELECT string_agg(v, ', ' ORDER BY v) FROM a7_definer_views),
                   'no granted view runs as owner')::text
+),
+
+-- ── A8 ─────────────────────────────────────────────────────────────
+-- materials_catalog is a PLATFORM catalog: readable by any authenticated
+-- user (is_active rows) but written ONLY by super admins. anon must have no
+-- access at all, and each of insert/update/delete must gate on is_super_admin.
+a8_bad AS (
+  -- anon holds any table privilege on materials_catalog
+  SELECT 'anon-grant'::text AS problem
+  FROM information_schema.role_table_grants
+  WHERE table_schema = 'public' AND table_name = 'materials_catalog' AND grantee = 'anon'
+  UNION ALL
+  -- a write policy that does not gate on is_super_admin
+  SELECT (cmd || '-ungated:' || policyname)::text
+  FROM pg_policies
+  WHERE schemaname = 'public' AND tablename = 'materials_catalog'
+    AND cmd IN ('INSERT', 'UPDATE', 'DELETE')
+    AND (coalesce(qual, '') || coalesce(with_check, '')) NOT ILIKE '%is_super_admin%'
+  UNION ALL
+  -- a write command with no policy at all
+  SELECT ('missing-' || want.c)::text
+  FROM (VALUES ('INSERT'), ('UPDATE'), ('DELETE')) AS want(c)
+  WHERE NOT EXISTS (SELECT 1 FROM pg_policies p
+                    WHERE p.schemaname = 'public' AND p.tablename = 'materials_catalog' AND p.cmd = want.c)
+),
+a8 AS (
+  SELECT 'A8'::text,
+         'materials_catalog: anon has no access; insert/update/delete gate on is_super_admin only'::text,
+         CASE WHEN (SELECT count(*) FROM a8_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
+         coalesce('PROBLEMS: ' || (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a8_bad),
+                  'anon locked out; all three write policies super-admin-gated')::text
+),
+
+-- ── A9 ─────────────────────────────────────────────────────────────
+-- company_material_prices is tenant data: all four CRUD policies must exist,
+-- be granted TO authenticated, and scope to the caller's company OR super admin.
+a9_bad AS (
+  SELECT ('missing-' || want.c)::text AS problem
+  FROM (VALUES ('SELECT'), ('INSERT'), ('UPDATE'), ('DELETE')) AS want(c)
+  WHERE NOT EXISTS (SELECT 1 FROM pg_policies p
+                    WHERE p.schemaname = 'public' AND p.tablename = 'company_material_prices' AND p.cmd = want.c)
+  UNION ALL
+  SELECT ('not-authenticated:' || policyname)::text
+  FROM pg_policies
+  WHERE schemaname = 'public' AND tablename = 'company_material_prices'
+    AND NOT ('authenticated' = ANY(roles))
+  UNION ALL
+  SELECT ('unscoped:' || policyname)::text
+  FROM pg_policies
+  WHERE schemaname = 'public' AND tablename = 'company_material_prices'
+    AND (coalesce(qual, '') || coalesce(with_check, '')) NOT ILIKE '%user_profiles%'
+    AND (coalesce(qual, '') || coalesce(with_check, '')) NOT ILIKE '%is_super_admin%'
+),
+a9 AS (
+  SELECT 'A9'::text,
+         'company_material_prices: 4 policies, TO authenticated, company-scoped or super admin'::text,
+         CASE WHEN (SELECT count(*) FROM a9_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
+         coalesce('PROBLEMS: ' || (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a9_bad),
+                  'all four policies present, authenticated, and scoped')::text
+),
+
+-- ── A10 ────────────────────────────────────────────────────────────
+-- product_events is an append-only analytics log. Rows are inserted by
+-- tenants (checked elsewhere) and read ONLY by super admins; it must carry NO
+-- update or delete policy, so events can never be altered or erased.
+a10_bad AS (
+  SELECT 'select-not-superadmin'::text AS problem
+  WHERE NOT EXISTS (SELECT 1 FROM pg_policies p
+                    WHERE p.schemaname = 'public' AND p.tablename = 'product_events' AND p.cmd = 'SELECT'
+                      AND coalesce(p.qual, '') ILIKE '%is_super_admin%')
+  UNION ALL
+  SELECT ('forbidden-' || cmd || ':' || policyname)::text
+  FROM pg_policies
+  WHERE schemaname = 'public' AND tablename = 'product_events' AND cmd IN ('UPDATE', 'DELETE')
+),
+a10 AS (
+  SELECT 'A10'::text,
+         'product_events: select gates on is_super_admin; no update/delete policies exist'::text,
+         CASE WHEN (SELECT count(*) FROM a10_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
+         coalesce('PROBLEMS: ' || (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a10_bad),
+                  'select is super-admin only; no update/delete policies')::text
+),
+
+-- ── A11 ────────────────────────────────────────────────────────────
+-- The grade rename must be complete on material_order_items: the graded
+-- columns + coats exist and the legacy good/better/best columns are gone. A
+-- half-applied rename silently breaks every materials cost read.
+a11_missing AS (
+  SELECT want.c::text AS col
+  FROM (VALUES ('product_premium'), ('product_standard'), ('product_commercial'),
+               ('cost_premium'), ('cost_standard'), ('cost_commercial'), ('coats')) AS want(c)
+  WHERE NOT EXISTS (SELECT 1 FROM information_schema.columns
+                    WHERE table_schema = 'public' AND table_name = 'material_order_items' AND column_name = want.c)
+),
+a11_legacy AS (
+  SELECT column_name::text AS col
+  FROM information_schema.columns
+  WHERE table_schema = 'public' AND table_name = 'material_order_items'
+    AND column_name IN ('product_good', 'product_better', 'product_best', 'cost_good', 'cost_better', 'cost_best')
+),
+a11 AS (
+  SELECT 'A11'::text,
+         'material_order_items: graded columns + coats exist; legacy good/better/best gone'::text,
+         CASE WHEN (SELECT count(*) FROM a11_missing) = 0 AND (SELECT count(*) FROM a11_legacy) = 0
+              THEN 'PASS' ELSE 'FAIL' END::text,
+         coalesce(
+           nullif(concat_ws(' | ',
+             'MISSING: ' || (SELECT string_agg(col, ', ' ORDER BY col) FROM a11_missing),
+             'LEGACY STILL PRESENT: ' || (SELECT string_agg(col, ', ' ORDER BY col) FROM a11_legacy)
+           ), ''),
+           'all graded columns + coats present, no legacy columns'
+         )::text
 )
 
 SELECT * FROM a1
@@ -217,4 +329,8 @@ UNION ALL SELECT * FROM a4
 UNION ALL SELECT * FROM a5
 UNION ALL SELECT * FROM a6
 UNION ALL SELECT * FROM a7
+UNION ALL SELECT * FROM a8
+UNION ALL SELECT * FROM a9
+UNION ALL SELECT * FROM a10
+UNION ALL SELECT * FROM a11
 ORDER BY id;

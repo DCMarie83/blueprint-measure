@@ -169,15 +169,38 @@ export function calculateCeilingSF(baseSF, ceilingType, params, points, pixelsPe
   return { adjustedSF: baseSF, adjustment: 0 }
 }
 
-// Raw (unrounded) paint gallons for one SF zone. Internal helper so that
-// estimateMaterials can sum raw gallons across a group and round ONCE,
-// instead of rounding per-zone (which over-buys).
-// Coverage fixed at 350 SF/gal (smooth). Finish and coats are pricing concerns
-// owned by the estimate builder / Gridiron. Per-trade coverage lands in the
-// Materials Depth build.
+// Raw (unrounded) PER-COAT paint gallons for one SF zone. Internal helper so
+// estimateMaterials can sum raw gallons across a group, emitting the per-coat
+// base as the line quantity; coats and the 0.25 gallon rounding are applied
+// later at the buy-quantity stage (see materialBuyQuantity), not here.
+// Coverage fixed at 350 SF/gal (smooth). Coats live in the materials model now
+// (materialBuyQuantity multiplies quantity by coats) — they are NOT deferred to
+// the estimate builder. Per-trade coverage lands in the Materials Depth build.
 function rawPaintGallons(zone) {
   if (zone.measurement_type !== 'SF' || !zone.result || Number(zone.result) <= 0) return 0
   return Number(zone.result) / 350
+}
+
+// A "coverage" material line is one whose quantity multiplies by coats and, for
+// gallons, rounds up to the nearest 0.25 at purchase. In Materials V1 that is a
+// gallon-unit line. Non-coverage lines (each/box/etc.) always buy at coats = 1.
+export function isCoverageLine(item) {
+  return (item?.unit || '').trim().toLowerCase() === 'gallon'
+}
+
+// The real quantity a contractor buys for a line:
+//   quantity * coats * (1 + overage_pct / 100)
+// For gallon lines the result is rounded UP to the nearest 0.25 (you cannot buy
+// a third of a gallon). This is the single source of buy-quantity math — the
+// order summary, CSV export, on-screen line math, and job costing all call it.
+export function materialBuyQuantity(item) {
+  const qty = Number(item?.quantity) || 0
+  const coats = Math.max(1, Math.min(5, Number(item?.coats) || 1))
+  const over = Number(item?.overage_pct) || 0
+  const effectiveCoats = isCoverageLine(item) ? coats : 1
+  const raw = qty * effectiveCoats * (1 + over / 100)
+  if (isCoverageLine(item)) return Math.ceil(raw * 4) / 4
+  return raw
 }
 
 // Deterministic material quantity estimator. Produces suggested material line
@@ -200,6 +223,12 @@ export function estimateMaterials(zones, options = {}) {
   }
 }
 
+// Wall and ceiling paint default to two coats; everything else to one. Coats
+// are stored on the line and multiplied into the buy quantity downstream.
+function defaultCoatsForSurface(surfaceType) {
+  return (surfaceType === 'Wall' || surfaceType === 'Ceiling') ? 2 : 1
+}
+
 function estimatePaintMaterials(zones, defaultOverage) {
   const paintZones = zones.filter(z => z.measurement_type === 'SF' && Number(z.result) > 0)
   if (paintZones.length === 0) return []
@@ -217,20 +246,23 @@ function estimatePaintMaterials(zones, defaultOverage) {
   const lines = []
   for (const g of groups.values()) {
     if (g.rawGallons <= 0) continue
-    const gallons = Math.ceil(g.rawGallons * 4) / 4 // round the GROUP total up to 0.25
+    // Emit the PER-COAT base gallons as quantity (2-decimal precision). Coats
+    // and the 0.25 gallon rounding are applied at the buy-quantity stage.
+    const perCoatGallons = Math.round(g.rawGallons * 100) / 100
     lines.push({
       description: `${g.surfaceType} paint`,
       unit: 'gallon',
-      quantity: gallons,
+      quantity: perCoatGallons,
+      coats: defaultCoatsForSurface(g.surfaceType),
       overage_pct: defaultOverage,
       source_zone_name: sourceSummary(g.zones),
       ai_suggested: false,
-      product_good: null,
-      product_better: null,
-      product_best: null,
-      cost_good: null,
-      cost_better: null,
-      cost_best: null,
+      product_premium: null,
+      product_standard: null,
+      product_commercial: null,
+      cost_premium: null,
+      cost_standard: null,
+      cost_commercial: null,
     })
   }
   return lines.sort((a, b) => a.description.localeCompare(b.description))

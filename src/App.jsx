@@ -5,6 +5,7 @@ import { useIsLite } from './hooks/useIsLite'
 import { supabase } from './lib/supabase'
 import { addBreadcrumb } from './lib/breadcrumbs'
 import { useConversionTracker } from './hooks/useConversionTracker'
+import { initAnalytics } from './lib/analytics'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
 import LiteSignupPage from './pages/LiteSignupPage'
@@ -279,6 +280,11 @@ function FoundersRedirect() {
 
 export default function App() {
   const { user, loading } = useAuth()
+
+  // Initialize product analytics once, at the app root — NEVER from AuthContext
+  // or any auth listener (onAuthStateChange must stay synchronous). No-ops until
+  // POSTHOG_KEY is configured.
+  useEffect(() => { initAnalytics() }, [])
 
   if (loading) return null
 
