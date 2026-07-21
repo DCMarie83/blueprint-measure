@@ -1,0 +1,38 @@
+/* Clients v2 brand motion — CSS-only, disabled under prefers-reduced-motion. */
+
+.cv-row {
+  transition: background 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+}
+.cv-row:hover {
+  background: rgba(38, 70, 76, 0.05);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(27, 36, 38, 0.06);
+}
+
+.cv-shimmer {
+  background: linear-gradient(90deg,
+    var(--color-surface-2, #eef0f0) 25%,
+    var(--color-border, #e2e5e5) 37%,
+    var(--color-surface-2, #eef0f0) 63%);
+  background-size: 400% 100%;
+  animation: cvShimmer 1.4s ease infinite;
+  border-radius: 6px;
+}
+@keyframes cvShimmer {
+  0%   { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+.cv-underline {
+  height: 2px;
+  width: 48px;
+  background: #F27243;
+  border-radius: 2px;
+  margin-top: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cv-row { transition: none; }
+  .cv-row:hover { transform: none; box-shadow: none; }
+  .cv-shimmer { animation: none; }
+}

@@ -13,17 +13,27 @@ export function useClients() {
     setLoading(true)
     setError(null)
     try {
+      // Contacts are NOT prefetched here (detail loads them). Projects (id+name)
+      // drive the count + New Estimate routing; client_addresses drive location.
       const { data, error: err } = await supabase
         .from('clients')
-        .select('*, client_contacts(*), projects(id)')
+        .select('*, projects(id, name), client_addresses(city, state, is_primary)')
         .eq('company_id', companyId)
         .order('display_name', { ascending: true })
       if (err) throw err
-      const enriched = (data ?? []).map(c => ({
-        ...c,
-        active_jobs_count: (c.projects ?? []).length,
-        projects: undefined,
-      }))
+      const enriched = (data ?? []).map(c => {
+        const projects = c.projects ?? []
+        const addrs = c.client_addresses ?? []
+        const primaryAddr = addrs.find(a => a.is_primary) ?? addrs[0] ?? null
+        return {
+          ...c,
+          active_jobs_count: projects.length,
+          project_list: projects.map(p => ({ id: p.id, name: p.name })),
+          client_addresses_resolved: primaryAddr,
+          projects: undefined,
+          client_addresses: undefined,
+        }
+      })
       setClients(enriched)
     } catch (err) {
       setError(err.message)

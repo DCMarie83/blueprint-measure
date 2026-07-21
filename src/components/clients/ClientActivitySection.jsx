@@ -1,8 +1,10 @@
 import { useState } from 'react'
-import { FileText, Mail, Phone, MessageSquare, Users, Send, CheckCircle, XCircle, Eye, Edit, Trash2, Plus } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { FileText, Mail, Phone, MessageSquare, Users, Send, CheckCircle, XCircle, Eye, Edit, Trash2, Plus, ArrowUpRight } from 'lucide-react'
 import { useClientActivity } from '../../hooks/useClientActivity'
 import ClientActivityModal from './ClientActivityModal'
 import { timeAgo } from '../../utils/timeAgo'
+import { activityLink } from '../../lib/clientsView'
 import styles from './ClientActivitySection.module.css'
 
 const TYPE_CONFIG = {
@@ -24,6 +26,7 @@ const TYPE_CONFIG = {
 }
 
 export default function ClientActivitySection({ clientId, onChange }) {
+  const navigate = useNavigate()
   const { activity, loading, addActivity, updateActivity, deleteActivity, hasMore, loadMore } = useClientActivity(clientId)
   const [modalActivity, setModalActivity] = useState(undefined) // undefined=closed, null=new, object=edit
   const [deleting, setDeleting] = useState(null)
@@ -105,6 +108,17 @@ export default function ClientActivitySection({ clientId, onChange }) {
                   <div className={styles.entryMeta}>
                     <span>{timeAgo(item.created_at)}</span>
                     {isAuto && <span className={styles.autoBadge}>Auto</span>}
+                    {(() => {
+                      const to = activityLink(item)
+                      return to ? (
+                        <button
+                          onClick={() => navigate(to)}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#F27243', fontSize: 12, fontWeight: 600 }}
+                        >
+                          View <ArrowUpRight size={12} />
+                        </button>
+                      ) : null
+                    })()}
                   </div>
                 </div>
               </div>

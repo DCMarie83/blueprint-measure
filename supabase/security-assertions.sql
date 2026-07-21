@@ -414,6 +414,29 @@ a14 AS (
          CASE WHEN (SELECT count(*) FROM a14_missing) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
          coalesce('MISSING: ' || (SELECT string_agg(col, ', ' ORDER BY col) FROM a14_missing),
                   'all Smart Bid columns present')::text
+),
+
+-- ── A15 ────────────────────────────────────────────────────────────
+-- CRM: clients.status must exist and carry the lead/active/past/do_not_contact
+-- check, or the Clients v2 status chips/filters read a column that isn't there.
+a15_bad AS (
+  SELECT 'missing-column'::text AS problem
+  WHERE NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'clients' AND column_name = 'status')
+  UNION ALL
+  SELECT 'missing-check'
+  WHERE NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'clients'::regclass AND contype = 'c'
+      AND pg_get_constraintdef(oid) ILIKE '%do_not_contact%')
+),
+a15 AS (
+  SELECT 'A15'::text,
+         'clients carries status with the lead/active/past/do_not_contact check'::text,
+         CASE WHEN (SELECT count(*) FROM a15_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
+         coalesce('PROBLEMS: ' || (SELECT string_agg(problem, ', ') FROM a15_bad),
+                  'status column and check present')::text
 )
 
 SELECT * FROM a1
@@ -430,4 +453,5 @@ UNION ALL SELECT * FROM a11
 UNION ALL SELECT * FROM a12
 UNION ALL SELECT * FROM a13
 UNION ALL SELECT * FROM a14
+UNION ALL SELECT * FROM a15
 ORDER BY id;
