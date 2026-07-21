@@ -1,6 +1,10 @@
 // Supabase Edge Function: suggest-materials
-// Calls the Anthropic Messages API server-side to fill graded product/cost
-// suggestions on material order line items and propose primer/supply additions.
+// CATALOG MAPPER. The model no longer invents products or prices. Given the
+// caller's compact active catalog, it (a) maps each input line to the best
+// matching taxonomy_slug (or null), (b) proposes additions as catalog slugs for
+// commonly-needed items not already present, and (c) lists genuinely missing
+// items under not_in_catalog (no prices). Products, prices, and provenance are
+// resolved client-side from the catalog.
 // Deploy with JWT verification ON (default) — only authenticated users may call it.
 
 const corsHeaders = {
@@ -23,34 +27,36 @@ Deno.serve(async (req) => {
     const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
     if (!apiKey) return json({ error: 'AI is not configured (missing ANTHROPIC_API_KEY secret).' })
 
-    const { lines, vertical, store } = await req.json()
+    const { lines, store_name, vertical, catalog } = await req.json()
     if (!Array.isArray(lines) || lines.length === 0) return json({ error: 'No line items provided.' })
+    if (!Array.isArray(catalog) || catalog.length === 0) return json({ error: 'No catalog provided to map against.' })
 
     const trade = typeof vertical === 'string' && vertical ? vertical : 'paint'
 
-    const system = `You are a materials estimator for trade contractors, primarily painting. Given a list of measured material line items, suggest three product GRADES for each line — premium grade, standard grade, and commercial grade — plus ESTIMATED per-unit costs, and propose any commonly-needed additional supplies.
+    const system = `You are a materials mapper for trade contractors, primarily painting. You are given a CATALOG of purchasable items (each with a taxonomy_slug, name, grade, store_name, purchase_unit) and a list of measured material line items. You do NOT invent products, and you do NOT invent prices — pricing and product names are resolved elsewhere from the catalog.
 
-Product grades:
-- "premium" = premium grade: the top-of-line product a contractor uses when finish quality matters most.
-- "standard" = standard grade: the mid-grade everyday product most jobs use.
-- "commercial" = commercial grade: the economy / contractor-grade product for budget or high-volume work.
-
-If a store name is provided, tailor every product suggestion to brands and product lines that store actually carries. Examples: Sherwin-Williams -> its own lines such as Emerald (premium), SuperPaint (standard), ProMar 200 (commercial). Home Depot -> brands it stocks such as Behr Marquee (premium), Behr Premium Plus (standard), Glidden (commercial). Lowe's -> brands it stocks such as Valspar Signature (premium), Valspar (standard), HGTV Home / ProMar retail (commercial). Match estimated costs to that store's typical retail range. If no store is provided, suggest widely available products with typical estimated costs.
+Your only jobs:
+1. For EACH input line, choose the single best matching taxonomy_slug from the provided catalog, or null if nothing in the catalog fits.
+2. Propose ADDITIONS: taxonomy_slugs from the provided catalog for commonly-needed items that are NOT already represented by the input lines (e.g., primer, tape, roller covers, drop cloths) — each with a sensible whole-number quantity. Only include items whose slug exists in the catalog. If nothing is worth adding, return an empty array.
+3. List NOT_IN_CATALOG: genuinely needed items that have NO matching taxonomy_slug in the catalog — with a short description, unit, quantity, and a brief note. Never include a price or a product/brand name here.
 
 Rules:
-- Costs are ESTIMATES for budgeting only. They are NOT live, current, or guaranteed retailer prices. The contractor verifies final price and availability with the retailer such as Sherwin-Williams, Home Depot, or Lowe's.
-- Use realistic, specific product names (brand + line + sheen where relevant). Do not invent SKUs or claim real-time inventory.
+- Only use taxonomy_slug values that appear in the provided catalog. Never invent a slug.
+- A taxonomy_slug may appear at multiple grades in the catalog; map to the slug, not to a specific grade.
 - Respond with STRICT JSON ONLY. No prose, no markdown code fences.
 
 JSON shape:
-{ "fills": [ { "id": "<exact line id from input>", "product_premium": "", "product_standard": "", "product_commercial": "", "cost_premium": 0, "cost_standard": 0, "cost_commercial": 0 } ], "additions": [ { "description": "", "unit": "", "quantity": 1, "product_premium": "", "product_standard": "", "product_commercial": "", "cost_premium": 0, "cost_standard": 0, "cost_commercial": 0 } ] }
+{ "fills": [ { "id": "<exact line id from input>", "taxonomy_slug": null } ], "additions": [ { "taxonomy_slug": "", "quantity": 1 } ], "not_in_catalog": [ { "description": "", "unit": "", "quantity": 1, "note": "" } ] }
 
-"fills" must contain exactly one object per input line id. "additions" are NEW supply lines not already present (e.g., primer, painter's tape, roller covers, brushes, drop cloths) — include only if genuinely useful, otherwise return an empty array.`
+"fills" must contain exactly one object per input line id.`
 
     const userMsg = `Vertical: ${trade}
-Store: ${store || 'not specified'}
+Store: ${store_name || 'not specified'}
 
-Line items to fill (use each item's exact id in your "fills" output):
+Catalog (map only to these taxonomy_slugs):
+${JSON.stringify(catalog, null, 2)}
+
+Line items to map (use each item's exact id in your "fills" output):
 ${JSON.stringify(lines, null, 2)}`
 
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
@@ -88,7 +94,8 @@ ${JSON.stringify(lines, null, 2)}`
 
     const fills = Array.isArray(parsed?.fills) ? parsed.fills : []
     const additions = Array.isArray(parsed?.additions) ? parsed.additions : []
-    return json({ fills, additions })
+    const not_in_catalog = Array.isArray(parsed?.not_in_catalog) ? parsed.not_in_catalog : []
+    return json({ fills, additions, not_in_catalog })
   } catch (err) {
     return json({ error: (err as Error).message || 'Unexpected error.' })
   }

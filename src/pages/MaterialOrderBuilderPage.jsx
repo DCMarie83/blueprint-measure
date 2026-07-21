@@ -91,7 +91,7 @@ export default function MaterialOrderBuilderPage() {
   const isAdmin = userProfile?.role === 'contractor_admin' || isSuperAdmin
 
   const {
-    order, items, zones, stores, estimates, loading, saving, error,
+    order, items, zones, stores, estimates, catalog, overrideMap, maxPriceAsOf, loading, saving, error,
     addItem, updateItem, removeItem, updateOrderField,
     seedFromEstimate, seedFromZones, aiSuggest, aiSuggesting, saveAll,
   } = useMaterialOrderBuilder(orderId)
@@ -169,40 +169,44 @@ export default function MaterialOrderBuilderPage() {
       entityId: order.id,
       line_count: r.count,
     })
-    setNotice(`Built ${r.count} material line${r.count === 1 ? '' : 's'} from measurements. Pick a store and suggest products to fill in pricing.`)
+    if (r.sundries > 0) {
+      trackMaterials('sundries_seeded', {
+        companyId: order.company_id,
+        entityId: order.id,
+        count: r.sundries,
+      })
+    }
+    const sundryNote = r.sundries > 0 ? ` plus ${r.sundries} sundr${r.sundries === 1 ? 'y' : 'ies'} from the catalog` : ''
+    setNotice(`Built ${r.count} paint line${r.count === 1 ? '' : 's'}${sundryNote} from measurements. Match to the catalog to fill in products and pricing.`)
   }
 
   const handleAiSuggest = async () => {
-    if (!order?.store_id) {
-      setNotice('Pick a store first so I can suggest products it carries.')
-      return
-    }
     if (items.length === 0) {
-      setNotice('Add or seed at least one line first so there is something to price.')
+      setNotice('Add or seed at least one line first so there is something to map.')
       return
     }
-    const storeName = stores.find((s) => s.id === order.store_id)?.name || 'your store'
-    setNotice(`Filling in products and pricing from ${storeName}…`)
-    trackMaterials('ai_suggest_requested', {
+    setNotice('Matching your lines to the catalog…')
+    trackMaterials('ai_map_requested', {
       companyId: order.company_id,
       entityId: order.id,
-      storeId: order.store_id,
-      store_name: storeName,
+      storeId: order.store_id || null,
       line_count: items.length,
     })
     const r = await aiSuggest()
     if (!r || r.error) {
-      setNotice(`Couldn't fetch suggestions right now — you can enter products and costs by hand.${r?.error ? ` (${r.error})` : ''}`)
+      setNotice(`Couldn't map to the catalog right now — you can enter products and costs by hand.${r?.error ? ` (${r.error})` : ''}`)
     } else {
-      trackMaterials('ai_suggest_completed', {
+      trackMaterials('ai_map_completed', {
         companyId: order.company_id,
         entityId: order.id,
-        storeId: order.store_id,
-        store_name: storeName,
-        lines_filled: r.filled,
-        lines_added: r.added,
+        storeId: order.store_id || null,
+        mapped: r.mapped,
+        additions: r.additions,
+        not_in_catalog: r.notInCatalog,
       })
-      setNotice(`Nice fetch — ${r.filled} product pick${r.filled === 1 ? '' : 's'} from ${storeName}${r.added ? ` plus ${r.added} extra${r.added === 1 ? '' : 's'}` : ''}. Costs are estimates, so double-check before buying.`)
+      const addNote = r.additions ? `, added ${r.additions} suppl${r.additions === 1 ? 'y' : 'ies'}` : ''
+      const missNote = r.notInCatalog ? `, ${r.notInCatalog} not in catalog` : ''
+      setNotice(`Mapped ${r.mapped} line${r.mapped === 1 ? '' : 's'} to the catalog${addNote}${missNote}. Prices come from the catalog — set My Price on the Pricing page to override.`)
     }
   }
 
@@ -347,10 +351,10 @@ export default function MaterialOrderBuilderPage() {
                 onClick={handleAiSuggest}
                 onFocus={() => setShowAiTip(true)}
                 onBlur={() => setShowAiTip(false)}
-                disabled={aiSuggesting || !order?.store_id || items.length === 0}
-                style={{ ...secondaryBtn, opacity: (aiSuggesting || !order?.store_id || items.length === 0) ? 0.6 : 1, cursor: (aiSuggesting || !order?.store_id || items.length === 0) ? 'default' : 'pointer' }}
+                disabled={aiSuggesting || items.length === 0}
+                style={{ ...secondaryBtn, opacity: (aiSuggesting || items.length === 0) ? 0.6 : 1, cursor: (aiSuggesting || items.length === 0) ? 'default' : 'pointer' }}
               >
-                {aiSuggesting ? 'Filling…' : 'Suggest products & pricing'}
+                {aiSuggesting ? 'Matching…' : 'Match to catalog'}
               </button>
               {showAiTip && (
                 <span
@@ -362,7 +366,7 @@ export default function MaterialOrderBuilderPage() {
                     borderRadius: 'var(--radius-sm)', boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
                   }}
                 >
-                  Suggests Premium/Standard/Commercial products carried at your selected store, with estimated costs. Costs are estimates — confirm before you buy.
+                  Matches each line to a catalog item and fills Premium/Standard/Commercial products and catalog prices. Catalog prices are estimates — set My Price on the Pricing page to override.
                 </span>
               )}
             </span>
@@ -385,7 +389,7 @@ export default function MaterialOrderBuilderPage() {
           <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 12 }}>{notice}</div>
         )}
 
-        <MaterialLineItemsTable items={items} onUpdate={updateItem} onRemove={removeItem} readOnly={!isAdmin} />
+        <MaterialLineItemsTable items={items} onUpdate={updateItem} onRemove={removeItem} readOnly={!isAdmin} overrideMap={overrideMap} />
 
         <div style={{ marginTop: 28, borderTop: '1px solid var(--color-border)', paddingTop: 20 }}>
           <h3 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 14px' }}>Order summary</h3>
@@ -426,8 +430,11 @@ export default function MaterialOrderBuilderPage() {
               )
             })}
           </div>
-          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 18px' }}>
+          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 6px' }}>
             Estimated totals — verify final price and availability with the retailer.
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 18px' }}>
+            {maxPriceAsOf ? `Catalog prices as of ${maxPriceAsOf}, estimates only. My Price applies where you've set it.` : 'Catalog prices are estimates only. My Price applies where you’ve set it.'}
           </p>
 
           {!selectedStore && (

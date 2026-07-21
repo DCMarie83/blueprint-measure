@@ -26,6 +26,7 @@ import OverviewSection from './pages/admin/OverviewSection'
 import CompaniesSection from './pages/admin/CompaniesSection'
 import UsersSection from './pages/admin/UsersSection'
 import PlansSection from './pages/admin/PlansSection'
+import MaterialsCatalogSection from './pages/admin/MaterialsCatalogSection'
 import TestLogsSection from './pages/admin/TestLogsSection'
 import FeedbackSection from './pages/admin/FeedbackSection'
 import ErrorsSection from './pages/admin/ErrorsSection'
@@ -469,6 +470,7 @@ export default function App() {
         <Route path="users" element={<UsersSection />} />
         <Route path="users/:userId" element={<UserDetailPage />} />
         <Route path="plans" element={<PlansSection />} />
+        <Route path="materials-catalog" element={<MaterialsCatalogSection />} />
         <Route path="test-logs" element={<TestLogsSection />} />
         <Route path="feedback" element={<FeedbackSection />} />
         <Route path="errors" element={<ErrorsSection />} />

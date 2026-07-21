@@ -4,12 +4,20 @@ import AppHeader from '../components/AppHeader'
 import Modal from '../components/ui/Modal'
 import { usePricingCategories } from '../hooks/usePricingCategories'
 import { usePricingItems } from '../hooks/usePricingItems'
+import MaterialsPricingTab from '../components/materials/MaterialsPricingTab'
 import styles from './PricingPage.module.css'
+
+const tabBtn = (active) => ({
+  padding: '8px 16px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+  border: 'none', borderBottom: active ? '2px solid var(--color-primary)' : '2px solid transparent',
+  background: 'none', color: active ? 'var(--color-text, #1b2426)' : 'var(--color-text-muted)',
+})
 
 export default function PricingPage() {
   const { categories, loading: catLoading, createCategory, deleteCategory } = usePricingCategories()
   const { items, loading: itemLoading, createItem, deleteItem } = usePricingItems()
 
+  const [tab, setTab] = useState('estimate')
   const [expandedCategories, setExpandedCategories] = useState(new Set())
   const [showAddCategory, setShowAddCategory] = useState(false)
   const [showAddItem, setShowAddItem] = useState(null) // category_id or null
@@ -71,12 +79,21 @@ export default function PricingPage() {
       <main className={styles.main}>
         <div className={styles.pageHeader}>
           <h1 className={styles.title}>Pricing Library</h1>
-          <button className={styles.newBtn} onClick={() => setShowAddCategory(true)}>
-            <Plus size={16} /> New Category
-          </button>
+          {tab === 'estimate' && (
+            <button className={styles.newBtn} onClick={() => setShowAddCategory(true)}>
+              <Plus size={16} /> New Category
+            </button>
+          )}
         </div>
 
-        {loading ? (
+        <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid var(--color-border)', marginBottom: 20 }}>
+          <button style={tabBtn(tab === 'estimate')} onClick={() => setTab('estimate')}>Estimate Items</button>
+          <button style={tabBtn(tab === 'materials')} onClick={() => setTab('materials')}>Materials</button>
+        </div>
+
+        {tab === 'materials' && <MaterialsPricingTab />}
+
+        {tab === 'estimate' && (loading ? (
           <div className={styles.emptyState}>Loading...</div>
         ) : categories.length === 0 ? (
           <div className={styles.emptyState}>
@@ -131,7 +148,7 @@ export default function PricingPage() {
               </div>
             )
           })
-        )}
+        ))}
       </main>
 
       {showAddCategory && (

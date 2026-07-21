@@ -1,6 +1,6 @@
 import { NavLink, Outlet, Link } from 'react-router-dom'
 import { LayoutDashboard, Building2, Users, Package, FlaskConical,
-         MessageSquare, AlertTriangle, Settings, GraduationCap, Compass, Flag, Eye } from 'lucide-react'
+         MessageSquare, AlertTriangle, Settings, GraduationCap, Compass, Flag, Eye, PaintRoller } from 'lucide-react'
 import { BRAND } from '../../lib/config'
 import Logo from '../../components/brand/Logo'
 import UserMenu from '../../components/UserMenu'
@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { to: '/admin/companies',  label: 'Companies',       icon: Building2 },
   { to: '/admin/users',      label: 'Users',           icon: Users },
   { to: '/admin/plans',      label: 'Plans',           icon: Package },
+  { to: '/admin/materials-catalog', label: 'Materials Catalog', icon: PaintRoller },
   { to: '/admin/test-logs',  label: 'Test Logs',       icon: FlaskConical },
   { to: '/admin/feedback',   label: 'Beta Feedback',   icon: MessageSquare },
   { to: '/admin/errors',     label: 'System Errors',   icon: AlertTriangle },

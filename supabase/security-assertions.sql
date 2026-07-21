@@ -320,6 +320,24 @@ a11 AS (
            ), ''),
            'all graded columns + coats present, no legacy columns'
          )::text
+),
+
+-- ── A12 ────────────────────────────────────────────────────────────
+-- Stage 2 provenance: each material line records which catalog row (per
+-- grade) it resolved from. All three columns must exist, else the resolution
+-- layer's writes silently drop and My-Price attribution breaks.
+a12_missing AS (
+  SELECT want.c::text AS col
+  FROM (VALUES ('catalog_item_premium_id'), ('catalog_item_standard_id'), ('catalog_item_commercial_id')) AS want(c)
+  WHERE NOT EXISTS (SELECT 1 FROM information_schema.columns
+                    WHERE table_schema = 'public' AND table_name = 'material_order_items' AND column_name = want.c)
+),
+a12 AS (
+  SELECT 'A12'::text,
+         'material_order_items carries the three catalog_item_*_id provenance columns'::text,
+         CASE WHEN (SELECT count(*) FROM a12_missing) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
+         coalesce('MISSING: ' || (SELECT string_agg(col, ', ' ORDER BY col) FROM a12_missing),
+                  'all three provenance columns present')::text
 )
 
 SELECT * FROM a1
@@ -333,4 +351,5 @@ UNION ALL SELECT * FROM a8
 UNION ALL SELECT * FROM a9
 UNION ALL SELECT * FROM a10
 UNION ALL SELECT * FROM a11
+UNION ALL SELECT * FROM a12
 ORDER BY id;
