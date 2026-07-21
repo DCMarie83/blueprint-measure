@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useImpersonation } from '../context/ImpersonationContext'
 import { useCompanyPlan } from '../lib/plans'
 import { supabase } from '../lib/supabase'
 import { RECURLY_PUBLIC_KEY } from '../lib/config'
@@ -56,6 +57,7 @@ const INPUT_STYLE = {
 
 export default function RecurlyCheckout() {
   const { company, refreshCompany } = useAuth()
+  const { isImpersonating } = useImpersonation()
   const companyPlan = useCompanyPlan(company)
   const navigate = useNavigate()
   const { ready: recurlyReady, failed: recurlyFailed } = useRecurlyScript()
@@ -98,6 +100,11 @@ export default function RecurlyCheckout() {
   }, [cardMounted, recurlyFailed])
 
   const callCheckout = useCallback(async (billingToken, threeDSResult) => {
+    if (isImpersonating) {
+      setStatus('error')
+      setMessage('Billing actions are disabled while impersonating a tenant.')
+      return
+    }
     setStatus('submitting')
     setMessage('Setting up your subscription...')
     try {
@@ -127,7 +134,7 @@ export default function RecurlyCheckout() {
       setStatus('error')
       setMessage(err.message)
     }
-  }, [company?.id, navigate, refreshCompany])
+  }, [company?.id, navigate, refreshCompany, isImpersonating])
 
   function handle3DS(actionTokenId, billingToken) {
     setStatus('3ds')

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useImpersonation } from '../context/ImpersonationContext'
 import { usePlan } from '../lib/plans'
 import { resolveEntitlements } from '../lib/entitlements'
 import AppHeader from '../components/AppHeader'
@@ -11,6 +12,7 @@ import styles from './TeamPage.module.css'
 
 export default function TeamPage() {
   const { user, company } = useAuth()
+  const { isImpersonating } = useImpersonation()
   const navigate = useNavigate()
   const [teamMembers, setTeamMembers] = useState([])
   const [companyName, setCompanyName] = useState('')
@@ -124,6 +126,10 @@ export default function TeamPage() {
   }
 
   async function handleSeatRequest() {
+    if (isImpersonating) {
+      alert('Billing actions are disabled while impersonating a tenant.')
+      return
+    }
     setRequestingSeats(true)
     try {
       const { data, error } = await supabase.functions.invoke('request-seats')

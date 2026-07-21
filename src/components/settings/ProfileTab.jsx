@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
+import { useImpersonation } from '../../context/ImpersonationContext'
 import { useDateFormat } from '../../hooks/useDateFormat'
 import { useCompanyPlan } from '../../lib/plans'
 import styles from '../../pages/AccountPage.module.css'
@@ -14,6 +15,7 @@ const ROLE_LABELS = {
 
 export default function ProfileTab() {
   const { user } = useAuth()
+  const { isImpersonating } = useImpersonation()
   const navigate = useNavigate()
   const { formatDate, formatDateTime } = useDateFormat()
 
@@ -151,6 +153,11 @@ export default function ProfileTab() {
   }
 
   async function handleCancelSubscription() {
+    if (isImpersonating) {
+      setCancelToast('Billing actions are disabled while impersonating a tenant.')
+      setTimeout(() => setCancelToast(''), 5000)
+      return
+    }
     setCancelling(true)
     try {
       const { data, error } = await supabase.functions.invoke('recurly-cancel', {
@@ -321,6 +328,11 @@ export default function ProfileTab() {
                 ) : (
                   <button
                     onClick={async () => {
+                      if (isImpersonating) {
+                        setCancelToast('Billing actions are disabled while impersonating a tenant.')
+                        setTimeout(() => setCancelToast(''), 5000)
+                        return
+                      }
                       setReactivating(true)
                       try {
                         const { data, error } = await supabase.functions.invoke('recurly-reactivate', {

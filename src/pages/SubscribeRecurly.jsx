@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useImpersonation } from '../context/ImpersonationContext'
 import { supabase } from '../lib/supabase'
 import { RECURLY_PUBLIC_KEY } from '../lib/config'
 import { usePlan } from '../lib/plans'
@@ -22,6 +23,7 @@ function useRecurlyScript() {
 
 export default function SubscribeRecurly() {
   const { user, company } = useAuth()
+  const { isImpersonating } = useImpersonation()
   const rawPlan = usePlan(company?.plan_key)
   const entitlements = company ? resolveEntitlements(company, rawPlan) : null
   const recurlyReady = useRecurlyScript()
@@ -59,6 +61,11 @@ export default function SubscribeRecurly() {
   }, [recurlyReady, cardMounted, company])
 
   const callCheckout = useCallback(async (billingToken, threeDSResult) => {
+    if (isImpersonating) {
+      setStatus('error')
+      setMessage('Billing actions are disabled while impersonating a tenant.')
+      return
+    }
     setStatus('submitting')
     setMessage('Processing payment...')
     try {
@@ -87,7 +94,7 @@ export default function SubscribeRecurly() {
       setStatus('error')
       setMessage(err.message)
     }
-  }, [company?.id])
+  }, [company?.id, isImpersonating])
 
   function handle3DS(actionTokenId, billingToken) {
     setStatus('3ds')

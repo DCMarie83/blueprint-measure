@@ -83,6 +83,10 @@ export default function SubscribePage() {
   const priceSuffix = term === 'yearly' ? '/yr' : '/mo'
 
   async function handleSubscribe() {
+    if (isImpersonating) {
+      setErr('Billing actions are disabled while impersonating a tenant.')
+      return
+    }
     setLoading(true)
     setErr(null)
     const { data, error } = await supabase.functions.invoke('create-checkout', { body: { term } })

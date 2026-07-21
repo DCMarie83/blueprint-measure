@@ -50,7 +50,12 @@ Deno.serve(async (req) => {
     if (cmErr || !cm) return json({ ok: false, error: 'Crew member not found' }, 404)
 
     // 5. Verify caller is super admin or contractor_admin in same company
-    const isSuperAdmin = user.email === 'main@ngautomationhub.com'
+    const { data: superAdminRow } = await adminClient
+      .from('super_admins')
+      .select('email')
+      .eq('email', user.email)
+      .maybeSingle()
+    const isSuperAdmin = !!superAdminRow
     if (!isSuperAdmin) {
       const { data: callerProfile } = await adminClient
         .from('user_profiles')

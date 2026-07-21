@@ -81,22 +81,24 @@ Deno.serve(async (req) => {
       .single()
     if (projErr || !project) return json({ error: 'Project not found' }, 404)
 
-    // 5. Verify caller is in the same company
+    // 5. Verify caller is in the same company. A verified super admin bypasses
+    //    the company match (so impersonated sends succeed); everyone else stays
+    //    strictly scoped to their own company.
     const { data: callerProfile } = await adminClient
       .from('user_profiles')
       .select('company_id, role')
       .eq('user_id', user.id)
       .single()
-    if (!callerProfile || callerProfile.company_id !== invoice.company_id) {
-      return json({ error: 'Forbidden' }, 403)
-    }
     const { data: superAdminRow } = await adminClient
       .from('super_admins')
       .select('email')
       .eq('email', user.email)
       .maybeSingle()
     const isSuperAdmin = !!superAdminRow
-    if (callerProfile.role !== 'contractor_admin' && !isSuperAdmin) {
+    if (!isSuperAdmin && (!callerProfile || callerProfile.company_id !== invoice.company_id)) {
+      return json({ error: 'Forbidden' }, 403)
+    }
+    if (callerProfile?.role !== 'contractor_admin' && !isSuperAdmin) {
       return json({ error: 'Admin access required' }, 403)
     }
 
