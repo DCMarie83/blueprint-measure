@@ -437,6 +437,43 @@ a15 AS (
          CASE WHEN (SELECT count(*) FROM a15_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
          coalesce('PROBLEMS: ' || (SELECT string_agg(problem, ', ') FROM a15_bad),
                   'status column and check present')::text
+),
+
+-- ── A16 ────────────────────────────────────────────────────────────
+-- lifetime_value writer: cash-collected recompute is installed, pinned, and
+-- bound to both the payments ledger and the invoice aggregate path; the
+-- legacy accepted-estimate writer stays dead.
+a16_bad AS (
+  SELECT 'missing-trigger:invoice_payments'::text AS problem
+  WHERE NOT EXISTS (SELECT 1 FROM information_schema.triggers
+                    WHERE trigger_schema = 'public'
+                      AND event_object_table = 'invoice_payments'
+                      AND trigger_name = 'trg_ltv_invoice_payments')
+  UNION ALL
+  SELECT 'missing-trigger:invoices'
+  WHERE NOT EXISTS (SELECT 1 FROM information_schema.triggers
+                    WHERE trigger_schema = 'public'
+                      AND event_object_table = 'invoices'
+                      AND trigger_name = 'trg_ltv_invoices')
+  UNION ALL
+  SELECT 'missing-or-unpinned:recompute_client_lifetime_value'
+  WHERE NOT EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname = 'recompute_client_lifetime_value'
+      AND EXISTS (SELECT 1 FROM unnest(coalesce(p.proconfig, '{}')) cfg
+                  WHERE cfg LIKE 'search_path=%'))
+  UNION ALL
+  SELECT 'legacy-writer-still-present'
+  WHERE EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname = 'recalculate_client_lifetime_value')
+),
+a16 AS (
+  SELECT 'A16'::text,
+         'lifetime_value: pinned cash recompute bound to invoice_payments and invoices; legacy writer gone'::text,
+         CASE WHEN (SELECT count(*) FROM a16_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
+         coalesce('PROBLEMS: ' || (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a16_bad),
+                  'cash writer installed and pinned; legacy writer dead')::text
 )
 
 SELECT * FROM a1
@@ -454,4 +491,5 @@ UNION ALL SELECT * FROM a12
 UNION ALL SELECT * FROM a13
 UNION ALL SELECT * FROM a14
 UNION ALL SELECT * FROM a15
+UNION ALL SELECT * FROM a16
 ORDER BY id;
