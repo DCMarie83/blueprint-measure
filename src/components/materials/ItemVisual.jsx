@@ -11,6 +11,39 @@ const ICON_MAP = {
   'caulk-paintable': Pipette,
 }
 
+// Real category grouping for the editor: taxonomy_slug -> section name. Sections
+// render in CATEGORY_ORDER; anything unmapped or slug-less lands in "Other Items".
+export const CATEGORY_ORDER = [
+  'Paint & Primer',
+  'Prep & Patch',
+  'Masking & Protection',
+  'Application Tools',
+  'Other Items',
+]
+
+const SLUG_CATEGORY = {
+  'paint-wall-interior': 'Paint & Primer',
+  'paint-ceiling-interior': 'Paint & Primer',
+  'primer-interior': 'Paint & Primer',
+  'cleaner-tsp': 'Prep & Patch',
+  'sandpaper-220': 'Prep & Patch',
+  'spackle-lightweight': 'Prep & Patch',
+  'caulk-paintable': 'Prep & Patch',
+  'tape-painters': 'Masking & Protection',
+  'masking-paper': 'Masking & Protection',
+  'plastic-sheeting': 'Masking & Protection',
+  'drop-cloth-canvas': 'Masking & Protection',
+  'roller-cover-38': 'Application Tools',
+  'roller-frame': 'Application Tools',
+  'brush-25-angle': 'Application Tools',
+  'tray-kit': 'Application Tools',
+  'extension-pole': 'Application Tools',
+}
+
+export function categoryForSlug(slug) {
+  return (slug && SLUG_CATEGORY[slug]) || 'Other Items'
+}
+
 function iconFor(slug, rule) {
   if (slug && ICON_MAP[slug]) return ICON_MAP[slug]
   if (rule === 'coverage') return PaintBucket
