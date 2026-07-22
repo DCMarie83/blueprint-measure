@@ -351,7 +351,7 @@ export default function MaterialOrderBuilderPage() {
               Your full list. Edit quantities, coats, and prices per grade.
             </p>
             <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 14px' }}>
-              Product photos are illustrations only. Actual items, sizes, and packaging come from your store.
+              Prices are regional estimates for reference and building your strongest bid. Confirm current pricing with your local store. Product photos are illustrations only.
             </p>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 16 }}>

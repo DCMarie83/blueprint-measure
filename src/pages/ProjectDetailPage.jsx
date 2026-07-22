@@ -190,7 +190,7 @@ export default function ProjectDetailPage() {
             onSave={() => handleSaveField('name')}
             onCancel={() => setEditField(null)}
             onChangeValue={setEditValue}
-            renderDisplay={(val) => <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, display: 'inline' }}>{val}</h1>}
+            renderDisplay={(val) => <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, margin: 0, display: 'inline' }}>{val}</h1>}
           />
           <div style={{ marginTop: 10 }}>
             {linkedClient ? (
@@ -198,7 +198,7 @@ export default function ProjectDetailPage() {
             ) : (
               <>
                 {project.client_name && (
-                  <div style={{ fontSize: 14, color: 'var(--color-text-muted)', marginBottom: 8 }}>
+                  <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', marginBottom: 8 }}>
                     Client: {project.client_name} <span style={{ fontSize: 12, opacity: 0.6 }}>(legacy)</span>
                   </div>
                 )}
@@ -223,7 +223,7 @@ export default function ProjectDetailPage() {
               onSave={() => handleSaveField('address')}
               onCancel={() => setEditField(null)}
               onChangeValue={setEditValue}
-              renderDisplay={(val) => <span style={{ fontSize: 13, color: 'var(--color-text-muted)', opacity: 0.7 }}>{val}</span>}
+              renderDisplay={(val) => <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', opacity: 0.7 }}>{val}</span>}
             />
           </div>
 
@@ -378,7 +378,7 @@ export default function ProjectDetailPage() {
         {/* Materials Orders */}
         <section style={{ marginBottom: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Materials ({materialOrders.length})</h3>
+            <h3 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 'var(--tracking-caps)', color: 'var(--color-text-muted)', margin: 0 }}>Materials ({materialOrders.length})</h3>
             {isAdmin && (
               <button
                 onClick={async () => {
@@ -474,7 +474,7 @@ export default function ProjectDetailPage() {
         {/* Estimates */}
         <section style={{ marginBottom: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Estimates ({estimates.length})</h3>
+            <h3 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 'var(--tracking-caps)', color: 'var(--color-text-muted)', margin: 0 }}>Estimates ({estimates.length})</h3>
             {isAdmin && (
               <button
                 onClick={() => setShowEstimateFork(true)}
@@ -544,7 +544,7 @@ export default function ProjectDetailPage() {
                       <span style={{ fontSize: 11, color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>{est.estimate_number}</span>
                     )}
                   </div>
-                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)', fontVariantNumeric: 'tabular-nums' }}>
                     ${Number(getDisplayTotal(est)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </span>
                 </div>

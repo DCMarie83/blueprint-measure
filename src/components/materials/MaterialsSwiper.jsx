@@ -184,7 +184,7 @@ export default function MaterialsSwiper({ lines, grade, onGradeChange, storeName
         Swipe right to keep, left to remove. Arrow keys work too.
       </p>
       <p style={{ fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center', margin: '0 0 14px' }}>
-        Product photos are illustrations only. Actual items, sizes, and packaging come from your store.
+        Prices are regional estimates for reference and building your strongest bid. Confirm current pricing with your local store. Product photos are illustrations only.
       </p>
 
       {/* Deck */}

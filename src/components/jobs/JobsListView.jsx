@@ -3,7 +3,7 @@ import { useClients } from '../../hooks/useClients'
 import { timeAgo } from '../../utils/timeAgo'
 import styles from './JobsListView.module.css'
 
-const DOT_COLORS = [
+export const DOT_COLORS = [
   'var(--color-primary)',
   '#10b981',
   '#60a5fa',

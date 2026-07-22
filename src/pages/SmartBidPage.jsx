@@ -618,7 +618,7 @@ export default function SmartBidPage() {
                 </div>
                 <div style={{ marginTop: 12, fontWeight: 700 }}>Estimated materials ({grade}): {money(materialsTotal)}</div>
                 <div style={{ marginTop: 6, fontSize: 12, color: 'var(--color-text-muted)' }}>Edit this list anytime in Materials.</div>
-                <div style={{ marginTop: 6, fontSize: 12, color: 'var(--color-text-muted)' }}>Product photos are illustrations only. Actual items, sizes, and packaging come from your store.</div>
+                <div style={{ marginTop: 6, fontSize: 12, color: 'var(--color-text-muted)' }}>Prices are regional estimates for reference and building your strongest bid. Confirm current pricing with your local store. Product photos are illustrations only.</div>
               </div>
             )}
 
@@ -642,7 +642,7 @@ export default function SmartBidPage() {
                   ) : (
                     <>
                       <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 4px' }}>Check what you want included. Your materials cost updates live.</p>
-                      <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 10px' }}>Product photos are illustrations only. Actual items, sizes, and packaging come from your store.</p>
+                      <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 10px' }}>Prices are regional estimates for reference and building your strongest bid. Confirm current pricing with your local store. Product photos are illustrations only.</p>
                       <div style={{ overflowX: 'auto' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                           <thead><tr style={{ textAlign: 'left', color: 'var(--color-text-muted)', fontSize: 12 }}>

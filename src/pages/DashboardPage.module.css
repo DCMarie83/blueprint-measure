@@ -157,8 +157,11 @@
 }
 
 .dashSectionTitle {
-  font-size: 16px;
+  font-size: 11px;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--color-text-muted);
   margin: 0;
 }
 
@@ -185,16 +188,17 @@
 
 .card {
   background: var(--color-surface);
-  border: 1px solid var(--color-button-border);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  transition: border-color 0.15s, transform 0.15s;
+  box-shadow: var(--shadow-card);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
   cursor: pointer;
 }
 
 .card:hover {
-  border-color: var(--color-primary);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
 .cardMain {
@@ -202,14 +206,14 @@
 }
 
 .cardTitle {
-  font-size: 15px;
+  font-size: var(--text-base);
   font-weight: 600;
   margin-bottom: 2px;
   color: var(--color-text);
 }
 
 .cardClient {
-  font-size: 13px;
+  font-size: var(--text-sm);
   color: var(--color-text-muted);
   margin-bottom: 10px;
 }
@@ -217,15 +221,17 @@
 .cardMeta {
   display: flex;
   gap: 12px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--color-text-muted);
   opacity: 0.7;
+  font-variant-numeric: tabular-nums;
 }
 
 .cardDate {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--color-text-muted);
   opacity: 0.7;
+  font-variant-numeric: tabular-nums;
 }
 
 .cardActions {

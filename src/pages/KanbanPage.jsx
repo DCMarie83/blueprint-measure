@@ -12,7 +12,7 @@ import AppHeader from '../components/AppHeader'
 import Modal from '../components/ui/Modal'
 import ViewToggle from '../components/ui/ViewToggle'
 import NewProjectForm from '../components/auth/NewProjectForm'
-import JobsListView from '../components/jobs/JobsListView'
+import JobsListView, { DOT_COLORS } from '../components/jobs/JobsListView'
 import JobsFilterBar from '../components/jobs/JobsFilterBar'
 import { useOpportunities } from '../hooks/useOpportunities'
 import { useProjects } from '../hooks/useProjects'
@@ -37,13 +37,13 @@ function timeAgo(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-function SortableJobCard({ project, columnId }) {
+function SortableJobCard({ project, columnId, accent }) {
   const navigate = useNavigate()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: project.id,
     data: { columnId, project },
   })
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.3 : 1 }
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.3 : 1, borderTop: `3px solid ${accent}` }
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}
@@ -60,6 +60,9 @@ function SortableJobCard({ project, columnId }) {
 
 function DroppableColumn({ column }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id, data: { columnId: column.id } })
+  // Reuse the jobs list-view positional palette so the card top-accent matches
+  // the status dot shown in list view (same map, keyed by column position).
+  const accent = DOT_COLORS[((column.position ?? 0) - 1) % DOT_COLORS.length] || 'var(--color-border)'
   return (
     <div ref={setNodeRef} className={`${styles.column} ${isOver ? styles.columnOver : ''}`}>
       <div className={styles.columnHeader}>
@@ -70,7 +73,7 @@ function DroppableColumn({ column }) {
         <div className={styles.cardList}>
           {column.projects.length === 0 ? (
             <div className={styles.emptyColumn}>Drop a job here</div>
-          ) : column.projects.map(p => <SortableJobCard key={p.id} project={p} columnId={column.id} />)}
+          ) : column.projects.map(p => <SortableJobCard key={p.id} project={p} columnId={column.id} accent={accent} />)}
         </div>
       </SortableContext>
     </div>
