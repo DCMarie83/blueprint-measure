@@ -218,12 +218,15 @@ export function summarizePay(entries, crew) {
         name: e.crew_members?.name || nameLookup[cmId] || '—',
         hours: 0,
         pay: 0,
+        hasMissingRate: false,
       }
     }
     const h = Number(e.hours) || 0
     const entryPay = h * (Number(e.cost_rate) || 0)
     byWorker[cmId].hours += h
     byWorker[cmId].pay += entryPay
+    // Money math unchanged; this only records that some hours priced at $0.
+    if (e.cost_rate == null || !(Number(e.cost_rate) > 0)) byWorker[cmId].hasMissingRate = true
   }
   const rows = Object.values(byWorker)
   for (const r of rows) { r.rate = r.hours > 0 ? r.pay / r.hours : 0 }

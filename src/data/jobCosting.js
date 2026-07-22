@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { materialBuyQuantity } from '../utils/measurements'
+import { unitCostAtGrade } from '../lib/materialsView'
 
 function num(v) { return Number(v) || 0 }
 
@@ -14,12 +15,11 @@ function computeMaterialsCost(orders, itemsByOrder) {
   for (const order of orders) {
     const v = order.selected_variant
     if (!v) { incomplete = true; continue }
-    const field = `cost_${v}`
     const items = itemsByOrder[order.id] ?? []
     for (const it of items) {
-      const c = Number(it[field])
-      if (!c || c < 0) continue
-      cost += materialBuyQuantity(it) * c
+      // Shared standard-grade fallback (same as the estimate margin card):
+      // a line contributes 0 only when unitCostAtGrade resolves to 0.
+      cost += materialBuyQuantity(it) * unitCostAtGrade(it, v)
     }
   }
   return { cost, incomplete }
@@ -43,10 +43,10 @@ export async function getJobCostingRows(companyId, { from, to } = {}) {
   ] = await Promise.all([
     supabase.from('projects').select('id, name, status, client_id, clients(display_name)').eq('company_id', companyId).is('deleted_at', null),
     supabase.from('estimates').select('id, project_id, status, accepted_at, accepted_variant, selected_variant, good_total, better_total, best_total').eq('company_id', companyId).eq('status', 'accepted'),
-    supabase.from('invoices').select('id, project_id, total, status, created_at').eq('company_id', companyId).neq('status', 'void'),
+    supabase.from('invoices').select('id, project_id, total, status, created_at').eq('company_id', companyId).not('status', 'in', '(void,draft)'),
     supabase.from('invoice_payments').select('id, invoice_id, amount, payment_date').eq('company_id', companyId),
     supabase.from('time_entries').select('project_id, hours, cost_rate, work_date').eq('company_id', companyId),
-    supabase.from('material_orders').select('id, project_id, selected_variant').eq('company_id', companyId),
+    supabase.from('material_orders').select('id, project_id, selected_variant, created_at').eq('company_id', companyId),
     supabase.from('material_order_items').select('material_order_id, quantity, coats, unit, overage_pct, cost_premium, cost_standard, cost_commercial').eq('company_id', companyId),
     supabase.from('expenses').select('project_id, amount, expense_date').eq('company_id', companyId),
   ])
@@ -120,6 +120,7 @@ export async function getJobCostingRows(companyId, { from, to } = {}) {
         projInvoices.some(i => inRange(i.created_at)) ||
         projPayments.some(p => inRange(p.payment_date)) ||
         projTimeEntries.some(t => inRange(t.work_date)) ||
+        projOrders.some(o => inRange(o.created_at)) ||
         projExpenses.some(x => inRange(x.expense_date))
       if (!hasActivity) continue
     }
@@ -197,7 +198,7 @@ export async function getJobCostingDetail(companyId, projectId) {
   ] = await Promise.all([
     supabase.from('projects').select('id, name, status, client_id, clients(display_name)').eq('id', projectId).single(),
     supabase.from('estimates').select('id, project_id, status, accepted_at, accepted_variant, selected_variant, good_total, better_total, best_total').eq('project_id', projectId).eq('company_id', companyId).eq('status', 'accepted'),
-    supabase.from('invoices').select('id, project_id, total, status, created_at').eq('project_id', projectId).eq('company_id', companyId).neq('status', 'void'),
+    supabase.from('invoices').select('id, project_id, total, status, created_at').eq('project_id', projectId).eq('company_id', companyId).not('status', 'in', '(void,draft)'),
     supabase.from('time_entries').select('project_id, hours, cost_rate, crew_member_id, crew_members(name)').eq('project_id', projectId).eq('company_id', companyId),
     supabase.from('material_orders').select('id, project_id, title, selected_variant, stores(name)').eq('project_id', projectId).eq('company_id', companyId),
     supabase.from('material_order_items').select('material_order_id, quantity, coats, unit, overage_pct, cost_premium, cost_standard, cost_commercial').eq('company_id', companyId),
@@ -255,14 +256,12 @@ export async function getJobCostingDetail(companyId, projectId) {
   // Materials breakdown per order
   const materialsBreakdown = projOrders.map(order => {
     const v = order.selected_variant
-    const field = v ? `cost_${v}` : null
     const items = moiByOrder[order.id] ?? []
     let orderCost = 0
-    if (field) {
+    if (v) {
+      // Same standard-grade fallback as computeMaterialsCost.
       for (const it of items) {
-        const c = Number(it[field])
-        if (!c || c < 0) continue
-        orderCost += materialBuyQuantity(it) * c
+        orderCost += materialBuyQuantity(it) * unitCostAtGrade(it, v)
       }
     }
     return { title: order.title || 'Untitled', store: order.stores?.name || null, selectedVariant: v, cost: orderCost }
@@ -290,5 +289,100 @@ export async function getJobCostingDetail(companyId, projectId) {
     laborBreakdown,
     materialsBreakdown,
     expensesBreakdown: expenseRows ?? [],
+  }
+}
+
+// ── Period Summary (period-true P&L roll-up) ──────────────────────────────
+// Every figure is CLIPPED to [from, to] by its own source date column, reusing
+// the same per-source formulas as the portfolio (incl. the materials fallback).
+// Date columns: quoted=estimates.accepted_at, billed/materials=created_at,
+// collected=invoice_payments.payment_date, labor=time_entries.work_date,
+// expenses=expenses.expense_date.
+export async function getPeriodSummary(companyId, { from, to } = {}) {
+  const empty = { quoted: 0, billed: 0, collected: 0, laborCost: 0, materialsCost: 0, expensesCost: 0, totalCost: 0, jobCount: 0, hasIncomplete: false }
+  if (!companyId) return empty
+
+  const clip = (q, col) => {
+    if (from) q = q.gte(col, from)
+    if (to) q = q.lte(col, to)
+    return q
+  }
+
+  const [
+    { data: estimates },
+    { data: invoicesInRange },
+    { data: invoiceMeta },
+    { data: payments },
+    { data: timeEntries },
+    { data: materialOrders },
+    { data: materialItems },
+    { data: expenses },
+  ] = await Promise.all([
+    clip(supabase.from('estimates').select('project_id, accepted_at, accepted_variant, selected_variant, good_total, better_total, best_total').eq('company_id', companyId).eq('status', 'accepted'), 'accepted_at'),
+    clip(supabase.from('invoices').select('project_id, total, status, created_at').eq('company_id', companyId).not('status', 'in', '(void,draft)'), 'created_at'),
+    supabase.from('invoices').select('id, status, project_id').eq('company_id', companyId),
+    clip(supabase.from('invoice_payments').select('invoice_id, amount, payment_date').eq('company_id', companyId), 'payment_date'),
+    clip(supabase.from('time_entries').select('project_id, hours, cost_rate, work_date').eq('company_id', companyId), 'work_date'),
+    clip(supabase.from('material_orders').select('id, project_id, selected_variant, created_at').eq('company_id', companyId), 'created_at'),
+    supabase.from('material_order_items').select('material_order_id, quantity, coats, unit, overage_pct, cost_premium, cost_standard, cost_commercial').eq('company_id', companyId),
+    clip(supabase.from('expenses').select('project_id, amount, expense_date').eq('company_id', companyId), 'expense_date'),
+  ])
+
+  const projectSet = new Set()
+  const touch = (pid) => { if (pid) projectSet.add(pid) }
+
+  // Quoted: sum of accepted totals for estimates accepted within the window.
+  let quoted = 0
+  for (const e of (estimates ?? [])) { quoted += getAcceptedTotal(e); touch(e.project_id) }
+
+  // Billed: non-void / non-draft invoices issued (created) within the window.
+  let billed = 0
+  for (const i of (invoicesInRange ?? [])) { billed += num(i.total); touch(i.project_id) }
+
+  // Void-invoice set + invoice→project map (all-time meta, used to attribute and
+  // filter payments, which carry no project or status of their own).
+  const voidIds = new Set()
+  const invProject = {}
+  for (const im of (invoiceMeta ?? [])) { invProject[im.id] = im.project_id; if (im.status === 'void') voidIds.add(im.id) }
+
+  // Collected: payments in-window whose invoice isn't void.
+  let collected = 0
+  for (const p of (payments ?? [])) {
+    if (voidIds.has(p.invoice_id)) continue
+    collected += num(p.amount)
+    touch(invProject[p.invoice_id])
+  }
+
+  // Labor: time entries worked in-window; per-entry cost_rate snapshot.
+  let laborCost = 0
+  let hasIncomplete = false
+  for (const te of (timeEntries ?? [])) {
+    if (te.cost_rate == null) hasIncomplete = true
+    laborCost += num(te.hours) * num(te.cost_rate)
+    touch(te.project_id)
+  }
+
+  // Materials: orders created in-window, priced with the shared fallback.
+  const inRangeOrders = materialOrders ?? []
+  for (const o of inRangeOrders) touch(o.project_id)
+  const orderIds = new Set(inRangeOrders.map(o => o.id))
+  const moiByOrder = {}
+  for (const moi of (materialItems ?? [])) {
+    if (!orderIds.has(moi.material_order_id)) continue
+    ;(moiByOrder[moi.material_order_id] ??= []).push(moi)
+  }
+  const { cost: materialsCost, incomplete: matIncomplete } = computeMaterialsCost(inRangeOrders, moiByOrder)
+  if (matIncomplete) hasIncomplete = true
+
+  // Expenses in-window.
+  let expensesCost = 0
+  for (const x of (expenses ?? [])) { expensesCost += num(x.amount); touch(x.project_id) }
+
+  return {
+    quoted, billed, collected,
+    laborCost, materialsCost, expensesCost,
+    totalCost: laborCost + materialsCost + expensesCost,
+    jobCount: projectSet.size,
+    hasIncomplete,
   }
 }

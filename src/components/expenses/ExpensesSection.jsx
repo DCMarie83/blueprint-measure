@@ -182,6 +182,9 @@ export default function ExpensesSection({ projectId, companyId, isAdmin }) {
               />
             </div>
           </div>
+          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
+            Materials orders and time entries already count toward job cost. Use expenses for costs outside those.
+          </p>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 140 }}>
               <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-muted)' }}>Vendor</label>

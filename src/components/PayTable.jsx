@@ -9,6 +9,7 @@ export default function PayTable({ rows, className, onDownloadStatement, downloa
   if (rows.length === 0) return null
 
   const showActions = !!onDownloadStatement
+  const anyMissingRate = rows.some(r => r.hasMissingRate)
 
   return (
     <div className={`${styles.wrap} ${className || ''}`}>
@@ -17,7 +18,7 @@ export default function PayTable({ rows, className, onDownloadStatement, downloa
           <tr>
             <th className={styles.th}>Worker</th>
             <th className={styles.th} style={{ textAlign: 'right' }}>Hours</th>
-            <th className={styles.th} style={{ textAlign: 'right' }}>Rate ($/hr)</th>
+            <th className={styles.th} style={{ textAlign: 'right' }}>Avg Rate ($/hr)</th>
             <th className={styles.th} style={{ textAlign: 'right' }}>Pay</th>
             {showActions && <th className={styles.th} style={{ textAlign: 'right', width: 90 }}></th>}
           </tr>
@@ -32,7 +33,12 @@ export default function PayTable({ rows, className, onDownloadStatement, downloa
                   <span className={styles.noRate}>$0.00 <small>no rate set</small></span>
                 )}
               </td>
-              <td className={styles.td} style={{ textAlign: 'right', fontWeight: 600 }}>{fmtUSD.format(r.pay)}</td>
+              <td className={styles.td} style={{ textAlign: 'right', fontWeight: 600 }}>
+                {fmtUSD.format(r.pay)}
+                {r.hasMissingRate && (
+                  <span title="Some entries are missing a cost rate. Pay may be understated." style={{ marginLeft: 4, color: 'var(--color-warning, #f59e0b)' }}>⚠︎</span>
+                )}
+              </td>
               {showActions && (
                 <td className={styles.td} style={{ textAlign: 'right' }}>
                   <button
@@ -64,6 +70,11 @@ export default function PayTable({ rows, className, onDownloadStatement, downloa
           </tr>
         </tfoot>
       </table>
+      {anyMissingRate && (
+        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: '8px 0 0' }}>
+          Workers marked with a warning have entries missing a cost rate.
+        </p>
+      )}
     </div>
   )
 }

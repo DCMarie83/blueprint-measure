@@ -4,7 +4,7 @@ import AppHeader from '../components/AppHeader'
 import { useAuth } from '../context/AuthContext'
 import { useEffectiveCompany } from '../hooks/useEffectiveCompany'
 import { getPayReport, getPayStatementData } from '../data/timeTracking'
-import { getJobCostingRows, getJobCostingDetail } from '../data/jobCosting'
+import { getJobCostingRows, getJobCostingDetail, getPeriodSummary } from '../data/jobCosting'
 import { generatePayStatementPDF } from '../lib/generatePayStatementPDF'
 import { generateJobCostingPDF } from '../lib/generateJobCostingPDF'
 import { exportJobCostingXLSX } from '../utils/jobCostingXLSX'
@@ -77,6 +77,7 @@ export default function ReportsPage() {
 
   // Job costing state
   const [costingRows, setCostingRows] = useState([])
+  const [periodSummary, setPeriodSummary] = useState(null)
   const [costingLoading, setCostingLoading] = useState(false)
   const [sortCol, setSortCol] = useState('actualMargin')
   const [sortAsc, setSortAsc] = useState(true)
@@ -108,8 +109,11 @@ export default function ReportsPage() {
     setCostingLoading(true)
     ;(async () => {
       try {
-        const data = await getJobCostingRows(companyId, { from, to })
-        if (!cancelled) setCostingRows(data)
+        const [rows, summary] = await Promise.all([
+          getJobCostingRows(companyId, { from, to }),
+          getPeriodSummary(companyId, { from, to }),
+        ])
+        if (!cancelled) { setCostingRows(rows); setPeriodSummary(summary) }
       } catch (err) { console.error('Job costing:', err) }
       finally { if (!cancelled) setCostingLoading(false) }
     })()
@@ -269,7 +273,7 @@ export default function ReportsPage() {
                 onSelectProject={setDetailProjectId}
               />
             ) : (
-              <PeriodSummary rows={costingRows} loading={costingLoading} />
+              <PeriodSummary summary={periodSummary} loading={costingLoading} />
             )}
           </>
         )}
@@ -365,6 +369,9 @@ function CostingPortfolio({ rows, loading, sortCol, sortAsc, onSort, onSelectPro
           </div>
         ))}
       </div>
+      <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: '0 0 16px' }}>
+        Job-to-date figures for jobs with activity in the selected range.
+      </p>
 
       <div className={styles.tableWrap}>
         <table className={styles.table}>
@@ -417,25 +424,21 @@ function CostingPortfolio({ rows, loading, sortCol, sortAsc, onSort, onSelectPro
 
 // ── Period Summary (P&L roll-up) ────────────────────────────────────────
 
-function PeriodSummary({ rows, loading }) {
-  if (loading) return <div className={styles.empty}>Loading...</div>
-  if (rows.length === 0) return <div className={styles.empty}>No jobs with financial activity in this period.</div>
+function PeriodSummary({ summary, loading }) {
+  if (loading || !summary) return <div className={styles.empty}>Loading...</div>
+  if (summary.jobCount === 0) return <div className={styles.empty}>No jobs with financial activity in this period.</div>
 
-  const totQuoted = rows.reduce((s, r) => s + r.quoted, 0)
-  const totBilled = rows.reduce((s, r) => s + r.billed, 0)
-  const totCollected = rows.reduce((s, r) => s + r.collected, 0)
-  const totLabor = rows.reduce((s, r) => s + r.laborCost, 0)
-  const totMaterials = rows.reduce((s, r) => s + r.materialsCost, 0)
-  const totExpenses = rows.reduce((s, r) => s + r.expensesCost, 0)
-  const totCost = totLabor + totMaterials + totExpenses
-  const estMargin = totQuoted - totCost
-  const estPct = totQuoted > 0 ? (estMargin / totQuoted) * 100 : null
-  const actMargin = totCollected - totCost
-  const actPct = totCollected > 0 ? (actMargin / totCollected) * 100 : null
-  const hasIncomplete = rows.some(r => r.hasIncompleteData)
+  const { quoted, billed, collected, laborCost, materialsCost, expensesCost, totalCost, jobCount, hasIncomplete } = summary
+  const estMargin = quoted - totalCost
+  const estPct = quoted > 0 ? (estMargin / quoted) * 100 : null
+  const actMargin = collected - totalCost
+  const actPct = collected > 0 ? (actMargin / collected) * 100 : null
 
   return (
     <div style={{ maxWidth: 560 }}>
+      <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
+        Figures within the selected date range.
+      </p>
       {hasIncomplete && (
         <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 'var(--radius)', padding: '10px 16px', marginBottom: 16, fontSize: 13, color: 'var(--color-warning, #f59e0b)' }}>
           Some jobs have incomplete cost data — totals may be understated.
@@ -444,18 +447,18 @@ function PeriodSummary({ rows, loading }) {
 
       {/* Revenue */}
       <SectionCard title="Revenue">
-        <PLRow label="Quoted" value={totQuoted} />
-        <PLRow label="Billed" value={totBilled} />
-        <PLRow label="Collected" value={totCollected} bold />
+        <PLRow label="Quoted" value={quoted} />
+        <PLRow label="Billed" value={billed} />
+        <PLRow label="Collected" value={collected} bold />
       </SectionCard>
 
       {/* Cost */}
       <SectionCard title="Cost">
-        <PLRow label="Labor" value={totLabor} />
-        <PLRow label="Materials" value={totMaterials} />
-        <PLRow label="Expenses" value={totExpenses} />
+        <PLRow label="Labor" value={laborCost} />
+        <PLRow label="Materials" value={materialsCost} />
+        <PLRow label="Expenses" value={expensesCost} />
         <div style={{ borderTop: '1px solid var(--color-border)', marginTop: 8, paddingTop: 8 }}>
-          <PLRow label="Total Cost" value={totCost} bold />
+          <PLRow label="Total Cost" value={totalCost} bold />
         </div>
       </SectionCard>
 
@@ -473,7 +476,7 @@ function PeriodSummary({ rows, loading }) {
         </div>
       </div>
 
-      <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Across {rows.length} job{rows.length !== 1 ? 's' : ''} with activity in this period.</p>
+      <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Across {jobCount} job{jobCount !== 1 ? 's' : ''} with activity in this period.</p>
     </div>
   )
 }
