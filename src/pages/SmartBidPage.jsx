@@ -379,12 +379,13 @@ export default function SmartBidPage() {
       const toInsert = distinct.filter(l => !existing.has(normKey(l.description, l.unit)))
       if (toInsert.length === 0) { setAdoptNotice('Saved 0 rates to your pricing library.'); return }
 
-      // pricing_items.category_id is NOT NULL — attach to the company's first
-      // category, creating a "Market Rates" category if the library is empty.
+      // pricing_items.category_id is NOT NULL — adopted rates always land in the
+      // company's dedicated "Market Rates" category (case-insensitive), created
+      // on demand when it doesn't exist yet, regardless of other categories.
       let categoryId = null
       const { data: cats, error: catSelErr } = await supabase
         .from('pricing_categories').select('id').eq('company_id', companyId)
-        .order('sort_order', { ascending: true }).limit(1)
+        .ilike('name', 'Market Rates').limit(1)
       if (catSelErr) throw catSelErr
       if (cats && cats.length > 0) categoryId = cats[0].id
       else {

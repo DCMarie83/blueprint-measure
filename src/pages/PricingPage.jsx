@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, Fragment } from 'react'
 import { Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import Modal from '../components/ui/Modal'
@@ -15,7 +15,7 @@ const tabBtn = (active) => ({
 
 export default function PricingPage() {
   const { categories, loading: catLoading, createCategory, deleteCategory } = usePricingCategories()
-  const { items, loading: itemLoading, createItem, deleteItem } = usePricingItems()
+  const { items, loading: itemLoading, createItem, updateItem, deleteItem } = usePricingItems()
 
   const [tab, setTab] = useState('estimate')
   const [expandedCategories, setExpandedCategories] = useState(new Set())
@@ -23,6 +23,43 @@ export default function PricingPage() {
   const [showAddItem, setShowAddItem] = useState(null) // category_id or null
   const [catForm, setCatForm] = useState({ name: '', trade_vertical: '' })
   const [itemForm, setItemForm] = useState({ name: '', unit: 'sf', default_rate: '', description: '' })
+
+  // Inline rate editing.
+  const [editingId, setEditingId] = useState(null)
+  const [editValue, setEditValue] = useState('')
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [editError, setEditError] = useState(null)
+  const skipBlurRef = useRef(false)  // suppress the blur commit that follows Enter/Escape
+
+  function startEditRate(item) {
+    setEditError(null)
+    setEditingId(item.id)
+    setEditValue(item.default_rate == null ? '' : String(item.default_rate))
+  }
+
+  function cancelEditRate() {
+    setEditingId(null)
+    setEditValue('')
+    setEditError(null)
+  }
+
+  async function commitEditRate(item) {
+    if (savingEdit) return
+    const parsed = parseFloat(editValue)
+    const nextRate = Number.isFinite(parsed) ? parsed : 0
+    if (nextRate === Number(item.default_rate)) { cancelEditRate(); return }
+    setSavingEdit(true)
+    setEditError(null)
+    try {
+      await updateItem(item.id, { default_rate: nextRate })  // stamps source='user' in the hook
+      setEditingId(null)
+      setEditValue('')
+    } catch (err) {
+      setEditError(err.message || 'Could not save rate.')
+    } finally {
+      setSavingEdit(false)
+    }
+  }
 
   function toggleCategory(id) {
     setExpandedCategories(prev => {
@@ -139,19 +176,47 @@ export default function PricingPage() {
                     <div className={styles.emptyCategory}>Empty bowl — no items yet.</div>
                   ) : (
                     catItems.map(item => (
-                      <div key={item.id} className={styles.itemRow}>
-                        <span className={styles.itemName}>{item.name}</span>
-                        {item.source === 'seeded' && (
-                          <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 9999, background: 'var(--color-surface-2, #eef0f0)', color: 'var(--color-text-muted, #1B2426)', whiteSpace: 'nowrap' }}>Starter rate</span>
+                      <Fragment key={item.id}>
+                        <div className={styles.itemRow}>
+                          <span className={styles.itemName}>{item.name}</span>
+                          {item.source === 'seeded' && (
+                            <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 9999, background: 'var(--color-surface-2, #eef0f0)', color: 'var(--color-text-muted, #1B2426)', whiteSpace: 'nowrap' }}>Starter rate</span>
+                          )}
+                          <span className={styles.unitBadge}>{item.unit}</span>
+                          <span className={styles.rateCell}>
+                            {editingId === item.id ? (
+                              <input
+                                type="number" step="0.01" min="0"
+                                value={editValue}
+                                autoFocus
+                                disabled={savingEdit}
+                                onChange={e => setEditValue(e.target.value)}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') { skipBlurRef.current = true; commitEditRate(item) }
+                                  else if (e.key === 'Escape') { skipBlurRef.current = true; cancelEditRate() }
+                                }}
+                                onBlur={() => { if (skipBlurRef.current) { skipBlurRef.current = false; return } commitEditRate(item) }}
+                                style={{ width: '100%', textAlign: 'right', padding: '4px 6px', border: '1px solid var(--color-primary, #26464C)', borderRadius: 'var(--radius-sm)', background: 'var(--color-bg)', color: 'var(--color-text)', fontSize: 14, fontVariantNumeric: 'tabular-nums', boxSizing: 'border-box', opacity: savingEdit ? 0.6 : 1 }}
+                              />
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => startEditRate(item)}
+                                title="Edit rate"
+                                style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit', cursor: 'pointer', fontVariantNumeric: 'tabular-nums' }}
+                              >
+                                <span className={styles.rateLabel}>Rate </span>{fmtRate(item.default_rate)}
+                              </button>
+                            )}
+                          </span>
+                          <button className={styles.deleteBtn} onClick={() => handleDeleteItem(item.id)} title="Delete item">
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                        {editingId === item.id && editError && (
+                          <div style={{ padding: '0 18px 8px 48px', fontSize: 12, color: 'var(--color-danger, #e53e3e)' }}>{editError}</div>
                         )}
-                        <span className={styles.unitBadge}>{item.unit}</span>
-                        <span className={styles.rateCell}>
-                          <span className={styles.rateLabel}>Rate </span>{fmtRate(item.default_rate)}
-                        </span>
-                        <button className={styles.deleteBtn} onClick={() => handleDeleteItem(item.id)} title="Delete item">
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
+                      </Fragment>
                     ))
                   )
                 )}

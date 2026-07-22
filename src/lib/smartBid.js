@@ -120,7 +120,7 @@ export function matchLibraryItem(pricingItems, category, unit) {
   if (!keywords) return null
   // Seeded starter rates are examples only — they must never price a Smart Bid
   // line. Only the contractor's own ('user') or adopted ('smart_bid') rows match.
-  const active = (pricingItems || []).filter(it => it.active !== false && it.source !== 'seeded')
+  const active = (pricingItems || []).filter(it => it.is_active !== false && it.source !== 'seeded')
   const wantUnit = String(unit || '').toLowerCase()
   for (const kw of keywords) {
     const hit = active.find(it =>
