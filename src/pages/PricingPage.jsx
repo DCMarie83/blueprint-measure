@@ -2,6 +2,7 @@ import { useState, useRef, Fragment } from 'react'
 import { Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import Modal from '../components/ui/Modal'
+import { useAuth } from '../context/AuthContext'
 import { usePricingCategories } from '../hooks/usePricingCategories'
 import { usePricingItems } from '../hooks/usePricingItems'
 import MaterialsPricingTab from '../components/materials/MaterialsPricingTab'
@@ -16,6 +17,8 @@ const tabBtn = (active) => ({
 export default function PricingPage() {
   const { categories, loading: catLoading, createCategory, deleteCategory } = usePricingCategories()
   const { items, loading: itemLoading, createItem, updateItem, deleteItem } = usePricingItems()
+  const { userProfile, isSuperAdmin } = useAuth()
+  const isAdmin = userProfile?.role === 'contractor_admin' || isSuperAdmin
 
   const [tab, setTab] = useState('estimate')
   const [expandedCategories, setExpandedCategories] = useState(new Set())
@@ -117,7 +120,7 @@ export default function PricingPage() {
       <main className={styles.main}>
         <div className={styles.pageHeader}>
           <h1 className={styles.title}>Pricing Library</h1>
-          {tab === 'estimate' && (
+          {tab === 'estimate' && isAdmin && (
             <button className={styles.newBtn} onClick={() => setShowAddCategory(true)}>
               <Plus size={16} /> New Category
             </button>
@@ -143,9 +146,11 @@ export default function PricingPage() {
           <div className={styles.emptyState}>
             <h2>Your pricing library is empty</h2>
             <p>Add categories and items to build your estimate templates.</p>
-            <button className={styles.newBtn} onClick={() => setShowAddCategory(true)}>
-              <Plus size={16} /> Add your first category
-            </button>
+            {isAdmin && (
+              <button className={styles.newBtn} onClick={() => setShowAddCategory(true)}>
+                <Plus size={16} /> Add your first category
+              </button>
+            )}
           </div>
         ) : (
           categories.map(cat => {
@@ -157,19 +162,23 @@ export default function PricingPage() {
                   {expanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                   <h3 className={styles.categoryName}>{cat.name}</h3>
                   <span className={styles.itemCount}>{catItems.length} item{catItems.length !== 1 ? 's' : ''}</span>
-                  <button
-                    className={styles.addItemBtn}
-                    onClick={e => { e.stopPropagation(); setShowAddItem(cat.id) }}
-                  >
-                    <Plus size={14} /> Add Item
-                  </button>
-                  <button
-                    className={styles.deleteBtn}
-                    onClick={e => { e.stopPropagation(); handleDeleteCategory(cat.id) }}
-                    title="Delete category"
-                  >
-                    <Trash2 size={15} />
-                  </button>
+                  {isAdmin && (
+                    <button
+                      className={styles.addItemBtn}
+                      onClick={e => { e.stopPropagation(); setShowAddItem(cat.id) }}
+                    >
+                      <Plus size={14} /> Add Item
+                    </button>
+                  )}
+                  {isAdmin && (
+                    <button
+                      className={styles.deleteBtn}
+                      onClick={e => { e.stopPropagation(); handleDeleteCategory(cat.id) }}
+                      title="Delete category"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  )}
                 </div>
                 {expanded && (
                   catItems.length === 0 ? (
@@ -184,7 +193,9 @@ export default function PricingPage() {
                           )}
                           <span className={styles.unitBadge}>{item.unit}</span>
                           <span className={styles.rateCell}>
-                            {editingId === item.id ? (
+                            {!isAdmin ? (
+                              <span><span className={styles.rateLabel}>Rate </span>{fmtRate(item.default_rate)}</span>
+                            ) : editingId === item.id ? (
                               <input
                                 type="number" step="0.01" min="0"
                                 value={editValue}
@@ -209,9 +220,11 @@ export default function PricingPage() {
                               </button>
                             )}
                           </span>
-                          <button className={styles.deleteBtn} onClick={() => handleDeleteItem(item.id)} title="Delete item">
-                            <Trash2 size={15} />
-                          </button>
+                          {isAdmin && (
+                            <button className={styles.deleteBtn} onClick={() => handleDeleteItem(item.id)} title="Delete item">
+                              <Trash2 size={15} />
+                            </button>
+                          )}
                         </div>
                         {editingId === item.id && editError && (
                           <div style={{ padding: '0 18px 8px 48px', fontSize: 12, color: 'var(--color-danger, #e53e3e)' }}>{editError}</div>
