@@ -184,6 +184,7 @@ export default function BrandingTab() {
               {regions.map(r => <option key={r.code} value={r.code}>{r.display_name}</option>)}
             </select>
             <span style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4, display: 'block' }}>Used to localize Smart Bid market pricing.</span>
+            <span style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4, display: 'block' }}>Regional rates are indexed to U.S. Bureau of Labor Statistics painter wage data for your state. Painting bids are mostly labor, so state wage levels are the strongest public signal of how bids differ by region. States without published BLS data use the national baseline.</span>
           </label>
         </div>
       </div>

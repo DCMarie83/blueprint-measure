@@ -18,7 +18,7 @@ export default function RegionChip({ resolvedRegion, usedFallback, onFallbackSho
   if (usedFallback) {
     return (
       <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 2 }}>
-        <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 9999, fontSize: 11, fontWeight: 600, background: 'var(--color-surface-2, #eef0f0)', color: 'var(--color-text-muted, #6b7280)', whiteSpace: 'nowrap' }}>
+        <span title="Rates indexed to U.S. Bureau of Labor Statistics wage data for this region." style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 9999, fontSize: 11, fontWeight: 600, background: 'var(--color-surface-2, #eef0f0)', color: 'var(--color-text-muted, #6b7280)', whiteSpace: 'nowrap' }}>
           Market data: National baseline
         </span>
         <button onClick={() => navigate('/settings')} style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', color: 'var(--color-primary, #26464c)', fontSize: 11, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}>
@@ -29,7 +29,7 @@ export default function RegionChip({ resolvedRegion, usedFallback, onFallbackSho
   }
 
   return (
-    <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 9999, fontSize: 11, fontWeight: 600, background: 'rgba(38,70,76,0.12)', color: '#26464C', whiteSpace: 'nowrap' }}>
+    <span title="Rates indexed to U.S. Bureau of Labor Statistics wage data for this region." style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 9999, fontSize: 11, fontWeight: 600, background: 'rgba(38,70,76,0.12)', color: '#26464C', whiteSpace: 'nowrap' }}>
       Market data: {resolvedRegion?.display_name || '—'}
     </span>
   )
