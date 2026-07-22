@@ -25,7 +25,7 @@ export default function PayTable({ rows, className, onDownloadStatement, downloa
         <tbody>
           {rows.map(r => (
             <tr key={r.crewMemberId} className={styles.tr}>
-              <td className={styles.td}>{r.name}</td>
+              <td className={styles.td} style={{ fontSize: 'var(--text-base)', fontWeight: 600 }}>{r.name}</td>
               <td className={styles.td} style={{ textAlign: 'right' }}>{r.hours.toFixed(2)}</td>
               <td className={styles.td} style={{ textAlign: 'right' }}>
                 {r.rate > 0 ? fmtUSD.format(r.rate) : (

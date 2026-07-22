@@ -5,7 +5,7 @@
 .header { margin-bottom: 8px; }
 .title {
   display: flex; align-items: center; gap: 10px;
-  font-size: 28px; font-weight: 700; margin: 0;
+  font-size: var(--text-2xl); font-weight: 800; margin: 0;
 }
 
 /* ── Tabs ──────────────────────────────────────────────────────────────── */
@@ -73,12 +73,12 @@
 
 .chip {
   padding: 8px 14px; border-radius: var(--radius-pill);
-  border: 1px solid var(--color-button-border);
-  background: var(--color-surface-2); color: var(--color-text);
-  font-size: 13px; cursor: pointer;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface); color: var(--color-text-muted);
+  font-size: var(--text-sm); font-weight: 600; cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
-.chip:hover { background: var(--color-surface); }
+.chip:hover { color: var(--color-text); }
 .chipActive {
   background: var(--color-primary); color: var(--color-on-primary);
   border-color: var(--color-primary);
@@ -150,14 +150,15 @@
 .tableWrap { overflow-x: auto; }
 .table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .th {
-  text-align: left; font-size: 12px; font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.04em;
+  text-align: left; font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: var(--tracking-caps);
   color: var(--color-text-muted); padding: 10px 12px;
+  background: rgba(38,70,76,0.06);
   border-bottom: 1px solid var(--color-border); white-space: nowrap;
 }
-.td { padding: 10px 12px; border-bottom: 1px solid var(--color-border); vertical-align: middle; }
+.td { padding: 10px 12px; border-bottom: 1px solid var(--color-border); vertical-align: middle; font-variant-numeric: tabular-nums; }
 .tr { transition: background 0.1s; }
-.tr:hover { background: rgba(255,255,255,0.02); }
+.tr:hover { background: rgba(38,70,76,0.04); }
 
 /* ── Inline edit ──────────────────────────────────────────────────────── */
 .inlineInput {
@@ -342,6 +343,7 @@
 .approvalSection {
   background: var(--color-surface); border: 1px solid var(--color-border);
   border-radius: var(--radius-lg); padding: 20px; margin-bottom: 20px;
+  box-shadow: var(--shadow-card);
 }
 
 .punchBadge {

@@ -410,11 +410,11 @@ export default function TimePage() {
     }
     return (
       <tr key={entry.id} className={styles.tr}>
-        {showName && <td className={styles.td}>{entry.crew_members?.name || '—'}</td>}
+        {showName && <td className={styles.td} style={{ fontSize: 'var(--text-base)', fontWeight: 600 }}>{entry.crew_members?.name || '—'}</td>}
         <td className={styles.td}>{entry.work_date}</td>
-        <td className={styles.td}>{entry.projects?.name || '—'}</td>
-        <td className={styles.td} style={{ fontWeight: 600 }}>{Number(entry.hours).toFixed(2)}</td>
-        <td className={styles.td} style={{ color: 'var(--color-text-muted)' }}>{entry.notes || ''}</td>
+        <td className={styles.td} style={{ fontSize: 'var(--text-base)', fontWeight: 600 }}>{entry.projects?.name || '—'}</td>
+        <td className={styles.td} style={{ fontWeight: 600, textAlign: 'right' }}>{Number(entry.hours).toFixed(2)}</td>
+        <td className={styles.td} style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-xs)' }}>{entry.notes || ''}</td>
         <td className={styles.td}>
           <button className={styles.iconBtn} onClick={() => startEdit(entry)} title="Edit"><Pencil size={14} /></button>
           <button className={styles.iconBtn} onClick={() => handleDelete(entry.id)} title="Delete"><Trash2 size={14} /></button>
@@ -500,7 +500,7 @@ export default function TimePage() {
                   </div>
                   {myEntries.length === 0 ? <p className={styles.empty}>No entries for this period.</p> : (
                     <div className={styles.tableWrap}><table className={styles.table}>
-                      <thead><tr><th className={styles.th}>Date</th><th className={styles.th}>Job</th><th className={styles.th}>Hours</th><th className={styles.th}>Notes</th><th className={styles.th}></th></tr></thead>
+                      <thead><tr><th className={styles.th}>Date</th><th className={styles.th}>Job</th><th className={styles.th} style={{ textAlign: 'right' }}>Hours</th><th className={styles.th}>Notes</th><th className={styles.th}></th></tr></thead>
                       <tbody>{myEntries.map(e => renderEntry(e, false))}</tbody>
                     </table></div>
                   )}
@@ -664,7 +664,7 @@ export default function TimePage() {
                   {timesheetOpen && (
                     visibleEntries.length === 0 ? <p className={styles.empty}>No entries for this period{workerFilter !== 'all' ? ' and worker' : ''}.</p> : (
                       <div className={styles.tableWrap}><table className={styles.table}>
-                        <thead><tr><th className={styles.th}>Worker</th><th className={styles.th}>Date</th><th className={styles.th}>Job</th><th className={styles.th}>Hours</th><th className={styles.th}>Notes</th><th className={styles.th}></th></tr></thead>
+                        <thead><tr><th className={styles.th}>Worker</th><th className={styles.th}>Date</th><th className={styles.th}>Job</th><th className={styles.th} style={{ textAlign: 'right' }}>Hours</th><th className={styles.th}>Notes</th><th className={styles.th}></th></tr></thead>
                         <tbody>{visibleEntries.map(e => renderEntry(e, true))}</tbody>
                       </table></div>
                     )

@@ -3,18 +3,19 @@
 .table { width: 100%; border-collapse: collapse; font-size: 13px; }
 
 .th {
-  text-align: left; font-size: 12px; font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.04em;
+  text-align: left; font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: var(--tracking-caps);
   color: var(--color-text-muted); padding: 10px 12px;
-  border-bottom: 2px solid var(--color-border); white-space: nowrap;
+  background: rgba(38,70,76,0.06);
+  border-bottom: 1px solid var(--color-border); white-space: nowrap;
 }
 
-.td { padding: 10px 12px; border-bottom: 1px solid var(--color-border); }
+.td { padding: 10px 12px; border-bottom: 1px solid var(--color-border); font-variant-numeric: tabular-nums; }
 
 .tr { transition: background 0.1s; }
-.tr:hover { background: rgba(255,255,255,0.02); }
+.tr:hover { background: rgba(38,70,76,0.04); }
 
-.totalsRow { border-top: 2px solid var(--color-border); }
+.totalsRow { border-top: 2px solid rgba(38,70,76,0.25); }
 
 .noRate { color: var(--color-text-muted); }
 .noRate small { font-style: italic; }
@@ -22,7 +23,7 @@
 /* Print-clean */
 @media print {
   .table { font-size: 11px; color: #000; }
-  .th { color: #333; border-bottom: 2px solid #333; }
+  .th { color: #333; background: none; border-bottom: 2px solid #333; }
   .td { border-bottom: 1px solid #ccc; color: #000; }
   .totalsRow { border-top: 2px solid #333; }
   .tr:hover { background: none !important; }
