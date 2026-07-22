@@ -1,5 +1,5 @@
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { Layers } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import BackLink from '../components/BackLink'
@@ -10,6 +10,7 @@ import MaterialsStartScreen from '../components/materials/MaterialsStartScreen'
 import MaterialsQuickTotal from '../components/materials/MaterialsQuickTotal'
 import MaterialsSwiper from '../components/materials/MaterialsSwiper'
 import { materialBuyQuantity } from '../utils/measurements'
+import { buildCatalogLookups } from '../lib/materialsView'
 import { trackMaterials } from '../lib/analytics'
 
 const secondaryBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--color-surface)', color: 'var(--color-text, #1b2426)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }
@@ -100,6 +101,9 @@ export default function MaterialOrderBuilderPage() {
 
   const [notice, setNotice] = useState(null)
   const [showAiTip, setShowAiTip] = useState(false)
+
+  // Catalog id/slug lookups for ItemVisual imagery + category resolution.
+  const lookups = useMemo(() => buildCatalogLookups(catalog), [catalog])
 
   // Flow view: start | quick | swipe | table. Decided once after load.
   const [view, setView] = useState(null)
@@ -275,11 +279,11 @@ export default function MaterialOrderBuilderPage() {
     }
   }
 
-  const handleGradeSelect = (t) => {
+  // Segmented-control setter for the table's sticky summary bar (always selects, never clears).
+  const handleGradeSet = (t) => {
     if (!isAdmin) return
-    const active = variant === t
-    updateOrderField({ selected_variant: active ? null : t })
-    if (!active) trackMaterials('grade_selected', { companyId: order.company_id, entityId: order.id, grade: t })
+    updateOrderField({ selected_variant: t })
+    trackMaterials('grade_selected', { companyId: order.company_id, entityId: order.id, grade: t })
   }
 
   const handleCsvExport = () => {
@@ -317,6 +321,7 @@ export default function MaterialOrderBuilderPage() {
             onSave={quickSave}
             onReview={() => { setSwipeMode('new'); setView('swipe') }}
             onBack={() => setView('start')}
+            lookups={lookups}
           />
         )}
 
@@ -331,6 +336,7 @@ export default function MaterialOrderBuilderPage() {
             onEditDetails={swiperEdit}
             onExportCsv={swiperExport}
             onReviewComplete={reviewComplete}
+            lookups={lookups}
           />
         )}
 
@@ -347,6 +353,10 @@ export default function MaterialOrderBuilderPage() {
               />
               <span style={{ fontSize: 12, padding: '3px 10px', borderRadius: 9999, background: 'var(--color-surface-2)', color: 'var(--color-text-muted)', textTransform: 'capitalize', whiteSpace: 'nowrap' }}>{order.status}</span>
             </div>
+
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 14px' }}>
+              Your full list. Edit quantities, coats, and prices per grade.
+            </p>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 16 }}>
               <span style={brandChip}>Items {items.length}</span>
@@ -420,43 +430,17 @@ export default function MaterialOrderBuilderPage() {
 
             {notice && <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 12 }}>{notice}</div>}
 
-            <MaterialLineItemsTable items={items} onUpdate={updateItem} onRemove={removeItem} readOnly={!isAdmin} overrideMap={overrideMap} selectedGrade={gradeForFlow} />
+            <MaterialLineItemsTable
+              items={items} onUpdate={updateItem} onRemove={removeItem} readOnly={!isAdmin}
+              overrideMap={overrideMap} selectedGrade={gradeForFlow} lookups={lookups}
+              onGradeChange={handleGradeSet} onExportCsv={handleCsvExport} onSave={handleSave} saving={saving}
+            />
 
             <div style={{ marginTop: 28, borderTop: '1px solid var(--color-border)', paddingTop: 20 }}>
               <h3 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 14px' }}>Order summary</h3>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
-                <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Buying grade:</span>
-                {GRADE_KEYS.map(t => {
-                  const active = variant === t
-                  return (
-                    <button key={t} onClick={() => handleGradeSelect(t)} disabled={!isAdmin}
-                      style={{ padding: '6px 14px', borderRadius: 'var(--radius-pill, 9999px)', fontSize: 13, fontWeight: 600, cursor: isAdmin ? 'pointer' : 'default',
-                        border: active ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
-                        background: active ? 'var(--color-primary)' : 'var(--color-surface)',
-                        color: active ? 'var(--color-on-primary, #fff)' : 'var(--color-text, #1b2426)' }}>
-                      {gradeLabel(t)}
-                    </button>
-                  )
-                })}
-                {variant && isAdmin && (
-                  <button onClick={() => updateOrderField({ selected_variant: null })} style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', fontSize: 12, cursor: 'pointer' }}>Clear</button>
-                )}
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 8 }}>
-                {GRADE_KEYS.map(t => {
-                  const active = variant === t
-                  return (
-                    <div key={t} style={{ border: active ? '2px solid var(--color-primary)' : '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '12px 14px', background: 'var(--color-surface)' }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 4 }}>{gradeLabel(t)}</div>
-                      <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text, #1b2426)' }}>{money(gradeTotal(items, t))}</div>
-                    </div>
-                  )
-                })}
-              </div>
               <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 6px' }}>
-                Estimated totals — verify final price and availability with the retailer.
+                Estimated totals — verify final price and availability with the retailer. Pick your buying grade and save from the bar below the list.
               </p>
               <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 18px' }}>
                 {maxPriceAsOf ? `Catalog prices as of ${maxPriceAsOf}, estimates only. My Price applies where you've set it.` : 'Catalog prices are estimates only. My Price applies where you’ve set it.'}
@@ -481,14 +465,6 @@ export default function MaterialOrderBuilderPage() {
                 </button>
               )}
             </div>
-
-            {isAdmin && (
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24 }}>
-                <button onClick={handleSave} disabled={saving} style={{ ...primaryBtn, opacity: saving ? 0.6 : 1, cursor: saving ? 'default' : 'pointer' }}>
-                  {saving ? 'Saving…' : 'Save order'}
-                </button>
-              </div>
-            )}
           </>
         )}
       </div>

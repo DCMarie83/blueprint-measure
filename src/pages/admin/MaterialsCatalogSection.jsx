@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, Fragment } from 'react'
 import { supabase } from '../../lib/supabase'
+import ItemVisual from '../../components/materials/ItemVisual'
 
 // Super-admin catalog manager for materials_catalog. Route lives under
 // /admin (AdminRoute already gates super-admin); RLS enforces is_super_admin on
@@ -12,7 +13,7 @@ const QUANTITY_RULES = ['coverage', 'per_area', 'per_count', 'per_job', 'manual'
 
 const EDITABLE_FIELDS = [
   'taxonomy_slug', 'name', 'trade_vertical', 'grade', 'store_id', 'retailer_product_id',
-  'product_url', 'purchase_unit', 'quantity_rule', 'coverage_sf_per_unit', 'qty_per_1000sf',
+  'product_url', 'image_url', 'purchase_unit', 'quantity_rule', 'coverage_sf_per_unit', 'qty_per_1000sf',
   'qty_per_count', 'qty_per_job', 'typical_price', 'price_as_of', 'is_active', 'display_order', 'notes',
 ]
 
@@ -34,7 +35,7 @@ const primaryBtn = { ...btn, background: 'var(--color-primary)', color: 'var(--c
 function blankRow() {
   return {
     taxonomy_slug: '', name: '', trade_vertical: 'painting', grade: 'standard', store_id: '',
-    retailer_product_id: '', product_url: '', purchase_unit: 'gallon', quantity_rule: 'manual',
+    retailer_product_id: '', product_url: '', image_url: '', purchase_unit: 'gallon', quantity_rule: 'manual',
     coverage_sf_per_unit: '', qty_per_1000sf: '', qty_per_count: '', qty_per_job: '',
     typical_price: '', price_as_of: '', is_active: true, display_order: 0, notes: '',
   }
@@ -205,6 +206,10 @@ export default function MaterialsCatalogSection() {
         <label style={label}>display_order<input style={input} type="number" step="1" value={state.display_order} onChange={e => patch('display_order', e.target.value)} /></label>
         <label style={label}>retailer_product_id<input style={input} value={state.retailer_product_id} onChange={e => patch('retailer_product_id', e.target.value)} /></label>
         <label style={label}>product_url<input style={input} value={state.product_url} onChange={e => patch('product_url', e.target.value)} /></label>
+        <label style={{ ...label, gridColumn: '1 / -1' }}>Image URL
+          <input style={input} value={state.image_url || ''} onChange={e => patch('image_url', e.target.value)} placeholder="https://…" />
+          <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>Paste a product image link from the manufacturer's page. Leave blank for the category icon.</span>
+        </label>
         <label style={{ ...label, gridColumn: '1 / -1' }}>notes<input style={input} value={state.notes} onChange={e => patch('notes', e.target.value)} /></label>
         <label style={{ ...label, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <input type="checkbox" checked={!!state.is_active} onChange={e => patch('is_active', e.target.checked)} /> is_active
@@ -291,7 +296,12 @@ export default function MaterialsCatalogSection() {
               ) : filtered.map(row => (
                 <Fragment key={row.id}>
                   <tr style={{ borderBottom: '1px solid var(--color-border)', opacity: row.is_active ? 1 : 0.55 }}>
-                    <td style={td}>{row.taxonomy_slug}</td>
+                    <td style={td}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                        <ItemVisual imageUrl={row.image_url} taxonomySlug={row.taxonomy_slug} quantityRule={row.quantity_rule} size={28} />
+                        {row.taxonomy_slug}
+                      </span>
+                    </td>
                     <td style={td}>{row.name}</td>
                     <td style={td}>{row.grade}</td>
                     <td style={td}>{storeName(row.store_id)}</td>

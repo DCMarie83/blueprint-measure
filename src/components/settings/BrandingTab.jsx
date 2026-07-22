@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useCompanyBranding } from '../../hooks/useCompanyBranding'
+import { supabase } from '../../lib/supabase'
 import CompanyLogoUpload from './CompanyLogoUpload'
 import { US_STATES } from '../../data/usStates'
 import styles from './BrandingTab.module.css'
@@ -25,6 +26,21 @@ export default function BrandingTab() {
   const [businessPhone, setBusinessPhone] = useState('')
   const [toast, setToast] = useState('')
   const [saveError, setSaveError] = useState(null)
+  const [regions, setRegions] = useState([])
+
+  // Benchmark regions (states) for the Market data region picker.
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const { data } = await supabase
+        .from('benchmark_regions')
+        .select('code, display_name')
+        .eq('region_type', 'state')
+        .order('display_name', { ascending: true })
+      if (!cancelled) setRegions(data || [])
+    })()
+    return () => { cancelled = true }
+  }, [])
 
   // Seed from company on load
   useEffect(() => {
@@ -153,10 +169,21 @@ export default function BrandingTab() {
             <input className={styles.input} value={companyZip} onChange={e => setCompanyZip(e.target.value.replace(/[^0-9]/g, '').slice(0, 5))} placeholder="43215" inputMode="numeric" maxLength={5} />
           </label>
         </div>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
           <label className={styles.field} style={{ flex: 1, minWidth: 180 }}>
             <span className={styles.fieldLabel}>Business phone</span>
             <input className={styles.input} value={businessPhone} onChange={e => setBusinessPhone(e.target.value)} placeholder="(614) 555-0100" type="tel" />
+          </label>
+        </div>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <label className={styles.field} style={{ flex: 1, minWidth: 220 }}>
+            <span className={styles.fieldLabel}>Market data region</span>
+            <select className={styles.input} value={companyState} onChange={e => setCompanyState(e.target.value)}>
+              <option value="">Not set</option>
+              <option value="US">National (US)</option>
+              {regions.map(r => <option key={r.code} value={r.code}>{r.display_name}</option>)}
+            </select>
+            <span style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4, display: 'block' }}>Used to localize Smart Bid market pricing.</span>
           </label>
         </div>
       </div>

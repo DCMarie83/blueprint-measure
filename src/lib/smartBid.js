@@ -11,23 +11,44 @@ export function isSmartEstimate(estimate, lineItems) {
   return (lineItems || []).some(li => li.priced_from != null)
 }
 
+// Resolve a region code's display name from benchmark_regions.
+async function resolveRegionName(supabase, code) {
+  try {
+    const { data } = await supabase
+      .from('benchmark_regions')
+      .select('code, display_name')
+      .eq('code', code)
+      .maybeSingle()
+    return { code, display_name: data?.display_name || code }
+  } catch {
+    return { code, display_name: code }
+  }
+}
+
 // Fetch regional low/typical/high for a set of benchmark_item_ids at regionCode,
-// falling back to 'US' when the state query returns zero rows. Returns a Map
-// keyed by benchmark_item_id.
+// falling back to 'US' when the company state is null or the state query returns
+// zero rows. Returns { map, resolvedRegion: { code, display_name }, usedFallback }.
 export async function fetchBenchmarksByItemIds(supabase, regionCode, benchmarkItemIds) {
   const ids = [...new Set((benchmarkItemIds || []).filter(Boolean))]
-  if (ids.length === 0) return new Map()
+  if (ids.length === 0) {
+    const usedFallback = !regionCode
+    const resolvedRegion = await resolveRegionName(supabase, usedFallback ? 'US' : regionCode)
+    return { map: new Map(), resolvedRegion, usedFallback }
+  }
   const code = regionCode || 'US'
+  let usedFallback = !regionCode
+  const cols = 'benchmark_item_id, local_low, local_typical, local_high, region_code, region_name, source_name'
   let { data, error } = await supabase
     .from('v_benchmark_regional')
-    .select('benchmark_item_id, local_low, local_typical, local_high, region_code')
+    .select(cols)
     .eq('region_code', code)
     .in('benchmark_item_id', ids)
   if (error) throw error
   if (!data || data.length === 0) {
+    usedFallback = true
     const fb = await supabase
       .from('v_benchmark_regional')
-      .select('benchmark_item_id, local_low, local_typical, local_high, region_code, region_name, source_name')
+      .select(cols)
       .eq('region_code', 'US')
       .in('benchmark_item_id', ids)
     if (fb.error) throw fb.error
@@ -35,7 +56,8 @@ export async function fetchBenchmarksByItemIds(supabase, regionCode, benchmarkIt
   }
   const map = new Map()
   for (const r of data) map.set(r.benchmark_item_id, r)
-  return map
+  const resolvedRegion = await resolveRegionName(supabase, usedFallback ? 'US' : code)
+  return { map, resolvedRegion, usedFallback }
 }
 
 // The five painting scopes the wizard prices from measurements, keyed by the
@@ -109,9 +131,11 @@ export function matchLibraryItem(pricingItems, category, unit) {
 }
 
 // Query v_benchmark_regional for the mapped slugs at regionCode, falling back to
-// 'US' on zero rows. Returns { regionCodeUsed, bySlug: Map<slug, row[]> }.
+// 'US' when the company state is null or the state query returns zero rows.
+// Returns { regionCodeUsed, bySlug, resolvedRegion: { code, display_name }, usedFallback }.
 export async function fetchRegionalBenchmarks(supabase, regionCode) {
   const code = regionCode || 'US'
+  let usedFallback = !regionCode
   let { data, error } = await supabase
     .from('v_benchmark_regional')
     .select('*')
@@ -119,6 +143,7 @@ export async function fetchRegionalBenchmarks(supabase, regionCode) {
     .in('taxonomy_slug', SMART_TAXONOMY_SLUGS)
   if (error) throw error
   if (!data || data.length === 0) {
+    usedFallback = true
     const fb = await supabase
       .from('v_benchmark_regional')
       .select('*')
@@ -132,7 +157,9 @@ export async function fetchRegionalBenchmarks(supabase, regionCode) {
     if (!bySlug.has(r.taxonomy_slug)) bySlug.set(r.taxonomy_slug, [])
     bySlug.get(r.taxonomy_slug).push(r)
   }
-  return { regionCodeUsed: data[0]?.region_code || 'US', bySlug }
+  const regionCodeUsed = data[0]?.region_code || 'US'
+  const resolvedRegion = await resolveRegionName(supabase, usedFallback ? 'US' : code)
+  return { regionCodeUsed, bySlug, resolvedRegion, usedFallback }
 }
 
 // Pick the benchmark row for a SMART_BENCHMARK_DEFAULTS entry: match work_type

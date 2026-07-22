@@ -20,6 +20,7 @@ import { materialBuyQuantity } from '../utils/measurements'
 import { trackMaterials } from '../lib/analytics'
 import { useMaterialOrders } from '../hooks/useMaterialOrders'
 import SmartBadge from '../components/smartbid/SmartBadge'
+import RegionChip from '../components/smartbid/RegionChip'
 import MarketBand from '../components/smartbid/MarketBand'
 import styles from './EstimateDetailPage.module.css'
 
@@ -103,6 +104,8 @@ export default function EstimateDetailPage() {
 
   // Smart Bid layer state
   const [benchmarkMap, setBenchmarkMap] = useState(() => new Map())
+  const [benchRegion, setBenchRegion] = useState(null)
+  const [benchFallback, setBenchFallback] = useState(false)
   const [benchLoading, setBenchLoading] = useState(false)
   const [materials, setMaterials] = useState({ cost: null, linked: false })
   const [laborValue, setLaborValue] = useState(null)
@@ -216,8 +219,8 @@ export default function EstimateDetailPage() {
     setBenchLoading(true)
     ;(async () => {
       try {
-        const map = await fetchBenchmarksByItemIds(supabase, companyData?.state, ids)
-        if (!cancelled) setBenchmarkMap(map)
+        const { map, resolvedRegion, usedFallback } = await fetchBenchmarksByItemIds(supabase, companyData?.state, ids)
+        if (!cancelled) { setBenchmarkMap(map); setBenchRegion(resolvedRegion); setBenchFallback(usedFallback) }
       } catch (err) {
         console.warn('[smart-bid] benchmark fetch failed:', err?.message || err)
       } finally {
@@ -334,7 +337,10 @@ export default function EstimateDetailPage() {
     const mult = scenario === 'custom' ? (Number(customMult) || 0) : 1
     const repriced = []
     for (const li of lineItems) {
-      if (li.priced_from === 'benchmark' && li.benchmark_item_id) {
+      // Presets touch ONLY benchmark-priced lines, keyed strictly on priced_from
+      // (never on benchmark_item_id presence — library lines may now carry an id
+      // for the band but must never be repriced by presets).
+      if (li.priced_from === 'benchmark') {
         const b = benchmarkMap.get(li.benchmark_item_id)
         if (!b) continue
         let rate
@@ -542,6 +548,13 @@ export default function EstimateDetailPage() {
                 <span className={styles.sentIndicator}>Sent {timeAgo(estimate.sent_at)}</span>
               )}
               {smart && <SmartBadge />}
+              {smart && hasBenchLines && (benchRegion || benchFallback) && (
+                <RegionChip
+                  resolvedRegion={benchRegion}
+                  usedFallback={benchFallback}
+                  onFallbackShown={() => trackMaterials('region_fallback_shown', { companyId: estimate.company_id, surface: 'estimates' })}
+                />
+              )}
             </div>
             {smart && hasBenchLines && (
               <div style={{ marginTop: 10, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)', padding: 12, maxWidth: 560 }}>

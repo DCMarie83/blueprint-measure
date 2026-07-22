@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -8,11 +8,14 @@ import { useMaterialOrders } from '../hooks/useMaterialOrders'
 import { usePricingItems } from '../hooks/usePricingItems'
 import { estimateMaterials, materialBuyQuantity } from '../utils/measurements'
 import { buildSlugMap, buildOverrideMap, resolveSlug, computeSundryLines } from '../lib/materialsResolve'
+import { buildCatalogLookups, itemVisualProps } from '../lib/materialsView'
 import {
   SMART_BENCHMARK_DEFAULTS, classifyGroup, unitForMeasurementType, categoryLabel,
   matchLibraryItem, fetchRegionalBenchmarks, pickBenchmark,
 } from '../lib/smartBid'
 import { trackMaterials } from '../lib/analytics'
+import RegionChip from '../components/smartbid/RegionChip'
+import ItemVisual from '../components/materials/ItemVisual'
 import { PawPrint } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import BackLink from '../components/BackLink'
@@ -74,10 +77,18 @@ export default function SmartBidPage() {
   const { items: pricingItems } = usePricingItems()
 
   const [zones, setZones] = useState([])
+  const [catalog, setCatalog] = useState([])
+  const [existingOrders, setExistingOrders] = useState([])       // prior material_orders for this project (with items)
+  const [materialsMode, setMaterialsMode] = useState(null)       // null (undecided) | 'use_existing' | 'fresh'
+  const [chosenOrder, setChosenOrder] = useState(null)           // the existing order being reused
+  const [basketDeselected, setBasketDeselected] = useState(() => new Set())  // basket indices unchecked in fresh mode
+  const modeTrackedRef = useRef(false)
   const [slugMap, setSlugMap] = useState(() => new Map())
   const [overrideMap, setOverrideMap] = useState(() => new Map())
   const [benchBySlug, setBenchBySlug] = useState(() => new Map())
   const [regionCodeUsed, setRegionCodeUsed] = useState('US')
+  const [resolvedRegion, setResolvedRegion] = useState(null)
+  const [usedFallback, setUsedFallback] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -88,6 +99,13 @@ export default function SmartBidPage() {
   const [rates, setRates] = useState({})                       // group key -> edited rate string
   const [estLaborCost, setEstLaborCost] = useState('')
   const [creating, setCreating] = useState(false)
+
+  // Fire the materials-mode analytics event exactly once per wizard run.
+  const fireModeTrack = useCallback((mode) => {
+    if (modeTrackedRef.current) return
+    modeTrackedRef.current = true
+    trackMaterials('smart_bid_materials_mode', { companyId, surface: 'estimates', mode })
+  }, [companyId])
 
   // ── Load zones, catalog, overrides, regional benchmarks ──────────────────────
   useEffect(() => {
@@ -117,14 +135,31 @@ export default function SmartBidPage() {
           .from('company_material_prices').select('catalog_item_id, price').eq('company_id', companyId)
         if (priceErr) throw priceErr
 
-        const { bySlug, regionCodeUsed: rcu } = await fetchRegionalBenchmarks(supabase, company?.state)
+        const { bySlug, regionCodeUsed: rcu, resolvedRegion: rr, usedFallback: uf } = await fetchRegionalBenchmarks(supabase, company?.state)
+
+        // Prior materials lists for this project (only those with items count).
+        const { data: orderRows } = await supabase
+          .from('material_orders')
+          .select('id, title, selected_variant, estimate_id, created_at, material_order_items(id, description, unit, quantity, coats, overage_pct, source_zone_name, product_premium, product_standard, product_commercial, cost_premium, cost_standard, cost_commercial, catalog_item_premium_id, catalog_item_standard_id, catalog_item_commercial_id)')
+          .eq('project_id', projectId)
+          .order('created_at', { ascending: false })
+        const ordersWithItems = (orderRows || [])
+          .map(o => ({ ...o, items: o.material_order_items || [] }))
+          .filter(o => o.items.length > 0)
 
         if (cancelled) return
         setZones(zoneRows)
+        setCatalog(catRows || [])
+        setExistingOrders(ordersWithItems)
+        // No prior list → go straight to the fresh basket and track it.
+        if (ordersWithItems.length === 0) { setMaterialsMode('fresh'); fireModeTrack('fresh') }
+        else setMaterialsMode(null)
         setSlugMap(sm)
         setOverrideMap(buildOverrideMap(priceRows))
         setBenchBySlug(bySlug)
         setRegionCodeUsed(rcu)
+        setResolvedRegion(rr)
+        setUsedFallback(uf)
       } catch (err) {
         if (!cancelled) setError(err.message)
       } finally {
@@ -132,7 +167,7 @@ export default function SmartBidPage() {
       }
     })()
     return () => { cancelled = true }
-  }, [companyId, projectId, company?.state])
+  }, [companyId, projectId, company?.state, fireModeTrack])
 
   // ── Group zones by measurement_type + surface_type ───────────────────────────
   const groups = useMemo(() => {
@@ -172,9 +207,23 @@ export default function SmartBidPage() {
     return [...paint, ...sundries]
   }, [zones, slugMap, overrideMap])
 
+  const lookups = useMemo(() => buildCatalogLookups(catalog), [catalog])
+
+  // Fresh-mode basket minus unchecked lines. Only these persist / count.
+  const selectedBasket = useMemo(
+    () => basket.filter((_, i) => !basketDeselected.has(i)),
+    [basket, basketDeselected]
+  )
+
+  // The lines that drive the running total & the Step 3 margin: a reused order's
+  // items in use_existing mode, otherwise the checked fresh-basket lines.
+  const activeLines = materialsMode === 'use_existing' && chosenOrder
+    ? (chosenOrder.items || [])
+    : selectedBasket
+
   const materialsTotal = useMemo(
-    () => basket.reduce((s, b) => s + materialBuyQuantity(b) * (Number(b[`cost_${grade}`]) || 0), 0),
-    [basket, grade]
+    () => activeLines.reduce((s, b) => s + materialBuyQuantity(b) * (Number(b[`cost_${grade}`]) || 0), 0),
+    [activeLines, grade]
   )
 
   // ── Draft lines with price hierarchy: library -> benchmark -> manual ─────────
@@ -193,6 +242,17 @@ export default function SmartBidPage() {
         priced_from = 'library'
         pricing_item_id = libItem.id
         defaultRate = Number(libItem.default_rate) || 0
+        // Attach benchmark provenance for the band even on library-priced lines,
+        // whenever the group maps to a benchmark scope. priced_from and the price
+        // stay library; only the band/id ride along.
+        if (def) {
+          const bench = pickBenchmark(benchBySlug, def)
+          if (bench) {
+            benchmark_item_id = bench.benchmark_item_id
+            low = Number(bench.local_low) || 0
+            high = Number(bench.local_high) || 0
+          }
+        }
       } else if (def) {
         const bench = pickBenchmark(benchBySlug, def)
         if (bench) {
@@ -270,6 +330,31 @@ export default function SmartBidPage() {
   }
 
   // ── Create Smart Bid ─────────────────────────────────────────────────────────
+  const capGrade = (g) => (g ? g.charAt(0).toUpperCase() + g.slice(1) : '')
+
+  function useMyList() {
+    const order = existingOrders[0]
+    if (!order) return
+    setChosenOrder(order)
+    setGrade(order.selected_variant || 'standard')  // lock the running total to the saved grade
+    setMaterialsMode('use_existing')
+    fireModeTrack('use_existing')
+  }
+
+  function startFresh() {
+    setChosenOrder(null)
+    setMaterialsMode('fresh')
+    fireModeTrack('fresh')
+  }
+
+  function toggleBasketLine(i) {
+    setBasketDeselected(prev => {
+      const next = new Set(prev)
+      if (next.has(i)) next.delete(i); else next.add(i)
+      return next
+    })
+  }
+
   async function handleCreate() {
     if (draftLines.length === 0) { setError('Include at least one measurement group.'); return }
     setCreating(true)
@@ -319,11 +404,15 @@ export default function SmartBidPage() {
         best_total: 0,
       })
 
-      // 4. Optional linked materials order (existing create + update paths).
-      if (alsoCreateOrder && basket.length > 0) {
+      // 4. Materials order.
+      if (materialsMode === 'use_existing' && chosenOrder) {
+        // Reuse the list the contractor already built: link THIS order to the new
+        // estimate with a targeted update. No new order, no item writes.
+        await updateOrder(chosenOrder.id, { estimate_id: est.id })
+      } else if (alsoCreateOrder && selectedBasket.length > 0) {
         const order = await createOrder(projectId)
         await updateOrder(order.id, { selected_variant: grade, estimate_id: est.id, store_id: null })
-        const moItems = basket.map((b, idx) => ({
+        const moItems = selectedBasket.map((b, idx) => ({
           company_id: companyId,
           material_order_id: order.id,
           description: b.description || '',
@@ -379,7 +468,14 @@ export default function SmartBidPage() {
       <AppHeader />
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 20px' }}>
         <BackLink to={`/project/${projectId}`} label="project" />
-        <h1 style={{ fontSize: 22, fontWeight: 800, margin: '12px 0 16px' }}>Smart Bid</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', margin: '12px 0 16px' }}>
+          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>Smart Bid</h1>
+          <RegionChip
+            resolvedRegion={resolvedRegion}
+            usedFallback={usedFallback}
+            onFallbackShown={() => trackMaterials('region_fallback_shown', { companyId, surface: 'estimates' })}
+          />
+        </div>
         <StepRail step={step} />
 
         {error && (
@@ -420,21 +516,24 @@ export default function SmartBidPage() {
         {/* ── Step 2: Materials ── */}
         {step === 2 && (
           <div className="sb-fadein" key="step2">
-            <div style={{ ...card, marginBottom: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
-                <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Grade:</span>
-                {GRADES.map(gr => (
-                  <button key={gr} onClick={() => setGrade(gr)} style={{
-                    padding: '6px 14px', borderRadius: 9999, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                    border: grade === gr ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
-                    background: grade === gr ? 'var(--color-primary)' : 'var(--color-surface)',
-                    color: grade === gr ? 'var(--color-on-primary, #fff)' : 'var(--color-text, #1b2426)',
-                  }}>{gr.charAt(0).toUpperCase() + gr.slice(1)}</button>
-                ))}
+
+            {/* Prior list exists — let the contractor reuse it or start over. */}
+            {materialsMode === null && existingOrders.length > 0 && (
+              <div style={{ ...card, marginBottom: 16 }}>
+                <div style={{ fontWeight: 700, marginBottom: 4 }}>You already built a materials list for this job.</div>
+                <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 12 }}>
+                  {existingOrders[0].items.length} item{existingOrders[0].items.length === 1 ? '' : 's'} at {capGrade(existingOrders[0].selected_variant || 'standard')}
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button style={primaryBtn} onClick={useMyList}>Use my list</button>
+                  <button style={secondaryBtn} onClick={startFresh}>Start fresh from measurements</button>
+                </div>
               </div>
-              {basket.length === 0 ? (
-                <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>No paint materials computed from these measurements.</p>
-              ) : (
+            )}
+
+            {/* Use my list — the saved order, read-only. */}
+            {materialsMode === 'use_existing' && chosenOrder && (
+              <div style={{ ...card, marginBottom: 16 }}>
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                     <thead><tr style={{ textAlign: 'left', color: 'var(--color-text-muted)', fontSize: 12 }}>
@@ -442,27 +541,91 @@ export default function SmartBidPage() {
                       <th style={{ padding: '6px 8px' }}>Buy qty</th><th style={{ padding: '6px 8px' }}>Est. cost</th>
                     </tr></thead>
                     <tbody>
-                      {basket.map((b, i) => (
-                        <tr key={i} style={{ borderTop: '1px solid var(--color-border)' }}>
-                          <td style={{ padding: '6px 8px' }}>{b.description}</td>
-                          <td style={{ padding: '6px 8px' }}>{b.unit}</td>
-                          <td style={{ padding: '6px 8px' }}>{materialBuyQuantity(b)}</td>
-                          <td style={{ padding: '6px 8px' }}>{b[`cost_${grade}`] != null ? money(materialBuyQuantity(b) * Number(b[`cost_${grade}`])) : '—'}</td>
+                      {chosenOrder.items.map((it, i) => (
+                        <tr key={it.id || i} style={{ borderTop: '1px solid var(--color-border)' }}>
+                          <td style={{ padding: '6px 8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <ItemVisual {...itemVisualProps(it, lookups)} size={28} />
+                              <span>{it.description}</span>
+                            </div>
+                          </td>
+                          <td style={{ padding: '6px 8px' }}>{it.unit}</td>
+                          <td style={{ padding: '6px 8px' }}>{materialBuyQuantity(it)}</td>
+                          <td style={{ padding: '6px 8px' }}>{it[`cost_${grade}`] != null ? money(materialBuyQuantity(it) * Number(it[`cost_${grade}`])) : '—'}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
-              )}
-              <div style={{ marginTop: 12, fontWeight: 700 }}>Estimated materials ({grade}): {money(materialsTotal)}</div>
-            </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, marginBottom: 20 }}>
-              <input type="checkbox" checked={alsoCreateOrder} onChange={e => setAlsoCreateOrder(e.target.checked)} />
-              Also create the materials order for this job
-            </label>
+                <div style={{ marginTop: 12, fontWeight: 700 }}>Estimated materials ({grade}): {money(materialsTotal)}</div>
+                <div style={{ marginTop: 6, fontSize: 12, color: 'var(--color-text-muted)' }}>Edit this list anytime in Materials.</div>
+              </div>
+            )}
+
+            {/* Fresh from measurements — selectable basket with a live total. */}
+            {materialsMode === 'fresh' && (
+              <>
+                <div style={{ ...card, marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
+                    <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Grade:</span>
+                    {GRADES.map(gr => (
+                      <button key={gr} onClick={() => setGrade(gr)} style={{
+                        padding: '6px 14px', borderRadius: 9999, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                        border: grade === gr ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+                        background: grade === gr ? 'var(--color-primary)' : 'var(--color-surface)',
+                        color: grade === gr ? 'var(--color-on-primary, #fff)' : 'var(--color-text, #1b2426)',
+                      }}>{gr.charAt(0).toUpperCase() + gr.slice(1)}</button>
+                    ))}
+                  </div>
+                  {basket.length === 0 ? (
+                    <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>No paint materials computed from these measurements.</p>
+                  ) : (
+                    <>
+                      <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 10px' }}>Check what you want included. Your materials cost updates live.</p>
+                      <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                          <thead><tr style={{ textAlign: 'left', color: 'var(--color-text-muted)', fontSize: 12 }}>
+                            <th style={{ padding: '6px 8px', width: 28 }}></th><th style={{ padding: '6px 8px' }}>Item</th>
+                            <th style={{ padding: '6px 8px' }}>Unit</th><th style={{ padding: '6px 8px' }}>Buy qty</th><th style={{ padding: '6px 8px' }}>Est. cost</th>
+                          </tr></thead>
+                          <tbody>
+                            {basket.map((b, i) => {
+                              const on = !basketDeselected.has(i)
+                              return (
+                                <tr key={i} style={{ borderTop: '1px solid var(--color-border)', opacity: on ? 1 : 0.5 }}>
+                                  <td style={{ padding: '6px 8px' }}><input type="checkbox" checked={on} onChange={() => toggleBasketLine(i)} /></td>
+                                  <td style={{ padding: '6px 8px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                      <ItemVisual {...itemVisualProps(b, lookups)} size={28} />
+                                      <div>
+                                        <div>{b.description}</div>
+                                        {b.source_zone_name && <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{b.source_zone_name}</div>}
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td style={{ padding: '6px 8px' }}>{b.unit}</td>
+                                  <td style={{ padding: '6px 8px' }}>{materialBuyQuantity(b)}</td>
+                                  <td style={{ padding: '6px 8px' }}>{b[`cost_${grade}`] != null ? money(materialBuyQuantity(b) * Number(b[`cost_${grade}`])) : '—'}</td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  )}
+                  <div style={{ marginTop: 12, fontWeight: 700 }}>Estimated materials ({grade}): {money(materialsTotal)}</div>
+                </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, marginBottom: 20 }}>
+                  <input type="checkbox" checked={alsoCreateOrder} onChange={e => setAlsoCreateOrder(e.target.checked)} />
+                  Also create the materials order for this job
+                </label>
+              </>
+            )}
+
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <button style={secondaryBtn} onClick={() => setStep(1)}>Back</button>
-              <button style={primaryBtn} onClick={() => setStep(3)}>Next: Smart Bid</button>
+              <button style={primaryBtn} disabled={materialsMode === null} onClick={() => setStep(3)}>Next: Smart Bid</button>
             </div>
           </div>
         )}

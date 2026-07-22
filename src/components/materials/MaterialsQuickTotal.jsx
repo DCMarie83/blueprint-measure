@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { GRADES, money, gradeTotal } from '../../lib/materialsView'
+import { GRADES, money, gradeTotal, itemVisualProps } from '../../lib/materialsView'
+import ItemVisual from './ItemVisual'
 import './materialsFlow.css'
 
 // Display-only count-up (~500ms), reduced-motion aware.
@@ -31,12 +32,16 @@ function useCountUp(value, duration = 500) {
 const btn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 18px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text, #1b2426)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }
 const primaryBtn = { ...btn, border: 'none', background: 'var(--color-primary)', color: 'var(--color-on-primary, #fff)' }
 
-export default function MaterialsQuickTotal({ lines, grade, onGradeChange, maxPriceAsOf, estimateEntry, saving, onSave, onReview, onBack }) {
+export default function MaterialsQuickTotal({ lines, grade, onGradeChange, maxPriceAsOf, estimateEntry, saving, onSave, onReview, onBack, lookups }) {
   const selectedTotal = gradeTotal(lines, grade)
   const animated = useCountUp(selectedTotal)
+  const stripLines = (lines || []).slice(0, 5)   // up to five visuals per card
 
   return (
     <div className="mf-fadein" style={{ maxWidth: 620, margin: '24px auto' }}>
+      <p style={{ fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center', margin: '0 0 16px' }}>
+        Pick a grade. This is your estimated materials spend for the job.
+      </p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 16 }}>
         {GRADES.map(g => {
           const active = grade === g.key
@@ -53,6 +58,11 @@ export default function MaterialsQuickTotal({ lines, grade, onGradeChange, maxPr
             >
               <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)' }}>{g.label}</span>
               <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text, #1b2426)', fontVariantNumeric: 'tabular-nums' }}>{money(gradeTotal(lines, g.key))}</span>
+              {stripLines.length > 0 && (
+                <span style={{ display: 'flex', gap: 3, marginTop: 6 }}>
+                  {stripLines.map((l, i) => <ItemVisual key={i} {...itemVisualProps(l, lookups)} size={18} />)}
+                </span>
+              )}
             </button>
           )
         })}

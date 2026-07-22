@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Check, X, ArrowLeft, ArrowRight, RotateCcw, PawPrint } from 'lucide-react'
-import { GRADES, money, gradeTotal, lineCostAtGrade, materialBuyQuantity } from '../../lib/materialsView'
+import { GRADES, money, gradeTotal, lineCostAtGrade, materialBuyQuantity, itemVisualProps } from '../../lib/materialsView'
+import ItemVisual from './ItemVisual'
 import './materialsFlow.css'
 
 function usePrefersReducedMotion() {
@@ -22,7 +23,7 @@ const btn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9p
 const heroBtn = { display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 22px', borderRadius: 'var(--radius-md)', border: 'none', background: 'linear-gradient(135deg, #F27243, #d95f33)', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer' }
 const gradeChip = (active) => ({ padding: '5px 12px', borderRadius: 9999, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: active ? '1px solid #F27243' : '1px solid var(--color-border)', background: active ? '#F27243' : 'var(--color-surface)', color: active ? '#fff' : 'var(--color-text, #1b2426)' })
 
-function Card({ line, grade, style, className, overlay, dragHandlers }) {
+function Card({ line, grade, style, className, overlay, dragHandlers, lookups }) {
   const buyQty = materialBuyQuantity(line)
   const others = GRADES.filter(g => g.key !== grade)
   return (
@@ -38,9 +39,14 @@ function Card({ line, grade, style, className, overlay, dragHandlers }) {
     >
       {overlay}
       <div>
-        <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text, #1b2426)' }}>{line.description || 'Untitled item'}</div>
-        {line.source_zone_name && <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>From {line.source_zone_name}</div>}
-        <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+          <ItemVisual {...itemVisualProps(line, lookups)} size={52} />
+          <div>
+            <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text, #1b2426)' }}>{line.description || 'Untitled item'}</div>
+            {line.source_zone_name && <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>From {line.source_zone_name}</div>}
+          </div>
+        </div>
+        <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
           {buyQty} {line.unit || ''}
         </div>
       </div>
@@ -60,7 +66,7 @@ function Card({ line, grade, style, className, overlay, dragHandlers }) {
   )
 }
 
-export default function MaterialsSwiper({ lines, grade, onGradeChange, storeName, saving, onSave, onEditDetails, onExportCsv, onReviewComplete }) {
+export default function MaterialsSwiper({ lines, grade, onGradeChange, storeName, saving, onSave, onEditDetails, onExportCsv, onReviewComplete, lookups }) {
   const reduce = usePrefersReducedMotion()
   const containerRef = useRef(null)
   const [decided, setDecided] = useState([]) // [{ id, decision }]
@@ -174,6 +180,10 @@ export default function MaterialsSwiper({ lines, grade, onGradeChange, storeName
         {storeName && <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--color-text-muted)' }}>{storeName}</span>}
       </div>
 
+      <p style={{ fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center', margin: '0 0 14px' }}>
+        Swipe right to keep, left to remove. Arrow keys work too.
+      </p>
+
       {/* Deck */}
       <div ref={containerRef} style={{ position: 'relative', height: 260 }}>
         {[2, 1, 0].map(offset => {
@@ -186,6 +196,7 @@ export default function MaterialsSwiper({ lines, grade, onGradeChange, storeName
                 key={line.id}
                 line={line}
                 grade={grade}
+                lookups={lookups}
                 className={isDragging ? '' : 'mf-card-anim'}
                 style={{ transform: topTransform, opacity: topOpacity, zIndex: 3, cursor: isDragging ? 'grabbing' : 'grab' }}
                 dragHandlers={dragHandlers}
@@ -207,6 +218,7 @@ export default function MaterialsSwiper({ lines, grade, onGradeChange, storeName
               key={line.id}
               line={line}
               grade={grade}
+              lookups={lookups}
               className="mf-card-anim"
               style={{ transform: `scale(${1 - offset * 0.05}) translateY(${offset * 10}px)`, opacity: 1, zIndex: 3 - offset }}
             />
