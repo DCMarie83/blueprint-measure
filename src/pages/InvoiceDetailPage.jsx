@@ -3,7 +3,6 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { Download, Send, CheckCircle, XCircle, Edit, Trash2, RotateCcw } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import BackLink from '../components/BackLink'
-import InvoiceStatusBadge from '../components/invoices/InvoiceStatusBadge'
 import { useInvoice, useInvoiceMutations, isOverdue } from '../hooks/useInvoices'
 import { generateInvoicePDF } from '../lib/generateInvoicePDF'
 import { useAuth } from '../context/AuthContext'
@@ -19,6 +18,25 @@ const PAYMENT_METHODS = [
   { value: 'venmo', label: 'Venmo' },
   { value: 'other', label: 'Other' },
 ]
+
+// Local status pill for the detail-page header. Mirrors the shared
+// InvoiceStatusBadge status-color semantics (STATUS_MAP + its module.css) so the
+// shared component — still used by the portal and Lite — stays untouched.
+const STATUS_PILL = {
+  draft:   { label: 'Draft',          bg: 'var(--color-neutral-bg)',   color: 'var(--color-neutral)' },
+  sent:    { label: 'Sent',           bg: 'var(--color-warning-bg)',   color: 'var(--color-warning)' },
+  viewed:  { label: 'Viewed',         bg: 'var(--color-info-bg)',      color: 'var(--color-info)' },
+  partial: { label: 'Partially paid', bg: 'rgba(245, 158, 11, 0.12)',  color: '#d97706' },
+  paid:    { label: 'Paid in full',   bg: 'rgba(74,222,128,0.14)',     color: 'var(--color-success)' },
+  void:    { label: 'Void',           bg: 'var(--color-danger-bg)',    color: 'var(--color-danger)', strike: true },
+}
+
+function statusPillProps(status, overdue) {
+  if (overdue && (status === 'sent' || status === 'partial')) {
+    return { label: 'Overdue', bg: 'var(--color-danger-bg)', color: 'var(--color-danger)' }
+  }
+  return STATUS_PILL[status] ?? STATUS_PILL.draft
+}
 
 function fmtMoney(val) {
   if (val == null) return '$0.00'
@@ -189,7 +207,12 @@ export default function InvoiceDetailPage() {
           <div>
             <div className={styles.numberRow}>
               <h1 className={styles.number}>{invoice.invoice_number}</h1>
-              <InvoiceStatusBadge status={status} isOverdue={overdue} />
+              {(() => {
+                const p = statusPillProps(status, overdue)
+                return (
+                  <span style={{ padding: '4px 12px', borderRadius: 9999, background: p.bg, color: p.color, fontWeight: 700, fontSize: 'var(--text-xs)', whiteSpace: 'nowrap', textDecoration: p.strike ? 'line-through' : undefined }}>{p.label}</span>
+                )
+              })()}
             </div>
             {invoice.title && <div className={styles.invTitle}>{invoice.title}</div>}
             <div className={styles.dates}>
@@ -278,9 +301,9 @@ export default function InvoiceDetailPage() {
             <div className={styles.totalRow}><span>Payments received</span><span style={{ color: 'var(--color-success)' }}>−{fmtMoney(paidAmount)}</span></div>
           )}
           {balanceDue > 0 ? (
-            <div className={styles.totalRowGrand}><span>Balance due</span><span style={{ color: 'var(--color-danger)' }}>{fmtMoney(balanceDue)}</span></div>
+            <div className={styles.totalRowPaidState}><span>Balance due</span><span style={{ color: 'var(--color-danger)' }}>{fmtMoney(balanceDue)}</span></div>
           ) : total > 0 && status !== 'draft' ? (
-            <div className={styles.totalRowGrand}><span style={{ color: 'var(--color-success)' }}>Paid in full</span><span style={{ color: 'var(--color-success)' }}>{fmtMoney(0)}</span></div>
+            <div className={styles.totalRowPaidState}><span style={{ color: 'var(--color-success)' }}>Paid in full</span><span style={{ color: 'var(--color-success)' }}>{fmtMoney(0)}</span></div>
           ) : null}
         </div>
 
@@ -306,12 +329,12 @@ export default function InvoiceDetailPage() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {payments.map(pmt => (
-                <div key={pmt.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: 'var(--color-surface-2)', borderRadius: 'var(--radius-md)', fontSize: 14 }}>
+                <div key={pmt.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: 'var(--color-surface)', borderLeft: '3px solid var(--color-success)', borderRadius: 'var(--radius-md)', fontSize: 14 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ fontWeight: 600, fontFamily: 'var(--font-mono)' }}>{fmtMoney(pmt.amount)}</span>
-                      {pmt.payment_method && <span style={{ fontSize: 12, color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>{pmt.payment_method}</span>}
-                      <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{fmtDateShort(pmt.payment_date)}</span>
+                      <span style={{ fontSize: 'var(--text-base)', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{fmtMoney(pmt.amount)}</span>
+                      {pmt.payment_method && <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>{pmt.payment_method}</span>}
+                      <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>{fmtDateShort(pmt.payment_date)}</span>
                     </div>
                     {(pmt.reference_number || pmt.notes) && (
                       <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>

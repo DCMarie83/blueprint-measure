@@ -4,9 +4,9 @@
 
 .topRow { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
 .numberRow { display: flex; align-items: center; gap: 12px; }
-.number { font-size: 24px; font-weight: 700; margin: 0; font-family: var(--font-mono); }
+.number { font-size: var(--text-2xl); font-weight: 700; margin: 0; font-family: var(--font-mono); }
 .invTitle { font-size: 16px; color: var(--color-text-muted); margin-top: 4px; }
-.dates { font-size: 13px; color: var(--color-text-muted); margin-top: 6px; }
+.dates { font-size: var(--text-sm); color: var(--color-text-muted); margin-top: 6px; }
 
 .actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .toolBtn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); color: var(--color-text); font-size: 13px; cursor: pointer; transition: border-color 0.15s; }
@@ -21,22 +21,25 @@
 
 /* Sections */
 .section { padding-top: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--color-border); }
-.sectionLabel { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--color-text-muted); margin: 0 0 12px; }
+.sectionLabel { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: var(--tracking-caps); color: var(--color-text-muted); margin: 0 0 12px; }
 .bodyText { font-size: 14px; color: var(--color-text); line-height: 1.6; margin: 0; white-space: pre-wrap; }
 
 /* Table */
 .table { width: 100%; border-collapse: collapse; font-size: 14px; }
-.th { text-align: left; padding: 8px 10px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-text-muted); border-bottom: 1px solid var(--color-border); }
+.th { text-align: left; padding: 8px 10px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: var(--tracking-caps); color: var(--color-text-muted); background: rgba(38,70,76,0.06); border-bottom: 1px solid var(--color-border); }
 .thR { composes: th; text-align: right; }
 .thC { composes: th; text-align: center; }
 .td { padding: 8px 10px; color: var(--color-text); border-bottom: 1px solid var(--color-border); }
-.tdR { composes: td; text-align: right; font-family: var(--font-mono); font-size: 13px; }
+.tdR { composes: td; text-align: right; font-family: var(--font-mono); font-size: 13px; font-variant-numeric: tabular-nums; }
 .tdC { composes: td; text-align: center; }
+.table tbody tr { transition: background 0.1s; }
+.table tbody tr:hover { background: rgba(38,70,76,0.04); }
 
 /* Totals */
-.totals { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; padding: 16px 0; }
-.totalRow { display: flex; justify-content: space-between; width: 240px; font-size: 14px; color: var(--color-text-muted); }
-.totalRowGrand { display: flex; justify-content: space-between; width: 240px; font-size: 18px; font-weight: 700; color: var(--color-text); padding-top: 6px; border-top: 1px solid var(--color-border); }
+.totals { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; padding: 16px 20px; width: fit-content; margin-left: auto; border: 1px solid var(--color-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
+.totalRow { display: flex; justify-content: space-between; width: 240px; font-size: var(--text-sm); color: var(--color-text-muted); }
+.totalRowGrand { display: flex; justify-content: space-between; width: 240px; font-size: var(--text-lg); font-weight: 800; color: var(--color-text); padding-top: 6px; border-top: 1px solid var(--color-border); }
+.totalRowPaidState { display: flex; justify-content: space-between; width: 240px; font-size: var(--text-xl); font-weight: 800; padding-top: 6px; border-top: 1px solid var(--color-border); }
 
 /* Payment details */
 .paymentDetails { font-size: 14px; color: var(--color-text); display: flex; flex-direction: column; gap: 4px; }

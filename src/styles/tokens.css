@@ -25,6 +25,18 @@
   --space-10: 40px;
   --space-12: 48px;
   --space-16: 64px;
+
+  /* Type scale (applied per component; body base stays 15px) */
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-lg: 17px;
+  --text-xl: 22px;
+  --text-2xl: 28px;
+  --tracking-caps: 0.06em;
+
+  /* Card elevation */
+  --shadow-card: 0 1px 3px rgba(27,36,38,0.08), 0 1px 2px rgba(27,36,38,0.04);
 }
 
 /* ── Dark theme (default) ──────────────────────────────────────────────────── */

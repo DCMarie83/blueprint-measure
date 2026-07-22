@@ -24,6 +24,15 @@ function fmtPct(val) {
 
 const CAT_LABELS = { material: 'Material', labor: 'Labor', subcontractor: 'Subcontractor', equipment: 'Equipment', permit: 'Permit', other: 'Other' }
 
+// Segmented pill toggle — active fills the brand primary.
+const pill = (active) => ({
+  padding: '6px 16px', fontSize: 'var(--text-sm)', fontWeight: 600, cursor: 'pointer',
+  borderRadius: 'var(--radius-pill, 9999px)',
+  border: active ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+  background: active ? 'var(--color-primary)' : 'var(--color-surface)',
+  color: active ? 'var(--color-on-primary, #fff)' : 'var(--color-text-muted)',
+})
+
 // ── Logo pre-fetch helper ───────────────────────────────────────────────
 
 async function fetchCompanyWithLogo(company) {
@@ -203,9 +212,9 @@ export default function ReportsPage() {
         </div>
 
         {/* View switcher */}
-        <div style={{ display: 'flex', gap: 0, marginBottom: 4, borderRadius: 'var(--radius)', overflow: 'hidden', border: '1px solid var(--color-border)', width: 'fit-content' }}>
-          <button onClick={() => { setView('pay'); setDetailProjectId(null) }} style={{ padding: '8px 20px', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: view === 'pay' ? 'var(--color-primary)' : 'var(--color-bg)', color: view === 'pay' ? '#fff' : 'var(--color-text-muted)' }}>Pay Report</button>
-          <button onClick={() => { setView('costing'); setDetailProjectId(null) }} style={{ padding: '8px 20px', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: view === 'costing' ? 'var(--color-primary)' : 'var(--color-bg)', color: view === 'costing' ? '#fff' : 'var(--color-text-muted)' }}>Job Costing</button>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+          <button onClick={() => { setView('pay'); setDetailProjectId(null) }} style={pill(view === 'pay')}>Pay Report</button>
+          <button onClick={() => { setView('costing'); setDetailProjectId(null) }} style={pill(view === 'costing')}>Job Costing</button>
         </div>
 
         <div className={styles.controls}>
@@ -245,9 +254,9 @@ export default function ReportsPage() {
         {view === 'costing' && !detailProjectId && (
           <>
             {/* Portfolio / Period Summary toggle */}
-            <div style={{ display: 'flex', gap: 0, marginBottom: 16, borderRadius: 'var(--radius)', overflow: 'hidden', border: '1px solid var(--color-border)', width: 'fit-content' }}>
-              <button onClick={() => setCostingSubView('portfolio')} style={{ padding: '6px 16px', fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: costingSubView === 'portfolio' ? 'var(--color-surface)' : 'var(--color-bg)', color: costingSubView === 'portfolio' ? 'var(--color-text)' : 'var(--color-text-muted)' }}>Portfolio</button>
-              <button onClick={() => setCostingSubView('summary')} style={{ padding: '6px 16px', fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: costingSubView === 'summary' ? 'var(--color-surface)' : 'var(--color-bg)', color: costingSubView === 'summary' ? 'var(--color-text)' : 'var(--color-text-muted)' }}>Period Summary</button>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+              <button onClick={() => setCostingSubView('portfolio')} style={pill(costingSubView === 'portfolio')}>Portfolio</button>
+              <button onClick={() => setCostingSubView('summary')} style={pill(costingSubView === 'summary')}>Period Summary</button>
             </div>
 
             {costingSubView === 'portfolio' ? (
@@ -337,18 +346,22 @@ function CostingPortfolio({ rows, loading, sortCol, sortAsc, onSort, onSelectPro
 
   return (
     <>
-      {/* Summary strip */}
+      {/* KPI cards */}
       <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 16 }}>
         {[
-          { label: 'Quoted', value: fmtMoney(totals.quoted) },
-          { label: 'Billed', value: fmtMoney(totals.billed) },
-          { label: 'Collected', value: fmtMoney(totals.collected) },
-          { label: 'Total Cost', value: fmtMoney(totals.totalCost) },
-          { label: 'Actual Margin', value: blendedMarginPct != null ? fmtPct(blendedMarginPct) : '—' },
+          { label: 'Quoted', value: fmtMoney(totals.quoted), accent: '#26464C' },
+          { label: 'Billed', value: fmtMoney(totals.billed), accent: '#26464C' },
+          { label: 'Collected', value: fmtMoney(totals.collected), accent: '#26464C' },
+          { label: 'Total Cost', value: fmtMoney(totals.totalCost), accent: 'var(--color-text-muted)' },
+          { label: 'Actual Margin', value: blendedMarginPct != null ? fmtPct(blendedMarginPct) : '—', accent: '#F27243', isMargin: true, positive: (blendedMarginPct ?? 0) >= 0 },
         ].map(s => (
-          <div key={s.label} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', padding: '12px 18px' }}>
-            <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)' }}>{s.label}</div>
-            <div style={{ fontSize: 18, fontWeight: 700 }}>{s.value}</div>
+          <div key={s.label} style={{
+            background: s.isMargin ? 'rgba(242,114,67,0.06)' : 'var(--color-surface)',
+            border: '1px solid var(--color-border)', borderLeft: `3px solid ${s.accent}`,
+            borderRadius: 'var(--radius-lg)', padding: '12px 18px', boxShadow: 'var(--shadow-card)',
+          }}>
+            <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 'var(--tracking-caps)', color: 'var(--color-text-muted)' }}>{s.label}</div>
+            <div style={{ fontSize: 'var(--text-xl)', fontWeight: 800, fontVariantNumeric: 'tabular-nums', color: s.isMargin ? (s.positive ? 'var(--color-success, #22c55e)' : 'var(--color-danger, #dc2626)') : undefined }}>{s.value}</div>
           </div>
         ))}
       </div>
@@ -362,8 +375,8 @@ function CostingPortfolio({ rows, loading, sortCol, sortAsc, onSort, onSelectPro
             {sorted.map(r => (
               <tr key={r.project_id} className={styles.tr} style={{ cursor: 'pointer' }} onClick={() => onSelectProject(r.project_id)}>
                 <td className={styles.td}>
-                  <div style={{ fontWeight: 600 }}>{r.project_name}</div>
-                  <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{r.client_name}</div>
+                  <div style={{ fontSize: 'var(--text-base)', fontWeight: 600 }}>{r.project_name}</div>
+                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>{r.client_name}</div>
                 </td>
                 <td className={styles.td} style={{ textAlign: 'right' }}>{fmtMoney(r.quoted)}</td>
                 <td className={styles.td} style={{ textAlign: 'right' }}>{fmtMoney(r.billed)}</td>
