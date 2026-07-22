@@ -180,8 +180,11 @@ export default function MaterialsSwiper({ lines, grade, onGradeChange, storeName
         {storeName && <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--color-text-muted)' }}>{storeName}</span>}
       </div>
 
-      <p style={{ fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center', margin: '0 0 14px' }}>
+      <p style={{ fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center', margin: '0 0 6px' }}>
         Swipe right to keep, left to remove. Arrow keys work too.
+      </p>
+      <p style={{ fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center', margin: '0 0 14px' }}>
+        Product photos are illustrations only. Actual items, sizes, and packaging come from your store.
       </p>
 
       {/* Deck */}

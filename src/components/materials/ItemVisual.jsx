@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { PaintBucket, Scissors, Layers, Paintbrush, Pipette, Package } from 'lucide-react'
 
 // Per-slug icon overrides for common sundries. Only icons present in
@@ -26,14 +27,19 @@ function tintFor(rule) {
   return { bg: 'var(--color-surface-2, #eef0f0)', color: '#1B2426' }
 }
 
-// A product thumbnail (when imageUrl exists) or a category icon tile.
+// A product thumbnail (when imageUrl exists and loads) or a category icon tile.
+// A broken/failed image falls back to the icon tile — same dimensions, no shift.
 export default function ItemVisual({ imageUrl, taxonomySlug, quantityRule, size = 40 }) {
+  const [errored, setErrored] = useState(false)
+  // Reset on URL change so a corrected imageUrl recovers from a prior failure.
+  useEffect(() => { setErrored(false) }, [imageUrl])
+
   const box = { width: size, height: size, borderRadius: 8, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }
 
-  if (imageUrl) {
+  if (imageUrl && !errored) {
     return (
       <span style={{ ...box, background: '#fff', border: '1px solid var(--color-border)' }}>
-        <img src={imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+        <img src={imageUrl} alt="" onError={() => setErrored(true)} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
       </span>
     )
   }

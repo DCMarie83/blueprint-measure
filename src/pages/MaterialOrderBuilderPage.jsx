@@ -347,8 +347,11 @@ export default function MaterialOrderBuilderPage() {
               <span style={{ fontSize: 12, padding: '3px 10px', borderRadius: 9999, background: 'var(--color-surface-2)', color: 'var(--color-text-muted)', textTransform: 'capitalize', whiteSpace: 'nowrap' }}>{order.status}</span>
             </div>
 
-            <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 14px' }}>
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 6px' }}>
               Your full list. Edit quantities, coats, and prices per grade.
+            </p>
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 14px' }}>
+              Product photos are illustrations only. Actual items, sizes, and packaging come from your store.
             </p>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 16 }}>

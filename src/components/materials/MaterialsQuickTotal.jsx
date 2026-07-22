@@ -73,8 +73,11 @@ export default function MaterialsQuickTotal({ lines, grade, onGradeChange, maxPr
         <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{GRADES.find(g => g.key === grade)?.label} · {lines.length} item{lines.length === 1 ? '' : 's'}</div>
       </div>
 
-      <p style={{ fontSize: 12, color: 'var(--color-text-muted)', textAlign: 'center', margin: '0 0 20px', lineHeight: 1.5 }}>
+      <p style={{ fontSize: 12, color: 'var(--color-text-muted)', textAlign: 'center', margin: '0 0 6px', lineHeight: 1.5 }}>
         Estimated from your measurements and current catalog prices, as of {maxPriceAsOf || '—'}. Verify with your supplier.
+      </p>
+      <p style={{ fontSize: 12, color: 'var(--color-text-muted)', textAlign: 'center', margin: '0 0 20px', lineHeight: 1.5 }}>
+        Product photos are illustrations only. Actual items, sizes, and packaging come from your store.
       </p>
 
       <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
