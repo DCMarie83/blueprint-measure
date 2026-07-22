@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { estimateMaterials, isCoverageLine } from '../utils/measurements'
-import { humanizeSlug, resolveSlug, buildSlugMap, buildOverrideMap, computeSundryLines } from '../lib/materialsResolve'
+import { humanizeSlug, resolveSlug, buildSlugMap, buildOverrideMap, computeSundryLines, buildSuggestedLines } from '../lib/materialsResolve'
 
 function tempId() {
   return 'tmp_' + (globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2))
@@ -220,6 +220,12 @@ export function useMaterialOrderBuilder(orderId) {
     setItems(prev => [...prev, toLine(partial, true)])
   }, [])
 
+  // Replace the local editable items wholesale (e.g. the swiper's kept set landing
+  // on the table before Save). Normalizes through toLine.
+  const replaceItems = useCallback((lines) => {
+    setItems((lines || []).map((m, idx) => toLine({ ...m, sort_order: idx }, true)))
+  }, [])
+
   const updateItem = useCallback((id, patch) => {
     setItems(prev => prev.map(it => (it.id === id ? { ...it, ...patch } : it)))
   }, [])
@@ -247,16 +253,20 @@ export function useMaterialOrderBuilder(orderId) {
     return { error: null }
   }, [order?.id])
 
-  // Shared seeding: build paint (coverage) lines from a zone list, append
-  // deterministic sundries (per_area / per_job) resolved from the catalog, and
-  // set them as the order's items. Returns { paint, sundries, total }.
+  // In-memory suggested lines (toLine-normalized), no persistence. Consumed by
+  // Quick Total and the swiper's new-order mode.
+  const buildSuggested = useCallback(() => {
+    return buildSuggestedLines({ zones, slugMap, overrideMap }).map((m, idx) => toLine({ ...m, sort_order: idx }, true))
+  }, [zones, slugMap, overrideMap])
+
+  // Shared seeding: build the suggested lines for a zone list and set them as the
+  // order's items. Returns { paint, sundries, total }.
   const seedZonesInto = useCallback((zoneList) => {
-    const paintLines = estimateMaterials(zoneList, { vertical: 'paint' })
-    const lines = paintLines.map((m, idx) => ({ ...m, sort_order: idx }))
-    const sundries = computeSundryLines({ zones: zoneList, slugMap, overrideMap, existingLines: lines })
-    for (const s of sundries) lines.push({ ...s, sort_order: lines.length })
+    const lines = buildSuggestedLines({ zones: zoneList, slugMap, overrideMap })
+    const sundries = lines.filter(l => l.taxonomy_slug).length
+    const paint = lines.length - sundries
     setItems(lines.map((m, idx) => toLine({ ...m, sort_order: idx }, true)))
-    return { paint: paintLines.length, sundries: sundries.length, total: lines.length }
+    return { paint, sundries, total: lines.length }
   }, [slugMap, overrideMap])
 
   // Seed line items directly from the job's measured zones — no estimate needed.
@@ -383,19 +393,27 @@ export function useMaterialOrderBuilder(orderId) {
     }
   }, [items, catalog, slugMap, overrideMap, storeNameById, order?.store_id])
 
-  const saveAll = useCallback(async () => {
+  // Persist an explicit set of lines with a grade (and optional estimate link)
+  // through the existing delete-then-reinsert path. Used by the table Save
+  // (saveAll), Quick Total, and the swiper. opts: { grade, estimateId }.
+  const saveLines = useCallback(async (lines, opts = {}) => {
     if (!order) return false
-    if (items.length > 0 && !order.selected_variant) {
+    const list = lines || []
+    const variant = opts.grade ?? order.selected_variant
+    if (list.length > 0 && !variant) {
       setError('Pick a grade (Premium / Standard / Commercial) before saving this order.')
       return false
     }
     setSaving(true)
     setError(null)
     try {
-      const { error: updErr } = await supabase
-        .from('material_orders')
-        .update({ title: order.title ?? null, store_id: order.store_id ?? null, selected_variant: order.selected_variant ?? null, estimate_id: order.estimate_id ?? null })
-        .eq('id', order.id)
+      const patch = {
+        title: order.title ?? null,
+        store_id: order.store_id ?? null,
+        selected_variant: variant ?? null,
+        estimate_id: (opts.estimateId !== undefined) ? (opts.estimateId ?? null) : (order.estimate_id ?? null),
+      }
+      const { error: updErr } = await supabase.from('material_orders').update(patch).eq('id', order.id)
       if (updErr) throw updErr
 
       const { error: delErr } = await supabase
@@ -404,8 +422,8 @@ export function useMaterialOrderBuilder(orderId) {
         .eq('material_order_id', order.id)
       if (delErr) throw delErr
 
-      if (items.length > 0) {
-        const rows = items.map((it, idx) => ({
+      if (list.length > 0) {
+        const rows = list.map((it, idx) => ({
           company_id: order.company_id,
           material_order_id: order.id,
           description: it.description || '',
@@ -426,9 +444,7 @@ export function useMaterialOrderBuilder(orderId) {
           ai_suggested: !!it.ai_suggested,
           sort_order: idx,
         }))
-        const { error: insErr } = await supabase
-          .from('material_order_items')
-          .insert(rows)
+        const { error: insErr } = await supabase.from('material_order_items').insert(rows)
         if (insErr) throw insErr
       }
 
@@ -440,11 +456,13 @@ export function useMaterialOrderBuilder(orderId) {
     } finally {
       setSaving(false)
     }
-  }, [order, items, load])
+  }, [order, load])
+
+  const saveAll = useCallback(() => saveLines(items), [saveLines, items])
 
   return {
-    order, items, zones, stores, estimates, catalog, overrideMap, maxPriceAsOf, loadWarnings, loading, saving, error,
-    addItem, updateItem, removeItem, updateOrderField, persistEstimateId,
-    seedFromEstimate, seedFromZones, aiSuggest, aiSuggesting, saveAll, reload: load,
+    order, items, zones, stores, estimates, catalog, overrideMap, maxPriceAsOf, storeNameById, loadWarnings, loading, saving, error,
+    addItem, replaceItems, updateItem, removeItem, updateOrderField, persistEstimateId,
+    seedFromEstimate, seedFromZones, buildSuggested, saveLines, aiSuggest, aiSuggesting, saveAll, reload: load,
   }
 }

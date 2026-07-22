@@ -1,0 +1,23 @@
+/* Materials v2 motion. All transitions are opt-in via these classes and are
+   disabled under prefers-reduced-motion (buttons + keyboard remain). */
+
+.mf-card-anim {
+  transition: transform 300ms ease, opacity 300ms ease;
+}
+
+.mf-fadein {
+  animation: mfFadeIn 200ms ease both;
+}
+@keyframes mfFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.mf-zebra:nth-child(even) {
+  background: rgba(38, 70, 76, 0.03);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mf-card-anim { transition: none; }
+  .mf-fadein { animation: none; }
+}

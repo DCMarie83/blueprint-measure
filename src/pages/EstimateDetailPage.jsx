@@ -18,6 +18,7 @@ import { getDisplayTotal } from '../lib/estimateDisplay'
 import { isSmartEstimate, fetchBenchmarksByItemIds } from '../lib/smartBid'
 import { materialBuyQuantity } from '../utils/measurements'
 import { trackMaterials } from '../lib/analytics'
+import { useMaterialOrders } from '../hooks/useMaterialOrders'
 import SmartBadge from '../components/smartbid/SmartBadge'
 import MarketBand from '../components/smartbid/MarketBand'
 import styles from './EstimateDetailPage.module.css'
@@ -139,6 +140,16 @@ export default function EstimateDetailPage() {
   const [companyData, setCompanyData] = useState(null)
 
   const estimate = builder.estimate
+  const { createOrder } = useMaterialOrders(estimate?.project_id)
+
+  async function handleAddMaterials() {
+    try {
+      const ord = await createOrder(estimate.project_id)
+      navigate(`/materials/${ord.id}`, { state: { estimateId: estimate.id, returnTo: `/estimates/${estimate.id}` } })
+    } catch (err) {
+      alert('Failed to start materials: ' + err.message)
+    }
+  }
 
   async function fetchProjectClientCompany() {
     if (!estimate?.project_id) return
@@ -228,7 +239,7 @@ export default function EstimateDetailPage() {
         .select('id, selected_variant, material_order_items(*)')
         .eq('estimate_id', estimate.id)
       if (cancelled) return
-      if (!orders || orders.length === 0) { setMaterials({ cost: null, linked: false }); return }
+      if (!orders || orders.length === 0) { setMaterials({ cost: null, linked: false, orderId: null }); return }
       let cost = 0
       for (const ord of orders) {
         const variant = ord.selected_variant || 'standard'
@@ -238,7 +249,7 @@ export default function EstimateDetailPage() {
           cost += materialBuyQuantity(it) * c
         }
       }
-      setMaterials({ cost, linked: true })
+      setMaterials({ cost, linked: true, orderId: orders[0].id })
     })()
     return () => { cancelled = true }
   }, [estimate?.id])
@@ -679,9 +690,23 @@ export default function EstimateDetailPage() {
                   <div style={{ fontWeight: 700, marginBottom: 10 }}>Margin</div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13 }}><span>Bid total</span><strong>{fmtMoney(animatedBidTotal)}</strong></div>
                   {materials.linked ? (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13 }}><span>Materials cost</span><span>{fmtMoney(materialsCost)}</span></div>
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13 }}><span>Materials cost</span><span>{fmtMoney(materialsCost)}</span></div>
+                      {materials.orderId && (
+                        <button onClick={() => navigate(`/materials/${materials.orderId}`)} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--color-primary, #26464c)', fontSize: 12, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline', marginBottom: 6 }}>
+                          Review materials
+                        </button>
+                      )}
+                    </>
                   ) : (
-                    <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 6 }}>No materials order linked to this estimate yet.</div>
+                    <div style={{ marginBottom: 8 }}>
+                      <div style={{ fontSize: 13, color: 'var(--color-text, #1b2426)', marginBottom: 6 }}>Add materials to this estimate?</div>
+                      {isAdmin && (
+                        <button onClick={handleAddMaterials} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 'var(--radius-md)', border: 'none', background: '#F27243', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                          Add materials
+                        </button>
+                      )}
+                    </div>
                   )}
                   {isAdmin && (
                     <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6, fontSize: 13 }}>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { isCoverageLine } from '../../utils/measurements'
+import './materialsFlow.css'
 
 // Display order is fixed: Premium, Standard, Commercial.
 const GRADES = [
@@ -13,8 +14,9 @@ const cellInput = {
   border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)',
   background: 'var(--color-bg, #fff)', color: 'var(--color-text, #1b2426)', fontSize: 13,
 }
-const th = { padding: '8px 8px', fontWeight: 600, whiteSpace: 'nowrap' }
+const th = { padding: '8px 8px', fontWeight: 600, whiteSpace: 'nowrap', position: 'sticky', top: 0, zIndex: 1, background: 'rgba(38,70,76,0.06)', borderBottom: '1px solid var(--color-border)' }
 const td = { padding: '8px 8px', verticalAlign: 'top' }
+const gradeChip = (active) => ({ display: 'inline-block', padding: '2px 10px', borderRadius: 9999, fontSize: 11, fontWeight: 700, background: active ? '#F27243' : 'rgba(38,70,76,0.12)', color: active ? '#fff' : '#26464C' })
 const miniLabel = { display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11, color: 'var(--color-text-muted)' }
 const myPriceTag = { fontSize: 10, fontWeight: 600, color: 'var(--color-primary, #26464c)', whiteSpace: 'nowrap' }
 
@@ -40,7 +42,7 @@ function useIsNarrow(breakpoint = 820) {
   return narrow
 }
 
-export default function MaterialLineItemsTable({ items, onUpdate, onRemove, readOnly = false, overrideMap }) {
+export default function MaterialLineItemsTable({ items, onUpdate, onRemove, readOnly = false, overrideMap, selectedGrade }) {
   const narrow = useIsNarrow()
   const overrides = overrideMap || new Map()
 
@@ -110,9 +112,9 @@ export default function MaterialLineItemsTable({ items, onUpdate, onRemove, read
             <th style={{ ...th, width: 80 }}>Qty</th>
             <th style={{ ...th, width: 70 }}>Coats</th>
             <th style={{ ...th, width: 90 }}>Overage %</th>
-            <th style={th}>Premium</th>
-            <th style={th}>Standard</th>
-            <th style={th}>Commercial</th>
+            <th style={th}><span style={gradeChip(selectedGrade === 'premium')}>Premium</span></th>
+            <th style={th}><span style={gradeChip(selectedGrade === 'standard')}>Standard</span></th>
+            <th style={th}><span style={gradeChip(selectedGrade === 'commercial')}>Commercial</span></th>
             <th style={{ ...th, width: 40 }}></th>
           </tr>
         </thead>
@@ -120,7 +122,7 @@ export default function MaterialLineItemsTable({ items, onUpdate, onRemove, read
           {items.map(it => {
             const coverage = isCoverageLine(it)
             return (
-              <tr key={it.id} style={{ borderTop: '1px solid var(--color-border)' }}>
+              <tr key={it.id} className="mf-zebra" style={{ borderTop: '1px solid var(--color-border)' }}>
                 <td style={td}><input style={cellInput} placeholder="Description" value={it.description} disabled={readOnly} onChange={e => onUpdate(it.id, { description: e.target.value })} /></td>
                 <td style={{ ...td, color: 'var(--color-text-muted)', fontSize: 12, maxWidth: 160 }}>{it.source_zone_name || '—'}</td>
                 <td style={td}><input style={cellInput} placeholder="gallon" value={it.unit} disabled={readOnly} onChange={e => onUpdate(it.id, { unit: e.target.value })} /></td>

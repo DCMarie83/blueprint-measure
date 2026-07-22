@@ -7,6 +7,8 @@
 // objects out). No hooks, no supabase, no React.
 // ════════════════════════════════════════════════════════════════════
 
+import { estimateMaterials } from '../utils/measurements'
+
 // Turn a taxonomy_slug into a readable, generic line description. Grade-specific
 // product/brand names live in product_premium/standard/commercial, not here.
 export function humanizeSlug(slug) {
@@ -122,5 +124,18 @@ export function computeSundryLines({ zones, slugMap, overrideMap, existingLines 
     seenSlugs.add(slug)
     seenDescriptions.add(desc.trim().toLowerCase())
   }
+  return lines
+}
+
+// Pure, in-memory suggestion source: the deterministic paint (coverage) lines
+// from measurements plus catalog sundries (per_area / per_job). Returns the
+// proposed lines WITHOUT persisting. This is the single source consumed by
+// seedFromZones (which persists it verbatim), Quick Total, and the swiper — so
+// all three see identical proposed lines.
+export function buildSuggestedLines({ zones, slugMap, overrideMap }) {
+  const paintLines = estimateMaterials(zones || [], { vertical: 'paint' })
+  const lines = paintLines.map((m, idx) => ({ ...m, sort_order: idx }))
+  const sundries = computeSundryLines({ zones: zones || [], slugMap, overrideMap, existingLines: lines })
+  for (const s of sundries) lines.push({ ...s, sort_order: lines.length })
   return lines
 }
