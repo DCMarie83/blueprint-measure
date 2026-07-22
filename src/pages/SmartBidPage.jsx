@@ -6,9 +6,9 @@ import { useEffectiveCompany } from '../hooks/useEffectiveCompany'
 import { useEstimates } from '../hooks/useEstimates'
 import { useMaterialOrders } from '../hooks/useMaterialOrders'
 import { usePricingItems } from '../hooks/usePricingItems'
-import { estimateMaterials, materialBuyQuantity } from '../utils/measurements'
-import { buildSlugMap, buildOverrideMap, resolveSlug, computeSundryLines } from '../lib/materialsResolve'
-import { buildCatalogLookups, itemVisualProps } from '../lib/materialsView'
+import { materialBuyQuantity } from '../utils/measurements'
+import { buildSlugMap, buildOverrideMap, buildSuggestedLines } from '../lib/materialsResolve'
+import { buildCatalogLookups, itemVisualProps, gradeTotal } from '../lib/materialsView'
 import {
   SMART_BENCHMARK_DEFAULTS, classifyGroup, unitForMeasurementType, categoryLabel,
   matchLibraryItem, fetchRegionalBenchmarks, pickBenchmark,
@@ -99,6 +99,8 @@ export default function SmartBidPage() {
   const [rates, setRates] = useState({})                       // group key -> edited rate string
   const [estLaborCost, setEstLaborCost] = useState('')
   const [creating, setCreating] = useState(false)
+  const [adopting, setAdopting] = useState(false)
+  const [adoptNotice, setAdoptNotice] = useState(null)
 
   // Fire the materials-mode analytics event exactly once per wizard run.
   const fireModeTrack = useCallback((mode) => {
@@ -196,15 +198,12 @@ export default function SmartBidPage() {
   const includedGroups = useMemo(() => groups.filter(g => !excluded.has(g.key)), [groups, excluded])
 
   // ── Materials basket (paint slugs resolved + sundries) ───────────────────────
+  // ONE materials pipeline: the same resolver the builder's Quick Total/swiper/seed
+  // consume. Coverage paint is resolved at suggestion time, so the wizard basket and
+  // the standalone materials builder produce identical numbers for the same zones.
   const basket = useMemo(() => {
     if (!zones.length) return []
-    const paint = estimateMaterials(zones, { vertical: 'paint' }).map(l => {
-      const slug = /ceiling/i.test(l.description || '') ? 'paint-ceiling-interior' : 'paint-wall-interior'
-      const resolved = resolveSlug(slug, slugMap, overrideMap)
-      return { ...l, taxonomy_slug: slug, ...(resolved?.fields || {}) }
-    })
-    const sundries = computeSundryLines({ zones, slugMap, overrideMap, existingLines: paint })
-    return [...paint, ...sundries]
+    return buildSuggestedLines({ zones, slugMap, overrideMap })
   }, [zones, slugMap, overrideMap])
 
   const lookups = useMemo(() => buildCatalogLookups(catalog), [catalog])
@@ -222,7 +221,7 @@ export default function SmartBidPage() {
     : selectedBasket
 
   const materialsTotal = useMemo(
-    () => activeLines.reduce((s, b) => s + materialBuyQuantity(b) * (Number(b[`cost_${grade}`]) || 0), 0),
+    () => gradeTotal(activeLines, grade),
     [activeLines, grade]
   )
 
@@ -353,6 +352,65 @@ export default function SmartBidPage() {
       if (next.has(i)) next.delete(i); else next.add(i)
       return next
     })
+  }
+
+  // Deliberate, labeled action: persist each DISTINCT benchmark-priced line as a
+  // pricing_items row (source='smart_bid'), skipping name+unit already in the
+  // library. Does not touch the estimate, the lines, or priced_from.
+  const normKey = (name, unit) => `${String(name || '').trim().toLowerCase()}|${String(unit || '').trim().toLowerCase()}`
+  async function adoptMarketRates() {
+    if (adopting) return
+    const benchLines = draftLines.filter(l => l.priced_from === 'benchmark')
+    if (benchLines.length === 0) return
+    setAdopting(true)
+    setAdoptNotice(null)
+    try {
+      // Distinct by name+unit within this run.
+      const seen = new Set()
+      const distinct = []
+      for (const l of benchLines) {
+        const k = normKey(l.description, l.unit)
+        if (seen.has(k)) continue
+        seen.add(k)
+        distinct.push(l)
+      }
+      // Skip name+unit already in the contractor's library (case-insensitive).
+      const existing = new Set((pricingItems || []).map(p => normKey(p.name, p.unit)))
+      const toInsert = distinct.filter(l => !existing.has(normKey(l.description, l.unit)))
+      if (toInsert.length === 0) { setAdoptNotice('Saved 0 rates to your pricing library.'); return }
+
+      // pricing_items.category_id is NOT NULL — attach to the company's first
+      // category, creating a "Market Rates" category if the library is empty.
+      let categoryId = null
+      const { data: cats, error: catSelErr } = await supabase
+        .from('pricing_categories').select('id').eq('company_id', companyId)
+        .order('sort_order', { ascending: true }).limit(1)
+      if (catSelErr) throw catSelErr
+      if (cats && cats.length > 0) categoryId = cats[0].id
+      else {
+        const { data: newCat, error: catInsErr } = await supabase
+          .from('pricing_categories').insert({ company_id: companyId, name: 'Market Rates' })
+          .select('id').single()
+        if (catInsErr) throw catInsErr
+        categoryId = newCat.id
+      }
+
+      const rows = toInsert.map(l => ({
+        company_id: companyId,
+        category_id: categoryId,
+        name: l.description,
+        unit: l.unit,
+        default_rate: Number((rateFor(l) || 0).toFixed(2)),
+        source: 'smart_bid',
+      }))
+      const { error: insErr } = await supabase.from('pricing_items').insert(rows)
+      if (insErr) throw insErr
+      setAdoptNotice(`Saved ${rows.length} rates to your pricing library.`)
+    } catch (err) {
+      setAdoptNotice(err.message)
+    } finally {
+      setAdopting(false)
+    }
   }
 
   async function handleCreate() {
@@ -691,6 +749,15 @@ export default function SmartBidPage() {
                   <strong style={{ color: bidPosition === 'within' ? 'var(--color-success, #16a34a)' : 'var(--color-primary, #26464c)' }}>
                     Your bid is {bidPosition}.
                   </strong>
+                </div>
+              )}
+
+              {draftLines.some(l => l.priced_from === 'benchmark') && (
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--color-border)' }}>
+                  <button style={{ ...secondaryBtn, opacity: adopting ? 0.6 : 1 }} onClick={adoptMarketRates} disabled={adopting}>
+                    {adopting ? 'Saving…' : 'Save market rates to my pricing library'}
+                  </button>
+                  {adoptNotice && <div style={{ marginTop: 8, fontSize: 12, color: 'var(--color-text-muted)' }}>{adoptNotice}</div>}
                 </div>
               )}
             </div>

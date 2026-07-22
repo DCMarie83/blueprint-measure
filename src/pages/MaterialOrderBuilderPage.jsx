@@ -10,7 +10,7 @@ import MaterialsStartScreen from '../components/materials/MaterialsStartScreen'
 import MaterialsQuickTotal from '../components/materials/MaterialsQuickTotal'
 import MaterialsSwiper from '../components/materials/MaterialsSwiper'
 import { materialBuyQuantity } from '../utils/measurements'
-import { buildCatalogLookups } from '../lib/materialsView'
+import { buildCatalogLookups, gradeTotal, unitCostAtGrade } from '../lib/materialsView'
 import { trackMaterials } from '../lib/analytics'
 
 const secondaryBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--color-surface)', color: 'var(--color-text, #1b2426)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }
@@ -24,14 +24,7 @@ const gradeLabel = (k) => k.charAt(0).toUpperCase() + k.slice(1)
 function money(n) {
   return '$' + (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
-
-function gradeTotal(items, gradeKey) {
-  return items.reduce((sum, it) => {
-    const cost = Number(it[`cost_${gradeKey}`])
-    if (!cost || cost < 0) return sum
-    return sum + materialBuyQuantity(it) * cost
-  }, 0)
-}
+// gradeTotal now comes from materialsView (shared grade-invariant fallback).
 
 function buildShopUrl(store, orderId) {
   const base = store?.affiliate_url
@@ -61,9 +54,9 @@ function exportMaterialsCsv(order, items) {
       buyQty,
       Number(it.overage_pct) || 0,
       Number(it.coats) || 1,
-      it.product_premium || '', Number(it.cost_premium) || 0,
-      it.product_standard || '', Number(it.cost_standard) || 0,
-      it.product_commercial || '', Number(it.cost_commercial) || 0,
+      it.product_premium || '', unitCostAtGrade(it, 'premium'),
+      it.product_standard || '', unitCostAtGrade(it, 'standard'),
+      it.product_commercial || '', unitCostAtGrade(it, 'commercial'),
     ]
   })
   const csv = [header, ...rows]

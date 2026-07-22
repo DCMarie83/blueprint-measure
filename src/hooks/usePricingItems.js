@@ -41,9 +41,13 @@ export function usePricingItems() {
   }
 
   async function updateItem(id, patch) {
+    // Editing any field of a library row makes the rate the contractor's own:
+    // stamp source='user' so a touched seeded starter no longer reads as seeded
+    // (and can price Smart Bid). Callers may override by passing source explicitly.
+    const finalPatch = ('source' in patch) ? patch : { ...patch, source: 'user' }
     const { error: err } = await supabase
       .from('pricing_items')
-      .update({ ...patch, updated_at: new Date().toISOString() })
+      .update({ ...finalPatch, updated_at: new Date().toISOString() })
       .eq('id', id)
     if (err) throw err
     await fetchItems()

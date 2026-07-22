@@ -16,7 +16,7 @@ import { generateEstimatePDF } from '../lib/generateEstimatePDF'
 import { calculateDepositPercent, getReferenceTotal } from '../lib/depositMath'
 import { getDisplayTotal } from '../lib/estimateDisplay'
 import { isSmartEstimate, fetchBenchmarksByItemIds } from '../lib/smartBid'
-import { materialBuyQuantity } from '../utils/measurements'
+import { gradeTotal } from '../lib/materialsView'
 import { trackMaterials } from '../lib/analytics'
 import { useMaterialOrders } from '../hooks/useMaterialOrders'
 import SmartBadge from '../components/smartbid/SmartBadge'
@@ -246,11 +246,8 @@ export default function EstimateDetailPage() {
       let cost = 0
       for (const ord of orders) {
         const variant = ord.selected_variant || 'standard'
-        for (const it of (ord.material_order_items || [])) {
-          const c = Number(it[`cost_${variant}`])
-          if (!c || c < 0) continue
-          cost += materialBuyQuantity(it) * c
-        }
+        // Shared grade-invariant total: premium/commercial fall back to standard.
+        cost += gradeTotal(ord.material_order_items || [], variant)
       }
       setMaterials({ cost, linked: true, orderId: orders[0].id })
     })()

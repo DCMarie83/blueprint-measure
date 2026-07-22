@@ -118,7 +118,9 @@ export function categoryLabel(category) {
 export function matchLibraryItem(pricingItems, category, unit) {
   const keywords = LIBRARY_KEYWORDS[category]
   if (!keywords) return null
-  const active = (pricingItems || []).filter(it => it.active !== false)
+  // Seeded starter rates are examples only — they must never price a Smart Bid
+  // line. Only the contractor's own ('user') or adopted ('smart_bid') rows match.
+  const active = (pricingItems || []).filter(it => it.active !== false && it.source !== 'seeded')
   const wantUnit = String(unit || '').toLowerCase()
   for (const kw of keywords) {
     const hit = active.find(it =>

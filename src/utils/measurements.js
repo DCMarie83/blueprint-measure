@@ -251,6 +251,9 @@ function estimatePaintMaterials(zones, defaultOverage) {
     const perCoatGallons = Math.round(g.rawGallons * 100) / 100
     lines.push({
       description: `${g.surfaceType} paint`,
+      // Structural discriminator for catalog resolution (wall vs ceiling), carried
+      // alongside the human description so resolvers never parse the label.
+      surface_type: g.surfaceType,
       unit: 'gallon',
       quantity: perCoatGallons,
       coats: defaultCoatsForSurface(g.surfaceType),

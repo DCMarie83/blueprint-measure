@@ -32,9 +32,12 @@ export function priceForRow(row, overrideMap) {
 export function resolveSlug(slug, slugMap, overrideMap) {
   const grades = slugMap.get(slug)
   if (!grades) return null
-  const premium = grades.premium || null
   const standard = grades.standard || null
-  const commercial = grades.commercial || null
+  // Grade-invariant fallback: a slug that carries only a standard row is the same
+  // product at every grade. Premium/commercial inherit the standard row's product,
+  // cost, AND id, so provenance stays truthful (the id points at the real row).
+  const premium = grades.premium || standard || null
+  const commercial = grades.commercial || standard || null
   const displayRow = standard || premium || commercial || null
   return {
     displayRow,
@@ -134,7 +137,15 @@ export function computeSundryLines({ zones, slugMap, overrideMap, existingLines 
 // all three see identical proposed lines.
 export function buildSuggestedLines({ zones, slugMap, overrideMap }) {
   const paintLines = estimateMaterials(zones || [], { vertical: 'paint' })
-  const lines = paintLines.map((m, idx) => ({ ...m, sort_order: idx }))
+  // Resolve each coverage line to the catalog at suggestion time (v3 fix): wall
+  // vs ceiling comes from the structural surface_type the estimator emits, not the
+  // description. Fills products/costs/provenance identical in shape to sundries.
+  // A line that maps to no catalog row stays unresolved (null costs), never guessed.
+  const lines = paintLines.map((m, idx) => {
+    const slug = m.surface_type === 'Ceiling' ? 'paint-ceiling-interior' : 'paint-wall-interior'
+    const resolved = resolveSlug(slug, slugMap, overrideMap)
+    return { ...m, taxonomy_slug: slug, ...(resolved?.fields || {}), sort_order: idx }
+  })
   const sundries = computeSundryLines({ zones: zones || [], slugMap, overrideMap, existingLines: lines })
   for (const s of sundries) lines.push({ ...s, sort_order: lines.length })
   return lines

@@ -507,6 +507,32 @@ a17 AS (
          CASE WHEN (SELECT count(*) FROM a17_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
          coalesce('PROBLEMS: ' || (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a17_bad),
                   'request-changes shape complete')::text
+),
+
+-- ── A18 ────────────────────────────────────────────────────────────
+-- pricing_items provenance: the source column and its three-value check must
+-- exist, or the Smart Bid seeded-exclusion and the library "Starter rate" chip
+-- key off a column/constraint that isn't there.
+a18_bad AS (
+  SELECT 'missing-column:source'::text AS problem
+  WHERE NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'pricing_items' AND column_name = 'source')
+  UNION ALL
+  SELECT 'missing-or-incomplete-check:pricing_items_source_check'
+  WHERE NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'pricing_items'::regclass AND conname = 'pricing_items_source_check'
+      AND pg_get_constraintdef(oid) ILIKE '%user%'
+      AND pg_get_constraintdef(oid) ILIKE '%seeded%'
+      AND pg_get_constraintdef(oid) ILIKE '%smart_bid%')
+),
+a18 AS (
+  SELECT 'A18'::text,
+         'pricing_items: source column with user/seeded/smart_bid check present'::text,
+         CASE WHEN (SELECT count(*) FROM a18_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
+         coalesce('PROBLEMS: ' || (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a18_bad),
+                  'source column and check present')::text
 )
 
 SELECT * FROM a1
@@ -526,4 +552,5 @@ UNION ALL SELECT * FROM a14
 UNION ALL SELECT * FROM a15
 UNION ALL SELECT * FROM a16
 UNION ALL SELECT * FROM a17
+UNION ALL SELECT * FROM a18
 ORDER BY id;

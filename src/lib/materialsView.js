@@ -46,12 +46,25 @@ export function money(n) {
   return '$' + (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+// Effective per-unit cost of a line at a grade, with a grade-invariant fallback:
+// when the requested grade's cost is null/empty (legacy saved rows may carry only
+// standard), fall back to cost_standard; 0 only when standard is also missing.
+// A legitimate numeric 0 at the grade is NOT overridden.
+export function unitCostAtGrade(line, grade) {
+  const raw = line?.[`cost_${grade}`]
+  let cost = (raw === '' || raw == null) ? null : Number(raw)
+  if (cost == null || Number.isNaN(cost)) {
+    const rawStd = line?.[`cost_standard`]
+    const std = (rawStd === '' || rawStd == null) ? null : Number(rawStd)
+    cost = (std == null || Number.isNaN(std)) ? 0 : std
+  }
+  return (!cost || cost < 0) ? 0 : cost
+}
+
 // Cost of one line at a grade: buy quantity (coats + overage + 0.25 gallon
-// rounding) x the grade's unit cost. Matches the table math exactly.
+// rounding) x the grade's effective unit cost. Matches the table math exactly.
 export function lineCostAtGrade(line, grade) {
-  const cost = Number(line[`cost_${grade}`])
-  if (!cost || cost < 0) return 0
-  return materialBuyQuantity(line) * cost
+  return materialBuyQuantity(line) * unitCostAtGrade(line, grade)
 }
 
 export function gradeTotal(lines, grade) {

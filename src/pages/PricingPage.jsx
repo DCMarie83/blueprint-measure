@@ -72,6 +72,7 @@ export default function PricingPage() {
   }
 
   const loading = catLoading || itemLoading
+  const hasSeeded = items.some(i => i.source === 'seeded')
 
   return (
     <div className={styles.page}>
@@ -92,6 +93,12 @@ export default function PricingPage() {
         </div>
 
         {tab === 'materials' && <MaterialsPricingTab />}
+
+        {tab === 'estimate' && hasSeeded && (
+          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 16px' }}>
+            Starter rates are examples. Edit one to make it yours, or let Smart Bid use your regional market data.
+          </p>
+        )}
 
         {tab === 'estimate' && (loading ? (
           <div className={styles.emptyState}>Loading...</div>
@@ -134,6 +141,9 @@ export default function PricingPage() {
                     catItems.map(item => (
                       <div key={item.id} className={styles.itemRow}>
                         <span className={styles.itemName}>{item.name}</span>
+                        {item.source === 'seeded' && (
+                          <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 9999, background: 'var(--color-surface-2, #eef0f0)', color: 'var(--color-text-muted, #1B2426)', whiteSpace: 'nowrap' }}>Starter rate</span>
+                        )}
                         <span className={styles.unitBadge}>{item.unit}</span>
                         <span className={styles.rateCell}>
                           <span className={styles.rateLabel}>Rate </span>{fmtRate(item.default_rate)}
