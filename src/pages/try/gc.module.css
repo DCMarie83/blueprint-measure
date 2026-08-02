@@ -712,3 +712,152 @@
 
 .peekLink { font-size: var(--text-sm); font-weight: 600; color: var(--color-text-muted); text-decoration: none; }
 .peekLink:hover, .peekLink:focus-visible { color: var(--color-primary); outline: none; }
+
+/* ── GC menu two-tier layout (guided dominant, peeks secondary) ──── */
+
+.guidedGrid { display: grid; grid-template-columns: 1fr; gap: var(--space-3); }
+
+.guidedTile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-5);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  text-decoration: none;
+  color: var(--color-text);
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.guidedTile:hover, .guidedTile:focus-visible { border-color: var(--color-primary); transform: translateY(-2px); outline: none; }
+
+.guidedText { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.guidedTitle { font-family: var(--font-heading); font-weight: 800; font-size: var(--text-xl); }
+.guidedSub { font-size: var(--text-sm); color: var(--color-text-muted); }
+
+.peekHeading {
+  margin: var(--space-6) 0 var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--color-text-muted);
+}
+
+.peekGrid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+
+.peekTile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: var(--color-text);
+  transition: border-color 0.15s ease;
+}
+.peekTile:hover, .peekTile:focus-visible { border-color: var(--color-primary); outline: none; }
+.peekTileTitle { font-family: var(--font-heading); font-weight: 700; font-size: var(--text-base); }
+
+/* ── Clients peek (mirror ClientListView) ───────────────────────── */
+
+.clHead { margin-bottom: var(--space-4); }
+.clTitle { font-family: var(--font-heading); font-size: var(--text-2xl); font-weight: 800; margin: 0; }
+.clSub { font-size: var(--text-sm); color: var(--color-text-muted); margin: 2px 0 0; }
+
+.clSearchRow { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; margin-bottom: var(--space-4); }
+.clSearch { flex: 1 1 220px; min-width: 200px; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg); }
+.clSearchIcon { color: var(--color-text-muted); flex: none; }
+.clSearchPlaceholder { font-size: 14px; color: var(--color-text-muted); }
+.clChips { display: flex; gap: 6px; flex-wrap: wrap; }
+.clChip { padding: 5px 12px; border-radius: var(--radius-pill); font-size: 12px; font-weight: 600; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text); }
+.clChipActive { border-color: var(--color-primary); background: var(--color-primary); color: #fff; }
+
+.clTableWrap { overflow-x: auto; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); }
+.clTable { width: 100%; border-collapse: collapse; }
+.clTh { position: sticky; top: 0; background: var(--color-surface); border-bottom: 1px solid var(--color-border); padding: 10px 12px; font-size: 12px; font-weight: 600; color: var(--color-text-muted); text-align: left; white-space: nowrap; }
+.clNumTh { text-align: right; }
+.clCell { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid var(--color-border); vertical-align: middle; color: var(--color-text); white-space: nowrap; }
+.clNum { text-align: right; font-variant-numeric: tabular-nums; }
+.clMuted { color: var(--color-text-muted); }
+.clNameCell { display: flex; align-items: center; gap: 10px; }
+.clAvatar { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #26464C, #1B2426); color: #fff; font-size: 12px; font-weight: 700; }
+.clNameWrap { min-width: 0; }
+.clName { font-weight: 600; color: var(--color-text); overflow: hidden; text-overflow: ellipsis; }
+.clBiz { font-size: 12px; color: var(--color-text-muted); overflow: hidden; text-overflow: ellipsis; }
+.clStatus { display: inline-block; padding: 2px 10px; border-radius: var(--radius-pill); font-size: 11px; font-weight: 700; white-space: nowrap; }
+.clActions { display: inline-flex; gap: 6px; }
+.clIconBtn { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: var(--radius-sm); border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text-muted); }
+
+/* ── Jobs board (mirror KanbanPage) ─────────────────────────────── */
+
+.jbHead { margin-bottom: var(--space-3); }
+.jbTitle { font-family: var(--font-heading); font-size: var(--text-2xl); font-weight: 800; margin: 0; }
+.jbSub { font-size: var(--text-sm); color: var(--color-text-muted); margin: 2px 0 0; }
+
+.jbBoard { display: flex; gap: 12px; overflow-x: auto; padding-bottom: var(--space-3); }
+
+.jbColumn {
+  min-width: 260px;
+  max-width: 300px;
+  flex: 1 0 260px;
+  background: rgba(38, 70, 76, 0.06);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+}
+
+.jbColHeader { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-3); padding-bottom: var(--space-2); border-bottom: 1px solid var(--color-border); }
+.jbColName { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: var(--tracking-caps); color: var(--color-text-muted); }
+.jbColCount { font-size: var(--text-xs); font-weight: 700; background: rgba(38, 70, 76, 0.15); color: var(--color-text); padding: 2px 8px; border-radius: var(--radius-pill); font-variant-numeric: tabular-nums; }
+
+.jbCardList { display: flex; flex-direction: column; gap: 10px; min-height: 60px; }
+
+.jbCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 12px 14px;
+  box-shadow: var(--shadow-card);
+}
+.jbCardName { font-size: var(--text-base); font-weight: 600; color: var(--color-text); margin-bottom: 4px; }
+.jbCardAddr { font-size: var(--text-xs); color: var(--color-text-muted); margin-bottom: 6px; }
+.jbCardMeta { display: flex; gap: 12px; font-size: var(--text-xs); color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+
+.jbCardTap { cursor: pointer; border-color: var(--color-primary); animation: jbPulse 1.4s ease-in-out infinite; }
+.jbCardTap:hover { transform: translateY(-1px); }
+.jbTapHint { margin-top: 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: var(--tracking-caps); color: var(--color-primary); }
+
+.jbCardLand { animation: jbSettle 360ms cubic-bezier(0.2, 0.7, 0.2, 1); }
+
+.jbEmpty { font-size: 13px; color: var(--color-text-muted); text-align: center; padding: 18px 8px; opacity: 0.6; }
+
+.jbPayoff {
+  margin-top: var(--space-3);
+  padding: var(--space-4);
+  background: color-mix(in srgb, var(--color-success) 12%, var(--color-surface));
+  border: 1px solid var(--color-success-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+
+.jbHint { font-size: var(--text-sm); color: var(--color-text-muted); text-align: center; margin: 0; }
+
+@keyframes jbPulse {
+  0%, 100% { box-shadow: var(--shadow-card), 0 0 0 0 color-mix(in srgb, var(--color-primary) 45%, transparent); }
+  50% { box-shadow: var(--shadow-card), 0 0 0 6px color-mix(in srgb, var(--color-primary) 0%, transparent); }
+}
+
+@keyframes jbSettle {
+  0% { opacity: 0; transform: translateY(-14px) scale(0.96); }
+  60% { opacity: 1; transform: translateY(3px) scale(1.01); }
+  100% { transform: translateY(0) scale(1); }
+}
