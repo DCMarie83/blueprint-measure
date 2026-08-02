@@ -46,7 +46,8 @@ expected_anon_fns(fn) AS (
     ('rivetpay_clock_in'),
     ('rivetpay_clock_out'),
     ('rivetpay_get_link'),
-    ('rivetpay_submit_manual')
+    ('rivetpay_submit_manual'),
+    ('submit_demo_lead')
 ),
 actual_anon_fns AS (
   SELECT DISTINCT p.proname::text AS fn
@@ -533,6 +534,53 @@ a18 AS (
          CASE WHEN (SELECT count(*) FROM a18_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
          coalesce('PROBLEMS: ' || (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a18_bad),
                   'source column and check present')::text
+),
+
+-- ── A19 ────────────────────────────────────────────────────────────
+-- /try demo lead capture: submit_demo_lead is the anon RPC that writes a
+-- lead row, and the newest member of the deliberate anon set (A1 holds the
+-- full membership). This pins its grant shape: anon may EXECUTE, PUBLIC may
+-- not — the explicit grant, not a blanket PUBLIC default, is the intent.
+a19_bad AS (
+  SELECT 'anon-missing-execute'::text AS problem
+  WHERE NOT has_function_privilege('anon',
+    'public.submit_demo_lead(text,text,text,text,text,text,text,text,text)'::regprocedure, 'EXECUTE')
+  UNION ALL
+  SELECT 'public-has-execute'
+  WHERE EXISTS (
+    SELECT 1 FROM information_schema.role_routine_grants
+    WHERE routine_schema = 'public' AND routine_name = 'submit_demo_lead'
+      AND grantee = 'PUBLIC' AND privilege_type = 'EXECUTE')
+),
+a19 AS (
+  SELECT 'A19'::text,
+         'submit_demo_lead: anon has EXECUTE, PUBLIC does not (deliberate anon RPC)'::text,
+         CASE WHEN (SELECT count(*) FROM a19_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
+         coalesce('PROBLEMS: ' || (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a19_bad),
+                  'anon granted execute; PUBLIC has none')::text
+),
+
+-- ── A20 ────────────────────────────────────────────────────────────
+-- demo_leads holds lead emails (PII). No client role touches it directly:
+-- all access goes through the submit_demo_lead SECURITY DEFINER RPC (A19).
+-- anon and authenticated get no SELECT, and anon gets no INSERT, so a
+-- captured email can never be read back or written around the RPC.
+a20_bad AS (
+  SELECT 'anon-select'::text AS problem
+  WHERE has_table_privilege('anon', 'public.demo_leads', 'SELECT')
+  UNION ALL
+  SELECT 'authenticated-select'
+  WHERE has_table_privilege('authenticated', 'public.demo_leads', 'SELECT')
+  UNION ALL
+  SELECT 'anon-insert'
+  WHERE has_table_privilege('anon', 'public.demo_leads', 'INSERT')
+),
+a20 AS (
+  SELECT 'A20'::text,
+         'demo_leads (lead PII): anon/authenticated cannot SELECT; anon cannot INSERT (RPC-only access)'::text,
+         CASE WHEN (SELECT count(*) FROM a20_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
+         coalesce('LEAKS: ' || (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a20_bad),
+                  'no direct client access; RPC-only')::text
 )
 
 SELECT * FROM a1
@@ -553,4 +601,6 @@ UNION ALL SELECT * FROM a15
 UNION ALL SELECT * FROM a16
 UNION ALL SELECT * FROM a17
 UNION ALL SELECT * FROM a18
+UNION ALL SELECT * FROM a19
+UNION ALL SELECT * FROM a20
 ORDER BY id;

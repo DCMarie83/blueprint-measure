@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { useAuth } from './context/AuthContext'
 import { useIsLite } from './hooks/useIsLite'
 import { supabase } from './lib/supabase'
@@ -75,6 +75,18 @@ import LiteInvoicesPage from './pages/lite/LiteInvoicesPage'
 import LiteInvoiceDetailPage from './pages/lite/LiteInvoiceDetailPage'
 import LiteBusinessInfoPage from './pages/lite/LiteBusinessInfoPage'
 import LiteReportsPage from './pages/lite/LiteReportsPage'
+
+// Public "Try It Yourself" demo (/try) — lazy-split so the whole demo stays
+// out of the main bundle. This is the app's first React.lazy boundary; the
+// static TryLoading is the Suspense fallback and must be immediately available.
+import TryLoading from './pages/try/TryLoading'
+const TryLayout = lazy(() => import('./pages/try/TryLayout'))
+const TryHub = lazy(() => import('./pages/try/TryHub'))
+const TrySubStub = lazy(() => import('./pages/try/TrySubStub'))
+const TryGcStub = lazy(() => import('./pages/try/TryGcStub'))
+const TryEstimateStub = lazy(() => import('./pages/try/TryEstimateStub'))
+const TryCrewStub = lazy(() => import('./pages/try/TryCrewStub'))
+const TryEndStub = lazy(() => import('./pages/try/TryEndStub'))
 
 // ProtectedRoute wraps pages that require login + completed setup.
 // bypassSubscriptionGate: if true, skip the subscription check (for /settings, /account, /subscribe)
@@ -316,6 +328,25 @@ export default function App() {
       <Route path="/portal/invoice/:token" element={<InvoicePortalPage />} />
       <Route path="/gc/invoice/:token" element={<GCInvoiceReviewPage />} />
       <Route path="/rivetpay/:token" element={<RivetPayLinkPage />} />
+
+      {/* Public "Try It Yourself" demo — fully public (no ProtectedRoute, no
+          gate, no user-redirect). Lazy-loaded behind a single Suspense
+          boundary; TryLayout renders once and children swap via <Outlet/>. */}
+      <Route
+        path="/try"
+        element={
+          <Suspense fallback={<TryLoading />}>
+            <TryLayout />
+          </Suspense>
+        }
+      >
+        <Route index element={<TryHub />} />
+        <Route path="sub" element={<TrySubStub />} />
+        <Route path="gc" element={<TryGcStub />} />
+        <Route path="gc/estimate" element={<TryEstimateStub />} />
+        <Route path="gc/crew" element={<TryCrewStub />} />
+        <Route path="done" element={<TryEndStub />} />
+      </Route>
 
       {/* Registration / setup — only for users who haven't completed setup */}
       <Route
