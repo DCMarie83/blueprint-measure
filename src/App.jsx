@@ -82,7 +82,7 @@ import LiteReportsPage from './pages/lite/LiteReportsPage'
 import TryLoading from './pages/try/TryLoading'
 const TryLayout = lazy(() => import('./pages/try/TryLayout'))
 const TryHub = lazy(() => import('./pages/try/TryHub'))
-const TrySubStub = lazy(() => import('./pages/try/TrySubStub'))
+const TrySubFlow = lazy(() => import('./pages/try/TrySubFlow'))
 const TryGcStub = lazy(() => import('./pages/try/TryGcStub'))
 const TryEstimateStub = lazy(() => import('./pages/try/TryEstimateStub'))
 const TryCrewStub = lazy(() => import('./pages/try/TryCrewStub'))
@@ -341,7 +341,7 @@ export default function App() {
         }
       >
         <Route index element={<TryHub />} />
-        <Route path="sub" element={<TrySubStub />} />
+        <Route path="sub" element={<TrySubFlow />} />
         <Route path="gc" element={<TryGcStub />} />
         <Route path="gc/estimate" element={<TryEstimateStub />} />
         <Route path="gc/crew" element={<TryCrewStub />} />
