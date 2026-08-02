@@ -344,6 +344,22 @@
   transform: scale(0.99);
 }
 
+.secondaryLink {
+  display: block;
+  text-align: center;
+  padding: var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.secondaryLink:hover,
+.secondaryLink:focus-visible {
+  text-decoration: underline;
+  outline: none;
+}
+
 .backLink {
   font-size: var(--text-sm);
   font-weight: 600;

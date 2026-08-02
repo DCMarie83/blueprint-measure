@@ -1,0 +1,668 @@
+/* /try send-simulation reveals. The two PORTAL reveals (GC invoice, client
+   estimate) render in LIGHT — the real portals default light — so this file
+   hardcodes the product's light hexes (matching PortalPage / GCInvoiceReviewPage
+   / PortalEstimateSection, which themselves hardcode light values). The pay
+   statement renders as a white paper document (mirrors the PDF). Motion is
+   always on; no prefers-reduced-motion gating. */
+
+/* ── Send motion (plays before every reveal) ────────────────────── */
+
+.sendStage {
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-5);
+  text-align: center;
+}
+
+.sendTrack {
+  position: relative;
+  width: 220px;
+  height: 84px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sendDoc {
+  width: 56px;
+  height: 72px;
+  border-radius: 6px;
+  background: #ffffff;
+  border: 1px solid #d7d2cb;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  position: relative;
+  animation: sendFly 420ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.sendDoc::before,
+.sendDoc::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  height: 3px;
+  border-radius: 2px;
+  background: #c9c3ba;
+}
+.sendDoc::before { top: 16px; }
+.sendDoc::after { top: 26px; box-shadow: 0 8px 0 #c9c3ba, 0 16px 0 #c9c3ba; }
+
+.sendArrow {
+  position: absolute;
+  right: 6px;
+  color: var(--color-primary);
+  animation: sendArrowPulse 700ms ease-in-out infinite;
+}
+
+.sendLine {
+  font-family: var(--font-heading);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--color-text);
+  max-width: 340px;
+  line-height: 1.25;
+  animation: revealIn 300ms ease-out both;
+  animation-delay: 160ms;
+}
+
+@keyframes sendFly {
+  0% { transform: translateX(-70px) rotate(-4deg); opacity: 0; }
+  30% { opacity: 1; }
+  100% { transform: translateX(80px) rotate(4deg); opacity: 0; }
+}
+
+@keyframes sendArrowPulse {
+  0%, 100% { transform: translateX(0); opacity: 0.6; }
+  50% { transform: translateX(5px); opacity: 1; }
+}
+
+@keyframes revealIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.reveal {
+  animation: revealIn 280ms ease-out both;
+}
+
+/* ── Light portal frame (GC invoice + client estimate) ──────────── */
+
+.lightWrap {
+  background: #f5f3f0;
+  border-radius: 16px;
+  padding: var(--space-6) var(--space-4);
+}
+
+.portalCard {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 40px 36px;
+  max-width: 560px;
+  margin: 0 auto;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  color: #1b2426;
+}
+
+.letterhead {
+  text-align: center;
+  padding-bottom: 20px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.companyName {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--brand, #f27243);
+  margin: 0;
+}
+
+.projectName {
+  font-size: 26px;
+  font-weight: 700;
+  color: #1b2426;
+  margin: 6px 0 0;
+  text-align: center;
+}
+
+/* Invoice/estimate header */
+.docHeader {
+  text-align: center;
+  margin-bottom: 22px;
+}
+
+.docTitle {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1b2426;
+  margin: 0;
+}
+
+.docMeta {
+  font-size: 14px;
+  color: #6b7280;
+  margin-top: 4px;
+}
+
+.dueEm {
+  color: var(--brand, #f27243);
+  font-weight: 600;
+}
+
+.statusPill {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  background: #fbf3e0;
+  color: #d97706;
+}
+
+.billedRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 12px 0;
+  border-top: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 16px;
+}
+
+.billedLabel { font-size: 13px; color: #6b7280; }
+.billedName { font-size: 15px; font-weight: 600; color: #1b2426; }
+
+/* Line-item table (portal) */
+.docTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.docTable th {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+  padding: 6px 6px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.thL { text-align: left; }
+.thC { text-align: center; }
+.thR { text-align: right; }
+
+.docTable td {
+  padding: 8px 6px;
+  border-bottom: 1px solid #f3f4f6;
+  color: #1b2426;
+}
+.tdC { text-align: center; color: #6b7280; }
+.tdR { text-align: right; font-family: var(--font-mono); color: #4b5563; }
+.tdTotal { text-align: right; font-family: var(--font-mono); font-weight: 600; color: #1b2426; }
+
+.catHeader {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--brand, #f27243);
+  padding: 10px 6px 4px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+/* Totals */
+.totalsWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  margin: 14px 0 18px;
+}
+
+.subRow {
+  display: flex;
+  justify-content: space-between;
+  width: 220px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.totalRow {
+  display: flex;
+  justify-content: space-between;
+  width: 220px;
+  padding-top: 8px;
+  border-top: 1px solid #e5e7eb;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1b2426;
+}
+.totalRow span:last-child { font-family: var(--font-mono); }
+
+/* Estimate single-price bars */
+.singleBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.singleBarLabel { font-size: 16px; font-weight: 700; color: #1b2426; }
+.singleBarTotal { font-family: var(--font-mono); font-size: 22px; font-weight: 700; color: var(--brand, #f27243); }
+
+.grandBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  background: #1b2426;
+  color: #ffffff;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+.grandBarValue { font-family: var(--font-mono); font-size: 20px; font-weight: 700; color: var(--brand, #f27243); }
+
+.lineGrid {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f9fafb;
+  font-size: 14px;
+  color: #1b2426;
+}
+.lineQty { color: #6b7280; text-align: right; font-size: 13px; }
+.lineRate { color: #6b7280; text-align: right; font-family: var(--font-mono); font-size: 13px; }
+.lineTotal { text-align: right; font-family: var(--font-mono); font-weight: 600; }
+
+/* Payment instructions block */
+.payBlock {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
+}
+.payBlockTitle {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--brand, #f27243);
+  margin: 0 0 8px;
+}
+.payBlockLine { font-size: 14px; color: #374151; padding: 3px 0; }
+
+/* Response controls */
+.respActions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.approveBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+  background: var(--brand, #f27243);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* Client estimate Accept is hardcoded GREEN in the product (not brand). */
+.acceptGreen {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 20px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+  background: #16a34a;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.secondaryBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 13px 24px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #6b7280;
+  background: none;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.estActionRow {
+  display: flex;
+  gap: 12px;
+}
+.estActionRow .acceptGreen { flex: 1; }
+.estActionRow .secondaryBtn { width: auto; flex: none; padding: 14px 18px; }
+
+/* Confirm-acceptance form */
+.confirmForm {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 12px;
+}
+.confirmTitle { font-size: 16px; font-weight: 700; color: #1b2426; margin: 0 0 12px; }
+.fieldLabel { font-size: 13px; font-weight: 600; color: #374151; }
+.nameInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  margin-top: 6px;
+}
+.nameInput:focus { outline: none; border-color: var(--brand, #f27243); }
+.confirmText { font-size: 14px; color: #1b2426; margin: 12px 0; }
+.confirmText strong { font-weight: 700; }
+.checkboxRow { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; color: #374151; accent-color: var(--brand, #f27243); }
+.confirmActions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+.confirmAccept {
+  padding: 9px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  background: #16a34a;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.confirmAccept:disabled { opacity: 0.5; cursor: not-allowed; }
+.cancelBtn {
+  padding: 9px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  background: none;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* Referral card (dark) — matches the real portal/email referral block */
+.referral {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #e5e7eb;
+}
+.referralCard {
+  background: #1b2426;
+  border-radius: 12px;
+  padding: 32px 28px;
+  text-align: center;
+}
+.wordmark {
+  font-size: 40px;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #f27243;
+  font-family: 'Telegraf', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+}
+.refHeadline { font-size: 21px; font-weight: 700; color: #ffffff; margin: 16px 0 8px; }
+.refSub { font-size: 14px; color: #b8c0c2; margin: 0 0 20px; }
+.refBtn {
+  display: inline-block;
+  background: #f27243;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 13px 28px;
+  border-radius: 8px;
+  text-decoration: none;
+}
+
+.portalFooter {
+  text-align: center;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #9aa0a6;
+  opacity: 0.7;
+  margin-top: 20px;
+}
+
+/* ── Pay statement document (white paper, mirrors the PDF) ───────── */
+
+.payDoc {
+  background: #ffffff;
+  color: #1b2426;
+  max-width: 560px;
+  margin: 0 auto;
+  border-radius: 8px;
+  padding: 36px 32px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  font-size: 13px;
+}
+
+.payTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 4px;
+}
+.payCompany { font-size: 20px; font-weight: 700; color: #1b2426; }
+.payDocTitle { font-size: 16px; font-weight: 700; color: var(--color-primary); letter-spacing: 0.5px; }
+.payAddress { font-size: 9px; color: #8a9096; line-height: 1.5; margin-bottom: 10px; }
+.payRule { border: none; border-top: 1px solid #8a9096; margin: 8px 0 12px; }
+.payPeriod { font-size: 10px; color: #8a9096; margin-bottom: 12px; }
+.payWorkerLabel { font-size: 10px; color: #8a9096; }
+.payWorkerName { font-size: 11px; font-weight: 700; color: #1b2426; margin-bottom: 14px; }
+
+.paySummary {
+  display: flex;
+  gap: 12px;
+  background: #f5f5f5;
+  border-radius: 6px;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
+.paySumItem { flex: 1; }
+.paySumLabel { font-size: 10px; color: #8a9096; }
+.paySumValue { font-size: 15px; font-weight: 700; color: #1b2426; margin-top: 4px; font-variant-numeric: tabular-nums; }
+
+.paySectionTitle {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin: 0 0 6px;
+}
+
+.payTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 18px;
+  font-variant-numeric: tabular-nums;
+}
+.payTable th {
+  background: #1b2426;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 6px 8px;
+  text-align: right;
+}
+.payTable th:first-child { text-align: left; }
+.payTable td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #eeeeee;
+  text-align: right;
+  color: #1b2426;
+}
+.payTable td:first-child { text-align: left; }
+.payTable tbody tr:nth-child(even) { background: #f5f5f5; }
+.payTable tfoot td {
+  background: #1b2426;
+  color: #ffffff;
+  font-weight: 700;
+  border: none;
+}
+
+.grossPill {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--color-primary);
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 12px 20px;
+  font-size: 15px;
+  font-weight: 700;
+  margin-left: auto;
+  max-width: 300px;
+}
+
+.payFoot {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: #8a9096;
+  margin-top: 16px;
+}
+
+/* ── Email gate (stub UI; real capture is Stage 4) ──────────────── */
+
+.gate {
+  margin-top: var(--space-6);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  text-align: center;
+}
+
+.gateCaption {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-4);
+}
+
+.gateTitle {
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 var(--space-3);
+}
+
+.gateFields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.gateInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.gateInput:focus { outline: none; border-color: var(--color-primary); }
+
+.gateBtn {
+  width: 100%;
+  padding: 14px;
+  font-family: var(--font-body);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-on-primary);
+  background: var(--color-primary);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.gateBtn:hover { background: var(--color-primary-hover); }
+
+.gateSignup {
+  width: 100%;
+  margin-top: var(--space-2);
+  padding: 12px;
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--color-text);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.gateSignup:hover { border-color: var(--color-primary); color: var(--color-primary); }
+
+.gateSkip {
+  display: inline-block;
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ── Reveal page chrome (shared) ────────────────────────────────── */
+
+.revealWrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.revealActions {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  padding: var(--space-4) 0 calc(var(--space-4) + env(safe-area-inset-bottom));
+}
+.revealLink {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+.revealLink:hover { color: var(--color-primary); }

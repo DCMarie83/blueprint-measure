@@ -89,6 +89,9 @@ const TryCrewFlow = lazy(() => import('./pages/try/TryCrewFlow'))
 const TryInvoicingPeek = lazy(() => import('./pages/try/TryInvoicingPeek'))
 const TryReportingPeek = lazy(() => import('./pages/try/TryReportingPeek'))
 const TryBlueprintPeek = lazy(() => import('./pages/try/TryBlueprintPeek'))
+const TrySubInvoiceReveal = lazy(() => import('./pages/try/TrySubInvoiceReveal'))
+const TryEstimateReveal = lazy(() => import('./pages/try/TryEstimateReveal'))
+const TryPayStatementReveal = lazy(() => import('./pages/try/TryPayStatementReveal'))
 const TryEndStub = lazy(() => import('./pages/try/TryEndStub'))
 
 // ProtectedRoute wraps pages that require login + completed setup.
@@ -345,9 +348,12 @@ export default function App() {
       >
         <Route index element={<TryHub />} />
         <Route path="sub" element={<TrySubFlow />} />
+        <Route path="sub/reveal" element={<TrySubInvoiceReveal />} />
         <Route path="gc" element={<TryGcMenu />} />
         <Route path="gc/estimate" element={<TryEstimateFlow />} />
+        <Route path="gc/estimate/reveal" element={<TryEstimateReveal />} />
         <Route path="gc/crew" element={<TryCrewFlow />} />
+        <Route path="gc/crew/reveal" element={<TryPayStatementReveal />} />
         <Route path="gc/invoicing" element={<TryInvoicingPeek />} />
         <Route path="gc/reporting" element={<TryReportingPeek />} />
         <Route path="gc/blueprint" element={<TryBlueprintPeek />} />

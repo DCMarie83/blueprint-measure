@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { MapPin } from 'lucide-react'
 import { CREW_DEMO } from './mockData/crewDemo'
 import s from './sub.module.css'
 import g from './gc.module.css'
 
 const STEPS = 4
-const CTA = ['Watch them clock in', 'Review their time', 'See the payoff', 'See the offer']
+const CTA = ['Watch them clock in', 'Review their time', 'See the payoff', 'See the pay statement']
 const { company, worker, job, clockInTime, shareLink, pending } = CREW_DEMO
 
 export default function TryCrewFlow() {
@@ -26,7 +27,7 @@ export default function TryCrewFlow() {
 
   function advance() {
     if (step < STEPS - 1) setStep(step + 1)
-    else navigate('/try/done?flow=crew')
+    else navigate('/try/gc/crew/reveal')
   }
 
   const screenKey = ['share', 'phone', 'approvals', 'payoff'][step]
@@ -73,6 +74,7 @@ export default function TryCrewFlow() {
                   <div className={g.clockSince}>since {clockInTime}</div>
                   <div className={g.clockTimer}>0:00:04</div>
                   <div className={g.geoRow}><span className={g.geoDot} /> Location captured</div>
+                  <button className={g.clockOutBtn}>Clock Out</button>
                 </div>
               )}
 
@@ -88,22 +90,41 @@ export default function TryCrewFlow() {
               Pending Approvals
               <span className={g.apprBadge}>{pending.length}</span>
             </div>
-            {pending.map((p) => (
-              <div key={p.id} className={g.apprRow}>
-                <div className={g.apprMain}>
-                  <div className={g.apprWorker}>{p.worker}</div>
-                  <div className={g.apprMeta}>{p.job} · {p.date}</div>
-                  <div className={g.apprMeta}>{p.time} · <span className={g.apprHours}>{p.hours.toFixed(2)} hrs</span></div>
-                </div>
-                {approved[p.id] ? (
-                  <span className={g.approvedTag}>✓ Approved</span>
-                ) : (
-                  <button className={g.approveBtn} onClick={() => setApproved((a) => ({ ...a, [p.id]: true }))}>
-                    Approve
-                  </button>
-                )}
-              </div>
-            ))}
+            <div className={g.apprTableWrap}>
+              <table className={g.apprTable}>
+                <thead>
+                  <tr>
+                    <th>Worker</th><th>Job</th><th>Date</th><th>Time</th>
+                    <th className={g.apprNum}>Hours</th><th>Loc</th><th>Source</th><th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pending.map((p) => (
+                    <tr key={p.id}>
+                      <td className={g.apprStrong}>{p.worker}</td>
+                      <td>{p.job}</td>
+                      <td>{p.date}</td>
+                      <td className={g.apprTime}>{p.time}</td>
+                      <td className={g.apprNum}>{p.hours.toFixed(2)}</td>
+                      <td>
+                        <span className={g.apprLoc}><MapPin size={11} /> loc</span>
+                      </td>
+                      <td className={g.apprMuted}>{p.source}</td>
+                      <td className={g.apprActions}>
+                        {approved[p.id] ? (
+                          <span className={g.approvedTag}>✓ Approved</span>
+                        ) : (
+                          <>
+                            <button className={g.approveBtn} onClick={() => setApproved((a) => ({ ...a, [p.id]: true }))}>Approve</button>
+                            <button className={g.rejectBtn}>Reject</button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 

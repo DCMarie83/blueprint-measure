@@ -98,6 +98,7 @@ export default function TrySubFlow() {
         )}
 
         {step === 2 && (
+          <>
           <div className={s.card}>
             <div className={s.invHeader}>
               <div>
@@ -127,6 +128,8 @@ export default function TrySubFlow() {
               <MoneyCountUp value={invoice.total} />
             </div>
           </div>
+          <Link to="/try/sub/reveal" className={s.secondaryLink}>See what your GC sees →</Link>
+          </>
         )}
 
         {step === 3 && (

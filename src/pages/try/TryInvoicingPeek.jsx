@@ -3,21 +3,24 @@ import { fmtMoney } from './mockData/subDemo'
 import s from './sub.module.css'
 import g from './gc.module.css'
 
-// Canned invoices — a paid/outstanding/overdue mix so status is legible at a glance.
+// Canned invoices — a paid/outstanding/overdue/void mix so status is legible at
+// a glance. Badge classes mirror InvoiceStatusBadge exactly.
 const INVOICES = [
-  { id: 1, number: 'INV-1042', client: 'Beltline Property Group', project: 'Oakwood Office Repaint', total: 11450, due: 'Aug 24, 2026', status: 'sent', badge: 'bSent', label: 'Sent' },
-  { id: 2, number: 'INV-1039', client: 'Summit Builders', project: 'Maple Street Repaint', total: 6800, due: 'Aug 10, 2026', status: 'partial', badge: 'bPartial', label: 'Partially paid' },
-  { id: 3, number: 'INV-1035', client: 'Harbor Point LLC', project: 'Lobby Refinish', total: 4200, due: 'Jul 18, 2026', status: 'overdue', badge: 'bOverdue', label: 'Overdue' },
-  { id: 4, number: 'INV-1031', client: 'Cedar & Co.', project: 'Suite 200 Repaint', total: 9300, due: 'Jul 30, 2026', status: 'paid', badge: 'bPaid', label: 'Paid in full' },
-  { id: 5, number: 'INV-1028', client: 'Beltline Property Group', project: 'Stairwell Coating', total: 2650, due: 'Jul 12, 2026', status: 'paid', badge: 'bPaid', label: 'Paid in full' },
+  { id: 1, number: 'INV-1042', client: 'Beltline Property Group', project: 'Oakwood Office Repaint', total: 11450, due: 'Aug 24, 2026', created: '2 days ago', badge: 'bSent', label: 'Sent' },
+  { id: 2, number: 'INV-1039', client: 'Summit Builders', project: 'Maple Street Repaint', total: 6800, due: 'Aug 10, 2026', created: '5 days ago', badge: 'bPartial', label: 'Partially paid' },
+  { id: 3, number: 'INV-1035', client: 'Harbor Point LLC', project: 'Lobby Refinish', total: 4200, due: 'Jul 18, 2026', created: '3 weeks ago', badge: 'bOverdue', label: 'Overdue' },
+  { id: 4, number: 'INV-1031', client: 'Cedar & Co.', project: 'Suite 200 Repaint', total: 9300, due: 'Jul 30, 2026', created: '1 month ago', badge: 'bPaid', label: 'Paid in full' },
+  { id: 5, number: 'INV-1028', client: 'Beltline Property Group', project: 'Stairwell Coating', total: 2650, due: 'Jul 12, 2026', created: '1 month ago', badge: 'bPaid', label: 'Paid in full' },
+  { id: 6, number: 'INV-1024', client: 'Northgate Retail', project: 'Entry Repaint', total: 1800, due: '—', created: '2 months ago', badge: 'bVoid', label: 'Void' },
 ]
 
 const CHIPS = [
-  { key: 'all', label: 'All', count: 5, active: true },
+  { key: 'all', label: 'All', count: 6, active: true },
   { key: 'draft', label: 'Draft', count: 0 },
   { key: 'sent', label: 'Sent', count: 1 },
   { key: 'partial', label: 'Partial', count: 1 },
   { key: 'paid', label: 'Paid', count: 2 },
+  { key: 'void', label: 'Void', count: 1 },
 ]
 
 export default function TryInvoicingPeek() {
@@ -46,8 +49,9 @@ export default function TryInvoicingPeek() {
             </div>
             <div className={g.invRight}>
               <span className={g.invTotal}>{fmtMoney(inv.total)}</span>
-              <span className={g.invDue}>Due {inv.due}</span>
+              <span className={g.invDue}>{inv.due === '—' ? '—' : `Due ${inv.due}`}</span>
               <span className={`${g.badge} ${g[inv.badge]}`}>{inv.label}</span>
+              <span className={g.invCreated}>{inv.created}</span>
             </div>
           </div>
         ))}

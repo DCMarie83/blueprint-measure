@@ -6,7 +6,7 @@ import { ESTIMATE_DEMO } from './mockData/estimateDemo'
 import s from './sub.module.css'
 import g from './gc.module.css'
 
-const STEPS = 4
+const STEPS = 3
 const CTA = ['Build my estimate', 'See the total', 'See what your client sees']
 const { job, client, lineItems, total } = ESTIMATE_DEMO
 
@@ -42,13 +42,12 @@ export default function TryEstimateFlow() {
 
   function advance() {
     if (step < STEPS - 1) setStep(step + 1)
-    else navigate('/try/done?flow=estimate')
+    else navigate('/try/gc/estimate/reveal')
   }
 
   // Steps 0 & 1 share the builder screen; step 2 is the grand-total reveal.
   const screenKey = step <= 1 ? 'build' : 'total'
 
-  // Flat index across groups for staggered entrance delays.
   let flatIndex = -1
 
   return (
@@ -75,57 +74,55 @@ export default function TryEstimateFlow() {
               </div>
             </div>
 
-            <div className={s.card}>
+            {/* Line-items table — orange-bordered container, mirrors EstimateDetailPage */}
+            <div className={g.estWrap}>
               {step === 0 ? (
                 <div className={g.emptyEstimate}>No line items yet. Tap “Build my estimate.”</div>
               ) : (
-                <>
-                  <div className={g.tableWrap}>
-                    <table className={g.estTable}>
-                      <thead>
-                        <tr>
-                          <th>Description</th>
-                          <th>Unit</th>
-                          <th className={g.thNum}>Qty</th>
-                          <th className={g.thNum}>Rate</th>
-                          <th className={g.thNum}>Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {GROUPS.map(({ cat, items }) => (
-                          <Fragment key={cat}>
-                            <tr className={g.catRow}><td colSpan={5}>{cat}</td></tr>
-                            {items.map((li) => {
-                              flatIndex += 1
-                              const isLump = li.unit === 'lump_sum'
-                              return (
-                                <tr
-                                  key={li.id}
-                                  className={g.itemEnter}
-                                  style={{ animationDelay: `${flatIndex * 90}ms` }}
-                                >
-                                  <td className={g.tdDesc}>{li.description}</td>
-                                  <td>{unitLabel(li.unit)}</td>
-                                  <td className={g.tdNum}>
-                                    {isLump ? <span className={g.mutedDash}>—</span> : li.quantity.toLocaleString()}
-                                  </td>
-                                  <td className={g.tdNum}>{fmtMoney(li.rate)}</td>
-                                  <td className={g.tdNum}>{fmtMoney(li.total)}</td>
-                                </tr>
-                              )
-                            })}
-                          </Fragment>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <div className={g.runTotal}>
-                    <span>Estimate total</span>
-                    <span>{fmtMoney(Math.round(runTotal))}</span>
-                  </div>
-                </>
+                <table className={g.estTable}>
+                  <thead>
+                    <tr>
+                      <th className={g.estTh}>Description</th>
+                      <th className={g.estTh}>Unit</th>
+                      <th className={`${g.estTh} ${g.thNum}`}>Qty</th>
+                      <th className={`${g.estTh} ${g.thNum}`}>Rate</th>
+                      <th className={`${g.estTh} ${g.thNum}`}>Total</th>
+                      <th className={`${g.estTh} ${g.thAction}`}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {GROUPS.map(({ cat, items }) => (
+                      <Fragment key={cat}>
+                        <tr className={g.catRow}><td colSpan={6} className={g.catCell}>{cat}</td></tr>
+                        {items.map((li) => {
+                          flatIndex += 1
+                          const isLump = li.unit === 'lump_sum'
+                          return (
+                            <tr key={li.id} className={g.itemEnter} style={{ animationDelay: `${flatIndex * 90}ms` }}>
+                              <td className={g.tdDesc}>{li.description}</td>
+                              <td className={g.tdUnit}>{unitLabel(li.unit)}</td>
+                              <td className={g.tdNum}>{isLump ? <span className={g.mutedDash}>—</span> : li.quantity.toLocaleString()}</td>
+                              <td className={g.tdNum}>{fmtMoney(li.rate)}</td>
+                              <td className={g.tdNum}>{fmtMoney(li.total)}</td>
+                              <td className={g.tdAction} />
+                            </tr>
+                          )
+                        })}
+                      </Fragment>
+                    ))}
+                  </tbody>
+                </table>
               )}
             </div>
+
+            {step === 1 && (
+              <div className={g.totalsCard}>
+                <div className={g.totalsRow}>
+                  <span>Estimate Total</span>
+                  <span className={g.totalsValue}>{fmtMoney(Math.round(runTotal))}</span>
+                </div>
+              </div>
+            )}
           </>
         )}
 

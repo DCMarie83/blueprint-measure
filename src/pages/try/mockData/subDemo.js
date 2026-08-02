@@ -20,6 +20,10 @@ export const SUB_DEMO = {
   job: 'Maple Street Repaint',
   gc: 'Summit Builders',
 
+  // The sub's own business — the letterhead on the invoice the GC receives.
+  business: 'Riverside Painting Co.',
+  paymentMethods: ['Zelle — pay@riversidepaint.co', 'Check payable to Riverside Painting Co.'],
+
   // The two ledger entries, matching the real work_entries meta shape:
   //   hourly → "{hours} hr × {fmtMoney(rate)}"
   //   piece  → "{quantity} {unitLabel(unit)} × {fmtMoney(rate)}"

@@ -7,6 +7,9 @@ export const ESTIMATE_DEMO = {
   job: 'Oakwood Office Repaint',
   client: 'Beltline Property Group',
 
+  // The contractor's company — the letterhead/branding on the client's portal.
+  company: 'Riverside Painting Co.',
+
   // category groups the rows exactly like LineItemsTable's GroupRows.
   lineItems: [
     { id: 'li-1', category: 'Prep', description: 'Wall prep & patch', unit: 'sf', quantity: 3200, rate: 0.45, total: 1440 },
