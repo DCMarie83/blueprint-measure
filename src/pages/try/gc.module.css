@@ -1,0 +1,775 @@
+/* /try GC branch — net-new styles mirroring the real GC surfaces (estimate
+   builder, RivetPay/Time, InvoiceList, Reports, Session/BlueprintCanvas).
+   Pairs with sub.module.css for shared flow chrome (progress, screen, actions,
+   card, backLink). All brand tokens, Inter, motion always on. */
+
+/* ── GC tile menu ───────────────────────────────────────────────── */
+
+.menuTitle {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: var(--text-2xl);
+  line-height: 1.15;
+  margin: var(--space-2) 0 var(--space-6);
+}
+
+.tileGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+}
+
+@media (min-width: 640px) {
+  .tileGrid { grid-template-columns: 1fr 1fr; }
+}
+
+.tile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  text-decoration: none;
+  color: var(--color-text);
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.tile:hover,
+.tile:focus-visible {
+  border-color: var(--color-primary);
+  transform: translateY(-2px);
+  outline: none;
+}
+
+.tileTitle {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: var(--text-lg);
+}
+
+.tag {
+  flex: none;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  border-radius: var(--radius-pill);
+  padding: 4px 10px;
+}
+
+.tagTry {
+  color: var(--color-on-primary);
+  background: var(--color-primary);
+}
+
+.tagPeek {
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 1px solid var(--color-border);
+}
+
+/* ── Estimate builder table (mirror LineItemsTable) ─────────────── */
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.estTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.estTable th {
+  text-align: left;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--color-text-muted);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.thNum { text-align: right; }
+
+.catRow td {
+  padding: 10px 8px 4px;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--color-text-muted);
+}
+
+.itemRow td {
+  padding: 8px;
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.itemRow .tdDesc { font-weight: 600; }
+.tdNum { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.mutedDash { color: var(--color-text-muted); }
+
+/* staggered "watch it build" entrance */
+.itemEnter {
+  animation: gcRowIn 220ms ease-out both;
+}
+
+@keyframes gcRowIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.emptyEstimate {
+  padding: 22px 8px;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.runTotal {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 14px;
+  margin-top: 6px;
+  border-top: 2px solid var(--color-border);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.singleNote {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-top: var(--space-3);
+}
+
+/* ── Grand-total reveal ─────────────────────────────────────────── */
+
+.grandCard {
+  text-align: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  padding: 32px 20px;
+}
+
+.grandLabel {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.grandValue {
+  display: block;
+  font-family: var(--font-heading);
+  font-size: 48px;
+  font-weight: 800;
+  line-height: 1.05;
+  color: var(--color-primary);
+  margin: 8px 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.grandJob {
+  font-size: var(--text-base);
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.grandClient {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+/* ── Crew: phone frame + clock (mirror RivetPayLinkPage) ────────── */
+
+.phoneFrame {
+  max-width: 300px;
+  margin: 0 auto;
+  background: var(--color-bg);
+  border: 8px solid var(--color-surface);
+  border-radius: 32px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.phoneScreen {
+  padding: 24px 18px 28px;
+  text-align: center;
+}
+
+.clockCompany {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: var(--text-lg);
+  color: var(--color-text);
+}
+
+.clockWorker {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin: 2px 0 20px;
+}
+
+.clockInBtn {
+  width: 100%;
+  padding: 16px;
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-on-primary);
+  background: var(--color-action-open);
+  border: none;
+  border-radius: var(--radius-md);
+}
+
+.clockedInBox {
+  animation: gcPop 220ms ease-out;
+}
+
+.clockStatus {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: var(--tracking-caps);
+  color: var(--color-action-open);
+}
+
+.clockJobLabel {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 6px 0 2px;
+}
+
+.clockSince {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.clockTimer {
+  font-family: var(--font-mono);
+  font-size: 34px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 12px 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.geoRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.geoDot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--color-action-open);
+}
+
+.phoneFooter {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-top: 18px;
+}
+
+@keyframes gcPop {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ── Crew: share link + QR concept ──────────────────────────────── */
+
+.shareCard {
+  text-align: center;
+}
+
+.qr {
+  width: 132px;
+  height: 132px;
+  margin: 4px auto var(--space-4);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(var(--color-text) 2px, transparent 2px) 0 0 / 12px 12px,
+    linear-gradient(90deg, var(--color-text) 2px, transparent 2px) 0 0 / 12px 12px,
+    var(--color-surface);
+  position: relative;
+  border: 6px solid var(--color-surface);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+}
+
+.qrFinder {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border: 5px solid var(--color-text);
+  background: var(--color-surface);
+}
+
+.qrTL { top: 6px; left: 6px; }
+.qrTR { top: 6px; right: 6px; }
+.qrBL { bottom: 6px; left: 6px; }
+
+.shareLink {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  padding: 8px 16px;
+}
+
+/* ── Crew: approvals queue (mirror TimePage) ────────────────────── */
+
+.apprHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: var(--text-lg);
+  margin-bottom: var(--space-3);
+}
+
+.apprBadge {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--color-on-primary);
+  background: var(--color-primary);
+  border-radius: var(--radius-pill);
+  padding: 2px 8px;
+}
+
+.apprRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.apprMain { min-width: 0; }
+
+.apprWorker {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.apprMeta {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.apprHours {
+  font-weight: 700;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.approveBtn {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-on-primary);
+  background: var(--color-action-open);
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.approvedTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-action-open);
+  animation: gcPop 200ms ease-out;
+}
+
+/* ── Invoicing peek (mirror InvoiceListPage) ────────────────────── */
+
+.listHead {
+  margin-bottom: var(--space-4);
+}
+
+.listTitle {
+  font-family: var(--font-heading);
+  font-size: var(--text-2xl);
+  font-weight: 800;
+  margin: 0;
+}
+
+.listSub {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin: 2px 0 0;
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.chip {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  padding: 6px 12px;
+}
+
+.chipActive {
+  color: var(--color-on-primary);
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.invRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin-bottom: 10px;
+}
+
+.invMain { min-width: 0; }
+
+.invNum {
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.invClient {
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  margin-top: 2px;
+}
+
+.invProject {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.invRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex: none;
+}
+
+.invTotal {
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.invDue {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* status badges — colors copied from InvoiceStatusBadge.module.css */
+.badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+.bDraft { background: var(--color-neutral-bg); color: var(--color-neutral); }
+.bSent { background: var(--color-warning-bg); color: var(--color-warning); }
+.bPartial { background: rgba(245, 158, 11, 0.12); color: #d97706; }
+.bPaid { background: var(--color-success-bg); color: var(--color-success); }
+.bOverdue { background: var(--color-danger-bg); color: var(--color-danger); border: 1px solid var(--color-danger-border); }
+
+/* ── Reporting peek (mirror ReportsPage) ────────────────────────── */
+
+.repHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-heading);
+  font-size: var(--text-2xl);
+  font-weight: 800;
+  margin: 0 0 var(--space-3);
+}
+
+.pillRow {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4);
+}
+
+.pill {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  padding: 6px 14px;
+}
+
+.pillActive {
+  color: var(--color-on-primary);
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.kpiRow {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: var(--space-4);
+}
+
+@media (min-width: 640px) {
+  .kpiRow { grid-template-columns: repeat(3, 1fr); }
+}
+
+.kpiCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+
+.kpiAccent { border-color: var(--color-primary); }
+
+.kpiLabel {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.kpiValue {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.marginPos { color: var(--color-success); }
+.marginNeg { color: var(--color-danger); }
+
+.jobTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.jobTable th {
+  text-align: right;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--color-text-muted);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.jobTable th:first-child,
+.jobTable td:first-child { text-align: left; }
+
+.jobTable td {
+  text-align: right;
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  padding: 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* ── Blueprint peek (mirror SessionPage / BlueprintCanvas) ──────── */
+
+.bpToolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-3);
+}
+
+.bpGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-right: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.bpGroup:last-child { border-right: none; }
+
+.bpScaleReadout {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.bpWork {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+}
+
+@media (min-width: 720px) {
+  .bpWork { grid-template-columns: 200px 1fr; }
+}
+
+.bpSidebar {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+}
+
+.bpZonesTitle {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-2);
+}
+
+.bpZoneItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.bpZoneDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: none;
+}
+
+.bpZoneName {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text);
+}
+
+.bpZoneVal {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.bpPageTotal {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 2px solid var(--color-border);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.bpCanvasWrap {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  min-height: 320px;
+  position: relative;
+  background:
+    linear-gradient(var(--color-border) 1px, transparent 1px) 0 0 / 28px 28px,
+    linear-gradient(90deg, var(--color-border) 1px, transparent 1px) 0 0 / 28px 28px,
+    var(--color-surface-2);
+}
+
+.bpZoneOverlay {
+  position: absolute;
+  border-width: 2px;
+  border-style: solid;
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bpOverlayLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text);
+  background: var(--color-bg);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.bpScaleTag {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 3px 8px;
+}
+
+/* ── Peek footer (own Back to menu + Back to demo home) ─────────── */
+
+.peekActions {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  padding: var(--space-5) 0 calc(var(--space-4) + env(safe-area-inset-bottom));
+}
+
+.peekLink {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.peekLink:hover,
+.peekLink:focus-visible {
+  color: var(--color-primary);
+  outline: none;
+}

@@ -83,9 +83,12 @@ import TryLoading from './pages/try/TryLoading'
 const TryLayout = lazy(() => import('./pages/try/TryLayout'))
 const TryHub = lazy(() => import('./pages/try/TryHub'))
 const TrySubFlow = lazy(() => import('./pages/try/TrySubFlow'))
-const TryGcStub = lazy(() => import('./pages/try/TryGcStub'))
-const TryEstimateStub = lazy(() => import('./pages/try/TryEstimateStub'))
-const TryCrewStub = lazy(() => import('./pages/try/TryCrewStub'))
+const TryGcMenu = lazy(() => import('./pages/try/TryGcMenu'))
+const TryEstimateFlow = lazy(() => import('./pages/try/TryEstimateFlow'))
+const TryCrewFlow = lazy(() => import('./pages/try/TryCrewFlow'))
+const TryInvoicingPeek = lazy(() => import('./pages/try/TryInvoicingPeek'))
+const TryReportingPeek = lazy(() => import('./pages/try/TryReportingPeek'))
+const TryBlueprintPeek = lazy(() => import('./pages/try/TryBlueprintPeek'))
 const TryEndStub = lazy(() => import('./pages/try/TryEndStub'))
 
 // ProtectedRoute wraps pages that require login + completed setup.
@@ -342,9 +345,12 @@ export default function App() {
       >
         <Route index element={<TryHub />} />
         <Route path="sub" element={<TrySubFlow />} />
-        <Route path="gc" element={<TryGcStub />} />
-        <Route path="gc/estimate" element={<TryEstimateStub />} />
-        <Route path="gc/crew" element={<TryCrewStub />} />
+        <Route path="gc" element={<TryGcMenu />} />
+        <Route path="gc/estimate" element={<TryEstimateFlow />} />
+        <Route path="gc/crew" element={<TryCrewFlow />} />
+        <Route path="gc/invoicing" element={<TryInvoicingPeek />} />
+        <Route path="gc/reporting" element={<TryReportingPeek />} />
+        <Route path="gc/blueprint" element={<TryBlueprintPeek />} />
         <Route path="done" element={<TryEndStub />} />
       </Route>
 
