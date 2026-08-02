@@ -67,7 +67,9 @@ export default function TryLayout() {
   return (
     <div className={s.shell}>
       <header className={s.header}>
-        <Link to="/" className={s.wordmark}>RivetDog</Link>
+        <Link to="/" className={s.wordmark} aria-label="RivetDog home">
+          Rivet<span className={s.wordmarkAccent}>Dog</span>
+        </Link>
       </header>
       <main className={s.main}>
         <Outlet />

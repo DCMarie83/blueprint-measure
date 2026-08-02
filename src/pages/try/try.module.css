@@ -18,17 +18,28 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+/* Placeholder logotype until the real logo SVG lands. Inter (loaded), heavy
+   weight + tight tracking so it reads as a mark, not default text. "Dog" in
+   the brand orange. */
 .wordmark {
-  font-family: var(--font-heading);
+  display: inline-flex;
+  align-items: baseline;
+  font-family: var(--font-body);
   font-weight: 800;
-  font-size: var(--text-lg);
-  letter-spacing: -0.01em;
+  font-size: var(--text-xl);
+  letter-spacing: -0.02em;
+  line-height: 1;
   color: var(--color-text);
   text-decoration: none;
+  white-space: nowrap;
+}
+
+.wordmarkAccent {
+  color: var(--color-primary);
 }
 
 .wordmark:hover {
-  color: var(--color-primary);
+  opacity: 0.85;
 }
 
 .main {
