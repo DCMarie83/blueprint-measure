@@ -1,4 +1,5 @@
-import lockupUrl from '../../assets/brand/lockup-orange.png'
+import lockupDarkUrl from '../../assets/brand/lockup-orange.png'
+import lockupLightUrl from '../../assets/brand/lockup-primary.png'
 import { tryStrings } from './tryStrings'
 import { useTryTheme } from './tryLang'
 import s from './try.module.css'
@@ -11,7 +12,7 @@ export default function TryLanguageGate({ onPick }) {
   const { theme, setTheme } = useTryTheme()
   return (
     <div className={s.arrival}>
-      <img src={lockupUrl} alt="RivetDog" className={s.arrivalLogo} />
+      <img src={theme === 'light' ? lockupLightUrl : lockupDarkUrl} alt="RivetDog" className={s.arrivalLogo} />
       <h1 className={s.arrivalTagline}>{g.tagline}</h1>
       <p className={s.arrivalSub}>{g.sub}</p>
       <div className={s.arrivalButtons}>

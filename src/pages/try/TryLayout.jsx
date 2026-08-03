@@ -1,6 +1,8 @@
 import { useLayoutEffect, useEffect } from 'react'
 import { Outlet, Link, useSearchParams, useLocation } from 'react-router-dom'
 import { Sun, Moon } from 'lucide-react'
+import lockupDarkUrl from '../../assets/brand/lockup-orange.png'
+import lockupLightUrl from '../../assets/brand/lockup-primary.png'
 import markUrl from '../../assets/brand/mark-orange.png'
 import { utmQuery } from './tryUtm'
 import { TryLangProvider, useTryLang, useTryTheme } from './tryLang'
@@ -65,7 +67,8 @@ function TryLayoutInner() {
     <div className={s.shell}>
       <header className={s.header}>
         <Link to="/" className={s.headerBrand} aria-label="RivetDog home">
-          <img src={markUrl} alt="RivetDog" className={s.headerLogo} />
+          {/* Full lockup, theme-aware: light-on-dark art for dark, dark-on-light for light. */}
+          <img src={theme === 'light' ? lockupLightUrl : lockupDarkUrl} alt="RivetDog" className={s.headerLogo} />
         </Link>
         <div className={s.headerRight}>
           <div className={s.langToggle} role="group" aria-label="Language">
