@@ -268,6 +268,11 @@
 .moneyOrange {
   color: var(--color-primary);
 }
+/* Light mode: brand orange on white is only ~2.6:1 — use the darker orange so
+   the large money figures clear AA. Dark mode keeps the brighter orange. */
+:global([data-theme='light']) .moneyOrange {
+  color: var(--color-primary-hover);
+}
 
 .moneyOverdue {
   color: var(--color-danger);
@@ -369,9 +374,9 @@
   text-align: center;
   padding: var(--space-3);
   font-size: var(--text-sm);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--color-primary);
-  text-decoration: none;
+  text-decoration: underline;
 }
 
 .secondaryLink:hover,

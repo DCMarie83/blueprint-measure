@@ -711,6 +711,8 @@
   color: var(--color-primary);
   margin: 0;
 }
+/* Darker orange on the white end card in light mode for AA. */
+:global([data-theme='light']) .endScarcity { color: var(--color-primary-hover); }
 
 .endScarcitySub {
   font-size: var(--text-sm);

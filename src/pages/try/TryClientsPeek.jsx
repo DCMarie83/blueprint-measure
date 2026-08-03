@@ -9,6 +9,11 @@ import g from './gc.module.css'
 const fmtMoneyFlat = (v) => (!v || v <= 0 ? '$0' : '$' + Math.round(v).toLocaleString('en-US'))
 const initials = (name) => (name || '??').split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('')
 
+// Theme-adaptive status chip classes (token-based, readable on both the dark
+// teal card and the light card — replaces the inline dark-teal fg that was
+// invisible on the dark surface).
+const STATUS_CLASS = { lead: 'clLead', active: 'clActive', past: 'clPast', do_not_contact: 'clPast' }
+
 // Static glance-only clients list (mirrors ClientListView). Rows are NOT clickable.
 export default function TryClientsPeek() {
   const { lang } = useTryLang()
@@ -66,7 +71,7 @@ export default function TryClientsPeek() {
                       </div>
                     </td>
                     <td className={g.clCell}>
-                      <span className={g.clStatus} style={{ background: meta.bg, color: meta.fg }}>{meta.label}</span>
+                      <span className={`${g.clStatus} ${g[STATUS_CLASS[c.status]]}`}>{meta.label}</span>
                     </td>
                     <td className={g.clCell}>{c.location}</td>
                     <td className={`${g.clCell} ${c.lastContact === 'Never' ? g.clMuted : ''}`}>{c.lastContact}</td>

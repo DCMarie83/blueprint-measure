@@ -11,6 +11,15 @@
   flex-direction: column;
 }
 
+/* CONTRAST FIX (dark): the app's --color-text-muted (#8a9096) is too dim on the
+   dark teal card surface (#26464c) — below WCAG AA. Brighten it to ~#b8c2c4
+   (~5:1 on teal) for the whole /try subtree in dark mode. Light mode keeps the
+   app's own muted value (fine on light surfaces); the light portal reveals
+   re-declare data-theme="light" internally, so this never touches them. */
+:global([data-theme='dark']) .shell {
+  --color-text-muted: #b8c2c4;
+}
+
 /* Sticky so the dog mark + EN/ES toggle stay pinned on EVERY /try screen at any
    scroll position (a non-sticky header scrolled away on long flows/peeks/reveals,
    which is why the mark looked "missing" and the language toggle got unreachable). */
@@ -72,6 +81,21 @@
   cursor: pointer;
 }
 .langChipOn { background: var(--color-primary); color: var(--color-on-primary); }
+
+/* Compact Dark/Light icon toggle in the header. */
+.themeBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+.themeBtn:hover { color: var(--color-primary); border-color: var(--color-primary); }
 
 .signupLink {
   font-size: var(--text-sm);
@@ -148,6 +172,22 @@
 }
 .langBtn:hover { border-color: var(--color-primary); }
 .langBtn:active { transform: translateY(3px); box-shadow: 0 0 0 var(--color-border); }
+
+/* Arrival "See it your way" Dark/Light control — under the language buttons. */
+.arrivalThemeRow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+.arrivalThemeLabel {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--color-text-muted);
+}
 
 .main {
   flex: 1;

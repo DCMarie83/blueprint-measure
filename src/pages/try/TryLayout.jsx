@@ -1,8 +1,9 @@
 import { useLayoutEffect, useEffect } from 'react'
 import { Outlet, Link, useSearchParams, useLocation } from 'react-router-dom'
+import { Sun, Moon } from 'lucide-react'
 import markUrl from '../../assets/brand/mark-orange.png'
 import { utmQuery } from './tryUtm'
-import { TryLangProvider, useTryLang } from './tryLang'
+import { TryLangProvider, useTryLang, useTryTheme } from './tryLang'
 import { tr } from './tryStrings'
 import TryLanguageGate from './TryLanguageGate'
 import s from './try.module.css'
@@ -10,33 +11,26 @@ import s from './try.module.css'
 const UTM_STORAGE_KEY = 'rivetdog_utms'
 const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term']
 
-function resolveForcedTheme() {
-  if (typeof window === 'undefined' || !window.matchMedia) return 'dark'
-  return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
-}
-
 function TryLayoutInner() {
   const { lang, setLang } = useTryLang()
+  const { theme, setTheme } = useTryTheme()
   const [searchParams] = useSearchParams()
   const { pathname } = useLocation()
   // Reveal screens carry a sticky bottom email-gate; omit the flow footer there
   // so nothing collides with the gate (the gate carries brand context instead).
   const isReveal = pathname.endsWith('/reveal')
 
-  // Force-match theme before paint; restore on unmount (unchanged from before).
+  // Apply the visitor's EXPLICIT theme choice (manual choice wins over the OS
+  // prefers-color-scheme mirror); restore the prior data-theme on unmount.
   useLayoutEffect(() => {
     const root = document.documentElement
     const prior = root.getAttribute('data-theme')
-    const apply = () => root.setAttribute('data-theme', resolveForcedTheme())
-    apply()
-    const mq = window.matchMedia?.('(prefers-color-scheme: dark)')
-    mq?.addEventListener?.('change', apply)
+    root.setAttribute('data-theme', theme)
     return () => {
-      mq?.removeEventListener?.('change', apply)
       if (prior === null) root.removeAttribute('data-theme')
       else root.setAttribute('data-theme', prior)
     }
-  }, [])
+  }, [theme])
 
   // Merge any incoming UTM params into the existing 'rivetdog_utms' blob.
   useEffect(() => {
@@ -78,6 +72,13 @@ function TryLayoutInner() {
             <button className={`${s.langChip} ${lang === 'en' ? s.langChipOn : ''}`} onClick={() => setLang('en')}>EN</button>
             <button className={`${s.langChip} ${lang === 'es' ? s.langChipOn : ''}`} onClick={() => setLang('es')}>ES</button>
           </div>
+          <button
+            className={s.themeBtn}
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
           <Link to={`/signup${utmQuery()}`} className={s.signupLink}>{c.signup}</Link>
         </div>
       </header>

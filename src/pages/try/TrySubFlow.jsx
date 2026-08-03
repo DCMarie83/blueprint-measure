@@ -126,7 +126,7 @@ export default function TrySubFlow() {
           <>
             <div className={s.hero}>
               <div className={s.heroLabel}>Owed to you</div>
-              <MoneyCountUp value={dashboard.owed.total} className={`${s.heroValue} ${s.moneyGreen}`} duration={480} />
+              <MoneyCountUp value={dashboard.owed.total} className={`${s.heroValue} ${s.moneyOrange}`} duration={480} />
               <p className={s.heroSub}>{dashboard.owed.sub}</p>
             </div>
             <div className={s.statGrid}>
