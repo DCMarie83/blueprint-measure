@@ -94,7 +94,7 @@ const TryJobsFlow = lazy(() => import('./pages/try/TryJobsFlow'))
 const TrySubInvoiceReveal = lazy(() => import('./pages/try/TrySubInvoiceReveal'))
 const TryEstimateReveal = lazy(() => import('./pages/try/TryEstimateReveal'))
 const TryPayStatementReveal = lazy(() => import('./pages/try/TryPayStatementReveal'))
-const TryEndStub = lazy(() => import('./pages/try/TryEndStub'))
+const TryEndScreen = lazy(() => import('./pages/try/TryEndScreen'))
 
 // ProtectedRoute wraps pages that require login + completed setup.
 // bypassSubscriptionGate: if true, skip the subscription check (for /settings, /account, /subscribe)
@@ -361,7 +361,7 @@ export default function App() {
         <Route path="gc/invoicing" element={<TryInvoicingPeek />} />
         <Route path="gc/reporting" element={<TryReportingPeek />} />
         <Route path="gc/blueprint" element={<TryBlueprintPeek />} />
-        <Route path="done" element={<TryEndStub />} />
+        <Route path="done" element={<TryEndScreen />} />
       </Route>
 
       {/* Registration / setup — only for users who haven't completed setup */}

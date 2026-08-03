@@ -39,6 +39,13 @@ export const GOOGLE_ADS_SIGNUP_CONVERSION_LABEL = '73_wCPj00MwcEPKjhJVE';
 export const GOOGLE_ADS_TIMEPAY_CONVERSION_LABEL = null;
 export const GOOGLE_ADS_TIMEPAY_CONVERSION_VALUE = 24.99;
 
+// /try demo-lead Google Ads conversion label — the label fired when a visitor
+// submits the /try email gate (a demo_leads capture, distinct from signup).
+// null until Dee supplies the real label; while null the demo fires NO
+// conversion (same dormant pattern as the Lite label above), so the /try funnel
+// never contaminates the founders/Lite conversion actions.
+export const GOOGLE_ADS_DEMO_LEAD_CONVERSION_LABEL = null;
+
 // Recurly public key (browser-safe, Recurly.js).
 export const RECURLY_PUBLIC_KEY = 'ewr1-5FyjbrwzjnEJiFBVHibzyZ';
 

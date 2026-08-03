@@ -1,5 +1,6 @@
 import { useLayoutEffect, useEffect } from 'react'
 import { Outlet, Link, useSearchParams } from 'react-router-dom'
+import { utmQuery } from './tryUtm'
 import s from './try.module.css'
 
 const UTM_STORAGE_KEY = 'rivetdog_utms'
@@ -70,6 +71,8 @@ export default function TryLayout() {
         <Link to="/" className={s.wordmark} aria-label="RivetDog home">
           Rivet<span className={s.wordmarkAccent}>Dog</span>
         </Link>
+        {/* Quiet escape hatch for the already-sold — subordinate to each screen's CTA. */}
+        <Link to={`/signup${utmQuery()}`} className={s.signupLink}>Sign up</Link>
       </header>
       <main className={s.main}>
         <Outlet />
