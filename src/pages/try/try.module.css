@@ -11,17 +11,45 @@
   flex-direction: column;
 }
 
+/* Sticky so the dog mark + EN/ES toggle stay pinned on EVERY /try screen at any
+   scroll position (a non-sticky header scrolled away on long flows/peeks/reveals,
+   which is why the mark looked "missing" and the language toggle got unreachable). */
 .header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
   padding: var(--space-4) var(--space-5);
+  background: var(--color-bg);
   border-bottom: 1px solid var(--color-border);
 }
 
 .headerBrand { display: inline-flex; align-items: center; text-decoration: none; }
-.headerLogo { height: 30px; width: auto; display: block; }
+/* Header uses the square icon mark so the brand is bold without crowding the
+   EN/ES toggle + Sign up on the same row. */
+.headerLogo { height: 42px; width: auto; display: block; }
+
+/* Persistent, branded "Powered by RivetDog" — the small dog mark beside the
+   RivetPay/worker .footer treatment (11px, uppercase, letter-spaced, muted). */
+.poweredFooter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+  opacity: 0.6;
+  padding: var(--space-4) var(--space-5) calc(var(--space-5) + env(safe-area-inset-bottom));
+}
+
+.poweredMark { height: 18px; width: auto; display: block; }
 
 .headerRight { display: inline-flex; align-items: center; gap: var(--space-3); }
 
@@ -68,10 +96,14 @@
   padding: var(--space-12) var(--space-5) calc(var(--space-12) + env(safe-area-inset-bottom));
 }
 
+/* The dominant element of the arrival. Sized by WIDTH because the full lockup
+   is a wide ~3.34:1 mark — width-driven sizing keeps it big yet never wider
+   than the viewport. Source PNG is 4167×1246, so this is downscaling (crisp). */
 .arrivalLogo {
-  height: 72px;
-  width: auto;
-  margin-bottom: var(--space-2);
+  width: min(90vw, 520px);
+  max-width: 90%;
+  height: auto;
+  margin-bottom: var(--space-4);
 }
 
 .arrivalTagline {

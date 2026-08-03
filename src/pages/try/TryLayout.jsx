@@ -1,6 +1,6 @@
 import { useLayoutEffect, useEffect } from 'react'
-import { Outlet, Link, useSearchParams } from 'react-router-dom'
-import lockupUrl from '../../assets/brand/lockup-orange.png'
+import { Outlet, Link, useSearchParams, useLocation } from 'react-router-dom'
+import markUrl from '../../assets/brand/mark-orange.png'
 import { utmQuery } from './tryUtm'
 import { TryLangProvider, useTryLang } from './tryLang'
 import { tr } from './tryStrings'
@@ -18,6 +18,10 @@ function resolveForcedTheme() {
 function TryLayoutInner() {
   const { lang, setLang } = useTryLang()
   const [searchParams] = useSearchParams()
+  const { pathname } = useLocation()
+  // Reveal screens carry a sticky bottom email-gate; omit the flow footer there
+  // so nothing collides with the gate (the gate carries brand context instead).
+  const isReveal = pathname.endsWith('/reveal')
 
   // Force-match theme before paint; restore on unmount (unchanged from before).
   useLayoutEffect(() => {
@@ -67,7 +71,7 @@ function TryLayoutInner() {
     <div className={s.shell}>
       <header className={s.header}>
         <Link to="/" className={s.headerBrand} aria-label="RivetDog home">
-          <img src={lockupUrl} alt="RivetDog" className={s.headerLogo} />
+          <img src={markUrl} alt="RivetDog" className={s.headerLogo} />
         </Link>
         <div className={s.headerRight}>
           <div className={s.langToggle} role="group" aria-label="Language">
@@ -80,6 +84,12 @@ function TryLayoutInner() {
       <main className={s.main}>
         <Outlet />
       </main>
+      {!isReveal && (
+        <footer className={s.poweredFooter}>
+          <img src={markUrl} alt="" className={s.poweredMark} />
+          <span>Powered by RivetDog</span>
+        </footer>
+      )}
     </div>
   )
 }
