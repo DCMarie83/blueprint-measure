@@ -231,18 +231,22 @@
   }
 }
 
+/* Two crafted, orange-forward doors: a bold orange top edge, a solid-orange
+   icon block (industrial, like a safety marker), heavy title, readable sub.
+   Tactile press-down that settles firmly. Works in light + dark. */
 .card {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-8) var(--space-6);
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-5) var(--space-8);
   background: var(--color-surface);
   border: 2px solid var(--color-border);
+  border-top: 4px solid var(--color-primary); /* confident brand-orange edge */
   border-radius: var(--radius-xl);
   box-shadow: 0 3px 0 var(--color-border), var(--shadow-md);
   text-decoration: none;
   color: var(--color-text);
-  min-height: 140px;
+  min-height: 172px;
   transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
@@ -250,7 +254,7 @@
 .card:focus-visible {
   border-color: var(--color-primary);
   transform: translateY(-2px);
-  box-shadow: 0 5px 0 var(--color-border), var(--shadow-lg);
+  box-shadow: 0 5px 0 var(--color-primary-hover), var(--shadow-lg);
   outline: none;
 }
 
@@ -259,14 +263,31 @@
   box-shadow: 0 1px 0 var(--color-border), var(--shadow-sm);
 }
 
+/* Solid orange icon block, white glyph — matches the brand's button language. */
+.cardIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  margin-bottom: var(--space-1);
+}
+
 .cardTitle {
   font-family: var(--font-heading);
-  font-weight: 700;
+  font-weight: 800;
   font-size: var(--text-xl);
+  letter-spacing: -0.01em;
+  color: var(--color-text);
 }
 
 .cardSub {
   font-size: var(--text-base);
+  font-weight: 500;
+  line-height: 1.4;
   color: var(--color-text-muted);
 }
 

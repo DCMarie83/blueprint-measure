@@ -11,7 +11,7 @@ export const tryStrings = {
   hub: {
     en: {
       heading: "Are you a sub, or do you run the jobs?",
-      sub: "Pick the part that's your world. It's all a live demo, no signup.",
+      sub: "Take it for a spin. It's the real thing.",
       subCard: "I'm a sub",
       subValue: 'Log your work, bill your GC, get paid without chasing.',
       gcCard: 'I run the jobs',
@@ -19,7 +19,7 @@ export const tryStrings = {
     },
     es: {
       heading: '¿Eres subcontratista, o manejas los trabajos?',
-      sub: 'Elige la parte que es tu mundo. Todo es una demo en vivo, sin registro.',
+      sub: 'Pruébala. Es la app de verdad.',
       subCard: 'Soy subcontratista',
       subValue: 'Registra tu trabajo, factura a tu contratista, y cobra sin perseguir a nadie.',
       gcCard: 'Manejo los trabajos',
@@ -94,13 +94,13 @@ export const tryStrings = {
 
   crewFlow: {
     en: {
-      s0h: 'Send your crew a link.', s0v: 'They clock in from their phone. No app, no account.',
+      s0h: 'Send your crew a link.', s0v: 'They clock in from their phone with a link.',
       s1h: 'They clock in from the job.', s1v: 'You see it happen, with location.',
       s2h: 'Approve their time in seconds.', s2v: 'No paper timesheets, no chasing hours.',
       s3h: 'Every hour, tracked and approved.', s3v: 'Without a single text message.',
     },
     es: {
-      s0h: 'Manda a tu cuadrilla un enlace.', s0v: 'Marcan entrada desde su teléfono. Sin app, sin cuenta.',
+      s0h: 'Manda a tu cuadrilla un enlace.', s0v: 'Marcan entrada desde su teléfono con un enlace.',
       s1h: 'Marcan entrada desde el trabajo.', s1v: 'Tú lo ves en el momento, con ubicación.',
       s2h: 'Aprueba sus horas en segundos.', s2v: 'Sin hojas de papel, sin perseguir horas.',
       s3h: 'Cada hora, registrada y aprobada.', s3v: 'Sin un solo mensaje de texto.',
