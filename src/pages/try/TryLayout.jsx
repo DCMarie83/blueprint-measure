@@ -82,7 +82,7 @@ function TryLayoutInner() {
           >
             {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
           </button>
-          <Link to={`/signup${utmQuery()}`} className={s.signupLink}>{c.signup}</Link>
+          <Link to={`${pathname.startsWith('/try/sub') ? '/signup/lite' : '/signup'}${utmQuery()}`} className={s.signupLink}>{c.signup}</Link>
         </div>
       </header>
       <main className={s.main}>

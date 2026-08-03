@@ -450,17 +450,22 @@
   display: inline-block;
   font-size: 11px;
   font-weight: 600;
-  padding: 2px 8px;
+  padding: 3px 9px;
   border-radius: var(--radius-pill);
   white-space: nowrap;
 }
 
-.bDraft { background: var(--color-neutral-bg); color: var(--color-neutral); }
-.bSent { background: var(--color-warning-bg); color: var(--color-warning); }
-.bPartial { background: rgba(245, 158, 11, 0.12); color: #d97706; }
-.bPaid { background: var(--color-success-bg); color: var(--color-success); }
-.bVoid { background: var(--color-danger-bg); color: var(--color-danger); text-decoration: line-through; }
+/* Framed status pills — a matched family: semantic bg tint + 1px semantic
+   border + semantic text + pill radius. Each keeps its functional color. */
+.bDraft { background: var(--color-neutral-bg); color: var(--color-neutral); border: 1px solid var(--color-neutral-border); }
+.bSent { background: var(--color-warning-bg); color: var(--color-warning); border: 1px solid var(--color-warning-border); }
+.bPartial { background: var(--color-warning-bg); color: var(--color-warning); border: 1px solid var(--color-warning-border); }
+.bPaid { background: var(--color-success-bg); color: var(--color-success); border: 1px solid var(--color-success-border); }
+.bVoid { background: var(--color-danger-bg); color: var(--color-danger); border: 1px solid var(--color-danger-border); text-decoration: line-through; }
 .bOverdue { background: var(--color-danger-bg); color: var(--color-danger); border: 1px solid var(--color-danger-border); }
+/* danger red (#dc2626) is dim on the dark danger-bg (~2.9:1); brighten in dark. */
+:global([data-theme='dark']) .bVoid,
+:global([data-theme='dark']) .bOverdue { color: #f87171; }
 
 /* ── Reporting peek (mirror ReportsPage) ────────────────────────── */
 
@@ -828,9 +833,11 @@
 .clBiz { font-size: 12px; color: var(--color-text-muted); overflow: hidden; text-overflow: ellipsis; }
 .clStatus { display: inline-block; padding: 2px 10px; border-radius: var(--radius-pill); font-size: 11px; font-weight: 700; white-space: nowrap; }
 /* Token-based, theme-adaptive, high-contrast on both dark teal + light cards. */
-.clLead { background: color-mix(in srgb, var(--color-primary) 16%, transparent); color: var(--color-primary); }
-.clActive { background: var(--color-success-bg); color: var(--color-success); }
-.clPast { background: var(--color-neutral-bg); color: var(--color-neutral); }
+/* Framed status chips — orange lead uses a neutral-text label (orange is too
+   dim at 11px on its tint) inside an orange frame; active/past use their trios. */
+.clLead { background: color-mix(in srgb, var(--color-primary) 14%, transparent); color: var(--color-text); border: 1px solid color-mix(in srgb, var(--color-primary) 45%, transparent); }
+.clActive { background: var(--color-success-bg); color: var(--color-success); border: 1px solid var(--color-success-border); }
+.clPast { background: var(--color-neutral-bg); color: var(--color-neutral); border: 1px solid var(--color-neutral-border); }
 .clActions { display: inline-flex; gap: 6px; }
 .clIconBtn { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: var(--radius-sm); border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text-muted); }
 
@@ -856,7 +863,7 @@
 
 .jbColHeader { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-3); padding-bottom: var(--space-2); border-bottom: 1px solid var(--color-border); }
 .jbColName { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: var(--tracking-caps); color: var(--color-text-muted); }
-.jbColCount { font-size: var(--text-xs); font-weight: 700; background: rgba(38, 70, 76, 0.15); color: var(--color-text); padding: 2px 8px; border-radius: var(--radius-pill); font-variant-numeric: tabular-nums; }
+.jbColCount { font-size: var(--text-xs); font-weight: 700; background: rgba(38, 70, 76, 0.15); color: var(--color-text); border: 1px solid var(--color-border); padding: 2px 9px; border-radius: var(--radius-pill); font-variant-numeric: tabular-nums; }
 
 .jbCardList { display: flex; flex-direction: column; gap: 10px; min-height: 60px; }
 

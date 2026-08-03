@@ -93,7 +93,7 @@ export default function EmailGate({ flow, caption }) {
       </div>
       <button className={r.gateBtn} onClick={handleSeeIt}>{primaryLabel}</button>
       <div className={r.gateAlt}>
-        <button className={r.gateSignup} onClick={() => navigate(`/signup${utmQuery()}`)}>{c.signup}</button>
+        <button className={r.gateSignup} onClick={() => navigate(`${flow === 'sub' ? '/signup/lite' : '/signup'}${utmQuery()}`)}>{c.signup}</button>
         <button className={r.gateSkip} onClick={toEnd}>{c.skip}</button>
       </div>
     </div>

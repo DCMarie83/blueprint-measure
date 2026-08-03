@@ -86,7 +86,7 @@ export default function TryEndScreen() {
         <div className={r.endScarcityBox}>{renderScarcity()}</div>
 
         <div className={r.endCtas}>
-          <Link to={`/signup${utmQuery()}`} className={r.endPrimary}>{e.primary}</Link>
+          <Link to={`${flow === 'sub' ? '/signup/lite' : '/signup'}${utmQuery()}`} className={r.endPrimary}>{e.primary}</Link>
           <Link to={replay.to} className={r.endSecondary}>{c[replay.key]}</Link>
         </div>
 
