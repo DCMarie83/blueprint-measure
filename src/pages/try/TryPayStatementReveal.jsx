@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import SendMotion from './SendMotion'
 import EmailGate from './EmailGate'
+import { useTryLang } from './tryLang'
+import { tr } from './tryStrings'
 import { fmtMoney } from './mockData/subDemo'
 import { CREW_DEMO } from './mockData/crewDemo'
 import r from './reveal.module.css'
@@ -9,18 +11,25 @@ import r from './reveal.module.css'
 const PS = CREW_DEMO.payStatement
 
 export default function TryPayStatementReveal() {
+  const { lang } = useTryLang()
+  const rv = tr('payReveal', lang)
+  const c = tr('common', lang)
   const [phase, setPhase] = useState('sending')
 
   if (phase === 'sending') {
     return (
       <div className={r.revealWrap}>
-        <SendMotion line="Here's the pay statement those approved hours become." onDone={() => setPhase('revealed')} />
+        <SendMotion line={rv.caption} onDone={() => setPhase('revealed')} />
       </div>
     )
   }
 
   return (
     <div className={r.revealWrap}>
+      <div className={r.revealHead}>
+        <h2 className={r.revealCaption}>{rv.caption}</h2>
+        <p className={r.revealValue}>{rv.value}</p>
+      </div>
       <div className={r.reveal}>
         <div className={r.payDoc}>
           <div className={r.payTop}>
@@ -95,11 +104,11 @@ export default function TryPayStatementReveal() {
         </div>
       </div>
 
-      <EmailGate flow="crew" caption="Approved hours become a clean pay statement, automatically." />
+      <EmailGate flow="crew" caption={rv.gate} />
 
       <div className={r.revealActions}>
-        <Link to="/try/gc" className={r.revealLink}>← Back to menu</Link>
-        <Link to="/try" className={r.revealLink}>Back to demo home</Link>
+        <Link to="/try/gc" className={r.revealLink}>← {c.backMenu}</Link>
+        <Link to="/try" className={r.revealLink}>{c.back}</Link>
       </div>
     </div>
   )

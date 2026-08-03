@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom'
+import { useTryLang } from './tryLang'
+import { tr } from './tryStrings'
 import { fmtMoney } from './mockData/subDemo'
 import s from './sub.module.css'
 import g from './gc.module.css'
@@ -23,9 +25,16 @@ const JOBS = [
 ]
 
 export default function TryReportingPeek() {
+  const { lang } = useTryLang()
+  const p = tr('peeks', lang)
+  const c = tr('common', lang)
   return (
     <div className={s.flow}>
       <div className={s.screen}>
+        <div className={s.beatHead}>
+          <h2 className={s.beatH}>{p.repH}</h2>
+          <p className={s.beatV}>{p.repV}</p>
+        </div>
         <h1 className={g.repHead}>Reports</h1>
 
         <div className={g.pillRow}>
@@ -76,8 +85,8 @@ export default function TryReportingPeek() {
       </div>
 
       <div className={g.peekActions}>
-        <Link to="/try/gc" className={g.peekLink}>← Back to menu</Link>
-        <Link to="/try" className={g.peekLink}>Back to demo home</Link>
+        <Link to="/try/gc" className={g.peekLink}>← {c.backMenu}</Link>
+        <Link to="/try" className={g.peekLink}>{c.back}</Link>
       </div>
     </div>
   )

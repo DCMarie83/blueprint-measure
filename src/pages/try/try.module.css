@@ -14,47 +14,108 @@
 .header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
   padding: var(--space-4) var(--space-5);
   border-bottom: 1px solid var(--color-border);
 }
 
-/* Placeholder logotype until the real logo SVG lands. Inter (loaded), heavy
-   weight + tight tracking so it reads as a mark, not default text. "Dog" in
-   the brand orange. */
-.wordmark {
+.headerBrand { display: inline-flex; align-items: center; text-decoration: none; }
+.headerLogo { height: 30px; width: auto; display: block; }
+
+.headerRight { display: inline-flex; align-items: center; gap: var(--space-3); }
+
+/* EN/ES toggle — a solid segmented control. */
+.langToggle {
   display: inline-flex;
-  align-items: baseline;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.langChip {
+  padding: 5px 11px;
   font-family: var(--font-body);
-  font-weight: 800;
-  font-size: var(--text-xl);
-  letter-spacing: -0.02em;
-  line-height: 1;
-  color: var(--color-text);
-  text-decoration: none;
-  white-space: nowrap;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
 }
-
-.wordmarkAccent {
-  color: var(--color-primary);
-}
-
-.wordmark:hover {
-  opacity: 0.85;
-}
+.langChipOn { background: var(--color-primary); color: var(--color-on-primary); }
 
 .signupLink {
-  margin-left: auto;
   font-size: var(--text-sm);
   font-weight: 600;
   color: var(--color-text-muted);
   text-decoration: none;
 }
-
 .signupLink:hover,
-.signupLink:focus-visible {
-  color: var(--color-primary);
-  outline: none;
+.signupLink:focus-visible { color: var(--color-primary); outline: none; }
+
+/* ── Arrival: the language gate (walk-up-to-something-solid) ─────── */
+
+.arrival {
+  flex: 1;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  text-align: center;
+  padding: var(--space-12) var(--space-5) calc(var(--space-12) + env(safe-area-inset-bottom));
 }
+
+.arrivalLogo {
+  height: 72px;
+  width: auto;
+  margin-bottom: var(--space-2);
+}
+
+.arrivalTagline {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: var(--text-2xl);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+  max-width: 16ch;
+  margin: 0;
+}
+
+.arrivalSub {
+  font-size: var(--text-lg);
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-4);
+}
+
+.arrivalButtons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+  max-width: 320px;
+}
+
+/* Chunky, tactile language buttons with a firm press-down. */
+.langBtn {
+  width: 100%;
+  padding: 16px 20px;
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 3px 0 var(--color-border);
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+}
+.langBtn:hover { border-color: var(--color-primary); }
+.langBtn:active { transform: translateY(3px); box-shadow: 0 0 0 var(--color-border); }
 
 .main {
   flex: 1;
@@ -73,7 +134,15 @@
   font-size: var(--text-2xl);
   line-height: 1.15;
   text-align: center;
-  margin: var(--space-4) 0 var(--space-8);
+  margin: var(--space-4) 0 var(--space-3);
+}
+
+.hubSub {
+  text-align: center;
+  font-size: var(--text-base);
+  color: var(--color-text-muted);
+  margin: 0 auto var(--space-8);
+  max-width: 44ch;
 }
 
 .cardGrid {
@@ -94,20 +163,26 @@
   gap: var(--space-2);
   padding: var(--space-8) var(--space-6);
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  border: 2px solid var(--color-border);
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 3px 0 var(--color-border), var(--shadow-md);
   text-decoration: none;
   color: var(--color-text);
   min-height: 140px;
-  transition: border-color 0.15s ease, transform 0.15s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
 .card:hover,
 .card:focus-visible {
   border-color: var(--color-primary);
   transform: translateY(-2px);
+  box-shadow: 0 5px 0 var(--color-border), var(--shadow-lg);
   outline: none;
+}
+
+.card:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 var(--color-border), var(--shadow-sm);
 }
 
 .cardTitle {
@@ -255,9 +330,4 @@
 
 @keyframes trySpin {
   to { transform: rotate(360deg); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .spinner { animation: none; }
-  .card:hover, .card:focus-visible { transform: none; }
 }

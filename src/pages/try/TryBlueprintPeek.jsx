@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom'
 import { ArrowLeft, Undo2, Redo2, Square, Minus, Hash, Palette, Ruler, RotateCcw, Download, Info, Eye } from 'lucide-react'
+import { useTryLang } from './tryLang'
+import { tr } from './tryStrings'
 import s from './sub.module.css'
 import g from './gc.module.css'
 
@@ -40,9 +42,16 @@ function labelPill(name, value, color, cx, cy, w = 74) {
 }
 
 export default function TryBlueprintPeek() {
+  const { lang } = useTryLang()
+  const p = tr('peeks', lang)
+  const c = tr('common', lang)
   return (
     <div className={s.flow}>
       <div className={s.screen}>
+        <div className={s.beatHead}>
+          <h2 className={s.beatH}>{p.bpH}</h2>
+          <p className={s.beatV}>{p.bpV}</p>
+        </div>
         {/* ── Toolbar ── */}
         <div className={g.bpToolbar}>
           <div className={g.bpCluster}><span className={g.bpBtn}><ArrowLeft size={16} /></span></div>
@@ -165,8 +174,8 @@ export default function TryBlueprintPeek() {
       </div>
 
       <div className={g.peekActions}>
-        <Link to="/try/gc" className={g.peekLink}>← Back to menu</Link>
-        <Link to="/try" className={g.peekLink}>Back to demo home</Link>
+        <Link to="/try/gc" className={g.peekLink}>← {c.backMenu}</Link>
+        <Link to="/try" className={g.peekLink}>{c.back}</Link>
       </div>
     </div>
   )

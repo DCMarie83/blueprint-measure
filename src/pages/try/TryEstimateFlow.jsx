@@ -1,13 +1,14 @@
 import { useState, useEffect, Fragment } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useCountUp } from './useCountUp'
+import { useTryLang } from './tryLang'
+import { tr } from './tryStrings'
 import { fmtMoney, unitLabel } from './mockData/subDemo'
 import { ESTIMATE_DEMO } from './mockData/estimateDemo'
 import s from './sub.module.css'
 import g from './gc.module.css'
 
 const STEPS = 3
-const CTA = ['Build my estimate', 'See the total', 'See what your client sees']
 const { job, client, lineItems, total } = ESTIMATE_DEMO
 
 // Group line items by category, preserving first-seen order (mirrors GroupRows).
@@ -31,6 +32,10 @@ function MoneyCountUp({ value, className, duration = 900 }) {
 
 export default function TryEstimateFlow() {
   const navigate = useNavigate()
+  const { lang } = useTryLang()
+  const f = tr('estimateFlow', lang)
+  const c = tr('common', lang)
+  const beats = [{ h: f.s0h, v: f.s0v }, { h: f.s1h, v: f.s1v }, { h: f.s2h, v: f.s2v }]
   const [step, setStep] = useState(0)
 
   // Running total climbs from $0 to the full total across step 1 (the build).
@@ -59,6 +64,11 @@ export default function TryEstimateFlow() {
       </div>
 
       <div key={screenKey} className={s.screen}>
+        <div className={s.beatHead}>
+          <h2 className={s.beatH}>{beats[step].h}</h2>
+          <p className={s.beatV}>{beats[step].v}</p>
+        </div>
+
         {step <= 1 && (
           <>
             <div className={s.card}>
@@ -77,7 +87,7 @@ export default function TryEstimateFlow() {
             {/* Line-items table — orange-bordered container, mirrors EstimateDetailPage */}
             <div className={g.estWrap}>
               {step === 0 ? (
-                <div className={g.emptyEstimate}>No line items yet. Tap “Build my estimate.”</div>
+                <div className={g.emptyEstimate}>—</div>
               ) : (
                 <table className={g.estTable}>
                   <thead>
@@ -133,16 +143,14 @@ export default function TryEstimateFlow() {
               <MoneyCountUp value={total} className={g.grandValue} duration={700} />
               <div className={g.grandJob}>{job}</div>
               <div className={g.grandClient}>{client}</div>
-              <div className={g.singleNote}>One clear price — client-ready.</div>
             </div>
-            <p className={s.payoff}>{ESTIMATE_DEMO.payoff}</p>
           </>
         )}
       </div>
 
       <div className={s.actions}>
-        <button className={s.primaryBtn} onClick={advance}>{CTA[step]}</button>
-        <Link to="/try" className={s.backLink}>← Back to demo home</Link>
+        <button className={s.primaryBtn} onClick={advance}>{step < STEPS - 1 ? beats[step + 1].h : c.seeClient}</button>
+        <Link to="/try" className={s.backLink}>← {c.back}</Link>
       </div>
     </div>
   )

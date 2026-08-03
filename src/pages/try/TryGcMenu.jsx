@@ -1,28 +1,33 @@
 import { Link } from 'react-router-dom'
+import { useTryLang } from './tryLang'
+import { tr } from './tryStrings'
 import s from './sub.module.css'
 import g from './gc.module.css'
 
-// Three guided flows dominate; four peeks are grouped and de-emphasized below.
-const GUIDED = [
-  { title: 'Build an estimate', sub: 'Watch a bid build itself, line by line.', to: '/try/gc/estimate' },
-  { title: 'Track your crew', sub: 'From phone clock-in to one-tap approval.', to: '/try/gc/crew' },
-  { title: 'Run your job board', sub: 'Move a job from Review to Sent.', to: '/try/gc/jobs' },
-]
-
-const PEEKS = [
-  { title: 'Invoicing', to: '/try/gc/invoicing' },
-  { title: 'Reporting', to: '/try/gc/reporting' },
-  { title: 'Blueprint measure', to: '/try/gc/blueprint' },
-  { title: 'Clients', to: '/try/gc/clients' },
-]
-
 export default function TryGcMenu() {
+  const { lang } = useTryLang()
+  const m = tr('gcMenu', lang)
+  const c = tr('common', lang)
+
+  const guided = [
+    { title: m.estH, sub: m.estV, to: '/try/gc/estimate' },
+    { title: m.crewH, sub: m.crewV, to: '/try/gc/crew' },
+    { title: m.jobsH, sub: m.jobsV, to: '/try/gc/jobs' },
+  ]
+  const peeks = [
+    { title: m.invH, sub: m.invV, to: '/try/gc/invoicing' },
+    { title: m.repH, sub: m.repV, to: '/try/gc/reporting' },
+    { title: m.bpH, sub: m.bpV, to: '/try/gc/blueprint' },
+    { title: m.cliH, sub: m.cliV, to: '/try/gc/clients' },
+  ]
+
   return (
     <div className={s.flow}>
-      <h1 className={g.menuTitle}>You run the jobs. Here's what RivetDog does.</h1>
+      <h1 className={g.menuTitle}>{m.heading}</h1>
+      <p className={g.menuSub}>{m.sub}</p>
 
       <div className={g.guidedGrid}>
-        {GUIDED.map((t) => (
+        {guided.map((t) => (
           <Link key={t.title} to={t.to} className={g.guidedTile}>
             <div className={g.guidedText}>
               <span className={g.guidedTitle}>{t.title}</span>
@@ -33,18 +38,18 @@ export default function TryGcMenu() {
         ))}
       </div>
 
-      <div className={g.peekHeading}>Take a look around</div>
+      <div className={g.peekHeading}>{m.peeksHeading}</div>
       <div className={g.peekGrid}>
-        {PEEKS.map((t) => (
+        {peeks.map((t) => (
           <Link key={t.title} to={t.to} className={g.peekTile}>
             <span className={g.peekTileTitle}>{t.title}</span>
-            <span className={`${g.tag} ${g.tagPeek}`}>Take a look</span>
+            <span className={g.peekTileSub}>{t.sub}</span>
           </Link>
         ))}
       </div>
 
       <div className={s.actions}>
-        <Link to="/try" className={s.backLink}>← Back to demo home</Link>
+        <Link to="/try" className={s.backLink}>← {c.back}</Link>
       </div>
     </div>
   )

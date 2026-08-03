@@ -319,13 +319,15 @@
   background: linear-gradient(to top, var(--color-bg) 70%, transparent);
 }
 
+/* Tactile primary — solid orange with a firm press-down (compresses its inset
+   shadow on :active), so it feels like it would hold under load. */
 .primaryBtn {
   width: 100%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 14px 18px;
-  font-family: var(--font-body);
+  padding: 15px 18px;
+  font-family: var(--font-heading);
   font-size: var(--text-lg);
   font-weight: 700;
   border: none;
@@ -333,7 +335,8 @@
   background: var(--color-primary);
   color: var(--color-on-primary);
   cursor: pointer;
-  transition: background 0.15s ease, transform 0.1s ease;
+  box-shadow: 0 3px 0 var(--color-primary-hover);
+  transition: background 0.15s ease, transform 0.1s ease, box-shadow 0.1s ease;
 }
 
 .primaryBtn:hover {
@@ -341,7 +344,24 @@
 }
 
 .primaryBtn:active {
-  transform: scale(0.99);
+  transform: translateY(3px);
+  box-shadow: 0 0 0 var(--color-primary-hover);
+}
+
+/* Selling heading + value/pain line at the top of every guided beat / peek. */
+.beatHead { margin-bottom: var(--space-4); }
+.beatH {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: var(--text-xl);
+  line-height: 1.15;
+  color: var(--color-text);
+  margin: 0;
+}
+.beatV {
+  font-size: var(--text-base);
+  color: var(--color-text-muted);
+  margin: 4px 0 0;
 }
 
 .secondaryLink {

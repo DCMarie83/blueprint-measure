@@ -562,26 +562,37 @@
 
 /* ── Email gate (stub UI; real capture is Stage 4) ──────────────── */
 
+/* Selling header above the revealed artifact (caption + value). */
+.revealHead { margin-bottom: var(--space-4); }
+.revealCaption {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: var(--text-xl);
+  line-height: 1.15;
+  color: var(--color-text);
+  margin: 0;
+}
+.revealValue { font-size: var(--text-base); color: var(--color-text-muted); margin: 4px 0 0; }
+
+/* Sticky, substantial gate — a solid opaque bar anchored to the bottom with a
+   strong orange top border + shadow. Primary CTA bold, orange, always tappable. */
 .gate {
+  position: sticky;
+  bottom: 0;
   margin-top: var(--space-6);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-top: 2px solid var(--color-primary);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   padding: var(--space-5);
-  text-align: center;
+  padding-bottom: calc(var(--space-5) + env(safe-area-inset-bottom));
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
 }
 
 .gateCaption {
   font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  margin: 0 0 var(--space-4);
-}
-
-.gateTitle {
-  font-family: var(--font-heading);
-  font-size: var(--text-lg);
-  font-weight: 700;
   color: var(--color-text);
+  line-height: 1.4;
   margin: 0 0 var(--space-3);
 }
 
@@ -592,10 +603,13 @@
   margin-bottom: var(--space-3);
 }
 
+.gateRow { display: flex; gap: var(--space-2); }
+.gateRow .gateInput { flex: 1; min-width: 0; }
+
 .gateInput {
   width: 100%;
   box-sizing: border-box;
-  padding: 12px 14px;
+  padding: 13px 14px;
   font-family: var(--font-body);
   font-size: var(--text-base);
   color: var(--color-text);
@@ -604,11 +618,12 @@
   border-radius: var(--radius-md);
 }
 .gateInput:focus { outline: none; border-color: var(--color-primary); }
+.gateInput[aria-invalid="true"] { border-color: var(--color-danger); }
 
 .gateBtn {
   width: 100%;
-  padding: 14px;
-  font-family: var(--font-body);
+  padding: 15px;
+  font-family: var(--font-heading);
   font-size: var(--text-lg);
   font-weight: 700;
   color: var(--color-on-primary);
@@ -616,15 +631,24 @@
   border: none;
   border-radius: var(--radius-md);
   cursor: pointer;
+  box-shadow: 0 3px 0 var(--color-primary-hover);
+  transition: background 0.15s ease, transform 0.1s ease, box-shadow 0.1s ease;
 }
 .gateBtn:hover { background: var(--color-primary-hover); }
+.gateBtn:active { transform: translateY(3px); box-shadow: 0 0 0 var(--color-primary-hover); }
+
+.gateAlt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
 
 .gateSignup {
-  width: 100%;
-  margin-top: var(--space-2);
-  padding: 12px;
+  padding: 8px 14px;
   font-family: var(--font-body);
-  font-size: var(--text-base);
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--color-text);
   background: transparent;
@@ -635,20 +659,12 @@
 .gateSignup:hover { border-color: var(--color-primary); color: var(--color-primary); }
 
 .gateSkip {
-  display: inline-block;
-  margin-top: var(--space-3);
   font-size: var(--text-sm);
   color: var(--color-text-muted);
   background: none;
   border: none;
   text-decoration: underline;
   cursor: pointer;
-}
-
-.gateError {
-  font-size: var(--text-sm);
-  color: var(--color-danger);
-  margin: 0 0 var(--space-3);
 }
 
 /* ── End screen (founders offer + live scarcity) ────────────────── */
@@ -712,7 +728,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 15px 24px;
+  padding: 16px 24px;
+  font-family: var(--font-heading);
   font-size: var(--text-lg);
   font-weight: 700;
   color: var(--color-on-primary);
@@ -720,8 +737,11 @@
   border: none;
   border-radius: var(--radius-md);
   text-decoration: none;
+  box-shadow: 0 3px 0 var(--color-primary-hover);
+  transition: background 0.15s ease, transform 0.1s ease, box-shadow 0.1s ease;
 }
 .endPrimary:hover { background: var(--color-primary-hover); }
+.endPrimary:active { transform: translateY(3px); box-shadow: 0 0 0 var(--color-primary-hover); }
 
 .endSecondary {
   display: inline-flex;

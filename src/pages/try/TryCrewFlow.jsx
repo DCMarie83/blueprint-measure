@@ -1,16 +1,21 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { MapPin } from 'lucide-react'
+import { MapPin, Check } from 'lucide-react'
+import { useTryLang } from './tryLang'
+import { tr } from './tryStrings'
 import { CREW_DEMO } from './mockData/crewDemo'
 import s from './sub.module.css'
 import g from './gc.module.css'
 
 const STEPS = 4
-const CTA = ['Watch them clock in', 'Review their time', 'See the payoff', 'See the pay statement']
 const { company, worker, job, clockInTime, shareLink, pending } = CREW_DEMO
 
 export default function TryCrewFlow() {
   const navigate = useNavigate()
+  const { lang } = useTryLang()
+  const f = tr('crewFlow', lang)
+  const c = tr('common', lang)
+  const beats = [{ h: f.s0h, v: f.s0v }, { h: f.s1h, v: f.s1v }, { h: f.s2h, v: f.s2v }, { h: f.s3h, v: f.s3v }]
   const [step, setStep] = useState(0)
 
   // Phone: auto-transition from "Clock In" to the running timer shortly after
@@ -41,13 +46,15 @@ export default function TryCrewFlow() {
       </div>
 
       <div key={screenKey} className={s.screen}>
+        <div className={s.beatHead}>
+          <h2 className={s.beatH}>{beats[step].h}</h2>
+          <p className={s.beatV}>{beats[step].v}</p>
+        </div>
+
         {/* STEP 0 — share link / QR */}
         {step === 0 && (
           <div className={s.card}>
             <div className={g.shareCard}>
-              <p className={s.payoff} style={{ marginTop: 0 }}>
-                Send your crew a link. They clock in from their phone. No app, no account.
-              </p>
               <div className={g.qr} aria-hidden="true">
                 <span className={`${g.qrFinder} ${g.qrTL}`} />
                 <span className={`${g.qrFinder} ${g.qrTR}`} />
@@ -128,17 +135,17 @@ export default function TryCrewFlow() {
           </div>
         )}
 
-        {/* STEP 3 — payoff */}
+        {/* STEP 3 — payoff (copy lives in the beat header above) */}
         {step === 3 && (
-          <div className={s.card}>
-            <p className={s.payoff} style={{ marginTop: 0 }}>{CREW_DEMO.payoff}</p>
+          <div className={`${s.card} ${g.crewDone}`}>
+            <span className={g.crewDoneCheck}><Check size={26} /></span>
           </div>
         )}
       </div>
 
       <div className={s.actions}>
-        <button className={s.primaryBtn} onClick={advance}>{CTA[step]}</button>
-        <Link to="/try" className={s.backLink}>← Back to demo home</Link>
+        <button className={s.primaryBtn} onClick={advance}>{step < STEPS - 1 ? beats[step + 1].h : c.seePay}</button>
+        <Link to="/try" className={s.backLink}>← {c.back}</Link>
       </div>
     </div>
   )

@@ -3,19 +3,25 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { GOOGLE_ADS_TAG_ID, GOOGLE_ADS_DEMO_LEAD_CONVERSION_LABEL } from '../../lib/config'
 import { US_STATES } from '../../data/usStates'
+import { useTryLang } from './tryLang'
+import { tr } from './tryStrings'
 import { readUtms, utmQuery, getStoredState, setStoredState } from './tryUtm'
 import r from './reveal.module.css'
 
+// Flow → the primary CTA label (reused from common.see*).
+const SEE_KEY = { sub: 'seeGc', estimate: 'seeClient', jobs: 'seeClient', crew: 'seePay' }
+
 // The real /try email gate. Its ONLY network call is the anon submit_demo_lead
-// RPC, fired-and-forgotten (never blocks the UI). The magnet email is sent by
-// GHL downstream from the demo_leads row — this component never calls a send-*
-// function. "Sign up now" skips the capture and goes straight to /signup.
+// RPC, fired-and-forgotten (never blocks the UI). Copy/labels localized; the
+// RPC call, args, and conversion wiring are unchanged.
 export default function EmailGate({ flow, caption }) {
   const navigate = useNavigate()
+  const { lang } = useTryLang()
+  const c = tr('common', lang)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [stateCode, setStateCode] = useState(() => getStoredState())
-  const [error, setError] = useState('')
+  const [error, setError] = useState(false)
 
   const emailValid = (v) => v.trim() !== '' && v.includes('@')
 
@@ -26,11 +32,9 @@ export default function EmailGate({ flow, caption }) {
   }
 
   function handleSeeIt() {
-    if (!emailValid(email)) { setError('Enter a valid email so we can send it over.'); return }
+    if (!emailValid(email)) { setError(true); return }
     setStoredState(stateCode)
 
-    // Fire-and-forget the ONLY write in the demo (mirrors the portal accept
-    // pattern). Never awaited, never surfaced to the UI.
     const utm = readUtms()
     supabase.rpc('submit_demo_lead', {
       p_name: name.trim() || null,
@@ -44,8 +48,6 @@ export default function EmailGate({ flow, caption }) {
       p_utm_term: utm.utm_term,
     }).then(() => {}, () => {})
 
-    // Dedicated demo-lead conversion — dormant until the label is set, so it
-    // never contaminates the founders/Lite conversions.
     if (typeof window.gtag === 'function' && GOOGLE_ADS_DEMO_LEAD_CONVERSION_LABEL) {
       window.gtag('event', 'conversion', {
         send_to: `${GOOGLE_ADS_TAG_ID}/${GOOGLE_ADS_DEMO_LEAD_CONVERSION_LABEL}`,
@@ -56,40 +58,43 @@ export default function EmailGate({ flow, caption }) {
     toEnd()
   }
 
+  const primaryLabel = c[SEE_KEY[flow] || 'seeClient']
+
   return (
     <div className={r.gate}>
       {caption && <p className={r.gateCaption}>{caption}</p>}
-      <h3 className={r.gateTitle}>Want this for your own jobs?</h3>
       <div className={r.gateFields}>
         <input
           className={r.gateInput}
-          type="text"
-          placeholder="Your name (optional)"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <input
-          className={r.gateInput}
           type="email"
-          placeholder="Your email"
+          placeholder="you@email.com"
           value={email}
-          onChange={(e) => { setEmail(e.target.value); if (error) setError('') }}
+          onChange={(e) => { setEmail(e.target.value); if (error) setError(false) }}
+          aria-invalid={error}
         />
-        <select
-          className={r.gateInput}
-          value={stateCode}
-          onChange={(e) => setStateCode(e.target.value)}
-          aria-label="Your state"
-        >
-          <option value="">Your state (optional)</option>
-          {US_STATES.map((st) => <option key={st.code} value={st.code}>{st.name}</option>)}
-        </select>
+        <div className={r.gateRow}>
+          <input
+            className={r.gateInput}
+            type="text"
+            placeholder="Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <select
+            className={r.gateInput}
+            value={stateCode}
+            onChange={(e) => setStateCode(e.target.value)}
+            aria-label="State"
+          >
+            <option value="">State</option>
+            {US_STATES.map((st) => <option key={st.code} value={st.code}>{st.code}</option>)}
+          </select>
+        </div>
       </div>
-      {error && <p className={r.gateError}>{error}</p>}
-      <button className={r.gateBtn} onClick={handleSeeIt}>See it in action</button>
-      <button className={r.gateSignup} onClick={() => navigate(`/signup${utmQuery()}`)}>Sign up now</button>
-      <div>
-        <button className={r.gateSkip} onClick={toEnd}>Skip for now</button>
+      <button className={r.gateBtn} onClick={handleSeeIt}>{primaryLabel}</button>
+      <div className={r.gateAlt}>
+        <button className={r.gateSignup} onClick={() => navigate(`/signup${utmQuery()}`)}>{c.signup}</button>
+        <button className={r.gateSkip} onClick={toEnd}>{c.skip}</button>
       </div>
     </div>
   )

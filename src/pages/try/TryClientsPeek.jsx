@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Phone, Mail, FileText, Briefcase, Search } from 'lucide-react'
+import { useTryLang } from './tryLang'
+import { tr } from './tryStrings'
 import { CLIENTS_DEMO, CLIENT_CHIPS, CLIENT_STATUS_META } from './mockData/clientsDemo'
 import s from './sub.module.css'
 import g from './gc.module.css'
@@ -9,9 +11,16 @@ const initials = (name) => (name || '??').split(/\s+/).slice(0, 2).map((w) => w[
 
 // Static glance-only clients list (mirrors ClientListView). Rows are NOT clickable.
 export default function TryClientsPeek() {
+  const { lang } = useTryLang()
+  const p = tr('peeks', lang)
+  const c = tr('common', lang)
   return (
     <div className={s.flow}>
       <div className={s.screen}>
+        <div className={s.beatHead}>
+          <h2 className={s.beatH}>{p.cliH}</h2>
+          <p className={s.beatV}>{p.cliV}</p>
+        </div>
         <div className={g.clHead}>
           <h1 className={g.clTitle}>Clients</h1>
           <p className={g.clSub}>Manage your residential and commercial clients</p>
@@ -80,8 +89,8 @@ export default function TryClientsPeek() {
       </div>
 
       <div className={g.peekActions}>
-        <Link to="/try/gc" className={g.peekLink}>← Back to menu</Link>
-        <Link to="/try" className={g.peekLink}>Back to demo home</Link>
+        <Link to="/try/gc" className={g.peekLink}>← {c.backMenu}</Link>
+        <Link to="/try" className={g.peekLink}>{c.back}</Link>
       </div>
     </div>
   )

@@ -3,28 +3,34 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { FOUNDER_SPOTS_SCARCITY_THRESHOLD } from '../../lib/config'
 import { US_STATES } from '../../data/usStates'
+import { useTryLang } from './tryLang'
+import { tr } from './tryStrings'
 import { utmQuery, resolveState } from './tryUtm'
 import r from './reveal.module.css'
 
-// Flow → the reveal to return to, and its secondary-CTA label.
+// Flow → the reveal to return to, and its common.* CTA key.
 const REPLAY = {
-  estimate: { to: '/try/gc/estimate/reveal', label: 'See what your customer sees again' },
-  jobs: { to: '/try/gc/estimate/reveal', label: 'See what your customer sees again' },
-  crew: { to: '/try/gc/crew/reveal', label: 'See the pay statement again' },
-  sub: { to: '/try/sub/reveal', label: 'See what your GC sees again' },
+  estimate: { to: '/try/gc/estimate/reveal', key: 'seeClient' },
+  jobs: { to: '/try/gc/estimate/reveal', key: 'seeClient' },
+  crew: { to: '/try/gc/crew/reveal', key: 'seePay' },
+  sub: { to: '/try/sub/reveal', key: 'seeGc' },
 }
 
 export default function TryEndScreen() {
   const [searchParams] = useSearchParams()
+  const { lang } = useTryLang()
+  const e = tr('end', lang)
+  const c = tr('common', lang)
+
   const flow = searchParams.get('flow') || 'estimate'
   const stateCode = resolveState(searchParams)
   const stateName = stateCode ? (US_STATES.find((s) => s.code === stateCode)?.name || stateCode) : ''
+  // Fallback word for the {state} placeholder when no state is resolvable.
+  const stateSlot = stateName || (lang === 'es' ? 'tu estado' : 'your state')
 
   const [scarcity, setScarcity] = useState(null)
   const [scarcityLoading, setScarcityLoading] = useState(false)
 
-  // Live scarcity — same read-only RPC + shape as SignupPage. Only when a state
-  // is resolvable; otherwise we show the generic cap statement below.
   useEffect(() => {
     if (!stateCode) { setScarcity(null); return }
     let cancelled = false
@@ -45,14 +51,9 @@ export default function TryEndScreen() {
   const replay = REPLAY[flow] || REPLAY.estimate
 
   function renderScarcity() {
-    // No state: skip the live count, show the generic cap statement.
-    if (!stateCode) {
-      return <p className={r.endScarcity}>Only 25 founder spots per state.</p>
-    }
+    if (!stateCode) return <p className={r.endScarcity}>Only 25 founder spots per state.</p>
     if (scarcityLoading) return <p className={r.endScarcitySub}>Checking availability…</p>
-    // RPC failed or returned nothing → render nothing (silence beats a false promise).
     if (!scarcity) return null
-
     const cap = (
       <>
         <p className={r.endScarcity}>Only {scarcity.spots_total} founder spots per state.</p>
@@ -78,20 +79,18 @@ export default function TryEndScreen() {
   return (
     <div className={r.revealWrap}>
       <div className={`${r.reveal} ${r.endCard}`}>
-        <div className={r.endEyebrow}>Founders offer</div>
-        <h1 className={r.endHeadline}>
-          First 25 trade pros in {stateName || 'your state'} lock $79.99/mo — for life.
-        </h1>
-        <p className={r.endTrial}>14-day free trial · cancel anytime · locked for life.</p>
+        <div className={r.endEyebrow}>{e.eyebrow}</div>
+        <h1 className={r.endHeadline}>{e.headline.replace('{state}', stateSlot)}</h1>
+        <p className={r.endTrial}>{e.trial}</p>
 
         <div className={r.endScarcityBox}>{renderScarcity()}</div>
 
         <div className={r.endCtas}>
-          <Link to={`/signup${utmQuery()}`} className={r.endPrimary}>Start free trial</Link>
-          <Link to={replay.to} className={r.endSecondary}>{replay.label}</Link>
+          <Link to={`/signup${utmQuery()}`} className={r.endPrimary}>{e.primary}</Link>
+          <Link to={replay.to} className={r.endSecondary}>{c[replay.key]}</Link>
         </div>
 
-        <Link to="/try" className={r.endBack}>← Back to demo home</Link>
+        <Link to="/try" className={r.endBack}>← {c.back}</Link>
       </div>
     </div>
   )

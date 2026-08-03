@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useTryLang } from './tryLang'
+import { tr } from './tryStrings'
 import { COLUMNS, STATIC_JOBS, OAKWOOD_JOB, accentFor } from './mockData/jobsDemo'
 import s from './sub.module.css'
 import g from './gc.module.css'
@@ -24,13 +26,16 @@ function JobCard({ job, accent, tappable, landed, onTap }) {
         <span>{job.blueprints} blueprint{job.blueprints !== 1 ? 's' : ''}</span>
         <span>{job.updated}</span>
       </div>
-      {tappable && <div className={g.jbTapHint}>Tap to send →</div>}
+      {tappable && <div className={g.jbTapHint}>→</div>}
     </div>
   )
 }
 
 export default function TryJobsFlow() {
   const navigate = useNavigate()
+  const { lang } = useTryLang()
+  const f = tr('jobsFlow', lang)
+  const c = tr('common', lang)
   const [sent, setSent] = useState(false)
   const boardRef = useRef(null)
   const reviewRef = useRef(null)
@@ -48,8 +53,8 @@ export default function TryJobsFlow() {
   return (
     <div className={s.flow}>
       <div className={g.jbHead}>
-        <h1 className={g.jbTitle}>Jobs</h1>
-        <p className={g.jbSub}>Every job, from first measure to final coat.</p>
+        <h1 className={g.jbTitle}>{f.s0h}</h1>
+        <p className={g.jbSub}>{f.s0v}</p>
       </div>
 
       <div className={g.jbBoard} ref={boardRef}>
@@ -79,7 +84,7 @@ export default function TryJobsFlow() {
                 {staticJobs.map((j) => (
                   <JobCard key={j.id} job={j} accent={accent} onTap={() => {}} />
                 ))}
-                {count === 0 && <div className={g.jbEmpty}>No jobs here</div>}
+                {count === 0 && <div className={g.jbEmpty}>—</div>}
               </div>
             </div>
           )
@@ -87,20 +92,18 @@ export default function TryJobsFlow() {
       </div>
 
       {sent && (
-        <div className={g.jbPayoff}>
-          Estimate sent to {OAKWOOD_JOB.client}. It's in their inbox and on the board.
-        </div>
+        <div className={g.jbPayoff}>{f.moved}</div>
       )}
 
       <div className={s.actions}>
         {sent ? (
           <button className={s.primaryBtn} onClick={() => navigate('/try/gc/estimate/reveal')}>
-            See what your client sees
+            {c.seeClient}
           </button>
         ) : (
-          <p className={g.jbHint}>Tap the highlighted job in <strong>Review</strong> to send it to your client.</p>
+          <p className={g.jbHint}>{f.tap}</p>
         )}
-        <Link to="/try" className={s.backLink}>← Back to demo home</Link>
+        <Link to="/try" className={s.backLink}>← {c.back}</Link>
       </div>
     </div>
   )

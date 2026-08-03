@@ -730,11 +730,18 @@
   color: var(--color-text);
   transition: border-color 0.15s ease, transform 0.15s ease;
 }
-.guidedTile:hover, .guidedTile:focus-visible { border-color: var(--color-primary); transform: translateY(-2px); outline: none; }
+.guidedTile {
+  border-width: 2px;
+  box-shadow: 0 3px 0 var(--color-border);
+}
+.guidedTile:hover, .guidedTile:focus-visible { border-color: var(--color-primary); transform: translateY(-2px); box-shadow: 0 5px 0 var(--color-border); outline: none; }
+.guidedTile:active { transform: translateY(1px); box-shadow: 0 1px 0 var(--color-border); }
 
 .guidedText { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .guidedTitle { font-family: var(--font-heading); font-weight: 800; font-size: var(--text-xl); }
 .guidedSub { font-size: var(--text-sm); color: var(--color-text-muted); }
+
+.menuSub { font-size: var(--text-base); color: var(--color-text-muted); margin: 0 0 var(--space-5); }
 
 .peekHeading {
   margin: var(--space-6) 0 var(--space-3);
@@ -760,8 +767,24 @@
   color: var(--color-text);
   transition: border-color 0.15s ease;
 }
-.peekTile:hover, .peekTile:focus-visible { border-color: var(--color-primary); outline: none; }
+.peekTile:hover, .peekTile:focus-visible { border-color: var(--color-primary); transform: translateY(-1px); outline: none; }
+.peekTile:active { transform: translateY(1px); }
 .peekTileTitle { font-family: var(--font-heading); font-weight: 700; font-size: var(--text-base); }
+.peekTileSub { font-size: var(--text-xs); color: var(--color-text-muted); line-height: 1.35; }
+
+/* Crew flow step 3 — a firm confirmation check (copy is in the beat header). */
+.crewDone { display: flex; align-items: center; justify-content: center; padding: var(--space-8); }
+.crewDoneCheck {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-pill);
+  color: #ffffff;
+  background: var(--color-action-open);
+  animation: gcPop 220ms ease-out;
+}
 
 /* ── Clients peek (mirror ClientListView) ───────────────────────── */
 

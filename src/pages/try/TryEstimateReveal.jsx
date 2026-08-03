@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { Check, X } from 'lucide-react'
 import SendMotion from './SendMotion'
 import EmailGate from './EmailGate'
+import { useTryLang } from './tryLang'
+import { tr } from './tryStrings'
 import { fmtMoney, unitLabel } from './mockData/subDemo'
 import { ESTIMATE_DEMO } from './mockData/estimateDemo'
 import r from './reveal.module.css'
@@ -22,6 +24,9 @@ function grouped() {
 const GROUPS = grouped()
 
 export default function TryEstimateReveal() {
+  const { lang } = useTryLang()
+  const rv = tr('estimateReveal', lang)
+  const c = tr('common', lang)
   const [phase, setPhase] = useState('sending')
   const [accepting, setAccepting] = useState(false)
   const [name, setName] = useState('')
@@ -30,13 +35,17 @@ export default function TryEstimateReveal() {
   if (phase === 'sending') {
     return (
       <div className={r.revealWrap}>
-        <SendMotion line="Here's what your client sees." onDone={() => setPhase('revealed')} />
+        <SendMotion line={rv.caption} onDone={() => setPhase('revealed')} />
       </div>
     )
   }
 
   return (
     <div className={r.revealWrap}>
+      <div className={r.revealHead}>
+        <h2 className={r.revealCaption}>{rv.caption}</h2>
+        <p className={r.revealValue}>{rv.value}</p>
+      </div>
       <div data-theme="light" className={r.lightWrap}>
         <div className={r.reveal}>
           <div className={r.portalCard} style={{ '--brand': MOCK_BRAND }}>
@@ -109,11 +118,11 @@ export default function TryEstimateReveal() {
         </div>
       </div>
 
-      <EmailGate flow="estimate" caption="This is what your customer sees when you send an estimate." />
+      <EmailGate flow="estimate" caption={rv.gate} />
 
       <div className={r.revealActions}>
-        <Link to="/try/gc" className={r.revealLink}>← Back to menu</Link>
-        <Link to="/try" className={r.revealLink}>Back to demo home</Link>
+        <Link to="/try/gc" className={r.revealLink}>← {c.backMenu}</Link>
+        <Link to="/try" className={r.revealLink}>{c.back}</Link>
       </div>
     </div>
   )

@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { CheckCircle, MessageSquare } from 'lucide-react'
 import SendMotion from './SendMotion'
 import EmailGate from './EmailGate'
+import { useTryLang } from './tryLang'
+import { tr } from './tryStrings'
 import { SUB_DEMO, fmtMoney, unitLabel } from './mockData/subDemo'
 import r from './reveal.module.css'
 
@@ -17,6 +19,9 @@ const LINES = [
 const fmtDate = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
 export default function TrySubInvoiceReveal() {
+  const { lang } = useTryLang()
+  const rv = tr('subReveal', lang)
+  const c = tr('common', lang)
   const [phase, setPhase] = useState('sending')
   const issued = fmtDate(new Date())
   const due = fmtDate(new Date(Date.now() + 14 * 86400000))
@@ -24,13 +29,17 @@ export default function TrySubInvoiceReveal() {
   if (phase === 'sending') {
     return (
       <div className={r.revealWrap}>
-        <SendMotion line="Here's what your GC sees." onDone={() => setPhase('revealed')} />
+        <SendMotion line={rv.caption} onDone={() => setPhase('revealed')} />
       </div>
     )
   }
 
   return (
     <div className={r.revealWrap}>
+      <div className={r.revealHead}>
+        <h2 className={r.revealCaption}>{rv.caption}</h2>
+        <p className={r.revealValue}>{rv.value}</p>
+      </div>
       <div data-theme="light" className={r.lightWrap}>
         <div className={r.reveal}>
           <div className={r.portalCard} style={{ '--brand': MOCK_BRAND }}>
@@ -99,11 +108,11 @@ export default function TrySubInvoiceReveal() {
         </div>
       </div>
 
-      <EmailGate flow="sub" caption="This is what your GC sees when you send an invoice." />
+      <EmailGate flow="sub" caption={rv.gate} />
 
       <div className={r.revealActions}>
-        <Link to="/try/sub" className={r.revealLink}>← Back to the sub demo</Link>
-        <Link to="/try" className={r.revealLink}>Back to demo home</Link>
+        <Link to="/try/sub" className={r.revealLink}>← {c.back}</Link>
+        <Link to="/try" className={r.revealLink}>{c.back}</Link>
       </div>
     </div>
   )
