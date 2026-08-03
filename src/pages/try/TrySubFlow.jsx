@@ -130,9 +130,9 @@ export default function TrySubFlow() {
               <p className={s.heroSub}>{dashboard.owed.sub}</p>
             </div>
             <div className={s.statGrid}>
-              <div className={s.statCard}><div className={s.statLabel}>Earned MTD</div><MoneyCountUp value={dashboard.earnedMTD} className={`${s.statValue} ${s.moneyOrange}`} /></div>
-              <div className={s.statCard}><div className={s.statLabel}>Earned YTD</div><MoneyCountUp value={dashboard.earnedYTD} className={`${s.statValue} ${s.moneyOrange}`} /></div>
-              <div className={s.statCard}><div className={s.statLabel}>Logged this week</div><MoneyCountUp value={dashboard.loggedThisWeek} className={`${s.statValue} ${s.moneyOrange}`} /></div>
+              <div className={s.statCard}><div className={s.statLabel}>Earned MTD</div><MoneyCountUp value={dashboard.earnedMTD} className={`${s.statValue} ${s.moneyGreen}`} /></div>
+              <div className={s.statCard}><div className={s.statLabel}>Earned YTD</div><MoneyCountUp value={dashboard.earnedYTD} className={`${s.statValue} ${s.moneyGreen}`} /></div>
+              <div className={s.statCard}><div className={s.statLabel}>Logged this week</div><MoneyCountUp value={dashboard.loggedThisWeek} className={s.statValue} /></div>
               <div className={s.statCard}>
                 <div className={s.statLabel}>Outstanding</div>
                 <MoneyCountUp value={dashboard.outstanding.amount} className={`${s.statValue} ${s.moneyOrange}`} />

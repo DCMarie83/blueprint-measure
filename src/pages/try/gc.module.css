@@ -115,7 +115,9 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.3px;
-  color: var(--color-primary);
+  /* Section header: white/near-text reads on the faint-orange row bg in BOTH
+     themes. Orange 12px on teal was ~3.5:1 (failed body AA). */
+  color: var(--color-text);
   border-bottom: 1px solid var(--color-border);
 }
 

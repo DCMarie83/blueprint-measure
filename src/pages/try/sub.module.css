@@ -277,6 +277,11 @@
 .moneyOverdue {
   color: var(--color-danger);
 }
+/* --color-danger (#dc2626) is ~1.9:1 on the dark teal card; brighten to a
+   readable red in dark. Light keeps #dc2626 (fine on white). */
+:global([data-theme='dark']) .moneyOverdue {
+  color: #f87171;
+}
 
 /* ── Oldest-unpaid card (mirror lite .listRow) ──────────────────── */
 

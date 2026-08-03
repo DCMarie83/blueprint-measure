@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { PaintRoller, LayoutDashboard, ArrowRight } from 'lucide-react'
+import { HardHat, ClipboardList, ArrowRight } from 'lucide-react'
 import { useTryLang } from './tryLang'
 import { tr } from './tryStrings'
 import s from './try.module.css'
@@ -11,8 +11,8 @@ export default function TryHub() {
   const { lang } = useTryLang()
   const h = tr('hub', lang)
   const cards = [
-    { to: '/try/sub', Icon: PaintRoller, title: h.subCard, sub: h.subValue },
-    { to: '/try/gc', Icon: LayoutDashboard, title: h.gcCard, sub: h.gcValue },
+    { to: '/try/sub', Icon: HardHat, title: h.subCard, sub: h.subValue },
+    { to: '/try/gc', Icon: ClipboardList, title: h.gcCard, sub: h.gcValue },
   ]
   return (
     <div>
