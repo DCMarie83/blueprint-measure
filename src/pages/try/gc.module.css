@@ -517,8 +517,18 @@
 
 .kpiValue { font-size: 22px; font-weight: 800; color: var(--color-text); margin-top: 4px; font-variant-numeric: tabular-nums; }
 
+/* Functional value coloring (mirrors ReportsPage's rail/margin semantics with
+   the app's own tokens): revenue = money-in green, cost = neutral muted,
+   margin = green/red by sign. All readable on the teal card + white card. */
+.valRevenue { color: var(--color-success); }
+.valCost { color: var(--color-text-muted); }
+
 .marginPos { color: var(--color-success); }
 .marginNeg { color: var(--color-danger); }
+/* --color-danger (#dc2626) is too dim on the dark teal card (~1.9:1); use the
+   nearest brighter red for negatives in dark so they stay readable. Light theme
+   keeps #dc2626 (fine on white). */
+:global([data-theme='dark']) .marginNeg { color: #f87171; }
 
 .tableWrap { overflow-x: auto; }
 

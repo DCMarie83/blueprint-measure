@@ -6,12 +6,16 @@ import s from './sub.module.css'
 import g from './gc.module.css'
 
 // Job Costing → Portfolio (admin view). KPI cards each carry a colored 3px LEFT
-// rail; Actual Margin is a PERCENTAGE (green ≥0 / red <0), not a dollar figure.
+// rail AND a functional value color, mirroring ReportsPage's semantics with the
+// app's tokens: revenue (Quoted/Billed/Collected) = money-in green, cost =
+// neutral muted, Actual Margin = green ≥0 / red <0 as a percentage.
+// (The real app's revenue rail #26464C is invisible on the dark teal card, so
+// the revenue group uses the success token here — kept visible in both themes.)
 const KPIS = [
-  { label: 'Quoted', value: fmtMoney(84200), rail: '#26464C' },
-  { label: 'Billed', value: fmtMoney(71600), rail: '#26464C' },
-  { label: 'Collected', value: fmtMoney(63400), rail: '#26464C' },
-  { label: 'Total Cost', value: fmtMoney(48900), rail: 'var(--color-text-muted)' },
+  { label: 'Quoted', value: fmtMoney(84200), rail: 'var(--color-success)', val: 'valRevenue' },
+  { label: 'Billed', value: fmtMoney(71600), rail: 'var(--color-success)', val: 'valRevenue' },
+  { label: 'Collected', value: fmtMoney(63400), rail: 'var(--color-success)', val: 'valRevenue' },
+  { label: 'Total Cost', value: fmtMoney(48900), rail: 'var(--color-text-muted)', val: 'valCost' },
 ]
 
 // Actual Margin = (collected - cost) / collected.
@@ -50,7 +54,7 @@ export default function TryReportingPeek() {
           {KPIS.map((k) => (
             <div key={k.label} className={g.kpiCard} style={{ borderLeft: `3px solid ${k.rail}` }}>
               <div className={g.kpiLabel}>{k.label}</div>
-              <div className={g.kpiValue}>{k.value}</div>
+              <div className={`${g.kpiValue} ${g[k.val]}`}>{k.value}</div>
             </div>
           ))}
           <div className={`${g.kpiCard} ${g.kpiMargin}`} style={{ borderLeft: '3px solid var(--color-primary)' }}>
@@ -71,10 +75,10 @@ export default function TryReportingPeek() {
                 {JOBS.map((j) => (
                   <tr key={j.name}>
                     <td>{j.name}</td>
-                    <td>{fmtMoney(j.quoted)}</td>
-                    <td>{fmtMoney(j.billed)}</td>
-                    <td>{fmtMoney(j.collected)}</td>
-                    <td>{fmtMoney(j.cost)}</td>
+                    <td className={g.valRevenue}>{fmtMoney(j.quoted)}</td>
+                    <td className={g.valRevenue}>{fmtMoney(j.billed)}</td>
+                    <td className={g.valRevenue}>{fmtMoney(j.collected)}</td>
+                    <td className={g.valCost}>{fmtMoney(j.cost)}</td>
                     <td className={j.margin >= 0 ? g.marginPos : g.marginNeg}>{j.margin}%</td>
                   </tr>
                 ))}
