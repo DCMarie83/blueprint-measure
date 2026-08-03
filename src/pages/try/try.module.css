@@ -231,31 +231,36 @@
   }
 }
 
-/* Two crafted, orange-forward doors: a bold orange top edge, a solid-orange
-   icon block (industrial, like a safety marker), heavy title, readable sub.
-   Tactile press-down that settles firmly. Works in light + dark. */
+/* Two matched doors, one design language. Layout: an orange icon chip + a
+   directional arrow across the top, a heavy display title, a readable warmer
+   sub. Orange lives in exactly two considered places — the chip and the arrow —
+   and the border/lip intensify to orange on hover. Physical-button depth via a
+   solid bottom lip that grows on hover and compresses on press. Light + dark. */
 .card {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-6) var(--space-5) var(--space-8);
+  padding: var(--space-6);
   background: var(--color-surface);
-  border: 2px solid var(--color-border);
-  border-top: 4px solid var(--color-primary); /* confident brand-orange edge */
+  border: 1.5px solid var(--color-border);
   border-radius: var(--radius-xl);
-  box-shadow: 0 3px 0 var(--color-border), var(--shadow-md);
+  box-shadow: 0 2px 0 var(--color-border), var(--shadow-sm);
   text-decoration: none;
   color: var(--color-text);
-  min-height: 172px;
+  min-height: 184px;
   transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
 .card:hover,
 .card:focus-visible {
   border-color: var(--color-primary);
-  transform: translateY(-2px);
+  transform: translateY(-3px);
   box-shadow: 0 5px 0 var(--color-primary-hover), var(--shadow-lg);
   outline: none;
+}
+
+.card:focus-visible {
+  box-shadow: 0 5px 0 var(--color-primary-hover), var(--shadow-lg),
+    0 0 0 3px color-mix(in srgb, var(--color-primary) 35%, transparent);
 }
 
 .card:active {
@@ -263,7 +268,15 @@
   box-shadow: 0 1px 0 var(--color-border), var(--shadow-sm);
 }
 
-/* Solid orange icon block, white glyph — matches the brand's button language. */
+/* Top row: icon chip (left) + door arrow (right). */
+.cardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
+}
+
+/* Orange-tinted chip with the orange icon — an intentional design element. */
 .cardIcon {
   display: inline-flex;
   align-items: center;
@@ -271,10 +284,22 @@
   width: 52px;
   height: 52px;
   border-radius: var(--radius-md);
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-  margin-bottom: var(--space-1);
+  background: color-mix(in srgb, var(--color-primary) 15%, var(--color-surface));
+  color: var(--color-primary);
 }
+
+.cardArrow {
+  flex: 0 0 auto;
+  color: var(--color-primary);
+  transition: transform 0.15s ease;
+}
+.card:hover .cardArrow,
+.card:focus-visible .cardArrow { transform: translateX(3px); }
+
+/* Light mode: nudge the orange to the darker hover-orange so the chip icon and
+   the arrow stay crisp on the pale chip / white surface. */
+:global([data-theme='light']) .cardIcon,
+:global([data-theme='light']) .cardArrow { color: var(--color-primary-hover); }
 
 .cardTitle {
   font-family: var(--font-heading);
@@ -282,12 +307,13 @@
   font-size: var(--text-xl);
   letter-spacing: -0.01em;
   color: var(--color-text);
+  margin-bottom: var(--space-2);
 }
 
 .cardSub {
   font-size: var(--text-base);
   font-weight: 500;
-  line-height: 1.4;
+  line-height: 1.45;
   color: var(--color-text-muted);
 }
 
