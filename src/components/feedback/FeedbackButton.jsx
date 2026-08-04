@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MessageSquare } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import i18n from '../../lib/i18n'
 import { useAuth } from '../../context/AuthContext'
 import { logError } from '../../lib/logError'
 import { BRAND } from '../../lib/config'
@@ -120,6 +121,11 @@ export default function FeedbackButton({ prefillDescription = '' }) {
       const urlMatch = window.location.pathname.match(/\/session\/([a-f0-9-]+)/)
       const sessionId = urlMatch ? urlMatch[1] : null
 
+      // Capture the submitter's UI language for the beta_feedback.language column
+      // (CHECK allows only 'en' | 'es'; guard so an unexpected value never fails
+      // the insert — NULL = unknown).
+      const lang = ['en', 'es'].includes(i18n.language) ? i18n.language : null
+
       const { error: insertErr } = await supabase
         .from('beta_feedback')
         .insert({
@@ -131,6 +137,7 @@ export default function FeedbackButton({ prefillDescription = '' }) {
           screenshot_url: screenshotUrl,
           page_url: window.location.href,
           user_agent: navigator.userAgent,
+          language: lang,
         })
       if (insertErr) {
         logError(insertErr, { source: 'feedback-submit', severity: 'error' })

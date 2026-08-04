@@ -54,7 +54,7 @@ export default function FeedbackSection() {
     async function load() {
       const { data, error } = await supabase
         .from('beta_feedback')
-        .select('id, company_id, user_id, session_id, type, description, screenshot_url, page_url, user_agent, status, admin_notes, responded_at, response_count, created_at')
+        .select('id, company_id, user_id, session_id, type, description, screenshot_url, page_url, user_agent, status, admin_notes, responded_at, response_count, created_at, language')
         .order('created_at', { ascending: false })
         .limit(500)
       if (!error) setItems(data ?? [])
@@ -202,7 +202,12 @@ export default function FeedbackSection() {
                   <Fragment key={fb.id}>
                     <tr className={styles.tr} onClick={() => handleExpand(fb)} style={{ cursor: 'pointer' }}>
                       <td className={styles.td}>{formatDateTime(fb.created_at)}</td>
-                      <td className={styles.td}><Chip variant={typeVariant(fb.type)}>{fb.type ?? 'other'}</Chip></td>
+                      <td className={styles.td}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <Chip variant={typeVariant(fb.type)}>{fb.type ?? 'other'}</Chip>
+                          {fb.language && <Chip>{fb.language.toUpperCase()}</Chip>}
+                        </div>
+                      </td>
                       <td className={styles.td}>{fbUser}</td>
                       <td className={styles.td}>{fbCompany}</td>
                       <td className={styles.td} title={fb.description}>{fb.description?.length > 60 ? fb.description.slice(0, 60) + '...' : fb.description}</td>
