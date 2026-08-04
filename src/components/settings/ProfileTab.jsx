@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { useImpersonation } from '../../context/ImpersonationContext'
@@ -8,12 +9,13 @@ import { useCompanyPlan } from '../../lib/plans'
 import styles from '../../pages/AccountPage.module.css'
 
 const ROLE_LABELS = {
-  contractor_user: 'Member',
-  contractor_admin: 'Admin',
-  super_admin: 'Super Admin',
+  contractor_user: 'settings:profile.roleMember',
+  contractor_admin: 'common:role.contractor_admin',
+  super_admin: 'common:role.super_admin',
 }
 
 export default function ProfileTab() {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const { isImpersonating } = useImpersonation()
   const navigate = useNavigate()
@@ -87,9 +89,9 @@ export default function ProfileTab() {
         .limit(30)
 
       sessions?.forEach(s => {
-        activityItems.push({ type: 'session', text: `Created session "${s.project_name}"`, time: s.created_at, sessionId: s.id })
+        activityItems.push({ type: 'session', text: t('settings:profile.activity.createdSession', { name: s.project_name }), time: s.created_at, sessionId: s.id })
         if (s.blueprint_url) {
-          activityItems.push({ type: 'upload', text: `Uploaded blueprint for "${s.project_name}"`, time: s.created_at, sessionId: s.id })
+          activityItems.push({ type: 'upload', text: t('settings:profile.activity.uploadedBlueprint', { name: s.project_name }), time: s.created_at, sessionId: s.id })
         }
       })
 
@@ -102,7 +104,7 @@ export default function ProfileTab() {
           .order('created_at', { ascending: false })
           .limit(30)
         zones?.forEach(z => {
-          activityItems.push({ type: 'zone', text: `Measured ${z.name}`, time: z.created_at, sessionId: z.session_id })
+          activityItems.push({ type: 'zone', text: t('settings:profile.activity.measured', { name: z.name }), time: z.created_at, sessionId: z.session_id })
         })
       }
 
@@ -123,10 +125,10 @@ export default function ProfileTab() {
         .eq('user_id', user.id)
       if (error) throw new Error(error.message)
       setProfileDirty(false)
-      setProfileToast('Saved')
+      setProfileToast(t('settings:profile.savedToast'))
       setTimeout(() => setProfileToast(''), 2000)
     } catch (err) {
-      alert('Failed to save: ' + err.message)
+      alert(t('settings:profile.saveFailed', { message: err.message }))
     } finally {
       setProfileSaving(false)
     }
@@ -146,7 +148,7 @@ export default function ProfileTab() {
       setSmsConsent(newValue)
       if (newValue) setSmsConsentAt(update.sms_consent_at)
     } catch (err) {
-      alert('Failed to update SMS preference: ' + err.message)
+      alert(t('settings:profile.smsUpdateFailed', { message: err.message }))
     } finally {
       setSmsSaving(false)
     }
@@ -154,7 +156,7 @@ export default function ProfileTab() {
 
   async function handleCancelSubscription() {
     if (isImpersonating) {
-      setCancelToast('Billing actions are disabled while impersonating a tenant.')
+      setCancelToast(t('common:guard.impersonationBilling'))
       setTimeout(() => setCancelToast(''), 5000)
       return
     }
@@ -163,14 +165,14 @@ export default function ProfileTab() {
       const { data, error } = await supabase.functions.invoke('recurly-cancel', {
         body: { company_id: companyId, reason: cancelReason.trim() || undefined },
       })
-      if (error) throw new Error(error.message || 'Cancellation failed')
+      if (error) throw new Error(error.message || t('settings:profile.cancelFailedFallback'))
       if (data?.error) throw new Error(data.error)
       setCancelConfirm(false)
       setCancelReason('')
-      setCancelToast('Your subscription has been canceled. You will retain access until the end of your current billing period.')
+      setCancelToast(t('settings:profile.cancelSuccess'))
       setTimeout(() => setCancelToast(''), 8000)
     } catch (err) {
-      alert('Failed to cancel: ' + err.message)
+      alert(t('settings:profile.cancelFailed', { message: err.message }))
     } finally {
       setCancelling(false)
     }
@@ -188,7 +190,7 @@ export default function ProfileTab() {
       await supabase.auth.signOut()
       navigate('/login')
     } catch (err) {
-      alert('Failed to delete account: ' + err.message)
+      alert(t('settings:profile.deleteFailed', { message: err.message }))
       setDeleting(false)
     }
   }
@@ -205,31 +207,31 @@ export default function ProfileTab() {
       })
 
   if (profileLoading) {
-    return <div className={styles.center}>Loading…</div>
+    return <div className={styles.center}>{t('common:misc.loading')}</div>
   }
 
   return (
     <>
       {/* Profile */}
       <section className={styles.card}>
-        <h2 className={styles.cardTitle}>Profile</h2>
+        <h2 className={styles.cardTitle}>{t('settings:profile.title')}</h2>
         <form onSubmit={handleSaveProfile} className={styles.form}>
           <label className={styles.label}>
-            Full Name
-            <input className={styles.input} value={fullName} onChange={e => { setFullName(e.target.value); setProfileDirty(true) }} placeholder="Your full name" />
+            {t('settings:profile.fullName')}
+            <input className={styles.input} value={fullName} onChange={e => { setFullName(e.target.value); setProfileDirty(true) }} placeholder={t('settings:profile.fullNamePlaceholder')} />
           </label>
           <label className={styles.label}>
-            Email
+            {t('settings:profile.email')}
             <input className={styles.input} value={user?.email ?? ''} disabled />
-            <span className={styles.hint}>Contact support to change email</span>
+            <span className={styles.hint}>{t('settings:profile.emailHint')}</span>
           </label>
           <label className={styles.label}>
-            Phone
+            {t('settings:profile.phone')}
             <input className={styles.input} value={phone} onChange={e => { setPhone(e.target.value); setProfileDirty(true) }} placeholder="(555) 123-4567" />
           </label>
           <div className={styles.formActions}>
             <button type="submit" className={styles.saveBtn} disabled={!profileDirty || profileSaving}>
-              {profileSaving ? 'Saving…' : 'Save Changes'}
+              {profileSaving ? t('settings:profile.saving') : t('common:action.saveChanges')}
             </button>
             {profileToast && <span className={styles.toast}>{profileToast}</span>}
           </div>
@@ -238,35 +240,33 @@ export default function ProfileTab() {
 
       {/* Company */}
       <section className={styles.card}>
-        <h2 className={styles.cardTitle}>Company</h2>
-        <div className={styles.infoRow}><span className={styles.infoLabel}>Company</span><span className={styles.infoValue}>{company?.name ?? 'Not assigned'}</span></div>
-        <div className={styles.infoRow}><span className={styles.infoLabel}>Plan</span><span className={styles.planBadge}>{companyPlan?.display_name ?? '—'}</span></div>
-        <div className={styles.infoRow}><span className={styles.infoLabel}>Role</span><span className={styles.infoValue}>{role ? (ROLE_LABELS[role] ?? role) : 'Member'}</span></div>
-        <p className={styles.hint}>Contact your admin to change company details.</p>
+        <h2 className={styles.cardTitle}>{t('settings:profile.companyTitle')}</h2>
+        <div className={styles.infoRow}><span className={styles.infoLabel}>{t('settings:profile.companyLabel')}</span><span className={styles.infoValue}>{company?.name ?? t('settings:profile.notAssigned')}</span></div>
+        <div className={styles.infoRow}><span className={styles.infoLabel}>{t('settings:profile.planLabel')}</span><span className={styles.planBadge}>{companyPlan?.display_name ?? '—'}</span></div>
+        <div className={styles.infoRow}><span className={styles.infoLabel}>{t('settings:profile.roleLabel')}</span><span className={styles.infoValue}>{role ? (ROLE_LABELS[role] ? t(ROLE_LABELS[role]) : role) : t('settings:profile.roleMember')}</span></div>
+        <p className={styles.hint}>{t('settings:profile.companyHint')}</p>
       </section>
 
       {/* Password */}
       <section className={styles.card}>
-        <h2 className={styles.cardTitle}>Password</h2>
-        <Link to="/change-password" className={styles.changePasswordLink}>Change Password</Link>
+        <h2 className={styles.cardTitle}>{t('settings:profile.passwordTitle')}</h2>
+        <Link to="/change-password" className={styles.changePasswordLink}>{t('settings:profile.changePassword')}</Link>
       </section>
 
       {/* SMS Preferences */}
       <section className={styles.card}>
-        <h2 className={styles.cardTitle}>SMS Preferences</h2>
+        <h2 className={styles.cardTitle}>{t('settings:profile.smsTitle')}</h2>
         <div className={styles.smsRow}>
           <label className={styles.smsToggle}>
             <input type="checkbox" checked={smsConsent} onChange={handleToggleSms} disabled={smsSaving} />
-            <span className={styles.smsLabel}>Receive SMS notifications</span>
+            <span className={styles.smsLabel}>{t('settings:profile.smsReceive')}</span>
           </label>
           {smsConsentAt && smsConsent && (
-            <span className={styles.hint}>Opted in {formatDate(smsConsentAt)}</span>
+            <span className={styles.hint}>{t('settings:profile.optedIn', { date: formatDate(smsConsentAt) })}</span>
           )}
         </div>
         <p className={styles.smsDisclosure}>
-          I agree to receive automated text messages from NG Automation Hub
-          at the phone number provided, including product updates, support communications, and
-          occasional marketing. Message and data rates may apply. Reply STOP to opt out, HELP for help.
+          {t('settings:profile.smsDisclosure')}
         </p>
       </section>
 
@@ -274,12 +274,12 @@ export default function ProfileTab() {
       {activity.length > 0 && (
         <section className={styles.card}>
           <div className={styles.activityHeader}>
-            <h2 className={styles.cardTitle} style={{ margin: 0 }}>My Activity</h2>
+            <h2 className={styles.cardTitle} style={{ margin: 0 }}>{t('settings:profile.activityTitle')}</h2>
             <select className={styles.activityFilterSelect} value={activityFilter} onChange={e => setActivityFilter(e.target.value)}>
-              <option value="all">All</option>
-              <option value="sessions">Sessions</option>
-              <option value="zones">Zones</option>
-              <option value="blueprints">Blueprints</option>
+              <option value="all">{t('settings:profile.filter.all')}</option>
+              <option value="sessions">{t('settings:profile.filter.sessions')}</option>
+              <option value="zones">{t('settings:profile.filter.zones')}</option>
+              <option value="blueprints">{t('settings:profile.filter.blueprints')}</option>
             </select>
           </div>
           <div className={styles.activityList}>
@@ -290,7 +290,7 @@ export default function ProfileTab() {
               </div>
             ))}
             {filteredActivity.length === 0 && (
-              <p className={styles.hint} style={{ padding: '12px 0' }}>No activity for this filter.</p>
+              <p className={styles.hint} style={{ padding: '12px 0' }}>{t('settings:profile.noActivity')}</p>
             )}
           </div>
         </section>
@@ -299,20 +299,20 @@ export default function ProfileTab() {
       {/* Subscription & Account */}
       <section className={styles.card}>
         <button className={styles.dangerToggle} onClick={() => setDangerOpen(v => !v)}>
-          {dangerOpen ? '▾' : '▸'} Subscription & Account
+          {dangerOpen ? '▾' : '▸'} {t('settings:profile.subscriptionAccount')}
         </button>
         {dangerOpen && (
           <div className={styles.dangerContent}>
             {company?.canceled_at && !['active', 'pilot'].includes(company?.subscription_status) ? (
               <div style={{ fontSize: 14, lineHeight: 1.6 }}>
-                <p style={{ fontWeight: 600, color: 'var(--color-text)', marginBottom: 8 }}>Subscription canceled</p>
+                <p style={{ fontWeight: 600, color: 'var(--color-text)', marginBottom: 8 }}>{t('settings:profile.subscriptionCanceled')}</p>
                 <p style={{ color: 'var(--color-text-muted)', marginBottom: 8 }}>
                   {company.subscription_status === 'canceled'
-                    ? 'Your subscription has ended. Resubscribe to restore full access.'
-                    : "Your cancellation is confirmed. You'll keep full access until the end of your current billing period."}
+                    ? t('settings:profile.subscriptionEnded')
+                    : t('settings:profile.cancellationConfirmed')}
                 </p>
                 <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 16 }}>
-                  Canceled on {new Date(company.canceled_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                  {t('settings:profile.canceledOn', { date: new Date(company.canceled_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) })}
                 </p>
                 {company.subscription_status === 'canceled' ? (
                   <button
@@ -323,13 +323,13 @@ export default function ProfileTab() {
                       cursor: 'pointer',
                     }}
                   >
-                    Resubscribe
+                    {t('settings:profile.resubscribe')}
                   </button>
                 ) : (
                   <button
                     onClick={async () => {
                       if (isImpersonating) {
-                        setCancelToast('Billing actions are disabled while impersonating a tenant.')
+                        setCancelToast(t('common:guard.impersonationBilling'))
                         setTimeout(() => setCancelToast(''), 5000)
                         return
                       }
@@ -338,7 +338,7 @@ export default function ProfileTab() {
                         const { data, error } = await supabase.functions.invoke('recurly-reactivate', {
                           body: { company_id: companyId },
                         })
-                        if (error) throw new Error(error.message || 'Reactivation failed')
+                        if (error) throw new Error(error.message || t('settings:profile.reactivateFailedFallback'))
                         if (data?.error) throw new Error(data.error)
                         const { data: c } = await supabase
                           .from('companies')
@@ -346,10 +346,10 @@ export default function ProfileTab() {
                           .eq('id', companyId)
                           .single()
                         if (c) setCompany(c)
-                        setCancelToast('Your subscription is active again.')
+                        setCancelToast(t('settings:profile.reactivateSuccess'))
                         setTimeout(() => setCancelToast(''), 5000)
                       } catch (err) {
-                        alert('Failed to reactivate: ' + err.message)
+                        alert(t('settings:profile.reactivateFailed', { message: err.message }))
                       } finally {
                         setReactivating(false)
                       }
@@ -362,54 +362,52 @@ export default function ProfileTab() {
                       opacity: reactivating ? 0.6 : 1,
                     }}
                   >
-                    {reactivating ? 'Reactivating…' : 'Reactivate Subscription'}
+                    {reactivating ? t('settings:profile.reactivating') : t('settings:profile.reactivateSubscription')}
                   </button>
                 )}
               </div>
             ) : cancelToast ? (
               <div className={styles.cancelToast}>{cancelToast}</div>
             ) : !cancelConfirm ? (
-              <button className={styles.cancelSubBtn} onClick={() => setCancelConfirm(true)}>Cancel My Subscription</button>
+              <button className={styles.cancelSubBtn} onClick={() => setCancelConfirm(true)}>{t('settings:profile.cancelMySubscription')}</button>
             ) : (
               <div className={styles.deleteConfirm}>
                 <p className={styles.cancelWarning}>
-                  Cancel your subscription? Your account stays active until the end of your current
-                  billing period. After that, your account becomes read-only. You can resubscribe anytime.
+                  {t('settings:profile.cancelWarning')}
                 </p>
                 <textarea
                   value={cancelReason}
                   onChange={e => setCancelReason(e.target.value)}
-                  placeholder="Optional: why are you canceling? (helps us improve)"
+                  placeholder={t('settings:profile.cancelReasonPlaceholder')}
                   rows={2}
                   style={{ width: '100%', marginBottom: 12, padding: '8px 10px', fontSize: 13, border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', background: 'var(--color-bg)', color: 'var(--color-text)', resize: 'vertical', outline: 'none', boxSizing: 'border-box' }}
                 />
                 <div className={styles.deleteActions}>
-                  <button className={styles.cancelBtn} onClick={() => { setCancelConfirm(false); setCancelReason('') }}>Keep Subscription</button>
+                  <button className={styles.cancelBtn} onClick={() => { setCancelConfirm(false); setCancelReason('') }}>{t('settings:profile.keepSubscription')}</button>
                   <button className={styles.confirmCancelBtn} onClick={handleCancelSubscription} disabled={cancelling}>
-                    {cancelling ? 'Canceling…' : 'Confirm Cancellation'}
+                    {cancelling ? t('settings:profile.canceling') : t('settings:profile.confirmCancellation')}
                   </button>
                 </div>
               </div>
             )}
             <div className={styles.deleteSectionSeparator} />
             {!deleteConfirm ? (
-              <button className={styles.deleteLink} onClick={() => setDeleteConfirm(true)}>Request Permanent Account Deletion</button>
+              <button className={styles.deleteLink} onClick={() => setDeleteConfirm(true)}>{t('settings:profile.requestDeletion')}</button>
             ) : (
               <div className={styles.deleteConfirm}>
                 <p className={styles.deleteWarning}>
-                  Permanently delete your account? This will remove all your sessions, zones, and uploads.
-                  This action cannot be undone and is processed within 30 days per our retention policy.
+                  {t('settings:profile.deleteWarning')}
                 </p>
                 <div className={styles.deleteActions}>
-                  <button className={styles.cancelBtn} onClick={() => setDeleteConfirm(false)}>Cancel</button>
+                  <button className={styles.cancelBtn} onClick={() => setDeleteConfirm(false)}>{t('common:action.cancel')}</button>
                   <button className={styles.confirmDeleteBtn} onClick={handleDeleteAccount} disabled={deleting}>
-                    {deleting ? 'Deleting…' : 'Delete My Account'}
+                    {deleting ? t('settings:profile.deleting') : t('settings:profile.deleteMyAccount')}
                   </button>
                 </div>
               </div>
             )}
             <p className={styles.dangerFootnote}>
-              Cancellation takes effect at the end of your current billing period.
+              {t('settings:profile.dangerFootnote')}
             </p>
           </div>
         )}

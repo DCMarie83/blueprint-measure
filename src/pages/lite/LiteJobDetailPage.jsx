@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ChevronLeft, Trash2, Check, X, Pencil } from 'lucide-react'
 import { useProjects } from '../../hooks/useProjects'
 import { useClients } from '../../hooks/useClients'
@@ -24,6 +25,7 @@ function todayStr() {
 export default function LiteJobDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { companyId } = useEffectiveCompany()
   const { user, userProfile } = useAuth()
   const tz = getEffectiveTimeZone(userProfile)
@@ -49,7 +51,7 @@ export default function LiteJobDetailPage() {
 
   const job = projects.find(p => p.id === id) || null
   const gc = clients.find(c => c.id === job?.client_id && c.client_type === GC_CLIENT_TYPE) || null
-  const gcName = gc ? (gc.business_name || gc.display_name) : 'No GC'
+  const gcName = gc ? (gc.business_name || gc.display_name) : t('lite:jobDetail.noGc')
 
   // Open (running) punches are not billable work yet — exclude them from every
   // money view on this page (rollup, ledger, invoice range). The timer bar (on
@@ -82,7 +84,7 @@ export default function LiteJobDetailPage() {
   async function createInvoice() {
     if (!companyId || !user?.id || !gc) return
     const rows = invPreview.rows
-    if (rows.length === 0) { setInvError('No unbilled entries in this range.'); return }
+    if (rows.length === 0) { setInvError(t('lite:jobDetail.noUnbilledRange')); return }
     setCreating(true); setInvError(null)
     try {
       // Deterministic order: work_date then created_at — drives line-item sort_order.
@@ -150,7 +152,7 @@ export default function LiteJobDetailPage() {
         .update({ invoice_id: invoice.id })
         .in('id', ordered.map(e => e.id))
       if (stampErr) {
-        throw new Error(`Invoice ${invNum} was created but its entries could not be marked billed (${stampErr.message}). Open the invoice to review before creating another.`)
+        throw new Error(t('lite:jobDetail.stampFailed', { number: invNum, message: stampErr.message }))
       }
 
       setShowInvoiceSheet(false)
@@ -199,7 +201,7 @@ export default function LiteJobDetailPage() {
       await updateEntry(e.id, fields)
       cancelEdit()
     } catch (err) {
-      alert('Failed to save entry: ' + err.message)
+      alert(t('lite:jobDetail.saveEntryFailed', { message: err.message }))
     }
   }
 
@@ -209,36 +211,36 @@ export default function LiteJobDetailPage() {
     <div className={styles.page}>
       
       <main className={styles.main}>
-        <button className={styles.backLink} onClick={() => navigate('/jobs')}><ChevronLeft size={15} /> Jobs</button>
+        <button className={styles.backLink} onClick={() => navigate('/jobs')}><ChevronLeft size={15} /> {t('lite:jobDetail.jobs')}</button>
 
         <div className={styles.header}>
           <div>
-            <h1 className={styles.title}>{job?.name || 'Job'}</h1>
+            <h1 className={styles.title}>{job?.name || t('lite:jobDetail.job')}</h1>
             <p className={styles.subtitle}>{gcName}</p>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <button className={styles.primaryBtn} onClick={() => navigate(`/log?job=${id}`)}>Log work</button>
-            <span className={styles.tooltipWrap} title={!gc ? 'Assign a GC to this job first' : unbilled.length === 0 ? 'No unbilled entries yet' : ''}>
-              <button className={styles.secondaryBtn} disabled={!gc || unbilled.length === 0} onClick={openInvoiceSheet}>Create invoice</button>
+            <button className={styles.primaryBtn} onClick={() => navigate(`/log?job=${id}`)}>{t('lite:jobDetail.logWork')}</button>
+            <span className={styles.tooltipWrap} title={!gc ? t('lite:jobDetail.assignGcFirst') : unbilled.length === 0 ? t('lite:jobDetail.noUnbilledYet') : ''}>
+              <button className={styles.secondaryBtn} disabled={!gc || unbilled.length === 0} onClick={openInvoiceSheet}>{t('lite:jobDetail.createInvoice')}</button>
             </span>
           </div>
         </div>
 
         <div className={styles.statGrid}>
           <div className={styles.statCard}>
-            <div className={styles.statLabel}>Total logged</div>
+            <div className={styles.statLabel}>{t('lite:jobDetail.totalLogged')}</div>
             <div className={styles.statValue}>{fmtMoney(rollup.total)}</div>
           </div>
           <div className={styles.statCard}>
-            <div className={styles.statLabel}>Anticipated pay</div>
+            <div className={styles.statLabel}>{t('lite:jobDetail.anticipatedPay')}</div>
             <div className={styles.statValue}>{fmtMoney(rollup.total)}</div>
           </div>
           <div className={styles.statCard}>
-            <div className={styles.statLabel}>Unbilled</div>
+            <div className={styles.statLabel}>{t('lite:jobDetail.unbilled')}</div>
             <div className={`${styles.statValue} ${styles.moneyDue}`}>{fmtMoney(rollup.unbilled)}</div>
           </div>
           <div className={styles.statCard}>
-            <div className={styles.statLabel}>Invoiced</div>
+            <div className={styles.statLabel}>{t('lite:jobDetail.invoiced')}</div>
             <div className={styles.statValue}>{fmtMoney(rollup.invoiced)}</div>
           </div>
         </div>
@@ -246,39 +248,39 @@ export default function LiteJobDetailPage() {
         <div className={styles.card}>
           <div className={styles.fieldRow} style={{ marginBottom: 4 }}>
             <div className={styles.field}>
-              <span className={styles.fieldLabel}>From</span>
+              <span className={styles.fieldLabel}>{t('lite:jobDetail.from')}</span>
               <input className={styles.input} type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
             </div>
             <div className={styles.field}>
-              <span className={styles.fieldLabel}>To</span>
+              <span className={styles.fieldLabel}>{t('lite:jobDetail.to')}</span>
               <input className={styles.input} type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} />
             </div>
           </div>
           {(dateFrom || dateTo) && (
-            <button className={styles.linkBtn} onClick={() => { setDateFrom(''); setDateTo('') }}>Clear dates</button>
+            <button className={styles.linkBtn} onClick={() => { setDateFrom(''); setDateTo('') }}>{t('lite:jobDetail.clearDates')}</button>
           )}
         </div>
 
         <div className={styles.card}>
           {loading ? (
-            <div className={styles.muted} style={{ padding: '12px 0' }}>Loading entries…</div>
+            <div className={styles.muted} style={{ padding: '12px 0' }}>{t('lite:jobDetail.loadingEntries')}</div>
           ) : visible.length === 0 ? (
-            <div className={styles.muted} style={{ padding: '12px 0' }}>No entries in this range.</div>
+            <div className={styles.muted} style={{ padding: '12px 0' }}>{t('lite:jobDetail.noEntriesRange')}</div>
           ) : (
             visible.map(e => (
               <div key={e.id} className={styles.entryRow}>
                 <div className={styles.entryMain}>
-                  <div className={styles.entryName}>{e.description || e.work_items?.name || (e.entry_type === 'hourly' ? 'Hourly' : 'Piece work')}</div>
+                  <div className={styles.entryName}>{e.description || e.work_items?.name || (e.entry_type === 'hourly' ? t('lite:jobDetail.hourly') : t('lite:jobDetail.pieceWork'))}</div>
                   {editId === e.id ? (
                     <div className={styles.fieldRow} style={{ marginTop: 6, marginBottom: 0 }}>
-                      <input className={styles.input} style={{ width: 90 }} type="number" step="0.01" min="0" value={editCount} onChange={ev => setEditCount(ev.target.value)} aria-label={e.entry_type === 'hourly' ? 'Hours' : 'Quantity'} />
-                      <input className={styles.input} style={{ width: 90 }} type="number" step="0.01" min="0" value={editRate} onChange={ev => setEditRate(ev.target.value)} aria-label="Rate" />
+                      <input className={styles.input} style={{ width: 90 }} type="number" step="0.01" min="0" value={editCount} onChange={ev => setEditCount(ev.target.value)} aria-label={e.entry_type === 'hourly' ? t('lite:jobDetail.hours') : t('lite:jobDetail.quantity')} />
+                      <input className={styles.input} style={{ width: 90 }} type="number" step="0.01" min="0" value={editRate} onChange={ev => setEditRate(ev.target.value)} aria-label={t('lite:jobDetail.rate')} />
                     </div>
                   ) : (
                     <div className={styles.entryMeta}>
                       {new Date(e.work_date + 'T00:00:00').toLocaleDateString()} · {e.entry_type === 'hourly'
-                        ? `${e.hours} hr × ${fmtMoney(e.rate_snapshot)}`
-                        : `${e.quantity} ${unitLabel(e.unit)} × ${fmtMoney(e.rate_snapshot)}`}
+                        ? t('lite:jobDetail.hourlyMeta', { hours: e.hours, rate: fmtMoney(e.rate_snapshot) })
+                        : t('lite:jobDetail.pieceMeta', { qty: e.quantity, unit: unitLabel(e.unit), rate: fmtMoney(e.rate_snapshot) })}
                     </div>
                   )}
                 </div>
@@ -286,14 +288,14 @@ export default function LiteJobDetailPage() {
                   {editId === e.id ? (
                     <>
                       <span className={styles.entryAmount}>{fmtMoney((Number(editCount) || 0) * (Number(editRate) || 0))}</span>
-                      <button className={styles.iconBtn} aria-label="Save" onClick={() => saveEdit(e)}><Check size={16} /></button>
-                      <button className={styles.iconBtn} aria-label="Cancel" onClick={cancelEdit}><X size={16} /></button>
+                      <button className={styles.iconBtn} aria-label={t('common:action.save')} onClick={() => saveEdit(e)}><Check size={16} /></button>
+                      <button className={styles.iconBtn} aria-label={t('common:action.cancel')} onClick={cancelEdit}><X size={16} /></button>
                     </>
                   ) : (
                     <>
                       <span className={styles.entryAmount}>{fmtMoney(e.amount)}</span>
-                      <button className={styles.iconBtn} aria-label="Edit entry" onClick={() => startEdit(e)}><Pencil size={16} /></button>
-                      <button className={styles.iconBtn} aria-label="Delete entry" onClick={() => { if (window.confirm('Delete this entry?')) deleteEntry(e.id) }}><Trash2 size={16} /></button>
+                      <button className={styles.iconBtn} aria-label={t('lite:jobDetail.editEntry')} onClick={() => startEdit(e)}><Pencil size={16} /></button>
+                      <button className={styles.iconBtn} aria-label={t('lite:jobDetail.deleteEntry')} onClick={() => { if (window.confirm(t('lite:jobDetail.deleteEntryConfirm'))) deleteEntry(e.id) }}><Trash2 size={16} /></button>
                     </>
                   )}
                 </div>
@@ -306,32 +308,32 @@ export default function LiteJobDetailPage() {
       {showInvoiceSheet && (
         <>
           <div className={styles.sheetBackdrop} onClick={() => !creating && setShowInvoiceSheet(false)} />
-          <div className={styles.sheet} role="dialog" aria-label="Create invoice">
-            <h2 className={styles.sheetTitle}>Create invoice</h2>
-            <p className={styles.subtitle} style={{ marginBottom: 12 }}>Bills the unbilled entries for {gcName} in this range.</p>
+          <div className={styles.sheet} role="dialog" aria-label={t('lite:jobDetail.createInvoice')}>
+            <h2 className={styles.sheetTitle}>{t('lite:jobDetail.createInvoice')}</h2>
+            <p className={styles.subtitle} style={{ marginBottom: 12 }}>{t('lite:jobDetail.billsRange', { gcName })}</p>
 
             <div className={styles.fieldRow}>
               <div className={styles.field}>
-                <span className={styles.fieldLabel}>From</span>
+                <span className={styles.fieldLabel}>{t('lite:jobDetail.from')}</span>
                 <input className={styles.input} type="date" value={invFrom} onChange={e => setInvFrom(e.target.value)} />
               </div>
               <div className={styles.field}>
-                <span className={styles.fieldLabel}>To</span>
+                <span className={styles.fieldLabel}>{t('lite:jobDetail.to')}</span>
                 <input className={styles.input} type="date" value={invTo} onChange={e => setInvTo(e.target.value)} />
               </div>
             </div>
 
             <div className={styles.rowBetween} style={{ padding: '8px 0' }}>
-              <span className={styles.entryMeta}>{invPreview.rows.length} unbilled {invPreview.rows.length === 1 ? 'entry' : 'entries'}</span>
+              <span className={styles.entryMeta}>{t('lite:jobDetail.unbilledEntries', { count: invPreview.rows.length })}</span>
               <span className={`${styles.entryAmount} ${styles.moneyDue}`}>{fmtMoney(invPreview.total)}</span>
             </div>
 
             {invError && <div className={styles.error}>{invError}</div>}
 
             <div className={styles.sheetActions}>
-              <button className={styles.secondaryBtn} onClick={() => setShowInvoiceSheet(false)} disabled={creating}>Cancel</button>
+              <button className={styles.secondaryBtn} onClick={() => setShowInvoiceSheet(false)} disabled={creating}>{t('common:action.cancel')}</button>
               <button className={styles.primaryBtn} onClick={createInvoice} disabled={creating || invPreview.rows.length === 0}>
-                {creating ? 'Creating…' : 'Create invoice'}
+                {creating ? t('lite:jobDetail.creating') : t('lite:jobDetail.createInvoice')}
               </button>
             </div>
           </div>

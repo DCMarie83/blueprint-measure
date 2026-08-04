@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import QRCode from 'qrcode'
+import { useTranslation } from 'react-i18next'
 import { Copy, ExternalLink, Check } from 'lucide-react'
 import { timeAgo } from '../../utils/timeAgo'
 import styles from './PortalShareSection.module.css'
 
 export default function PortalShareSection({ project, onToggle }) {
+  const { t } = useTranslation()
   const [qrDataUrl, setQrDataUrl] = useState(null)
   const [copied, setCopied] = useState(false)
 
@@ -33,7 +35,7 @@ export default function PortalShareSection({ project, onToggle }) {
   return (
     <div className={styles.section}>
       <div className={styles.header}>
-        <h3 className={styles.title}>Customer Portal</h3>
+        <h3 className={styles.title}>{t('portal:share.title')}</h3>
         <label className={styles.toggle}>
           <input
             type="checkbox"
@@ -45,37 +47,37 @@ export default function PortalShareSection({ project, onToggle }) {
             <span className={styles.toggleThumb} />
           </span>
           <span className={styles.toggleLabel}>
-            {project.portal_enabled ? 'Enabled' : 'Disabled'}
+            {project.portal_enabled ? t('portal:share.enabled') : t('portal:share.disabled')}
           </span>
         </label>
       </div>
 
       {!project.portal_enabled ? (
         <p className={styles.helpText}>
-          Toggle on to generate a shareable link your client can view. Share it via text, email, or print the QR code.
+          {t('portal:share.helpText')}
         </p>
       ) : (
         <div className={styles.enabledContent}>
           {project.portal_email_sent_at && (
             <div className={styles.emailSent}>
-              ✓ Portal link emailed to client {timeAgo(project.portal_email_sent_at)}
+              {t('portal:share.emailedToClient', { time: timeAgo(project.portal_email_sent_at) })}
             </div>
           )}
           <div className={styles.shareGrid}>
             {qrDataUrl && (
               <div className={styles.qrWrap}>
-                <img src={qrDataUrl} alt="Portal QR code" className={styles.qr} />
+                <img src={qrDataUrl} alt={t('portal:share.qrAlt')} className={styles.qr} />
               </div>
             )}
             <div className={styles.urlBlock}>
-              <label className={styles.urlLabel}>Shareable link</label>
+              <label className={styles.urlLabel}>{t('portal:share.shareableLink')}</label>
               <div className={styles.urlBox}>
                 <code className={styles.urlText}>{portalUrl}</code>
               </div>
               <div className={styles.actions}>
                 <button onClick={handleCopy} className={styles.copyBtn}>
                   {copied ? <Check size={14} /> : <Copy size={14} />}
-                  {copied ? 'Copied!' : 'Copy Link'}
+                  {copied ? t('portal:share.copied') : t('portal:share.copyLink')}
                 </button>
                 <a
                   href={portalUrl}
@@ -84,7 +86,7 @@ export default function PortalShareSection({ project, onToggle }) {
                   className={styles.previewBtn}
                 >
                   <ExternalLink size={14} />
-                  Open Portal Preview
+                  {t('portal:share.openPreview')}
                 </a>
               </div>
             </div>

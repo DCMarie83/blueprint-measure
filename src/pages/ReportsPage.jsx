@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { BarChart3, Printer } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useEffectiveCompany } from '../hooks/useEffectiveCompany'
@@ -21,7 +22,7 @@ function fmtPct(val) {
   return `${val >= 0 ? '+' : ''}${val.toFixed(1)}%`
 }
 
-const CAT_LABELS = { material: 'Material', labor: 'Labor', subcontractor: 'Subcontractor', equipment: 'Equipment', permit: 'Permit', other: 'Other' }
+const CAT_LABEL_KEYS = { material: 'reports:expenseCategory.material', labor: 'reports:expenseCategory.labor', subcontractor: 'reports:expenseCategory.subcontractor', equipment: 'reports:expenseCategory.equipment', permit: 'reports:expenseCategory.permit', other: 'reports:expenseCategory.other' }
 
 // Segmented pill toggle — active fills the brand primary.
 const pill = (active) => ({
@@ -61,6 +62,7 @@ async function fetchCompanyWithLogo(company) {
 // ── Main component ──────────────────────────────────────────────────────
 
 export default function ReportsPage() {
+  const { t } = useTranslation()
   const { userProfile, isSuperAdmin } = useAuth()
   const { companyId, company } = useEffectiveCompany()
   const isAdmin = isSuperAdmin || userProfile?.role === 'contractor_admin'
@@ -140,13 +142,13 @@ export default function ReportsPage() {
     setDownloadingId(crewMemberId)
     try {
       const { data: stmtData, error: stmtErr } = await getPayStatementData(companyId, crewMemberId, { from, to })
-      if (stmtErr || !stmtData) { alert(stmtErr || 'Could not load pay data'); return }
+      if (stmtErr || !stmtData) { alert(stmtErr || t('reports:errors.loadPayData')); return }
       const companyData = await fetchCompanyWithLogo(company)
       const pdf = generatePayStatementPDF({ ...stmtData, company: companyData, returnAs: 'blob' })
       triggerBlobDownload(pdf, `PayStatement_${stmtData.worker.name.replace(/\s+/g, '_')}_${from}_to_${to}.pdf`)
     } catch (err) {
       console.error('Pay statement download:', err)
-      alert('Failed to generate pay statement')
+      alert(t('reports:errors.payStatementFailed'))
     } finally {
       setDownloadingId(null)
     }
@@ -172,7 +174,7 @@ export default function ReportsPage() {
       triggerBlobDownload(pdf, `JobCosting_${from}_to_${to}.pdf`)
     } catch (err) {
       console.error('Job costing PDF:', err)
-      alert('Failed to generate PDF')
+      alert(t('reports:errors.pdfFailed'))
     } finally {
       setExporting(null)
     }
@@ -185,7 +187,7 @@ export default function ReportsPage() {
       await exportJobCostingXLSX({ rows: costingRows, totals, period: { from, to }, company })
     } catch (err) {
       console.error('Job costing XLSX:', err)
-      alert('Failed to generate Excel file')
+      alert(t('reports:errors.excelFailed'))
     } finally {
       setExporting(null)
     }
@@ -198,8 +200,8 @@ export default function ReportsPage() {
         <main className={styles.main}>
           <div className={styles.placeholder}>
             <BarChart3 size={48} style={{ color: 'var(--color-primary)', marginBottom: 16 }} />
-            <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>Reports</h1>
-            <p style={{ color: 'var(--color-text-muted)', fontSize: 15 }}>Job profitability, team performance, and revenue analytics — coming soon.</p>
+            <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>{t('reports:page.title')}</h1>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: 15 }}>{t('reports:placeholder.subtitle')}</p>
           </div>
         </main>
       </div>
@@ -211,29 +213,29 @@ export default function ReportsPage() {
       
       <main className={styles.main}>
         <div className={styles.screenHeader}>
-          <h1 className={styles.title}><BarChart3 size={24} /> Reports</h1>
+          <h1 className={styles.title}><BarChart3 size={24} /> {t('reports:page.title')}</h1>
         </div>
 
         {/* View switcher */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-          <button onClick={() => { setView('pay'); setDetailProjectId(null) }} style={pill(view === 'pay')}>Pay Report</button>
-          <button onClick={() => { setView('costing'); setDetailProjectId(null) }} style={pill(view === 'costing')}>Job Costing</button>
+          <button onClick={() => { setView('pay'); setDetailProjectId(null) }} style={pill(view === 'pay')}>{t('reports:view.payReport')}</button>
+          <button onClick={() => { setView('costing'); setDetailProjectId(null) }} style={pill(view === 'costing')}>{t('reports:view.jobCosting')}</button>
         </div>
 
         <div className={styles.controls}>
           <div className={styles.dateRow}>
-            <label className={styles.dateLabel}>From<input type="date" className={styles.dateInput} value={from} onChange={e => setFrom(e.target.value)} /></label>
-            <label className={styles.dateLabel}>To<input type="date" className={styles.dateInput} value={to} onChange={e => setTo(e.target.value)} /></label>
+            <label className={styles.dateLabel}>{t('reports:controls.from')}<input type="date" className={styles.dateInput} value={from} onChange={e => setFrom(e.target.value)} /></label>
+            <label className={styles.dateLabel}>{t('reports:controls.to')}<input type="date" className={styles.dateInput} value={to} onChange={e => setTo(e.target.value)} /></label>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-            <button className={styles.printBtn} onClick={() => window.print()}><Printer size={14} /> Print</button>
+            <button className={styles.printBtn} onClick={() => window.print()}><Printer size={14} /> {t('reports:actions.print')}</button>
             {view === 'costing' && !detailProjectId && costingRows.length > 0 && (
               <>
                 <button className={styles.printBtn} onClick={handleExportPDF} disabled={!!exporting} style={{ opacity: exporting === 'pdf' ? 0.5 : 1 }}>
-                  {exporting === 'pdf' ? 'Generating...' : 'Export PDF'}
+                  {exporting === 'pdf' ? t('reports:actions.generating') : t('reports:actions.exportPDF')}
                 </button>
                 <button className={styles.printBtn} onClick={handleExportXLSX} disabled={!!exporting} style={{ opacity: exporting === 'xlsx' ? 0.5 : 1 }}>
-                  {exporting === 'xlsx' ? 'Generating...' : 'Export Excel'}
+                  {exporting === 'xlsx' ? t('reports:actions.generating') : t('reports:actions.exportExcel')}
                 </button>
               </>
             )}
@@ -241,15 +243,15 @@ export default function ReportsPage() {
         </div>
 
         <div className={styles.printHeader}>
-          <h1 className={styles.printCompany}>{company?.name || 'Company'}</h1>
-          <h2 className={styles.printTitle}>{view === 'pay' ? 'Pay Report' : 'Job Costing Report'}</h2>
-          <p className={styles.printRange}>{from} to {to}</p>
+          <h1 className={styles.printCompany}>{company?.name || t('reports:print.companyFallback')}</h1>
+          <h2 className={styles.printTitle}>{view === 'pay' ? t('reports:print.payReport') : t('reports:print.jobCostingReport')}</h2>
+          <p className={styles.printRange}>{t('reports:print.range', { from, to })}</p>
         </div>
 
         {/* PAY REPORT */}
         {view === 'pay' && (
-          payLoading ? <div className={styles.empty}>Loading...</div>
-          : payRows.length === 0 ? <div className={styles.empty}>No time entries in this period.</div>
+          payLoading ? <div className={styles.empty}>{t('reports:common.loading')}</div>
+          : payRows.length === 0 ? <div className={styles.empty}>{t('reports:pay.empty')}</div>
           : <PayTable rows={payRows} onDownloadStatement={handleDownloadStatement} downloadingId={downloadingId} />
         )}
 
@@ -258,8 +260,8 @@ export default function ReportsPage() {
           <>
             {/* Portfolio / Period Summary toggle */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-              <button onClick={() => setCostingSubView('portfolio')} style={pill(costingSubView === 'portfolio')}>Portfolio</button>
-              <button onClick={() => setCostingSubView('summary')} style={pill(costingSubView === 'summary')}>Period Summary</button>
+              <button onClick={() => setCostingSubView('portfolio')} style={pill(costingSubView === 'portfolio')}>{t('reports:costing.portfolio')}</button>
+              <button onClick={() => setCostingSubView('summary')} style={pill(costingSubView === 'summary')}>{t('reports:costing.periodSummary')}</button>
             </div>
 
             {costingSubView === 'portfolio' ? (
@@ -285,7 +287,7 @@ export default function ReportsPage() {
           />
         )}
 
-        <p className={styles.generatedLine}>Generated {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        <p className={styles.generatedLine}>{t('reports:print.generated', { date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) })}</p>
       </main>
     </div>
   )
@@ -307,8 +309,9 @@ function triggerBlobDownload(blob, filename) {
 // ── Portfolio table ─────────────────────────────────────────────────────
 
 function CostingPortfolio({ rows, loading, sortCol, sortAsc, onSort, onSelectProject }) {
-  if (loading) return <div className={styles.empty}>Loading...</div>
-  if (rows.length === 0) return <div className={styles.empty}>No jobs with financial activity in this period.</div>
+  const { t } = useTranslation()
+  if (loading) return <div className={styles.empty}>{t('reports:common.loading')}</div>
+  if (rows.length === 0) return <div className={styles.empty}>{t('reports:costing.emptyJobs')}</div>
 
   const sorted = [...rows].sort((a, b) => {
     const av = a[sortCol], bv = b[sortCol]
@@ -325,13 +328,13 @@ function CostingPortfolio({ rows, loading, sortCol, sortAsc, onSort, onSelectPro
   const blendedMarginPct = totals.collected > 0 ? ((totals.collected - totals.totalCost) / totals.collected) * 100 : null
 
   const cols = [
-    { key: 'project_name', label: 'Job' },
-    { key: 'quoted', label: 'Quoted' },
-    { key: 'billed', label: 'Billed' },
-    { key: 'collected', label: 'Collected' },
-    { key: 'totalCost', label: 'Cost' },
-    { key: 'estimatedMargin', label: 'Est. Margin' },
-    { key: 'actualMargin', label: 'Actual Margin' },
+    { key: 'project_name', label: t('reports:th.job') },
+    { key: 'quoted', label: t('reports:th.quoted') },
+    { key: 'billed', label: t('reports:th.billed') },
+    { key: 'collected', label: t('reports:th.collected') },
+    { key: 'totalCost', label: t('reports:th.cost') },
+    { key: 'estimatedMargin', label: t('reports:th.estMargin') },
+    { key: 'actualMargin', label: t('reports:th.actualMargin') },
   ]
 
   function SortTh({ col }) {
@@ -352,11 +355,11 @@ function CostingPortfolio({ rows, loading, sortCol, sortAsc, onSort, onSelectPro
       {/* KPI cards */}
       <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 16 }}>
         {[
-          { label: 'Quoted', value: fmtMoney(totals.quoted), accent: '#26464C' },
-          { label: 'Billed', value: fmtMoney(totals.billed), accent: '#26464C' },
-          { label: 'Collected', value: fmtMoney(totals.collected), accent: '#26464C' },
-          { label: 'Total Cost', value: fmtMoney(totals.totalCost), accent: 'var(--color-text-muted)' },
-          { label: 'Actual Margin', value: blendedMarginPct != null ? fmtPct(blendedMarginPct) : '—', accent: '#F27243', isMargin: true, positive: (blendedMarginPct ?? 0) >= 0 },
+          { label: t('reports:kpi.quoted'), value: fmtMoney(totals.quoted), accent: '#26464C' },
+          { label: t('reports:kpi.billed'), value: fmtMoney(totals.billed), accent: '#26464C' },
+          { label: t('reports:kpi.collected'), value: fmtMoney(totals.collected), accent: '#26464C' },
+          { label: t('reports:kpi.totalCost'), value: fmtMoney(totals.totalCost), accent: 'var(--color-text-muted)' },
+          { label: t('reports:kpi.actualMargin'), value: blendedMarginPct != null ? fmtPct(blendedMarginPct) : '—', accent: '#F27243', isMargin: true, positive: (blendedMarginPct ?? 0) >= 0 },
         ].map(s => (
           <div key={s.label} style={{
             background: s.isMargin ? 'rgba(242,114,67,0.06)' : 'var(--color-surface)',
@@ -369,7 +372,7 @@ function CostingPortfolio({ rows, loading, sortCol, sortAsc, onSort, onSelectPro
         ))}
       </div>
       <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: '0 0 16px' }}>
-        Job-to-date figures for jobs with activity in the selected range.
+        {t('reports:costing.portfolioNote')}
       </p>
 
       <div className={styles.tableWrap}>
@@ -390,7 +393,7 @@ function CostingPortfolio({ rows, loading, sortCol, sortAsc, onSort, onSelectPro
                 <td className={styles.td} style={{ textAlign: 'right' }}>
                   {fmtMoney(r.totalCost)}
                   {r.hasIncompleteData && (
-                    <span title="Cost may be understated: missing labor rate, material variant, or accepted estimate." style={{ marginLeft: 4, color: 'var(--color-warning, #f59e0b)' }}>⚠︎</span>
+                    <span title={t('reports:costing.incompleteTooltip')} style={{ marginLeft: 4, color: 'var(--color-warning, #f59e0b)' }}>⚠︎</span>
                   )}
                 </td>
                 <td className={styles.td} style={{ textAlign: 'right' }}>
@@ -404,7 +407,7 @@ function CostingPortfolio({ rows, loading, sortCol, sortAsc, onSort, onSelectPro
           </tbody>
           <tfoot>
             <tr className={styles.totalsRow}>
-              <td className={styles.td} style={{ fontWeight: 700 }}>Total ({rows.length} jobs)</td>
+              <td className={styles.td} style={{ fontWeight: 700 }}>{t('reports:costing.totalJobs', { count: rows.length })}</td>
               <td className={styles.td} style={{ textAlign: 'right', fontWeight: 700 }}>{fmtMoney(totals.quoted)}</td>
               <td className={styles.td} style={{ textAlign: 'right', fontWeight: 700 }}>{fmtMoney(totals.billed)}</td>
               <td className={styles.td} style={{ textAlign: 'right', fontWeight: 700 }}>{fmtMoney(totals.collected)}</td>
@@ -424,8 +427,9 @@ function CostingPortfolio({ rows, loading, sortCol, sortAsc, onSort, onSelectPro
 // ── Period Summary (P&L roll-up) ────────────────────────────────────────
 
 function PeriodSummary({ summary, loading }) {
-  if (loading || !summary) return <div className={styles.empty}>Loading...</div>
-  if (summary.jobCount === 0) return <div className={styles.empty}>No jobs with financial activity in this period.</div>
+  const { t } = useTranslation()
+  if (loading || !summary) return <div className={styles.empty}>{t('reports:common.loading')}</div>
+  if (summary.jobCount === 0) return <div className={styles.empty}>{t('reports:costing.emptyJobs')}</div>
 
   const { quoted, billed, collected, laborCost, materialsCost, expensesCost, totalCost, jobCount, hasIncomplete } = summary
   const estMargin = quoted - totalCost
@@ -436,46 +440,46 @@ function PeriodSummary({ summary, loading }) {
   return (
     <div style={{ maxWidth: 560 }}>
       <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
-        Figures within the selected date range.
+        {t('reports:summary.note')}
       </p>
       {hasIncomplete && (
         <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 'var(--radius)', padding: '10px 16px', marginBottom: 16, fontSize: 13, color: 'var(--color-warning, #f59e0b)' }}>
-          Some jobs have incomplete cost data — totals may be understated.
+          {t('reports:summary.incompleteWarning')}
         </div>
       )}
 
       {/* Revenue */}
-      <SectionCard title="Revenue">
-        <PLRow label="Quoted" value={quoted} />
-        <PLRow label="Billed" value={billed} />
-        <PLRow label="Collected" value={collected} bold />
+      <SectionCard title={t('reports:section.revenue')}>
+        <PLRow label={t('reports:th.quoted')} value={quoted} />
+        <PLRow label={t('reports:th.billed')} value={billed} />
+        <PLRow label={t('reports:th.collected')} value={collected} bold />
       </SectionCard>
 
       {/* Cost */}
-      <SectionCard title="Cost">
-        <PLRow label="Labor" value={laborCost} />
-        <PLRow label="Materials" value={materialsCost} />
-        <PLRow label="Expenses" value={expensesCost} />
+      <SectionCard title={t('reports:section.cost')}>
+        <PLRow label={t('reports:section.labor')} value={laborCost} />
+        <PLRow label={t('reports:section.materials')} value={materialsCost} />
+        <PLRow label={t('reports:section.expenses')} value={expensesCost} />
         <div style={{ borderTop: '1px solid var(--color-border)', marginTop: 8, paddingTop: 8 }}>
-          <PLRow label="Total Cost" value={totalCost} bold />
+          <PLRow label={t('reports:kpi.totalCost')} value={totalCost} bold />
         </div>
       </SectionCard>
 
       {/* Profit */}
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
         <div style={{ flex: 1, minWidth: 200, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg, 8px)', padding: '16px 20px' }}>
-          <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)', marginBottom: 6 }}>Estimated Profit</div>
-          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 2 }}>Quoted minus cost</div>
+          <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)', marginBottom: 6 }}>{t('reports:summary.estimatedProfit')}</div>
+          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 2 }}>{t('reports:summary.quotedMinusCost')}</div>
           <MarginCell amount={estMargin} pct={estPct} large />
         </div>
         <div style={{ flex: 1, minWidth: 200, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg, 8px)', padding: '16px 20px' }}>
-          <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)', marginBottom: 6 }}>Actual Profit</div>
-          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 2 }}>Collected minus cost</div>
+          <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)', marginBottom: 6 }}>{t('reports:summary.actualProfit')}</div>
+          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 2 }}>{t('reports:summary.collectedMinusCost')}</div>
           <MarginCell amount={actMargin} pct={actPct} large />
         </div>
       </div>
 
-      <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Across {jobCount} job{jobCount !== 1 ? 's' : ''} with activity in this period.</p>
+      <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{t('reports:summary.acrossJobs', { count: jobCount })}</p>
     </div>
   )
 }
@@ -492,7 +496,8 @@ function PLRow({ label, value, bold }) {
 // ── Job detail ──────────────────────────────────────────────────────────
 
 function CostingDetail({ detail, loading, onBack }) {
-  if (loading || !detail) return <div className={styles.empty}>Loading...</div>
+  const { t } = useTranslation()
+  if (loading || !detail) return <div className={styles.empty}>{t('reports:common.loading')}</div>
 
   const d = detail
 
@@ -500,7 +505,7 @@ function CostingDetail({ detail, loading, onBack }) {
     <div>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary)', fontWeight: 600, fontSize: 13 }}>← Back to all jobs</button>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary)', fontWeight: 600, fontSize: 13 }}>{t('reports:detail.backToJobs')}</button>
       </div>
       <h2 style={{ fontSize: 20, fontWeight: 700, margin: '0 0 4px' }}>{d.project_name}</h2>
       <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 20px' }}>{d.client_name}</p>
@@ -508,33 +513,33 @@ function CostingDetail({ detail, loading, onBack }) {
       {/* Incomplete data warnings */}
       {d.hasIncompleteData && (
         <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 'var(--radius)', padding: '10px 16px', marginBottom: 16, fontSize: 13, color: 'var(--color-warning, #f59e0b)' }}>
-          {d.flag_no_accepted_estimate && <div>No accepted estimate — quoted revenue is $0.</div>}
-          {d.flag_labor_incomplete && <div>Some time entries are missing a cost rate — labor cost may be understated.</div>}
-          {d.flag_materials_incomplete && <div>Some material orders have no selected variant — materials cost may be understated.</div>}
+          {d.flag_no_accepted_estimate && <div>{t('reports:detail.flagNoEstimate')}</div>}
+          {d.flag_labor_incomplete && <div>{t('reports:detail.flagLabor')}</div>}
+          {d.flag_materials_incomplete && <div>{t('reports:detail.flagMaterials')}</div>}
         </div>
       )}
 
       {/* Revenue */}
-      <SectionCard title="Revenue">
+      <SectionCard title={t('reports:section.revenue')}>
         <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-          <Stat label="Quoted" value={fmtMoney(d.quoted)} />
-          <Stat label="Billed" value={fmtMoney(d.billed)} />
-          <Stat label="Collected" value={fmtMoney(d.collected)} />
+          <Stat label={t('reports:th.quoted')} value={fmtMoney(d.quoted)} />
+          <Stat label={t('reports:th.billed')} value={fmtMoney(d.billed)} />
+          <Stat label={t('reports:th.collected')} value={fmtMoney(d.collected)} />
         </div>
       </SectionCard>
 
       {/* Labor */}
-      <SectionCard title="Labor" subtitle={fmtMoney(d.laborCost)}>
+      <SectionCard title={t('reports:section.labor')} subtitle={fmtMoney(d.laborCost)}>
         {d.laborBreakdown.length === 0 ? (
-          <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>No labor logged.</p>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>{t('reports:detail.noLabor')}</p>
         ) : (
           <table className={styles.table}>
             <thead>
               <tr>
-                <th className={styles.th}>Worker</th>
-                <th className={styles.th} style={{ textAlign: 'right' }}>Hours</th>
-                <th className={styles.th} style={{ textAlign: 'right' }}>Rate</th>
-                <th className={styles.th} style={{ textAlign: 'right' }}>Cost</th>
+                <th className={styles.th}>{t('reports:th.worker')}</th>
+                <th className={styles.th} style={{ textAlign: 'right' }}>{t('reports:th.hours')}</th>
+                <th className={styles.th} style={{ textAlign: 'right' }}>{t('reports:th.rate')}</th>
+                <th className={styles.th} style={{ textAlign: 'right' }}>{t('reports:th.cost')}</th>
               </tr>
             </thead>
             <tbody>
@@ -542,7 +547,7 @@ function CostingDetail({ detail, loading, onBack }) {
                 <tr key={i} className={styles.tr}>
                   <td className={styles.td}>{w.name}</td>
                   <td className={styles.td} style={{ textAlign: 'right' }}>{w.hours.toFixed(2)}</td>
-                  <td className={styles.td} style={{ textAlign: 'right' }}>{fmtMoney(w.rate)}/hr</td>
+                  <td className={styles.td} style={{ textAlign: 'right' }}>{fmtMoney(w.rate)}{t('reports:detail.perHour')}</td>
                   <td className={styles.td} style={{ textAlign: 'right', fontWeight: 600 }}>{fmtMoney(w.cost)}</td>
                 </tr>
               ))}
@@ -552,17 +557,17 @@ function CostingDetail({ detail, loading, onBack }) {
       </SectionCard>
 
       {/* Materials */}
-      <SectionCard title="Materials" subtitle={fmtMoney(d.materialsCost)}>
+      <SectionCard title={t('reports:section.materials')} subtitle={fmtMoney(d.materialsCost)}>
         {d.materialsBreakdown.length === 0 ? (
-          <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>No material orders.</p>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>{t('reports:detail.noMaterials')}</p>
         ) : (
           <table className={styles.table}>
             <thead>
               <tr>
-                <th className={styles.th}>Order</th>
-                <th className={styles.th}>Store</th>
-                <th className={styles.th}>Variant</th>
-                <th className={styles.th} style={{ textAlign: 'right' }}>Cost</th>
+                <th className={styles.th}>{t('reports:th.order')}</th>
+                <th className={styles.th}>{t('reports:th.store')}</th>
+                <th className={styles.th}>{t('reports:th.variant')}</th>
+                <th className={styles.th} style={{ textAlign: 'right' }}>{t('reports:th.cost')}</th>
               </tr>
             </thead>
             <tbody>
@@ -570,7 +575,7 @@ function CostingDetail({ detail, loading, onBack }) {
                 <tr key={i} className={styles.tr}>
                   <td className={styles.td}>{m.title}</td>
                   <td className={styles.td}>{m.store || '—'}</td>
-                  <td className={styles.td} style={{ textTransform: 'capitalize' }}>{m.selectedVariant || <span style={{ color: 'var(--color-warning, #f59e0b)' }}>Not set</span>}</td>
+                  <td className={styles.td} style={{ textTransform: 'capitalize' }}>{m.selectedVariant || <span style={{ color: 'var(--color-warning, #f59e0b)' }}>{t('reports:detail.notSet')}</span>}</td>
                   <td className={styles.td} style={{ textAlign: 'right', fontWeight: 600 }}>{fmtMoney(m.cost)}</td>
                 </tr>
               ))}
@@ -580,25 +585,25 @@ function CostingDetail({ detail, loading, onBack }) {
       </SectionCard>
 
       {/* Expenses */}
-      <SectionCard title="Expenses" subtitle={fmtMoney(d.expensesCost)}>
+      <SectionCard title={t('reports:section.expenses')} subtitle={fmtMoney(d.expensesCost)}>
         {d.expensesBreakdown.length === 0 ? (
-          <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>No expenses logged.</p>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>{t('reports:detail.noExpenses')}</p>
         ) : (
           <table className={styles.table}>
             <thead>
               <tr>
-                <th className={styles.th}>Date</th>
-                <th className={styles.th}>Category</th>
-                <th className={styles.th}>Description</th>
-                <th className={styles.th}>Vendor</th>
-                <th className={styles.th} style={{ textAlign: 'right' }}>Amount</th>
+                <th className={styles.th}>{t('reports:th.date')}</th>
+                <th className={styles.th}>{t('reports:th.category')}</th>
+                <th className={styles.th}>{t('reports:th.description')}</th>
+                <th className={styles.th}>{t('reports:th.vendor')}</th>
+                <th className={styles.th} style={{ textAlign: 'right' }}>{t('reports:th.amount')}</th>
               </tr>
             </thead>
             <tbody>
               {d.expensesBreakdown.map(ex => (
                 <tr key={ex.id} className={styles.tr}>
                   <td className={styles.td} style={{ whiteSpace: 'nowrap' }}>{ex.expense_date}</td>
-                  <td className={styles.td}>{CAT_LABELS[ex.category] || ex.category}</td>
+                  <td className={styles.td}>{CAT_LABEL_KEYS[ex.category] ? t(CAT_LABEL_KEYS[ex.category]) : ex.category}</td>
                   <td className={styles.td}>{ex.description}</td>
                   <td className={styles.td}>{ex.vendor || '—'}</td>
                   <td className={styles.td} style={{ textAlign: 'right', fontWeight: 600 }}>{fmtMoney(ex.amount)}</td>
@@ -611,20 +616,20 @@ function CostingDetail({ detail, loading, onBack }) {
 
       {/* Total cost */}
       <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg, 8px)', padding: '16px 20px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: 15, fontWeight: 700 }}>Total Cost</span>
+        <span style={{ fontSize: 15, fontWeight: 700 }}>{t('reports:kpi.totalCost')}</span>
         <span style={{ fontSize: 18, fontWeight: 700 }}>{fmtMoney(d.totalCost)}</span>
       </div>
 
       {/* Margins */}
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
         <div style={{ flex: 1, minWidth: 200, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg, 8px)', padding: '16px 20px' }}>
-          <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)', marginBottom: 6 }}>Estimated Margin</div>
-          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 2 }}>Quoted minus cost</div>
+          <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)', marginBottom: 6 }}>{t('reports:detail.estimatedMargin')}</div>
+          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 2 }}>{t('reports:summary.quotedMinusCost')}</div>
           <MarginCell amount={d.estimatedMargin} pct={d.estimatedMarginPct} large />
         </div>
         <div style={{ flex: 1, minWidth: 200, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg, 8px)', padding: '16px 20px' }}>
-          <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)', marginBottom: 6 }}>Actual Margin</div>
-          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 2 }}>Collected minus cost</div>
+          <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)', marginBottom: 6 }}>{t('reports:detail.actualMargin')}</div>
+          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 2 }}>{t('reports:summary.collectedMinusCost')}</div>
           <MarginCell amount={d.actualMargin} pct={d.actualMarginPct} large />
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { Calculator, Layers, PenLine } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import './materialsFlow.css'
 
 const cardBase = {
@@ -26,14 +27,15 @@ function ActionCard({ icon: Icon, title, subtitle, onClick, disabled, hint }) {
 }
 
 export default function MaterialsStartScreen({ hasZones, onQuick, onSwipe, onTable }) {
+  const { t } = useTranslation()
   return (
     <div className="mf-fadein" style={{ maxWidth: 560, margin: '32px auto', textAlign: 'center' }}>
-      <h2 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 6px', color: 'var(--color-text, #1b2426)' }}>Add materials for this job?</h2>
-      <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: '0 0 24px' }}>Built from your measurements.</p>
+      <h2 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 6px', color: 'var(--color-text, #1b2426)' }}>{t('materials:startScreen.title')}</h2>
+      <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: '0 0 24px' }}>{t('materials:startScreen.subtitle')}</p>
       <div style={{ display: 'grid', gap: 12 }}>
-        <ActionCard icon={Calculator} title="Quick total" subtitle="Just the number" onClick={onQuick} disabled={!hasZones} hint="Measure this job first" />
-        <ActionCard icon={Layers} title="Review item by item" subtitle="Swipe through the list" onClick={onSwipe} disabled={!hasZones} hint="Measure this job first" />
-        <ActionCard icon={PenLine} title="Build it myself" subtitle="Straight to the full editor" onClick={onTable} />
+        <ActionCard icon={Calculator} title={t('materials:startScreen.quickTitle')} subtitle={t('materials:startScreen.quickSubtitle')} onClick={onQuick} disabled={!hasZones} hint={t('materials:startScreen.measureFirst')} />
+        <ActionCard icon={Layers} title={t('materials:startScreen.reviewTitle')} subtitle={t('materials:startScreen.reviewSubtitle')} onClick={onSwipe} disabled={!hasZones} hint={t('materials:startScreen.measureFirst')} />
+        <ActionCard icon={PenLine} title={t('materials:startScreen.buildTitle')} subtitle={t('materials:startScreen.buildSubtitle')} onClick={onTable} />
       </div>
     </div>
   )

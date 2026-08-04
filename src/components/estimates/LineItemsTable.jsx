@@ -1,10 +1,11 @@
 import { Trash2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import MarketBand from '../smartbid/MarketBand'
 import styles from './LineItemsTable.module.css'
 
-const UNIT_LABELS = { sf: 'SF', lf: 'LF', each: 'Each', hour: 'Hour', lump_sum: 'Lump Sum' }
+const UNIT_KEYS = { sf: 'common:units.sf', lf: 'common:units.lf', each: 'common:units.each', hour: 'common:units.hour', lump_sum: 'common:units.lumpSum' }
 
-const PROVENANCE_LABEL = { library: 'Library', benchmark: 'Market', manual: 'Manual' }
+const PROVENANCE_KEYS = { library: 'estimates:lineItems.provenance.library', benchmark: 'estimates:lineItems.provenance.benchmark', manual: 'estimates:lineItems.provenance.manual' }
 
 function fmtMoney(val) {
   if (val == null) return '$0.00'
@@ -19,10 +20,11 @@ const chipStyle = (kind) => ({
 })
 
 export default function LineItemsTable({ lineItems, onUpdate, onRemove, readOnly, smart = false, benchmarkMap, pulseIds }) {
+  const { t } = useTranslation()
   if (lineItems.length === 0) {
     return (
       <div className={styles.empty}>
-        No line items yet. Add zones or pricing items to build your estimate.
+        {t('estimates:lineItems.empty')}
       </div>
     )
   }
@@ -49,11 +51,11 @@ export default function LineItemsTable({ lineItems, onUpdate, onRemove, readOnly
       <table className={styles.table}>
         <thead>
           <tr>
-            <th className={styles.thDesc}>Description</th>
-            <th className={styles.thUnit}>Unit</th>
-            <th className={styles.thQty}>Qty</th>
-            <th className={styles.thRate}>Rate</th>
-            <th className={styles.thTotal}>Total</th>
+            <th className={styles.thDesc}>{t('estimates:lineItems.col.description')}</th>
+            <th className={styles.thUnit}>{t('estimates:lineItems.col.unit')}</th>
+            <th className={styles.thQty}>{t('estimates:lineItems.col.qty')}</th>
+            <th className={styles.thRate}>{t('estimates:lineItems.col.rate')}</th>
+            <th className={styles.thTotal}>{t('estimates:lineItems.col.total')}</th>
             {!readOnly && <th className={styles.thAction}></th>}
           </tr>
         </thead>
@@ -78,6 +80,7 @@ export default function LineItemsTable({ lineItems, onUpdate, onRemove, readOnly
 }
 
 function GroupRows({ category, items, onUpdate, onRemove, readOnly, smart, benchMap, pulseIds }) {
+  const { t } = useTranslation()
   const pulses = pulseIds || new Set()
   const colSpan = readOnly ? 5 : 6
   return (
@@ -100,30 +103,30 @@ function GroupRows({ category, items, onUpdate, onRemove, readOnly, smart, bench
                   className={styles.cellInput}
                   value={li.description}
                   onChange={e => onUpdate(li.id, { description: e.target.value })}
-                  placeholder="Description"
+                  placeholder={t('estimates:lineItems.descriptionPlaceholder')}
                 />
               )}
               {li.source_zone_name && (
-                <span className={styles.zoneBadge} title={`From zone: ${li.source_zone_name}`}>
+                <span className={styles.zoneBadge} title={t('estimates:lineItems.fromZone', { name: li.source_zone_name })}>
                   {li.source_zone_name}
                 </span>
               )}
-              {smart && <span style={chipStyle(kind)}>{PROVENANCE_LABEL[kind] || 'Manual'}</span>}
+              {smart && <span style={chipStyle(kind)}>{PROVENANCE_KEYS[kind] ? t(PROVENANCE_KEYS[kind]) : t('estimates:lineItems.provenance.manual')}</span>}
             </td>
             <td className={styles.tdUnit}>
               {readOnly ? (
-                <span className={styles.unitLabel}>{UNIT_LABELS[li.unit] || li.unit}</span>
+                <span className={styles.unitLabel}>{UNIT_KEYS[li.unit] ? t(UNIT_KEYS[li.unit]) : li.unit}</span>
               ) : (
                 <select
                   className={styles.cellSelect}
                   value={li.unit || 'sf'}
                   onChange={e => onUpdate(li.id, { unit: e.target.value })}
                 >
-                  <option value="sf">SF</option>
-                  <option value="lf">LF</option>
-                  <option value="each">Each</option>
-                  <option value="hour">Hour</option>
-                  <option value="lump_sum">Lump Sum</option>
+                  <option value="sf">{t('common:units.sf')}</option>
+                  <option value="lf">{t('common:units.lf')}</option>
+                  <option value="each">{t('common:units.each')}</option>
+                  <option value="hour">{t('common:units.hour')}</option>
+                  <option value="lump_sum">{t('common:units.lumpSum')}</option>
                 </select>
               )}
             </td>
@@ -155,7 +158,7 @@ function GroupRows({ category, items, onUpdate, onRemove, readOnly, smart, bench
                   step="0.01"
                   min="0"
                   value={li.rate_good === 0 || li.rate_good == null ? '' : li.rate_good}
-                  placeholder={isLump ? 'Amount' : '0'}
+                  placeholder={isLump ? t('estimates:lineItems.amountPlaceholder') : '0'}
                   onChange={e => onUpdate(li.id, { rate_good: e.target.value === '' ? 0 : Number(e.target.value) })}
                   onFocus={e => e.target.select()}
                 />
@@ -169,7 +172,7 @@ function GroupRows({ category, items, onUpdate, onRemove, readOnly, smart, bench
             </td>
             {!readOnly && (
               <td className={styles.tdAction}>
-                <button className={styles.removeBtn} onClick={() => onRemove(li.id)} title="Remove">
+                <button className={styles.removeBtn} onClick={() => onRemove(li.id)} title={t('common:action.remove')}>
                   <Trash2 size={14} />
                 </button>
               </td>

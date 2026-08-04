@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -10,6 +11,7 @@ import { useDateFormat } from '../hooks/useDateFormat'
 import styles from './TeamPage.module.css'
 
 export default function TeamPage() {
+  const { t } = useTranslation()
   const { user, company } = useAuth()
   const { isImpersonating } = useImpersonation()
   const navigate = useNavigate()
@@ -100,7 +102,7 @@ export default function TeamPage() {
 
       // Handle seat limit error from edge fn
       if (data?.error === 'seat_limit_reached') {
-        setInviteError(`You've used all ${data.limit} seats on your plan.`)
+        setInviteError(t('team:seats.atLimit', { limit: data.limit }))
         return
       }
       if (error) throw new Error(error.message)
@@ -126,7 +128,7 @@ export default function TeamPage() {
 
   async function handleSeatRequest() {
     if (isImpersonating) {
-      alert('Billing actions are disabled while impersonating a tenant.')
+      alert(t('common:guard.impersonationBilling'))
       return
     }
     setRequestingSeats(true)
@@ -137,7 +139,7 @@ export default function TeamPage() {
       setSeatRequestSent(true)
       setShowSeatRequest(false)
     } catch (err) {
-      alert('Failed to send request: ' + err.message)
+      alert(t('team:seats.requestFailed', { error: err.message }))
     } finally {
       setRequestingSeats(false)
     }
@@ -172,14 +174,14 @@ export default function TeamPage() {
   return (
     <div className={styles.page}>
       <main className={styles.main}>
-        <h1 className={styles.title}>Team {companyName && `- ${companyName}`}</h1>
+        <h1 className={styles.title}>{t('team:title')} {companyName && `- ${companyName}`}</h1>
         {/* Seat usage line */}
         {entitlements && !loading && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, fontSize: 13, color: 'var(--color-text-muted)' }}>
             {entitlements.isExempt ? (
-              <span>Unlimited seats</span>
+              <span>{t('team:seats.unlimited')}</span>
             ) : (
-              <span>{activeCount} of {seatLimit} seats used</span>
+              <span>{t('team:seats.used', { used: activeCount, limit: seatLimit })}</span>
             )}
             {!entitlements.isExempt && (
               <button
@@ -188,7 +190,7 @@ export default function TeamPage() {
                 onClick={() => seatRequestSent ? null : setShowSeatRequest(true)}
                 disabled={seatRequestSent}
               >
-                {seatRequestSent ? 'Request sent!' : 'Need more seats?'}
+                {seatRequestSent ? t('team:seats.requestSent') : t('team:seats.requestMore')}
               </button>
             )}
           </div>
@@ -197,14 +199,14 @@ export default function TeamPage() {
         {/* At-limit banner */}
         {atLimit && !entitlements?.isExempt && (
           <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: 8, padding: '10px 16px', marginBottom: 16, fontSize: 13, color: '#f59e0b' }}>
-            You've used all {seatLimit} seats on your plan.
+            {t('team:seats.atLimit', { limit: seatLimit })}
           </div>
         )}
 
         <div className={styles.toolbar}>
           <input
             className={styles.searchInput}
-            placeholder="Search team members..."
+            placeholder={t('team:searchPlaceholder')}
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -214,23 +216,23 @@ export default function TeamPage() {
             disabled={atLimit && !entitlements?.isExempt}
             style={atLimit && !entitlements?.isExempt ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
           >
-            {showInvite ? 'Cancel' : '+ Invite User'}
+            {showInvite ? t('common:action.cancel') : t('team:inviteUser')}
           </button>
         </div>
 
         {showInvite && (
           <form className={styles.inviteForm} onSubmit={handleInvite}>
             <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-              <button type="button" className={inviteMethod === 'invite' ? styles.addBtn : styles.secondaryBtn} onClick={() => setInviteMethod('invite')}>Send invitation</button>
-              <button type="button" className={inviteMethod === 'create' ? styles.addBtn : styles.secondaryBtn} onClick={() => setInviteMethod('create')}>Set password</button>
+              <button type="button" className={inviteMethod === 'invite' ? styles.addBtn : styles.secondaryBtn} onClick={() => setInviteMethod('invite')}>{t('team:invite.sendInvitation')}</button>
+              <button type="button" className={inviteMethod === 'create' ? styles.addBtn : styles.secondaryBtn} onClick={() => setInviteMethod('create')}>{t('team:invite.setPassword')}</button>
             </div>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <input type="email" className={styles.searchInput} placeholder="Email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} required style={{ flex: 1, minWidth: 200 }} />
+              <input type="email" className={styles.searchInput} placeholder={t('team:invite.emailPlaceholder')} value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} required style={{ flex: 1, minWidth: 200 }} />
               {inviteMethod === 'create' && (
-                <input type="password" className={styles.searchInput} placeholder="Password" value={invitePassword} onChange={e => setInvitePassword(e.target.value)} required style={{ flex: 1, minWidth: 150 }} />
+                <input type="password" className={styles.searchInput} placeholder={t('team:invite.passwordPlaceholder')} value={invitePassword} onChange={e => setInvitePassword(e.target.value)} required style={{ flex: 1, minWidth: 150 }} />
               )}
               <button type="submit" className={styles.addBtn} disabled={inviting}>
-                {inviting ? 'Sending...' : inviteMethod === 'invite' ? 'Send Invitation' : 'Create User'}
+                {inviting ? t('team:sending') : inviteMethod === 'invite' ? t('team:invite.sendInvitationBtn') : t('team:invite.createUser')}
               </button>
             </div>
             {inviteError && <p style={{ color: '#fca5a5', fontSize: 12, marginTop: 6 }}>{inviteError}</p>}
@@ -238,20 +240,20 @@ export default function TeamPage() {
         )}
 
         {loading ? (
-          <p className={styles.empty}>Loading...</p>
+          <p className={styles.empty}>{t('team:loading')}</p>
         ) : displayed.length === 0 ? (
-          <p className={styles.empty}>No team members found.</p>
+          <p className={styles.empty}>{t('team:empty')}</p>
         ) : (
           <div className={styles.tableWrap}>
             <table className={styles.table}>
               <thead>
                 <tr>
                   {[
-                    { key: 'full_name', label: 'Name' },
-                    { key: 'email', label: 'Email' },
-                    { key: 'role', label: 'Role' },
-                    { key: 'setup_completed_at', label: 'Setup' },
-                    { key: 'created_at', label: 'Joined' },
+                    { key: 'full_name', label: t('team:columns.name') },
+                    { key: 'email', label: t('team:columns.email') },
+                    { key: 'role', label: t('team:columns.role') },
+                    { key: 'setup_completed_at', label: t('team:columns.setup') },
+                    { key: 'created_at', label: t('team:columns.joined') },
                   ].map(col => (
                     <th
                       key={col.key}
@@ -274,7 +276,7 @@ export default function TeamPage() {
                   >
                     <td className={styles.td}>
                       {m.full_name || '-'}
-                      {m.deleted_at && <span style={{ fontSize: 10, fontWeight: 600, color: '#ef4444', marginLeft: 6, padding: '2px 6px', background: 'rgba(239,68,68,0.1)', borderRadius: 4 }}>DELETED</span>}
+                      {m.deleted_at && <span style={{ fontSize: 10, fontWeight: 600, color: '#ef4444', marginLeft: 6, padding: '2px 6px', background: 'rgba(239,68,68,0.1)', borderRadius: 4 }}>{t('team:deleted')}</span>}
                     </td>
                     <td className={styles.td}>{m.email}</td>
                     <td className={styles.td}>
@@ -284,9 +286,9 @@ export default function TeamPage() {
                     </td>
                     <td className={styles.td}>
                       {m.setup_completed_at ? (
-                        <span style={{ fontSize: 10, color: '#22c55e', fontWeight: 600 }}>Complete</span>
+                        <span style={{ fontSize: 10, color: '#22c55e', fontWeight: 600 }}>{t('team:setupComplete')}</span>
                       ) : (
-                        <span style={{ fontSize: 10, color: '#f59e0b', fontWeight: 600 }}>Pending</span>
+                        <span style={{ fontSize: 10, color: '#f59e0b', fontWeight: 600 }}>{t('team:setupPending')}</span>
                       )}
                     </td>
                     <td className={styles.td}>{formatDate(m.created_at)}</td>
@@ -299,7 +301,7 @@ export default function TeamPage() {
 
         <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4, marginTop: 12, color: 'var(--color-text-muted)' }}>
           <input type="checkbox" checked={showDeleted} onChange={e => setShowDeleted(e.target.checked)} />
-          Show deleted users
+          {t('team:showDeleted')}
         </label>
 
         {/* Seat request confirmation modal */}
@@ -307,15 +309,15 @@ export default function TeamPage() {
           <Modal onClose={() => setShowSeatRequest(false)}>
             <div style={{ padding: 24, maxWidth: 400 }}>
               <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 18, marginBottom: 12 }}>
-                Request additional seats
+                {t('team:seatModal.title')}
               </h3>
               <p style={{ fontSize: 14, color: 'var(--color-text-muted)', lineHeight: 1.6, marginBottom: 20 }}>
-                Request additional seats for your team? We'll be in touch shortly.
+                {t('team:seatModal.body')}
               </p>
               <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-                <button className={styles.secondaryBtn} onClick={() => setShowSeatRequest(false)}>Cancel</button>
+                <button className={styles.secondaryBtn} onClick={() => setShowSeatRequest(false)}>{t('common:action.cancel')}</button>
                 <button className={styles.addBtn} onClick={handleSeatRequest} disabled={requestingSeats}>
-                  {requestingSeats ? 'Sending...' : 'Send Request'}
+                  {requestingSeats ? t('team:sending') : t('team:seatModal.sendRequest')}
                 </button>
               </div>
             </div>

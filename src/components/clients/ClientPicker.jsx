@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Home, Building2, HardHat, X } from 'lucide-react'
 import styles from './ClientPicker.module.css'
 
@@ -8,7 +9,9 @@ function typeIcon(type, size = 14) {
   return <Home size={size} />
 }
 
-export default function ClientPicker({ clients, value, onChange, placeholder = 'Search clients...' }) {
+export default function ClientPicker({ clients, value, onChange, placeholder }) {
+  const { t } = useTranslation()
+  const resolvedPlaceholder = placeholder ?? t('clients:picker.searchPlaceholder')
   const [search, setSearch] = useState('')
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
@@ -42,7 +45,7 @@ export default function ClientPicker({ clients, value, onChange, placeholder = '
           {typeIcon(selected.client_type)}
         </span>
         <span className={styles.selectedName}>{selected.display_name}</span>
-        <button type="button" className={styles.clearBtn} onClick={() => onChange(null)} aria-label="Clear selection">
+        <button type="button" className={styles.clearBtn} onClick={() => onChange(null)} aria-label={t('clients:picker.clearSelection')}>
           <X size={14} />
         </button>
       </div>
@@ -57,7 +60,7 @@ export default function ClientPicker({ clients, value, onChange, placeholder = '
         value={search}
         onChange={e => { setSearch(e.target.value); setOpen(true) }}
         onFocus={() => setOpen(true)}
-        placeholder={placeholder}
+        placeholder={resolvedPlaceholder}
       />
       {open && filtered.length > 0 && (
         <div className={styles.dropdown}>
@@ -79,7 +82,7 @@ export default function ClientPicker({ clients, value, onChange, placeholder = '
       )}
       {open && filtered.length === 0 && search && (
         <div className={styles.dropdown}>
-          <div className={styles.empty}>No matching clients</div>
+          <div className={styles.empty}>{t('clients:picker.noMatch')}</div>
         </div>
       )}
     </div>

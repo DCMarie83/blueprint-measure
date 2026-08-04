@@ -1,8 +1,10 @@
+import { useTranslation } from 'react-i18next'
 import styles from './PayTable.module.css'
 
 const fmtUSD = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
 
 export default function PayTable({ rows, className, onDownloadStatement, downloadingId }) {
+  const { t } = useTranslation()
   const totalHours = rows.reduce((s, r) => s + r.hours, 0)
   const totalPay = rows.reduce((s, r) => s + r.pay, 0)
 
@@ -16,10 +18,10 @@ export default function PayTable({ rows, className, onDownloadStatement, downloa
       <table className={styles.table}>
         <thead>
           <tr>
-            <th className={styles.th}>Worker</th>
-            <th className={styles.th} style={{ textAlign: 'right' }}>Hours</th>
-            <th className={styles.th} style={{ textAlign: 'right' }}>Avg Rate ($/hr)</th>
-            <th className={styles.th} style={{ textAlign: 'right' }}>Pay</th>
+            <th className={styles.th}>{t('misc:payTable.worker')}</th>
+            <th className={styles.th} style={{ textAlign: 'right' }}>{t('misc:payTable.hours')}</th>
+            <th className={styles.th} style={{ textAlign: 'right' }}>{t('misc:payTable.avgRate')}</th>
+            <th className={styles.th} style={{ textAlign: 'right' }}>{t('misc:payTable.pay')}</th>
             {showActions && <th className={styles.th} style={{ textAlign: 'right', width: 90 }}></th>}
           </tr>
         </thead>
@@ -30,13 +32,13 @@ export default function PayTable({ rows, className, onDownloadStatement, downloa
               <td className={styles.td} style={{ textAlign: 'right' }}>{r.hours.toFixed(2)}</td>
               <td className={styles.td} style={{ textAlign: 'right' }}>
                 {r.rate > 0 ? fmtUSD.format(r.rate) : (
-                  <span className={styles.noRate}>$0.00 <small>no rate set</small></span>
+                  <span className={styles.noRate}>$0.00 <small>{t('misc:payTable.noRateSet')}</small></span>
                 )}
               </td>
               <td className={styles.td} style={{ textAlign: 'right', fontWeight: 600 }}>
                 {fmtUSD.format(r.pay)}
                 {r.hasMissingRate && (
-                  <span title="Some entries are missing a cost rate. Pay may be understated." style={{ marginLeft: 4, color: 'var(--color-warning, #f59e0b)' }}>⚠︎</span>
+                  <span title={t('misc:payTable.missingRateTooltip')} style={{ marginLeft: 4, color: 'var(--color-warning, #f59e0b)' }}>⚠︎</span>
                 )}
               </td>
               {showActions && (
@@ -53,7 +55,7 @@ export default function PayTable({ rows, className, onDownloadStatement, downloa
                       whiteSpace: 'nowrap',
                     }}
                   >
-                    {downloadingId === r.crewMemberId ? 'Generating...' : 'Statement'}
+                    {downloadingId === r.crewMemberId ? t('misc:payTable.generating') : t('misc:payTable.statement')}
                   </button>
                 </td>
               )}
@@ -62,7 +64,7 @@ export default function PayTable({ rows, className, onDownloadStatement, downloa
         </tbody>
         <tfoot>
           <tr className={styles.totalsRow}>
-            <td className={styles.td} style={{ fontWeight: 700 }}>Total</td>
+            <td className={styles.td} style={{ fontWeight: 700 }}>{t('misc:payTable.total')}</td>
             <td className={styles.td} style={{ textAlign: 'right', fontWeight: 700 }}>{totalHours.toFixed(2)}</td>
             <td className={styles.td}></td>
             <td className={styles.td} style={{ textAlign: 'right', fontWeight: 700 }}>{fmtUSD.format(totalPay)}</td>
@@ -72,7 +74,7 @@ export default function PayTable({ rows, className, onDownloadStatement, downloa
       </table>
       {anyMissingRate && (
         <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: '8px 0 0' }}>
-          Workers marked with a warning have entries missing a cost rate.
+          {t('misc:payTable.missingRateNote')}
         </p>
       )}
     </div>

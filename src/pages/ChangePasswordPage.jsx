@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { BRAND } from '../lib/config'
@@ -7,6 +8,7 @@ import LanguageToggle from '../components/LanguageToggle'
 import styles from './LoginPage.module.css'
 
 export default function ChangePasswordPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [newPassword,     setNewPassword]     = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -15,8 +17,8 @@ export default function ChangePasswordPage() {
     return params.get('error') || ''
   })
   const [loading,         setLoading]         = useState(false)
-  const [headingText, setHeadingText] = useState('Change your password')
-  const [helperText, setHelperText] = useState('Your account requires a new password before you can continue. Choose something only you know.')
+  const [headingText, setHeadingText] = useState(t('auth:changePassword.title'))
+  const [helperText, setHelperText] = useState(t('auth:changePassword.helper'))
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -28,8 +30,8 @@ export default function ChangePasswordPage() {
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user && !user.user_metadata?.force_password_change) {
-        setHeadingText('Reset your password')
-        setHelperText('Enter a new password for your account.')
+        setHeadingText(t('auth:changePassword.resetTitle'))
+        setHelperText(t('auth:changePassword.resetHelper'))
       }
     })
   }, [])
@@ -39,11 +41,11 @@ export default function ChangePasswordPage() {
     setError('')
 
     if (newPassword.length < 6) {
-      setError('Password must be at least 6 characters.')
+      setError(t('auth:changePassword.errShort'))
       return
     }
     if (newPassword !== confirmPassword) {
-      setError('Passwords do not match.')
+      setError(t('auth:changePassword.errMismatch'))
       return
     }
 
@@ -86,24 +88,24 @@ export default function ChangePasswordPage() {
 
         <form className={styles.form} onSubmit={handleSubmit}>
           <div className={styles.field}>
-            <label>New Password</label>
+            <label>{t('auth:changePassword.newPasswordLabel')}</label>
             <input
               type="password"
               value={newPassword}
               onChange={e => setNewPassword(e.target.value)}
-              placeholder="At least 6 characters"
+              placeholder={t('auth:changePassword.newPasswordPlaceholder')}
               required
               autoFocus
             />
           </div>
 
           <div className={styles.field}>
-            <label>Confirm Password</label>
+            <label>{t('auth:changePassword.confirmLabel')}</label>
             <input
               type="password"
               value={confirmPassword}
               onChange={e => setConfirmPassword(e.target.value)}
-              placeholder="Repeat new password"
+              placeholder={t('auth:changePassword.confirmPlaceholder')}
               required
             />
           </div>
@@ -129,7 +131,7 @@ export default function ChangePasswordPage() {
               opacity: loading ? 0.7 : 1,
             }}
           >
-            {loading ? 'Saving…' : 'Set New Password'}
+            {loading ? t('auth:changePassword.saving') : t('auth:changePassword.submit')}
           </button>
         </form>
       </div>

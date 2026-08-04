@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ChevronLeft, Plus, Trash2, Library } from 'lucide-react'
 import Modal from '../../components/ui/Modal'
 import WorkItemLibraryPicker from './WorkItemLibraryPicker'
@@ -10,6 +11,7 @@ import { LITE_UNITS, unitLabel } from '../../lib/lite'
 import styles from './lite.module.css'
 
 function AddCustomItemModal({ onSave, onClose }) {
+  const { t } = useTranslation()
   const [name, setName] = useState('')
   const [unit, setUnit] = useState('each')
   const [rate, setRate] = useState('')
@@ -19,7 +21,7 @@ function AddCustomItemModal({ onSave, onClose }) {
 
   async function submit(e) {
     e.preventDefault()
-    if (!name.trim()) { setError('Name is required.'); return }
+    if (!name.trim()) { setError(t('lite:catalog.nameRequired')); return }
     setSaving(true)
     setError('')
     try {
@@ -39,32 +41,32 @@ function AddCustomItemModal({ onSave, onClose }) {
   }
 
   return (
-    <Modal title="Add custom item" onClose={onClose}>
+    <Modal title={t('lite:catalog.addCustomItem')} onClose={onClose}>
       <form onSubmit={submit}>
         {error && <div className={styles.error}>{error}</div>}
         <div className={styles.field} style={{ marginBottom: 10 }}>
-          <span className={styles.fieldLabel}>Name</span>
-          <input className={styles.input} value={name} onChange={e => setName(e.target.value)} placeholder="Hang & finish drywall" autoFocus />
+          <span className={styles.fieldLabel}>{t('lite:catalog.name')}</span>
+          <input className={styles.input} value={name} onChange={e => setName(e.target.value)} placeholder={t('lite:catalog.namePh')} autoFocus />
         </div>
         <div className={styles.fieldRow}>
           <div className={styles.field}>
-            <span className={styles.fieldLabel}>Unit</span>
+            <span className={styles.fieldLabel}>{t('lite:catalog.unit')}</span>
             <select className={styles.select} value={unit} onChange={e => setUnit(e.target.value)}>
               {LITE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}
             </select>
           </div>
           <div className={styles.field}>
-            <span className={styles.fieldLabel}>Your rate ($)</span>
+            <span className={styles.fieldLabel}>{t('lite:catalog.yourRate')}</span>
             <input className={styles.input} type="number" step="0.01" min="0" value={rate} onChange={e => setRate(e.target.value)} placeholder="0.00" />
           </div>
         </div>
         <div className={styles.field} style={{ marginBottom: 14 }}>
-          <span className={styles.fieldLabel}>Category</span>
-          <input className={styles.input} value={category} onChange={e => setCategory(e.target.value)} placeholder="e.g. Drywall" />
+          <span className={styles.fieldLabel}>{t('lite:catalog.category')}</span>
+          <input className={styles.input} value={category} onChange={e => setCategory(e.target.value)} placeholder={t('lite:catalog.categoryPh')} />
         </div>
         <div className={styles.rowBetween}>
-          <button type="button" className={styles.secondaryBtn} onClick={onClose}>Cancel</button>
-          <button type="submit" className={styles.primaryBtn} disabled={saving}>{saving ? 'Adding…' : 'Add item'}</button>
+          <button type="button" className={styles.secondaryBtn} onClick={onClose}>{t('common:action.cancel')}</button>
+          <button type="submit" className={styles.primaryBtn} disabled={saving}>{saving ? t('lite:catalog.adding') : t('lite:catalog.addItem')}</button>
         </div>
       </form>
     </Modal>
@@ -74,6 +76,7 @@ function AddCustomItemModal({ onSave, onClose }) {
 export default function GCCatalogPage() {
   const { clientId } = useParams()
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { client } = useClient(clientId)
   const { company } = useEffectiveCompany()
   const { items, loading, createItem, createManyItems, updateItem, deleteItem } = useWorkItems(clientId)
@@ -84,7 +87,7 @@ export default function GCCatalogPage() {
   const grouped = useMemo(() => {
     const map = {}
     for (const item of items) {
-      const cat = item.category || 'Uncategorized'
+      const cat = item.category || t('lite:catalog.uncategorized')
       if (!map[cat]) map[cat] = []
       map[cat].push(item)
     }
@@ -98,7 +101,7 @@ export default function GCCatalogPage() {
     if (draft === undefined) return
     const parsed = draft === '' ? null : parseFloat(draft)
     setRateDrafts(prev => { const n = { ...prev }; delete n[item.id]; return n })
-    if (parsed !== item.rate) updateItem(item.id, { rate: parsed }).catch(err => alert('Failed to update rate: ' + err.message))
+    if (parsed !== item.rate) updateItem(item.id, { rate: parsed }).catch(err => alert(t('lite:catalog.updateRateFailed', { message: err.message })))
   }
 
   async function handleLibraryConfirm(rows) {
@@ -111,33 +114,33 @@ export default function GCCatalogPage() {
     setShowCustom(false)
   }
 
-  const gcName = client?.business_name || client?.display_name || 'GC'
+  const gcName = client?.business_name || client?.display_name || t('lite:catalog.gc')
 
   return (
     <div className={styles.page}>
       
       <main className={styles.main}>
-        <button className={styles.backLink} onClick={() => navigate('/gcs')}><ChevronLeft size={15} /> GCs</button>
+        <button className={styles.backLink} onClick={() => navigate('/gcs')}><ChevronLeft size={15} /> {t('lite:catalog.gcs')}</button>
 
         <div className={styles.header}>
           <div>
             <h1 className={styles.title}>{gcName}</h1>
-            <p className={styles.subtitle}>Catalog &amp; your rates</p>
+            <p className={styles.subtitle}>{t('lite:catalog.subtitle')}</p>
           </div>
         </div>
 
         <div className={styles.fieldRow} style={{ marginBottom: 14 }}>
-          <button className={styles.primaryBtn} onClick={() => setShowLibrary(true)}><Library size={16} /> Add from library</button>
-          <button className={styles.secondaryBtn} onClick={() => setShowCustom(true)}><Plus size={16} /> Add custom item</button>
+          <button className={styles.primaryBtn} onClick={() => setShowLibrary(true)}><Library size={16} /> {t('lite:catalog.addFromLibrary')}</button>
+          <button className={styles.secondaryBtn} onClick={() => setShowCustom(true)}><Plus size={16} /> {t('lite:catalog.addCustomItem')}</button>
         </div>
 
         {loading ? (
-          <div className={styles.loading}>Loading catalog…</div>
+          <div className={styles.loading}>{t('lite:catalog.loading')}</div>
         ) : items.length === 0 ? (
           <div className={styles.empty}>
             <Library size={40} />
-            <div className={styles.emptyTitle}>No catalog items yet</div>
-            <p>Add items from the library or create your own to start logging work for this GC.</p>
+            <div className={styles.emptyTitle}>{t('lite:catalog.emptyTitle')}</div>
+            <p>{t('lite:catalog.emptyHelp')}</p>
           </div>
         ) : (
           grouped.map(([cat, catItems]) => (
@@ -156,16 +159,16 @@ export default function GCCatalogPage() {
                         className={styles.input}
                         style={{ width: 84 }}
                         type="number" step="0.01" min="0"
-                        aria-label="Your rate"
+                        aria-label={t('lite:catalog.yourRateAria')}
                         value={rateDrafts[item.id] ?? (item.rate ?? '')}
                         onChange={e => setRateDrafts(prev => ({ ...prev, [item.id]: e.target.value }))}
                         onBlur={() => commitRate(item)}
                       />
                     </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 4 }} title="Active">
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 4 }} title={t('lite:catalog.active')}>
                       <input type="checkbox" checked={!!item.is_active} onChange={e => updateItem(item.id, { is_active: e.target.checked })} />
                     </label>
-                    <button className={styles.iconBtn} aria-label="Delete item" onClick={() => { if (window.confirm(`Delete "${item.name}"?`)) deleteItem(item.id) }}>
+                    <button className={styles.iconBtn} aria-label={t('lite:catalog.deleteItem')} onClick={() => { if (window.confirm(t('lite:catalog.deleteItemConfirm', { name: item.name }))) deleteItem(item.id) }}>
                       <Trash2 size={16} />
                     </button>
                   </div>

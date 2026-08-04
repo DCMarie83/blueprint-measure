@@ -1,13 +1,7 @@
 import { useRef, useEffect, useCallback, useState, forwardRef, useImperativeHandle } from 'react'
+import { useTranslation } from 'react-i18next'
 import { formatLF } from '../../utils/fractions'
 import styles from './BlueprintCanvas.module.css'
-
-// Human-readable ceiling type names shown in the canvas label
-const CEILING_TYPE_LABELS = {
-  vaulted: 'Vaulted',
-  tray: 'Tray',
-  shed: 'Shed',
-}
 
 // Color palette for zones — cycles through these
 const ZONE_COLORS = [
@@ -36,6 +30,7 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
   onLabelOffsetChange,
   orthoMode = false,
 }, ref) {
+  const { t } = useTranslation()
   const canvasRef = useRef(null)
   const imageRef = useRef(null)
   const transformRef = useRef({ scale: 1, offsetX: 0, offsetY: 0 })
@@ -461,18 +456,22 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
 
       const labelParts = [name]
       if (description) labelParts.push(description)
-      const surfaceLabel = (surfaceType === 'Ceiling' && ceilingType && CEILING_TYPE_LABELS[ceilingType])
-        ? `${surfaceType} · ${CEILING_TYPE_LABELS[ceilingType]}`
-        : surfaceType || null
+      const hasCeilingLabel = surfaceType === 'Ceiling' &&
+        (ceilingType === 'vaulted' || ceilingType === 'tray' || ceilingType === 'shed')
+      const surfaceLabel = surfaceType
+        ? (hasCeilingLabel
+            ? `${t('common:surfaceType.' + surfaceType)} · ${t('common:ceilingType.' + ceilingType)}`
+            : t('common:surfaceType.' + surfaceType))
+        : null
       const metaParts = [
         surfaceLabel,
       ].filter(Boolean)
       if (metaParts.length > 0) labelParts.push(metaParts.join(' · '))
       if (result != null) {
         if (type === 'SF') {
-          labelParts.push(`${parseFloat(result.toFixed(2))} SF`)
+          labelParts.push(`${parseFloat(result.toFixed(2))} ${t('common:units.sf')}`)
         } else if (type === 'count') {
-          labelParts.push(`${Math.round(result)} each`)
+          labelParts.push(t('blueprint:canvas.eachLabel', { count: Math.round(result) }))
         } else if (type === 'LF') {
           labelParts.push(formatLF(result))
         } else {
@@ -760,7 +759,7 @@ const BlueprintCanvas = forwardRef(function BlueprintCanvas({
       />
       {!imageUrl && (
         <div className={styles.placeholder}>
-          Upload a blueprint to begin
+          {t('blueprint:canvas.uploadToBegin')}
         </div>
       )}
     </div>

@@ -1,9 +1,11 @@
 import { PawPrint } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import './smartbid.css'
 
 // The RivetDog Smart Bid identity pill. size 'sm' renders a compact "Smart"
 // variant for dense rows (list tags); default renders full "SMART BID".
 export default function SmartBadge({ size }) {
+  const { t } = useTranslation()
   const compact = size === 'sm'
   return (
     <span
@@ -26,7 +28,7 @@ export default function SmartBadge({ size }) {
     >
       <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#F27243', display: 'inline-block' }} />
       <PawPrint size={12} />
-      {compact ? 'Smart' : 'Smart Bid'}
+      {compact ? t('smartbid:badge.smartCompact') : t('smartbid:badge.smart')}
     </span>
   )
 }

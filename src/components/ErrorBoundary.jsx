@@ -1,4 +1,5 @@
 import { Component } from 'react';
+import i18n from '../lib/i18n';
 import { logError } from '../lib/logError';
 import { SUPPORT } from '../lib/config';
 
@@ -40,13 +41,13 @@ export default class ErrorBoundary extends Component {
             maxWidth: 480,
             textAlign: 'center',
           }}>
-            <h1 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Something went wrong</h1>
+            <h1 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>{i18n.t('misc:errorBoundary.title')}</h1>
             <p style={{ color: 'var(--color-text-muted, #999)', fontSize: 14, marginBottom: '1.5rem' }}>
-              We've been notified and are looking into it. Please try again, or contact{' '}
+              {i18n.t('misc:errorBoundary.bodyBefore')}{' '}
               <a href={"mailto:" + SUPPORT.email} style={{ color: 'var(--color-primary, #2e8bff)' }}>
                 {SUPPORT.email}
               </a>{' '}
-              if it persists.
+              {i18n.t('misc:errorBoundary.bodyAfter')}
             </p>
             <button
               onClick={this.handleReset}
@@ -61,7 +62,7 @@ export default class ErrorBoundary extends Component {
                 cursor: 'pointer',
               }}
             >
-              Reload page
+              {i18n.t('misc:errorBoundary.reload')}
             </button>
           </div>
         </div>

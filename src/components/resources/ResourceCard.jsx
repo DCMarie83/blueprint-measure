@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
 
 function initials(name) {
@@ -17,6 +18,7 @@ const UploadIcon = () => (
 )
 
 export default function ResourceCard({ resource, category, isSuperAdmin, onLogoUploaded }) {
+  const { t } = useTranslation()
   const [hover, setHover] = useState(false)
   const [uploading, setUploading] = useState(false)
   const fileRef = useRef(null)
@@ -49,9 +51,9 @@ export default function ResourceCard({ resource, category, isSuperAdmin, onLogoU
   }
 
   const ctaParts = []
-  if (resource.website_url) ctaParts.push({ label: 'Visit website', href: resource.website_url, external: true })
-  if (resource.phone) ctaParts.push({ label: 'Call', href: `tel:${resource.phone}` })
-  if (resource.email) ctaParts.push({ label: 'Email', href: `mailto:${resource.email}` })
+  if (resource.website_url) ctaParts.push({ label: t('resources:card.visitWebsite'), href: resource.website_url, external: true })
+  if (resource.phone) ctaParts.push({ label: t('resources:card.call'), href: `tel:${resource.phone}` })
+  if (resource.email) ctaParts.push({ label: t('resources:card.email'), href: `mailto:${resource.email}` })
 
   return (
     <div
@@ -91,7 +93,7 @@ export default function ResourceCard({ resource, category, isSuperAdmin, onLogoU
                 cursor: uploading ? 'default' : 'pointer',
                 opacity: uploading ? 0.6 : 1, fontSize: 14, color: 'var(--color-text-muted)',
               }}
-              title="Upload logo"
+              title={t('resources:card.uploadLogo')}
             >
               <UploadIcon />
             </button>
@@ -153,7 +155,7 @@ export default function ResourceCard({ resource, category, isSuperAdmin, onLogoU
         {/* Service area */}
         {resource.service_area_text && (
           <div style={{ fontSize: 11, color: 'var(--color-text-muted)', fontStyle: 'italic', marginTop: 2 }}>
-            Serves {resource.service_area_text}
+            {t('resources:card.serves', { area: resource.service_area_text })}
           </div>
         )}
       </div>
@@ -166,7 +168,7 @@ export default function ResourceCard({ resource, category, isSuperAdmin, onLogoU
           background: '#f27243', color: '#fff',
           fontSize: 11, fontWeight: 600,
         }}>
-          ★ Featured
+          {t('resources:card.featured')}
         </span>
       )}
     </div>

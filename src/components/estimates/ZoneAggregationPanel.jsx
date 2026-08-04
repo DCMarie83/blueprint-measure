@@ -1,20 +1,22 @@
 import { RefreshCw, Plus, MapPin } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import styles from './ZoneAggregationPanel.module.css'
 
-const TYPE_LABELS = { SF: 'SF', LF: 'LF', count: 'Count' }
-const UNIT_LABELS = { SF: 'SF', LF: 'LF', count: 'units' }
+const TYPE_KEYS = { SF: 'common:units.sf', LF: 'common:units.lf', count: 'estimates:zones.typeCount' }
+const UNIT_KEYS = { SF: 'common:units.sf', LF: 'common:units.lf', count: 'common:units.count' }
 
 export default function ZoneAggregationPanel({ zones, onAddZone, onRefresh, readOnly }) {
+  const { t } = useTranslation()
   if (zones.length === 0) {
     return (
       <div className={styles.panel}>
         <div className={styles.panelHeader}>
           <h3 className={styles.panelTitle}>
-            <MapPin size={16} /> Zones
+            <MapPin size={16} /> {t('estimates:zones.title')}
           </h3>
         </div>
         <div className={styles.emptyState}>
-          No measured zones yet. Add zones to your blueprints.
+          {t('estimates:zones.empty')}
         </div>
       </div>
     )
@@ -24,11 +26,11 @@ export default function ZoneAggregationPanel({ zones, onAddZone, onRefresh, read
     <div className={styles.panel}>
       <div className={styles.panelHeader}>
         <h3 className={styles.panelTitle}>
-          <MapPin size={16} /> Zones ({zones.length})
+          <MapPin size={16} /> {t('estimates:zones.titleCount', { count: zones.length })}
         </h3>
         {!readOnly && onRefresh && (
-          <button className={styles.refreshBtn} onClick={onRefresh} title="Refresh from blueprints">
-            <RefreshCw size={13} /> Refresh
+          <button className={styles.refreshBtn} onClick={onRefresh} title={t('estimates:zones.refreshTitle')}>
+            <RefreshCw size={13} /> {t('estimates:zones.refresh')}
           </button>
         )}
       </div>
@@ -37,21 +39,21 @@ export default function ZoneAggregationPanel({ zones, onAddZone, onRefresh, read
           <div key={zone.key} className={styles.zoneRow}>
             <div className={styles.zoneTop}>
               <span className={styles.zoneName}>{zone.display_name}</span>
-              <span className={styles.typeBadge}>{TYPE_LABELS[zone.measurement_type] || zone.measurement_type}</span>
+              <span className={styles.typeBadge}>{TYPE_KEYS[zone.measurement_type] ? t(TYPE_KEYS[zone.measurement_type]) : zone.measurement_type}</span>
             </div>
             <div className={styles.zoneResult}>
               {zone.total_result.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-              <span className={styles.zoneUnit}> {UNIT_LABELS[zone.measurement_type] || zone.measurement_type}</span>
+              <span className={styles.zoneUnit}> {UNIT_KEYS[zone.measurement_type] ? t(UNIT_KEYS[zone.measurement_type]) : zone.measurement_type}</span>
             </div>
             <div className={styles.zoneSub}>
-              from {zone.source_session_ids.length} blueprint{zone.source_session_ids.length !== 1 ? 's' : ''}
+              {t('estimates:zones.fromBlueprints', { count: zone.source_session_ids.length })}
             </div>
             {!readOnly && (
               <button
                 className={styles.addBtn}
                 onClick={() => onAddZone(zone)}
               >
-                <Plus size={14} /> Add Line Item
+                <Plus size={14} /> {t('estimates:zones.addLineItem')}
               </button>
             )}
           </div>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { FileText, Mail, Phone, MessageSquare, Users, Send, CheckCircle, XCircle, Eye, Edit, Trash2, Plus, ArrowUpRight } from 'lucide-react'
 import { useClientActivity } from '../../hooks/useClientActivity'
@@ -8,24 +9,25 @@ import { activityLink } from '../../lib/clientsView'
 import styles from './ClientActivitySection.module.css'
 
 const TYPE_CONFIG = {
-  note:              { icon: FileText,    label: 'Note' },
-  email:             { icon: Mail,        label: 'Email' },
-  call:              { icon: Phone,       label: 'Call' },
-  sms:               { icon: MessageSquare, label: 'SMS' },
-  meeting:           { icon: Users,       label: 'Meeting' },
-  estimate_sent:     { icon: Send,        label: 'Estimate sent' },
-  estimate_viewed:   { icon: Eye,         label: 'Estimate viewed by client' },
-  estimate_accepted: { icon: CheckCircle, label: 'Estimate accepted' },
-  estimate_declined: { icon: XCircle,     label: 'Estimate declined' },
-  invoice_created:   { icon: FileText,    label: 'Invoice created' },
-  invoice_sent:      { icon: Send,        label: 'Invoice sent' },
-  invoice_viewed:    { icon: Eye,         label: 'Invoice viewed by client' },
-  invoice_paid:      { icon: CheckCircle, label: 'Invoice paid' },
-  invoice_voided:    { icon: XCircle,     label: 'Invoice voided' },
-  portal_accessed:   { icon: Eye,         label: 'Portal accessed' },
+  note:              { icon: FileText,    label: 'common:manualType.note' },
+  email:             { icon: Mail,        label: 'common:manualType.email' },
+  call:              { icon: Phone,       label: 'common:manualType.call' },
+  sms:               { icon: MessageSquare, label: 'common:manualType.sms' },
+  meeting:           { icon: Users,       label: 'common:manualType.meeting' },
+  estimate_sent:     { icon: Send,        label: 'clients:activity.estimateSent' },
+  estimate_viewed:   { icon: Eye,         label: 'clients:activity.estimateViewed' },
+  estimate_accepted: { icon: CheckCircle, label: 'clients:activity.estimateAccepted' },
+  estimate_declined: { icon: XCircle,     label: 'clients:activity.estimateDeclined' },
+  invoice_created:   { icon: FileText,    label: 'clients:activity.invoiceCreated' },
+  invoice_sent:      { icon: Send,        label: 'clients:activity.invoiceSent' },
+  invoice_viewed:    { icon: Eye,         label: 'clients:activity.invoiceViewed' },
+  invoice_paid:      { icon: CheckCircle, label: 'clients:activity.invoicePaid' },
+  invoice_voided:    { icon: XCircle,     label: 'clients:activity.invoiceVoided' },
+  portal_accessed:   { icon: Eye,         label: 'clients:activity.portalAccessed' },
 }
 
 export default function ClientActivitySection({ clientId, onChange }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { activity, loading, addActivity, updateActivity, deleteActivity, hasMore, loadMore } = useClientActivity(clientId)
   const [modalActivity, setModalActivity] = useState(undefined) // undefined=closed, null=new, object=edit
@@ -42,33 +44,33 @@ export default function ClientActivitySection({ clientId, onChange }) {
   }
 
   async function handleDelete(item) {
-    if (!window.confirm('Delete this activity entry?')) return
+    if (!window.confirm(t('clients:activity.confirmDelete'))) return
     setDeleting(item.id)
     try {
       await deleteActivity(item.id)
       onChange?.()
     } catch (err) {
-      alert('Failed to delete: ' + err.message)
+      alert(t('clients:errors.deleteFailed', { error: err.message }))
     } finally {
       setDeleting(null)
     }
   }
 
-  if (loading) return <div className={styles.muted}>Loading activity…</div>
+  if (loading) return <div className={styles.muted}>{t('clients:activity.loading')}</div>
 
   return (
     <section className={styles.section}>
       <div className={styles.header}>
-        <h2 className={styles.title}>Activity</h2>
+        <h2 className={styles.title}>{t('clients:activity.title')}</h2>
         <button className={styles.addBtn} onClick={() => setModalActivity(null)}>
-          <Plus size={14} /> Log Activity
+          <Plus size={14} /> {t('clients:activity.logActivity')}
         </button>
       </div>
 
       {activity.length === 0 ? (
         <div className={styles.empty}>
           <FileText size={20} />
-          <span>Nothing in the activity log yet — log a call, note, or meeting to start the trail.</span>
+          <span>{t('clients:activity.empty')}</span>
         </div>
       ) : (
         <div className={styles.timeline}>
@@ -85,13 +87,13 @@ export default function ClientActivitySection({ clientId, onChange }) {
                 <div className={styles.entryBody}>
                   <div className={styles.entryTop}>
                     <div className={styles.entryHeader}>
-                      <span className={styles.entryLabel}>{cfg.label}</span>
+                      <span className={styles.entryLabel}>{t(cfg.label)}</span>
                       {item.title && <span className={styles.entryTitle}>{item.title}</span>}
                     </div>
                     {!isAuto && (
                       <div className={styles.entryActions}>
-                        <button className={styles.iconBtn} onClick={() => setModalActivity(item)} title="Edit"><Edit size={13} /></button>
-                        <button className={styles.iconBtn} onClick={() => handleDelete(item)} disabled={deleting === item.id} title="Delete"><Trash2 size={13} /></button>
+                        <button className={styles.iconBtn} onClick={() => setModalActivity(item)} title={t('common:action.edit')}><Edit size={13} /></button>
+                        <button className={styles.iconBtn} onClick={() => handleDelete(item)} disabled={deleting === item.id} title={t('common:action.delete')}><Trash2 size={13} /></button>
                       </div>
                     )}
                   </div>
@@ -102,12 +104,12 @@ export default function ClientActivitySection({ clientId, onChange }) {
                   )}
                   {isLong && (
                     <button className={styles.showMore} onClick={() => setExpanded(prev => ({ ...prev, [item.id]: !isExpanded }))}>
-                      {isExpanded ? 'Show less' : 'Show more'}
+                      {isExpanded ? t('clients:activity.showLess') : t('clients:activity.showMore')}
                     </button>
                   )}
                   <div className={styles.entryMeta}>
                     <span>{timeAgo(item.created_at)}</span>
-                    {isAuto && <span className={styles.autoBadge}>Auto</span>}
+                    {isAuto && <span className={styles.autoBadge}>{t('clients:activity.auto')}</span>}
                     {(() => {
                       const to = activityLink(item)
                       return to ? (
@@ -115,7 +117,7 @@ export default function ClientActivitySection({ clientId, onChange }) {
                           onClick={() => navigate(to)}
                           style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#F27243', fontSize: 12, fontWeight: 600 }}
                         >
-                          View <ArrowUpRight size={12} />
+                          {t('clients:activity.view')} <ArrowUpRight size={12} />
                         </button>
                       ) : null
                     })()}
@@ -128,7 +130,7 @@ export default function ClientActivitySection({ clientId, onChange }) {
       )}
 
       {hasMore && (
-        <button className={styles.loadMoreBtn} onClick={loadMore}>Load more</button>
+        <button className={styles.loadMoreBtn} onClick={loadMore}>{t('clients:activity.loadMore')}</button>
       )}
 
       {modalActivity !== undefined && (

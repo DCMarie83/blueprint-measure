@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Save, Trash2, Plus, Package, Download, Send, FileText, Check } from 'lucide-react'
 import BackLink from '../components/BackLink'
 import ZoneAggregationPanel from '../components/estimates/ZoneAggregationPanel'
@@ -67,14 +68,14 @@ function fmtMoney(val) {
   return `$${Number(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
-function timeAgo(dateStr) {
+function timeAgo(dateStr, t) {
   if (!dateStr) return ''
   const diff = Date.now() - new Date(dateStr).getTime()
   const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
+  if (mins < 1) return t('estimates:detail.justNow')
+  if (mins < 60) return t('estimates:detail.minutesAgo', { mins })
   const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
+  if (hrs < 24) return t('estimates:detail.hoursAgo', { hrs })
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
@@ -83,6 +84,7 @@ export default function EstimateDetailPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, userProfile, isSuperAdmin } = useAuth()
+  const { t } = useTranslation()
   const isAdmin = userProfile?.role === 'contractor_admin' || isSuperAdmin
 
   const builder = useEstimateBuilder(id)
@@ -149,7 +151,7 @@ export default function EstimateDetailPage() {
       const ord = await createOrder(estimate.project_id)
       navigate(`/materials/${ord.id}`, { state: { estimateId: estimate.id, returnTo: `/estimates/${estimate.id}` } })
     } catch (err) {
-      alert('Failed to start materials: ' + err.message)
+      alert(t('estimates:detail.materialsStartFailed', { message: err.message }))
     }
   }
 
@@ -257,7 +259,7 @@ export default function EstimateDetailPage() {
     return (
       <div className={styles.page}>
         
-        <main className={styles.main}><div className={styles.empty}>Loading...</div></main>
+        <main className={styles.main}><div className={styles.empty}>{t('estimates:detail.loading')}</div></main>
       </div>
     )
   }
@@ -267,7 +269,7 @@ export default function EstimateDetailPage() {
       <div className={styles.page}>
         
         <main className={styles.main}>
-          <div className={styles.empty}>{builder.error || 'Estimate not found'}</div>
+          <div className={styles.empty}>{builder.error || t('estimates:detail.notFound')}</div>
         </main>
       </div>
     )
@@ -300,7 +302,11 @@ export default function EstimateDetailPage() {
   const hasBenchLines = lineItems.some(li => li.benchmark_item_id)
   const sourceName = (() => { for (const v of benchmarkMap.values()) if (v?.source_name) return v.source_name; return null })()
   const regionForLoading = companyData?.state || 'US'
-  const VERDICT_LABEL = { within: 'Within market', below: 'Below market', above: 'Above market' }
+  const VERDICT_LABEL = {
+    within: t('estimates:detail.verdict.within'),
+    below: t('estimates:detail.verdict.below'),
+    above: t('estimates:detail.verdict.above'),
+  }
   const verdictWithin = bidPosition === 'within'
 
   const laborNum = laborAmount === '' || laborAmount == null ? null : Number(laborAmount)
@@ -310,11 +316,11 @@ export default function EstimateDetailPage() {
   const projectedMarginPct = projectedMargin != null && bidTotal > 0 ? (projectedMargin / bidTotal) * 100 : null
 
   const readiness = smart ? [
-    { label: 'Every line priced', done: lineItems.length > 0 && lineItems.every(li => Number(li.rate_good) > 0) },
-    { label: 'Deposit set', done: depositAmount !== '' && depositAmount != null && Number(depositAmount) > 0 },
-    { label: 'Terms present', done: (terms || '').trim() !== '' },
-    { label: 'Labor cost entered', done: laborAmount !== '' && laborAmount != null },
-    { label: 'Measurements & materials reviewed', done: !!estimate.smart_created },
+    { label: t('estimates:detail.readiness.everyLinePriced'), done: lineItems.length > 0 && lineItems.every(li => Number(li.rate_good) > 0) },
+    { label: t('estimates:detail.readiness.depositSet'), done: depositAmount !== '' && depositAmount != null && Number(depositAmount) > 0 },
+    { label: t('estimates:detail.readiness.termsPresent'), done: (terms || '').trim() !== '' },
+    { label: t('estimates:detail.readiness.laborEntered'), done: laborAmount !== '' && laborAmount != null },
+    { label: t('estimates:detail.readiness.measurementsReviewed'), done: !!estimate.smart_created },
   ] : []
   const readyCount = readiness.filter(r => r.done).length
 
@@ -356,7 +362,7 @@ export default function EstimateDetailPage() {
     setLastScenario(scenario)
     setPulseIds(new Set(repriced))
     setTimeout(() => setPulseIds(new Set()), 650)
-    setScenarioNotice(`${repriced.length} market lines repriced. Your call from here.`)
+    setScenarioNotice(t('estimates:detail.linesRepriced', { count: repriced.length }))
     setTimeout(() => setScenarioNotice(null), 3500)
     trackMaterials('smart_scenario_applied', { companyId: estimate.company_id, entityId: estimate.id, scenario, surface: 'estimates' })
   }
@@ -374,10 +380,10 @@ export default function EstimateDetailPage() {
       if (Object.keys(patch).length > 0) {
         await builder.updateEstimate(patch)
       }
-      setSaveMsg('Sit, stay, saved!')
+      setSaveMsg(t('estimates:detail.saveSuccess'))
       setTimeout(() => setSaveMsg(null), 2000)
     } catch (err) {
-      alert('Save failed: ' + err.message)
+      alert(t('estimates:detail.saveFailed', { message: err.message }))
     }
   }
 
@@ -438,17 +444,17 @@ export default function EstimateDetailPage() {
         }
       }
     } catch (err) {
-      alert('Failed to update status: ' + err.message)
+      alert(t('estimates:detail.statusUpdateFailed', { message: err.message }))
     }
   }
 
   async function handleDelete() {
-    if (!window.confirm('Delete this estimate? This cannot be undone.')) return
+    if (!window.confirm(t('estimates:detail.deleteConfirm'))) return
     try {
       await builder.deleteEstimate()
       navigate(`/project/${estimate.project_id}`)
     } catch (err) {
-      alert('Delete failed: ' + err.message)
+      alert(t('estimates:detail.deleteFailed', { message: err.message }))
     }
   }
 
@@ -495,7 +501,7 @@ export default function EstimateDetailPage() {
   }
 
   const canSend = isAdmin && (estimate.status === 'draft' || estimate.status === 'sent' || estimate.status === 'changes_requested')
-  const sendLabel = (estimate.status === 'sent' || estimate.status === 'changes_requested') ? 'Resend to Client' : 'Send to Client'
+  const sendLabel = (estimate.status === 'sent' || estimate.status === 'changes_requested') ? t('estimates:detail.resendToClient') : t('estimates:detail.sendToClient')
 
   return (
     <div className={styles.page}>
@@ -504,10 +510,10 @@ export default function EstimateDetailPage() {
         {showCreatedToast && (
           <div className="sb-fadein" style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 1000, display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)', border: '1px solid var(--color-border)', boxShadow: '0 6px 24px rgba(0,0,0,0.16)' }}>
             <SmartBadge />
-            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text, #1b2426)' }}>Smart Bid ready. Every number has a reason.</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text, #1b2426)' }}>{t('estimates:detail.smartBidReadyToast')}</span>
           </div>
         )}
-        <BackLink to={`/project/${estimate.project_id}`} label="Back to project" />
+        <BackLink to={`/project/${estimate.project_id}`} label={t('estimates:detail.backToProject')} />
 
         {/* Header: editable title + estimate number + status */}
         <div className={styles.headerRow}>
@@ -518,10 +524,10 @@ export default function EstimateDetailPage() {
                 value={title}
                 onChange={e => setTitleValue(e.target.value)}
                 onBlur={handleTitleBlur}
-                placeholder="Untitled Estimate"
+                placeholder={t('estimates:detail.untitledEstimate')}
               />
             ) : (
-              <h1 className={styles.title}>{title || 'Untitled Estimate'}</h1>
+              <h1 className={styles.title}>{title || t('estimates:detail.untitledEstimate')}</h1>
             )}
             <div className={styles.subline}>
               <span className={styles.estNumber}>{estimate.estimate_number}</span>
@@ -532,7 +538,7 @@ export default function EstimateDetailPage() {
                   onChange={e => handleStatusChange(e.target.value)}
                 >
                   {STATUS_OPTIONS.map(s => (
-                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ')}</option>
+                    <option key={s} value={s}>{t(`estimates:detail.status.${s}`)}</option>
                   ))}
                 </select>
               ) : (
@@ -541,7 +547,7 @@ export default function EstimateDetailPage() {
                 </span>
               )}
               {estimate.sent_at && (
-                <span className={styles.sentIndicator}>Sent {timeAgo(estimate.sent_at)}</span>
+                <span className={styles.sentIndicator}>{t('estimates:detail.sentAgo', { time: timeAgo(estimate.sent_at, t) })}</span>
               )}
               {smart && <SmartBadge />}
               {smart && hasBenchLines && (benchRegion || benchFallback) && (
@@ -557,13 +563,13 @@ export default function EstimateDetailPage() {
                 {benchLoading && !bandAny ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-muted)' }}>
                     <div className="spinner" style={{ width: 14, height: 14 }} />
-                    Sniffing out {regionForLoading} market rates...
+                    {t('estimates:detail.sniffingRates', { region: regionForLoading })}
                   </div>
                 ) : bandAny ? (
                   <>
                     <MarketBand low={bandLow} typical={bandTyp} high={bandHigh} value={animatedBidTotal} />
                     <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <span>Market range for this scope: {fmtMoney(bandLow)} to {fmtMoney(bandHigh)}. Your bid: {fmtMoney(animatedBidTotal)}.</span>
+                      <span>{t('estimates:detail.marketRangeBid', { low: fmtMoney(bandLow), high: fmtMoney(bandHigh), bid: fmtMoney(animatedBidTotal) })}</span>
                       <span style={{
                         padding: '2px 10px', borderRadius: 9999, fontSize: 11, fontWeight: 700,
                         background: verdictWithin ? 'rgba(38,70,76,0.12)' : 'rgba(242,114,67,0.14)',
@@ -571,7 +577,7 @@ export default function EstimateDetailPage() {
                       }}>{VERDICT_LABEL[bidPosition]}</span>
                     </div>
                     {sourceName && (
-                      <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 6 }}>Powered by {sourceName} market data</div>
+                      <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 6 }}>{t('estimates:detail.poweredByData', { source: sourceName })}</div>
                     )}
                   </>
                 ) : null}
@@ -581,15 +587,15 @@ export default function EstimateDetailPage() {
           {isAdmin && (
             <div className={styles.headerActions}>
               {saveMsg && <span className={styles.saveMsg}>{saveMsg}</span>}
-              <button className={styles.toolBtn} onClick={() => handleDownloadPDF(null)} title="Download PDF">
+              <button className={styles.toolBtn} onClick={() => handleDownloadPDF(null)} title={t('estimates:detail.downloadPdf')}>
                 <Download size={15} /> PDF
               </button>
               <button className={styles.saveBtn} onClick={handleSave} disabled={saving}>
-                <Save size={15} /> {saving ? 'Saving...' : 'Save'}
+                <Save size={15} /> {saving ? t('estimates:detail.saving') : t('common:action.save')}
               </button>
               {estimate?.status === 'accepted' && (
-                <button className={styles.toolBtn} onClick={() => navigate(`/invoices/new?from_estimate=${estimate.id}`)} title="Create invoice from this estimate">
-                  <FileText size={15} /> Create Invoice
+                <button className={styles.toolBtn} onClick={() => navigate(`/invoices/new?from_estimate=${estimate.id}`)} title={t('estimates:detail.createInvoiceTitle')}>
+                  <FileText size={15} /> {t('estimates:detail.createInvoice')}
                 </button>
               )}
             </div>
@@ -610,7 +616,7 @@ export default function EstimateDetailPage() {
             {isAdmin && (
               <div className={styles.toolbar}>
                 <button className={styles.toolBtn} onClick={() => setShowPicker(true)}>
-                  <Package size={14} /> Add from Pricing Library
+                  <Package size={14} /> {t('estimates:detail.addFromLibrary')}
                 </button>
                 <button className={styles.toolBtn} onClick={() => builder.addLineItem({
                   description: '',
@@ -621,7 +627,7 @@ export default function EstimateDetailPage() {
                   rate_better: 0,
                   rate_best: 0,
                 })}>
-                  <Plus size={14} /> Add Blank Line
+                  <Plus size={14} /> {t('estimates:detail.addBlankLine')}
                 </button>
               </div>
             )}
@@ -629,8 +635,8 @@ export default function EstimateDetailPage() {
             {smart && isAdmin && (
               <div style={{ marginBottom: 12, padding: '10px 12px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)' }}>Price scope:</span>
-                  {[['aggressive', 'Aggressive'], ['market', 'Market'], ['premium', 'Premium']].map(([key, label]) => {
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('estimates:detail.priceScope')}</span>
+                  {[['aggressive', t('estimates:detail.scenario.aggressive')], ['market', t('estimates:detail.scenario.market')], ['premium', t('estimates:detail.scenario.premium')]].map(([key, label]) => {
                     const active = lastScenario === key
                     return (
                       <button key={key} onClick={() => applyScenario(key)} style={{
@@ -642,16 +648,16 @@ export default function EstimateDetailPage() {
                     )
                   })}
                   <span style={{ width: 1, height: 20, background: 'var(--color-border)' }} />
-                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Custom ×</span>
+                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{t('estimates:detail.customMultiplier')}</span>
                   <input type="number" step="0.01" min="0" value={customMult} onChange={e => setCustomMult(e.target.value)}
                     style={{ width: 70, padding: '5px 8px', fontSize: 13, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', background: 'var(--color-bg, #fff)', color: 'var(--color-text, #1b2426)' }} />
                   <button onClick={() => applyScenario('custom')} style={{
                     padding: '5px 12px', borderRadius: 'var(--radius-md)', fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none',
                     background: lastScenario === 'custom' ? '#F27243' : 'var(--color-primary)', color: '#fff',
-                  }}>Apply</button>
+                  }}>{t('estimates:detail.apply')}</button>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--color-text-muted)' }}>
                     <input type="checkbox" checked={includeLibraryInCustom} onChange={e => setIncludeLibraryInCustom(e.target.checked)} />
-                    Include library-priced lines
+                    {t('estimates:detail.includeLibraryLines')}
                   </label>
                 </div>
                 {scenarioNotice && (
@@ -662,14 +668,14 @@ export default function EstimateDetailPage() {
 
             {estimate.status === 'changes_requested' && (
               <div style={{ background: 'rgba(242,114,67,0.14)', borderLeft: '3px solid #F27243', borderRadius: 'var(--radius-md)', padding: '12px 16px', marginBottom: 16 }}>
-                <div style={{ fontWeight: 700, color: 'var(--color-text, #1b2426)', marginBottom: 4 }}>Client requested changes</div>
+                <div style={{ fontWeight: 700, color: 'var(--color-text, #1b2426)', marginBottom: 4 }}>{t('estimates:detail.changesRequestedTitle')}</div>
                 {estimate.change_request_comment && (
                   <div style={{ fontSize: 14, color: 'var(--color-text, #1b2426)', lineHeight: 1.5, marginBottom: 6 }}>{estimate.change_request_comment}</div>
                 )}
                 {estimate.changes_requested_at && (
-                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 4 }}>{timeAgo(estimate.changes_requested_at)}</div>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 4 }}>{timeAgo(estimate.changes_requested_at, t)}</div>
                 )}
-                <div style={{ fontSize: 13, color: 'var(--color-text, #1b2426)' }}>Revise the estimate and resend.</div>
+                <div style={{ fontSize: 13, color: 'var(--color-text, #1b2426)' }}>{t('estimates:detail.reviseAndResend')}</div>
               </div>
             )}
 
@@ -685,7 +691,7 @@ export default function EstimateDetailPage() {
 
             <div className={styles.totalsCard}>
               <div className={`${styles.totalRow} ${styles.totalRowBest}`}>
-                <span>Estimate Total</span>
+                <span>{t('estimates:detail.estimateTotal')}</span>
                 <span className={styles.totalValue}>
                   {fmtMoney(estimate ? getDisplayTotal(estimate) : total)}
                 </span>
@@ -696,31 +702,31 @@ export default function EstimateDetailPage() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12, marginTop: 12 }}>
                 {/* Margin panel */}
                 <div style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)', padding: 14 }}>
-                  <div style={{ fontWeight: 700, marginBottom: 10 }}>Margin</div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13 }}><span>Bid total</span><strong>{fmtMoney(animatedBidTotal)}</strong></div>
+                  <div style={{ fontWeight: 700, marginBottom: 10 }}>{t('estimates:detail.margin')}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13 }}><span>{t('estimates:detail.bidTotal')}</span><strong>{fmtMoney(animatedBidTotal)}</strong></div>
                   {materials.linked ? (
                     <>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13 }}><span>Materials cost</span><span>{fmtMoney(materialsCost)}</span></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13 }}><span>{t('estimates:detail.materialsCost')}</span><span>{fmtMoney(materialsCost)}</span></div>
                       {materials.orderId && (
                         <button onClick={() => navigate(`/materials/${materials.orderId}`)} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--color-primary, #26464c)', fontSize: 12, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline', marginBottom: 6 }}>
-                          Review materials
+                          {t('estimates:detail.reviewMaterials')}
                         </button>
                       )}
                     </>
                   ) : (
                     <div style={{ marginBottom: 8 }}>
-                      <div style={{ fontSize: 13, color: 'var(--color-text, #1b2426)', marginBottom: 6 }}>Add materials to this estimate?</div>
+                      <div style={{ fontSize: 13, color: 'var(--color-text, #1b2426)', marginBottom: 6 }}>{t('estimates:detail.addMaterialsPrompt')}</div>
                       {isAdmin && (
                         <button onClick={handleAddMaterials} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 'var(--radius-md)', border: 'none', background: '#F27243', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                          Add materials
+                          {t('estimates:detail.addMaterials')}
                         </button>
                       )}
                     </div>
                   )}
                   {isAdmin && (
                     <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6, fontSize: 13 }}>
-                      <span>Your estimated labor cost</span>
-                      <input type="number" step="0.01" min="0" placeholder="optional"
+                      <span>{t('estimates:detail.estimatedLaborCost')}</span>
+                      <input type="number" step="0.01" min="0" placeholder={t('estimates:detail.optional')}
                         value={laborAmount === 0 || laborAmount == null ? '' : laborAmount}
                         onChange={e => setLaborValue(e.target.value)}
                         onBlur={handleLaborBlur}
@@ -729,11 +735,11 @@ export default function EstimateDetailPage() {
                   )}
                   {laborNum == null ? (
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, paddingTop: 6, borderTop: '1px solid var(--color-border)' }}>
-                      <span>Gross after materials</span><strong>{fmtMoney(grossAfterMaterials)}</strong>
+                      <span>{t('estimates:detail.grossAfterMaterials')}</span><strong>{fmtMoney(grossAfterMaterials)}</strong>
                     </div>
                   ) : (
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, paddingTop: 6, borderTop: '1px solid var(--color-border)' }}>
-                      <span>Projected margin</span>
+                      <span>{t('estimates:detail.projectedMargin')}</span>
                       <strong>{fmtMoney(projectedMargin)}{projectedMarginPct != null ? ` (${projectedMarginPct.toFixed(1)}%)` : ''}</strong>
                     </div>
                   )}
@@ -741,7 +747,7 @@ export default function EstimateDetailPage() {
 
                 {/* Readiness checklist */}
                 <div style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)', padding: 14 }}>
-                  <div style={{ fontWeight: 700, marginBottom: 8 }}>Bid readiness <span style={{ fontWeight: 500, color: 'var(--color-text-muted)', fontSize: 13 }}>({readyCount} of {readiness.length} complete)</span></div>
+                  <div style={{ fontWeight: 700, marginBottom: 8 }}>{t('estimates:detail.bidReadiness')} <span style={{ fontWeight: 500, color: 'var(--color-text-muted)', fontSize: 13 }}>{t('estimates:detail.readinessComplete', { ready: readyCount, total: readiness.length })}</span></div>
                   <div style={{ height: 8, borderRadius: 9999, background: 'var(--color-border, #d4d4d4)', overflow: 'hidden', marginBottom: 12 }}>
                     <div className="sb-progress-fill" style={{ height: '100%', width: `${readiness.length ? (readyCount / readiness.length) * 100 : 0}%`, background: 'var(--color-primary, #26464C)', borderRadius: 9999 }} />
                   </div>
@@ -763,13 +769,13 @@ export default function EstimateDetailPage() {
             )}
 
             <div className={styles.editSection}>
-              <label className={styles.editLabel}>Notes</label>
+              <label className={styles.editLabel}>{t('estimates:detail.notes')}</label>
               <textarea
                 className={styles.editTextarea}
                 value={notes}
                 onChange={e => setNotesValue(e.target.value)}
                 onBlur={handleNotesBlur}
-                placeholder="Project scope, what's included or excluded, special instructions..."
+                placeholder={t('estimates:detail.notesPlaceholder')}
                 readOnly={!isAdmin}
                 rows={4}
               />
@@ -777,7 +783,7 @@ export default function EstimateDetailPage() {
 
             {isAdmin && (
               <div className={styles.editSection}>
-                <label className={styles.editLabel}>Deposit Required</label>
+                <label className={styles.editLabel}>{t('estimates:detail.depositRequired')}</label>
                 <div className={styles.depositRow}>
                   <div className={styles.depositInputWrap}>
                     <span className={styles.depositDollar}>$</span>
@@ -796,7 +802,7 @@ export default function EstimateDetailPage() {
                     <span className={styles.depositPercent}>
                       {depositPercent}%
                       {!estimate?.selected_variant && (
-                        <span className={styles.depositPercentHint}> of total</span>
+                        <span className={styles.depositPercentHint}> {t('estimates:detail.ofTotal')}</span>
                       )}
                     </span>
                   )}
@@ -805,13 +811,13 @@ export default function EstimateDetailPage() {
             )}
 
             <div className={styles.editSection}>
-              <label className={styles.editLabel}>Terms &amp; Conditions</label>
+              <label className={styles.editLabel}>{t('estimates:detail.termsConditions')}</label>
               <textarea
                 className={styles.editTextarea}
                 value={terms}
                 onChange={e => setTermsValue(e.target.value)}
                 onBlur={handleTermsBlur}
-                placeholder="Deposit schedule, payment terms, warranty, cancellation policy..."
+                placeholder={t('estimates:detail.termsPlaceholder')}
                 readOnly={!isAdmin}
                 rows={5}
               />
@@ -819,7 +825,7 @@ export default function EstimateDetailPage() {
 
             {isAdmin && (
               <button className={styles.deleteBtn} onClick={handleDelete}>
-                <Trash2 size={15} /> Delete Estimate
+                <Trash2 size={15} /> {t('estimates:detail.deleteEstimate')}
               </button>
             )}
           </div>

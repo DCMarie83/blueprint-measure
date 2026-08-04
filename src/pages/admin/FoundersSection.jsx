@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { getStateQuotas, updateStateQuotaCap } from '../../data/stateQuotas'
 import styles from './sections.module.css'
 
 export default function FoundersSection() {
+  const { t } = useTranslation()
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -63,48 +65,48 @@ export default function FoundersSection() {
       setSavedId(quotaRow.id)
       setTimeout(() => setSavedId(null), 1500)
     } catch (err) {
-      alert('Failed to save: ' + err.message)
+      alert(t('admin:founders.saveFailed', { message: err.message }))
     }
   }
 
-  if (loading) return <div className={styles.empty}>Loading state quotas...</div>
+  if (loading) return <div className={styles.empty}>{t('admin:founders.loading')}</div>
   if (error) return <div className={styles.errorBox}>{error}</div>
 
   return (
     <div>
-      <h1 className={styles.pageTitle}>Founders</h1>
+      <h1 className={styles.pageTitle}>{t('admin:founders.title')}</h1>
 
       <div className={styles.quickStats}>
         <div className={styles.quickStatItem}>
           <span className={styles.quickStatValue}>{totalFoundersClaimed}</span>
-          <span className={styles.quickStatLabel}>Founders Claimed</span>
+          <span className={styles.quickStatLabel}>{t('admin:founders.foundersClaimed')}</span>
         </div>
         <div className={styles.quickStatItem}>
           <span className={styles.quickStatValue}>{totalFoundersRemaining}</span>
-          <span className={styles.quickStatLabel}>Founders Remaining</span>
+          <span className={styles.quickStatLabel}>{t('admin:founders.foundersRemaining')}</span>
         </div>
         <div className={styles.quickStatItem}>
           <span className={styles.quickStatValue}>{statesFoundersFull}</span>
-          <span className={styles.quickStatLabel}>Founders States Full</span>
+          <span className={styles.quickStatLabel}>{t('admin:founders.foundersStatesFull')}</span>
         </div>
         <div className={styles.quickStatItem}>
           <span className={styles.quickStatValue}>{totalEBClaimed}</span>
-          <span className={styles.quickStatLabel}>Early Birds Claimed</span>
+          <span className={styles.quickStatLabel}>{t('admin:founders.earlyBirdsClaimed')}</span>
         </div>
         <div className={styles.quickStatItem}>
           <span className={styles.quickStatValue}>{totalEBRemaining}</span>
-          <span className={styles.quickStatLabel}>Early Birds Remaining</span>
+          <span className={styles.quickStatLabel}>{t('admin:founders.earlyBirdsRemaining')}</span>
         </div>
         <div className={styles.quickStatItem}>
           <span className={styles.quickStatValue}>{statesEBFull}</span>
-          <span className={styles.quickStatLabel}>Early Birds States Full</span>
+          <span className={styles.quickStatLabel}>{t('admin:founders.earlyBirdsStatesFull')}</span>
         </div>
       </div>
 
       <div className={styles.toolbar}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
           <input type="checkbox" checked={onlyWithSignups} onChange={e => setOnlyWithSignups(e.target.checked)} />
-          Only states with signups
+          {t('admin:founders.onlyWithSignups')}
         </label>
       </div>
 
@@ -112,9 +114,9 @@ export default function FoundersSection() {
         <table className={styles.table}>
           <thead>
             <tr>
-              <th className={styles.th}>State</th>
-              <th className={styles.th}>Founders (used / cap / remaining)</th>
-              <th className={styles.th}>Early Birds (used / cap / remaining)</th>
+              <th className={styles.th}>{t('admin:founders.colState')}</th>
+              <th className={styles.th}>{t('admin:founders.colFounders')}</th>
+              <th className={styles.th}>{t('admin:founders.colEarlyBirds')}</th>
             </tr>
           </thead>
           <tbody>
@@ -123,10 +125,10 @@ export default function FoundersSection() {
                 <td className={styles.td} style={{ fontWeight: 600 }}>
                   {r.state}
                   {r.founders && r.founders.signup_count >= r.founders.max_signups && (
-                    <span className={styles.pill} style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}>Full</span>
+                    <span className={styles.pill} style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}>{t('admin:founders.full')}</span>
                   )}
                   {r.earlyBirds && r.earlyBirds.signup_count >= r.earlyBirds.max_signups && (
-                    <span className={styles.pill} style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}>EB Full</span>
+                    <span className={styles.pill} style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}>{t('admin:founders.ebFull')}</span>
                   )}
                 </td>
                 <td className={styles.td}>
@@ -138,7 +140,7 @@ export default function FoundersSection() {
               </tr>
             ))}
             {displayed.length === 0 && (
-              <tr><td className={styles.td} colSpan={3} style={{ color: 'var(--color-text-muted)' }}>No states match filter.</td></tr>
+              <tr><td className={styles.td} colSpan={3} style={{ color: 'var(--color-text-muted)' }}>{t('admin:founders.noStates')}</td></tr>
             )}
           </tbody>
         </table>
@@ -148,6 +150,7 @@ export default function FoundersSection() {
 }
 
 function QuotaCell({ quota, savedId, onCapChange }) {
+  const { t } = useTranslation()
   const [localCap, setLocalCap] = useState(null)
   const inputRef = useRef(null)
 
@@ -179,8 +182,8 @@ function QuotaCell({ quota, savedId, onCapChange }) {
         onBlur={handleBlur}
         onKeyDown={e => { if (e.key === 'Enter') inputRef.current?.blur() }}
       />
-      <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>/ {remaining} left</span>
-      {savedId === quota.id && <span style={{ color: '#22c55e', fontSize: 12, fontWeight: 600 }}>Saved</span>}
+      <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>/ {t('admin:founders.remainingLeft', { count: remaining })}</span>
+      {savedId === quota.id && <span style={{ color: '#22c55e', fontSize: 12, fontWeight: 600 }}>{t('admin:founders.saved')}</span>}
     </span>
   )
 }

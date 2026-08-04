@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from 'react'
 import { Upload, Trash2, Loader } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../context/AuthContext'
 import { useCompanyBranding } from '../../hooks/useCompanyBranding'
 import styles from './CompanyLogoUpload.module.css'
 
 export default function CompanyLogoUpload() {
+  const { t } = useTranslation()
   const { company } = useAuth()
   const { uploadLogo, deleteLogo, uploading } = useCompanyBranding()
   const [error, setError] = useState(null)
@@ -43,7 +45,7 @@ export default function CompanyLogoUpload() {
   }
 
   async function handleDelete() {
-    if (!window.confirm('Remove company logo?')) return
+    if (!window.confirm(t('settings:logo.removeConfirm'))) return
     setError(null)
     try {
       await deleteLogo()
@@ -56,7 +58,7 @@ export default function CompanyLogoUpload() {
     <div className={styles.wrap}>
       <div className={styles.avatar}>
         {showImage ? (
-          <img src={`${logoUrl}?v=${cacheBust}`} alt={`${company.name} logo`} className={styles.img} onError={() => setImgError(true)} />
+          <img src={`${logoUrl}?v=${cacheBust}`} alt={t('settings:logo.alt', { name: company.name })} className={styles.img} onError={() => setImgError(true)} />
         ) : (
           <span className={styles.initials}>{initials}</span>
         )}
@@ -68,11 +70,11 @@ export default function CompanyLogoUpload() {
         )}
 
         <div className={styles.hoverOverlay}>
-          <button className={styles.overlayBtn} onClick={() => fileRef.current?.click()} title="Upload logo">
+          <button className={styles.overlayBtn} onClick={() => fileRef.current?.click()} title={t('settings:logo.upload')}>
             <Upload size={16} />
           </button>
           {showImage && (
-            <button className={styles.overlayBtn} onClick={handleDelete} title="Remove logo">
+            <button className={styles.overlayBtn} onClick={handleDelete} title={t('settings:logo.remove')}>
               <Trash2 size={16} />
             </button>
           )}

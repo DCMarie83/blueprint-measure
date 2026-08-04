@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Bookmark, BookmarkCheck, GraduationCap, Search, MessageCircleQuestion, Send } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useEffectiveCompany } from '../hooks/useEffectiveCompany'
@@ -14,7 +15,7 @@ import VideoModal from '../components/academy/VideoModal'
 import styles from './AcademyPage.module.css'
 
 const SECTION_ORDER = ['start_here', 'core', 'advanced']
-const SECTION_LABELS = { start_here: 'Start Here', core: 'Core', advanced: 'Advanced' }
+const SECTION_LABEL_KEYS = { start_here: 'academy:sections.startHere', core: 'academy:sections.core', advanced: 'academy:sections.advanced' }
 
 // Stable per-family audience sets (module-level so the load effect dep is a
 // stable reference). Matched against each row's audiences[] via array-overlap.
@@ -26,6 +27,7 @@ export default function AcademyPage() {
   const { companyId: effectiveCompanyId } = useEffectiveCompany()
   const { isLite, resolved } = useIsLite()
   const { isBookmarked, toggle, count } = useAcademyBookmarks()
+  const { t } = useTranslation()
 
   const [tab, setTab] = useState('lessons')
   const [modules, setModules] = useState([])
@@ -74,7 +76,7 @@ export default function AcademyPage() {
         // A query 400 (e.g. a dropped column) must LOOK like an error, not an
         // empty "coming soon" page — surface it into state for a visible banner.
         console.error('Academy load:', err)
-        if (!cancelled) { setLoadError(err.message || 'Failed to load lessons.'); setModules([]); setVideos([]) }
+        if (!cancelled) { setLoadError(err.message || t('academy:lessons.loadFailed')); setModules([]); setVideos([]) }
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -152,7 +154,7 @@ export default function AcademyPage() {
       if (!grouped[g]?.length) continue
       result.push({
         key: g,
-        label: SECTION_LABELS[g] || g,
+        label: SECTION_LABEL_KEYS[g] ? t(SECTION_LABEL_KEYS[g]) : g,
         featured: g === 'start_here',
         modules: grouped[g].map(m => ({ ...m, videos: videosByModule[m.id] || [] })),
       })
@@ -174,7 +176,7 @@ export default function AcademyPage() {
       })
     }
     return result
-  }, [filteredVideos, roleVisibleModules])
+  }, [filteredVideos, roleVisibleModules, t])
 
   // Upstream count of rows genuinely published for this viewer's family (computed via
   // the shared visibility rule so it can't drift from the data-layer fetch). If this
@@ -203,7 +205,7 @@ export default function AcademyPage() {
       setTimeout(() => setAskSuccess(false), 3000)
       loadQA()
     } catch (err) {
-      alert('Failed to submit: ' + err.message)
+      alert(t('academy:qa.submitFailed', { message: err.message }))
     } finally {
       setAskSubmitting(false)
     }
@@ -228,7 +230,7 @@ export default function AcademyPage() {
           <button
             className={styles.bookmarkBtn}
             onClick={(e) => { e.stopPropagation(); toggle(video.id) }}
-            aria-label={isBookmarked(video.id) ? 'Remove bookmark' : 'Add bookmark'}
+            aria-label={isBookmarked(video.id) ? t('academy:card.removeBookmark') : t('academy:card.addBookmark')}
           >
             {isBookmarked(video.id) ? <BookmarkCheck size={16} fill="currentColor" /> : <Bookmark size={16} />}
           </button>
@@ -247,26 +249,26 @@ export default function AcademyPage() {
       
       <main className={styles.main}>
         <div className={styles.header}>
-          <h1 className={styles.title}>RivetDog Academy</h1>
-          <p className={styles.subtitle}>Training videos and Q&A to help you get the most out of RivetDog.</p>
+          <h1 className={styles.title}>{t('academy:header.title')}</h1>
+          <p className={styles.subtitle}>{t('academy:header.subtitle')}</p>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 16px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', marginBottom: 16, fontSize: 14 }}>
-          <span style={{ color: 'var(--color-text-muted)' }}>New to RivetDog? Book your free 30-minute onboarding call.</span>
+          <span style={{ color: 'var(--color-text-muted)' }}>{t('academy:onboarding.prompt')}</span>
           <a
             href={ONBOARDING_CALENDAR_URL}
             target="_blank"
             rel="noopener noreferrer"
             style={{ color: '#f27243', fontWeight: 600, textDecoration: 'underline', whiteSpace: 'nowrap' }}
           >
-            Book now
+            {t('academy:onboarding.book')}
           </a>
         </div>
 
         {/* Tabs */}
         <div className={styles.tabRow}>
-          <button className={`${styles.tab} ${tab === 'lessons' ? styles.tabActive : ''}`} onClick={() => setTab('lessons')}>Lessons</button>
-          <button className={`${styles.tab} ${tab === 'qa' ? styles.tabActive : ''}`} onClick={() => setTab('qa')}><MessageCircleQuestion size={14} /> Q&A</button>
+          <button className={`${styles.tab} ${tab === 'lessons' ? styles.tabActive : ''}`} onClick={() => setTab('lessons')}>{t('academy:tabs.lessons')}</button>
+          <button className={`${styles.tab} ${tab === 'qa' ? styles.tabActive : ''}`} onClick={() => setTab('qa')}><MessageCircleQuestion size={14} /> {t('academy:tabs.qa')}</button>
         </div>
 
         {/* ── Lessons tab ─────────────────────────────────────────────── */}
@@ -279,7 +281,7 @@ export default function AcademyPage() {
                   <input
                     type="text"
                     className={styles.searchInput}
-                    placeholder="Search lessons…"
+                    placeholder={t('academy:lessons.searchPlaceholder')}
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
                   />
@@ -288,7 +290,7 @@ export default function AcademyPage() {
                   className={`${styles.bookmarkFilter} ${showBookmarksOnly ? styles.bookmarkFilterActive : ''}`}
                   onClick={() => setShowBookmarksOnly(v => !v)}
                 >
-                  <Bookmark size={14} /> My Bookmarks {count > 0 && `(${count})`}
+                  <Bookmark size={14} /> {t('academy:lessons.myBookmarks')} {count > 0 && `(${count})`}
                 </button>
               </div>
             )}
@@ -296,8 +298,8 @@ export default function AcademyPage() {
             {loadError ? (
               <div className={styles.emptyState}>
                 <GraduationCap size={48} />
-                <h2>Couldn't load lessons</h2>
-                <p>Something went wrong fetching training content. Please refresh — if it keeps happening, let us know.</p>
+                <h2>{t('academy:lessons.errorTitle')}</h2>
+                <p>{t('academy:lessons.errorBody')}</p>
                 <p style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{loadError}</p>
               </div>
             ) : loading ? (
@@ -305,8 +307,8 @@ export default function AcademyPage() {
             ) : videos.length === 0 ? (
               <div className={styles.emptyState}>
                 <GraduationCap size={48} />
-                <h2>Videos coming soon</h2>
-                <p>Dee is in the studio. Check back soon for training content.</p>
+                <h2>{t('academy:lessons.comingSoonTitle')}</h2>
+                <p>{t('academy:lessons.comingSoonBody')}</p>
               </div>
             ) : sections.length === 0 ? (
               // Rows ARE published for this plan — the blank is a client-side filter,
@@ -316,7 +318,7 @@ export default function AcademyPage() {
                   { search: searchQuery.trim() || null, bookmarksOnly: showBookmarksOnly })
                 return (
                   <div className={styles.filterEmpty}>
-                    <p>{familyPublishedCount} {familyPublishedCount === 1 ? 'lesson is' : 'lessons are'} published for your plan but hidden by your current {showBookmarksOnly ? 'bookmark and search filters' : 'search'}.</p>
+                    <p>{t('academy:lessons.filterHidden', { count: familyPublishedCount, filters: t(showBookmarksOnly ? 'academy:lessons.filtersBoth' : 'academy:lessons.filtersSearch') })}</p>
                   </div>
                 )
               })()
@@ -347,50 +349,50 @@ export default function AcademyPage() {
         {tab === 'qa' && (
           <div className={styles.qaContainer}>
             <div id="academy-ask-form" className={styles.askCard}>
-              <h3 className={styles.askTitle}>Ask a question</h3>
+              <h3 className={styles.askTitle}>{t('academy:qa.askTitle')}</h3>
               <form onSubmit={handleAskSubmit}>
-                <textarea className={styles.askTextarea} placeholder="What would you like to know?" value={askText} onChange={e => setAskText(e.target.value)} rows={3} required />
+                <textarea className={styles.askTextarea} placeholder={t('academy:qa.askPlaceholder')} value={askText} onChange={e => setAskText(e.target.value)} rows={3} required />
                 <div className={styles.askRow}>
                   <select className={styles.askSelect} value={askRelated} onChange={e => setAskRelated(e.target.value)}>
-                    <option value="">Related lesson (optional)</option>
+                    <option value="">{t('academy:qa.relatedLesson')}</option>
                     {videos.map(v => <option key={v.id} value={v.id}>{v.title}</option>)}
                   </select>
                   <select className={styles.askSelect} value={askNotify} onChange={e => setAskNotify(e.target.value)}>
-                    <option value="email">Email me the answer</option>
-                    <option value="in_app">Just show it in the app</option>
+                    <option value="email">{t('academy:qa.notifyEmail')}</option>
+                    <option value="in_app">{t('academy:qa.notifyInApp')}</option>
                   </select>
                   <button type="submit" className={styles.askBtn} disabled={!askText.trim() || askSubmitting}>
-                    <Send size={14} /> {askSubmitting ? 'Sending…' : 'Submit'}
+                    <Send size={14} /> {askSubmitting ? t('academy:qa.sending') : t('common:action.submit')}
                   </button>
                 </div>
-                {askSuccess && <p className={styles.askConfirm}>Question submitted! We'll get back to you soon.</p>}
+                {askSuccess && <p className={styles.askConfirm}>{t('academy:qa.submitConfirm')}</p>}
               </form>
             </div>
 
             {myQs.length > 0 && (
               <div className={styles.myQsSection}>
-                <h3 className={styles.sectionTitle}>My Questions</h3>
+                <h3 className={styles.sectionTitle}>{t('academy:qa.myQuestions')}</h3>
                 {myQs.map(qa => (
                   <div key={qa.id} className={styles.qaItem}>
                     <p className={styles.qaQuestion}>{qa.question}</p>
                     {qa.answer ? (
-                      <div className={styles.qaAnswer}><span className={styles.qaBadgeAnswered}>Answered</span><p>{qa.answer}</p></div>
-                    ) : <span className={styles.qaBadgePending}>Pending</span>}
+                      <div className={styles.qaAnswer}><span className={styles.qaBadgeAnswered}>{t('academy:qa.answered')}</span><p>{qa.answer}</p></div>
+                    ) : <span className={styles.qaBadgePending}>{t('academy:qa.pending')}</span>}
                   </div>
                 ))}
               </div>
             )}
 
             <div className={styles.publicQaSection}>
-              <h3 className={styles.sectionTitle}>Community Q&A</h3>
+              <h3 className={styles.sectionTitle}>{t('academy:qa.community')}</h3>
               <div className={styles.qaSearchWrap}>
                 <Search size={14} />
-                <input type="text" className={styles.qaSearchInput} placeholder="Search questions…" value={qaSearch} onChange={e => setQaSearch(e.target.value)} />
+                <input type="text" className={styles.qaSearchInput} placeholder={t('academy:qa.searchPlaceholder')} value={qaSearch} onChange={e => setQaSearch(e.target.value)} />
               </div>
               {qaLoading ? (
                 <div className={styles.emptyState}><div className="spinner" /></div>
               ) : filteredQs.length === 0 ? (
-                <p className={styles.qaEmpty}>{publishedQs.length === 0 ? 'No published questions yet. Be the first to ask!' : 'No matches.'}</p>
+                <p className={styles.qaEmpty}>{publishedQs.length === 0 ? t('academy:qa.emptyNone') : t('academy:qa.emptyNoMatch')}</p>
               ) : (
                 filteredQs.map(qa => (
                   <div key={qa.id} className={styles.qaItem}>

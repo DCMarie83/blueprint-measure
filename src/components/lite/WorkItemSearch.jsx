@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, forwardRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { unitLabel, fmtMoney } from '../../lib/lite'
 import styles from '../../pages/lite/lite.module.css'
 
@@ -15,8 +16,11 @@ import styles from '../../pages/lite/lite.module.css'
 const WorkItemSearch = forwardRef(function WorkItemSearch({
   mode, catalog, library,
   onPickCatalog, onPickLibrary, onPickCustom,
-  label = 'What did you work on?', placeholder = 'Search items…',
+  label, placeholder,
 }, ref) {
+  const { t } = useTranslation()
+  const lbl = label ?? t('lite:components.searchLabel')
+  const ph = placeholder ?? t('lite:components.searchPlaceholder')
   const [search, setSearch] = useState('')
   const [debounced, setDebounced] = useState('')
   const hourly = mode === 'hourly'
@@ -53,24 +57,24 @@ const WorkItemSearch = forwardRef(function WorkItemSearch({
 
   return (
     <div className={styles.field} style={{ marginBottom: 0 }}>
-      <span className={styles.fieldLabel}>{label}</span>
+      <span className={styles.fieldLabel}>{lbl}</span>
       <input
         ref={ref}
         className={styles.input}
         value={search}
         onChange={e => setSearch(e.target.value)}
-        placeholder={placeholder}
+        placeholder={ph}
       />
       {typed.length >= 2 && (
         <div className={styles.searchResults}>
-          {results.catalog.length > 0 && <div className={styles.searchSection}>Your catalog</div>}
+          {results.catalog.length > 0 && <div className={styles.searchSection}>{t('lite:components.yourCatalog')}</div>}
           {results.catalog.map(i => (
             <button key={i.id} type="button" className={styles.searchItem} onClick={() => onPickCatalog(i)}>
               <span className={styles.searchName}>{i.name}</span>
               <span className={styles.searchMeta}>{i.category ? `${i.category} · ` : ''}{unitLabel(i.unit)} · {fmtMoney(i.rate)}</span>
             </button>
           ))}
-          {results.library.length > 0 && <div className={styles.searchSection}>Add from library</div>}
+          {results.library.length > 0 && <div className={styles.searchSection}>{t('lite:components.searchAddFromLibrary')}</div>}
           {results.library.map(l => (
             <button key={l.id} type="button" className={styles.searchItem} onClick={() => onPickLibrary(l)}>
               <span className={styles.searchName}>{l.name}</span>
@@ -79,7 +83,7 @@ const WorkItemSearch = forwardRef(function WorkItemSearch({
           ))}
           <button type="button" className={styles.searchItem} onClick={() => onPickCustom(typed)}>
             <span className={styles.searchName}>
-              {hourly ? `Just use “${typed}” as the description` : `Add “${typed}” as a custom item`}
+              {hourly ? t('lite:components.useAsDescription', { text: typed }) : t('lite:components.addAsCustom', { text: typed })}
             </span>
           </button>
         </div>

@@ -1,10 +1,12 @@
 import { useState, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useClients } from '../../hooks/useClients'
 import ClientPicker from '../clients/ClientPicker'
 import QuickClientForm from '../clients/QuickClientForm'
 import styles from './NewSessionForm.module.css'
 
 export default function NewProjectForm({ onCreate, onCancel }) {
+  const { t } = useTranslation()
   const { clients } = useClients()
   const [name, setName] = useState('')
   const [address, setAddress] = useState('')
@@ -17,7 +19,7 @@ export default function NewProjectForm({ onCreate, onCancel }) {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!name.trim()) { setError('Job name is required'); return }
+    if (!name.trim()) { setError(t('jobs:newProject.nameRequired')); return }
     setError('')
     setLoading(true)
 
@@ -61,29 +63,29 @@ export default function NewProjectForm({ onCreate, onCancel }) {
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
       <div className={styles.field}>
-        <label htmlFor="projectName">Job Name *</label>
+        <label htmlFor="projectName">{t('jobs:newProject.jobNameLabel')}</label>
         <input
           id="projectName"
           value={name}
           onChange={e => setName(e.target.value)}
-          placeholder="e.g. Smith Residence Interior"
+          placeholder={t('jobs:newProject.jobNamePlaceholder')}
           required
           autoFocus
         />
       </div>
 
       <div className={styles.field}>
-        <label htmlFor="address">Property Address (optional)</label>
+        <label htmlFor="address">{t('jobs:newProject.addressLabel')}</label>
         <input
           id="address"
           value={address}
           onChange={e => setAddress(e.target.value)}
-          placeholder="e.g. 123 Main St"
+          placeholder={t('jobs:newProject.addressPlaceholder')}
         />
       </div>
 
       <div className={styles.field}>
-        <label>How do you want to build this estimate?</label>
+        <label>{t('jobs:newProject.buildMethodLabel')}</label>
         <div style={{ display: 'flex', gap: 4, marginBottom: 10, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: 3 }}>
           <button
             type="button"
@@ -96,8 +98,8 @@ export default function NewProjectForm({ onCreate, onCancel }) {
               transition: 'background 0.15s, color 0.15s',
             }}
           >
-            <div style={{ fontWeight: 600 }}>Measure a Blueprint</div>
-            <div style={{ fontSize: 11, marginTop: 2, opacity: 0.8 }}>Upload plans and measure to scale</div>
+            <div style={{ fontWeight: 600 }}>{t('jobs:newProject.measureBlueprint')}</div>
+            <div style={{ fontSize: 11, marginTop: 2, opacity: 0.8 }}>{t('jobs:newProject.measureBlueprintSub')}</div>
           </button>
           <button
             type="button"
@@ -110,18 +112,18 @@ export default function NewProjectForm({ onCreate, onCancel }) {
               transition: 'background 0.15s, color 0.15s',
             }}
           >
-            <div style={{ fontWeight: 600 }}>Enter Measurements Manually</div>
-            <div style={{ fontSize: 11, marginTop: 2, opacity: 0.8 }}>Type in your own measurements & line items</div>
+            <div style={{ fontWeight: 600 }}>{t('jobs:newProject.enterManual')}</div>
+            <div style={{ fontSize: 11, marginTop: 2, opacity: 0.8 }}>{t('jobs:newProject.enterManualSub')}</div>
           </button>
         </div>
       </div>
 
       <div className={styles.field}>
-        <label>Client (optional)</label>
+        <label>{t('jobs:newProject.clientLabel')}</label>
         <div style={{ display: 'flex', gap: 4, marginBottom: 10, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: 3 }}>
-          {modeBtn('skip', 'Skip')}
-          {modeBtn('existing', 'Link Existing')}
-          {modeBtn('new', 'Create New')}
+          {modeBtn('skip', t('jobs:newProject.clientSkip'))}
+          {modeBtn('existing', t('jobs:newProject.clientExisting'))}
+          {modeBtn('new', t('jobs:newProject.clientNew'))}
         </div>
 
         {clientMode === 'existing' && (
@@ -140,9 +142,9 @@ export default function NewProjectForm({ onCreate, onCancel }) {
       {error && <div className={styles.error}>{error}</div>}
 
       <div className={styles.actions}>
-        <button type="button" className={styles.cancel} onClick={onCancel}>Cancel</button>
+        <button type="button" className={styles.cancel} onClick={onCancel}>{t('common:action.cancel')}</button>
         <button type="submit" className={styles.submit} disabled={loading}>
-          {loading ? 'Creating…' : 'Create Job'}
+          {loading ? t('jobs:newProject.creating') : t('jobs:newProject.createJob')}
         </button>
       </div>
     </form>

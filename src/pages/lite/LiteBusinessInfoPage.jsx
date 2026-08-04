@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ChevronLeft } from 'lucide-react'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import { useAuth } from '../../context/AuthContext'
@@ -15,6 +16,7 @@ import styles from './lite.module.css'
 // payment_instructions "other" slot so the shared invoice renderer picks it up.
 export default function LiteBusinessInfoPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { company, companyId } = useEffectiveCompany()
   const { user, userProfile, refreshCompany, refreshUserProfile } = useAuth()
 
@@ -49,7 +51,7 @@ export default function LiteBusinessInfoPage() {
     // pass the same canonical check the list is built from before it can save.
     const tzToSave = timezone ? timezone : null
     if (tzToSave && !isValidTimeZone(tzToSave)) {
-      setError('That time zone isn’t recognized. Pick one from the list.')
+      setError(t('lite:business.tzInvalid'))
       return
     }
     setSaving(true); setError(null); setSavedOk(false)
@@ -92,57 +94,57 @@ export default function LiteBusinessInfoPage() {
     <div className={styles.page}>
       
       <main className={styles.main}>
-        <button className={styles.backLink} onClick={() => navigate(-1)}><ChevronLeft size={15} /> Back</button>
+        <button className={styles.backLink} onClick={() => navigate(-1)}><ChevronLeft size={15} /> {t('common:action.back')}</button>
 
         <div className={styles.header}>
           <div>
-            <h1 className={styles.title}>Business info</h1>
-            <p className={styles.subtitle}>Appears on every invoice you send</p>
+            <h1 className={styles.title}>{t('lite:business.title')}</h1>
+            <p className={styles.subtitle}>{t('lite:business.subtitle')}</p>
           </div>
         </div>
 
         <div className={styles.card}>
           <div className={styles.field} style={{ marginBottom: 12 }}>
-            <span className={styles.fieldLabel}>Business name</span>
-            <input className={styles.input} value={name} onChange={e => setName(e.target.value)} placeholder="Your business name" />
+            <span className={styles.fieldLabel}>{t('lite:business.businessName')}</span>
+            <input className={styles.input} value={name} onChange={e => setName(e.target.value)} placeholder={t('lite:business.businessNamePh')} />
           </div>
 
           <div className={styles.field} style={{ marginBottom: 12 }}>
-            <span className={styles.fieldLabel}>Phone</span>
+            <span className={styles.fieldLabel}>{t('lite:business.phone')}</span>
             <input className={styles.input} value={phone} onChange={e => setPhone(e.target.value)} placeholder="(555) 555-5555" />
           </div>
 
           <div className={styles.field} style={{ marginBottom: 12 }}>
-            <span className={styles.fieldLabel}>Time zone</span>
+            <span className={styles.fieldLabel}>{t('lite:business.timezone')}</span>
             <select className={styles.select} value={timezone} onChange={e => setTimezone(e.target.value)}>
-              <option value="">Automatic (device time)</option>
-              <optgroup label="Common (US)">
+              <option value="">{t('lite:business.automatic')}</option>
+              <optgroup label={t('lite:business.commonUs')}>
                 {COMMON_US_TIMEZONES.map(z => <option key={z.value} value={z.value}>{z.label}</option>)}
               </optgroup>
-              <optgroup label="All time zones">
+              <optgroup label={t('lite:business.allTimezones')}>
                 {allZones.map(z => <option key={z} value={z}>{z}</option>)}
               </optgroup>
             </select>
-            <p className={styles.helper}>Sets “today” for your logs, week, and totals. Leave on Automatic to follow this device.</p>
+            <p className={styles.helper}>{t('lite:business.tzHelper')}</p>
           </div>
 
           <div className={styles.field}>
-            <span className={styles.fieldLabel}>Payment instructions</span>
+            <span className={styles.fieldLabel}>{t('lite:business.paymentInstructions')}</span>
             <textarea
               className={styles.input}
               style={{ minHeight: 100, resize: 'vertical', fontFamily: 'inherit' }}
               value={payText}
               onChange={e => setPayText(e.target.value)}
-              placeholder="Zelle: you@email.com&#10;Check payable to: Your Name"
+              placeholder={t('lite:business.payPlaceholder')}
             />
-            <p className={styles.helper}>Shown on every invoice. Zelle, check, ACH details — text only.</p>
+            <p className={styles.helper}>{t('lite:business.payHelper')}</p>
           </div>
 
           {error && <div className={styles.error} style={{ marginTop: 12, marginBottom: 0 }}>{error}</div>}
 
           <div className={styles.sheetActions} style={{ marginTop: 16 }}>
-            {savedOk && <span className={styles.helper} style={{ color: 'var(--color-success)', alignSelf: 'center' }}>Saved.</span>}
-            <button className={styles.primaryBtn} onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
+            {savedOk && <span className={styles.helper} style={{ color: 'var(--color-success)', alignSelf: 'center' }}>{t('lite:business.saved')}</span>}
+            <button className={styles.primaryBtn} onClick={handleSave} disabled={saving}>{saving ? t('lite:business.saving') : t('common:action.save')}</button>
           </div>
         </div>
       </main>

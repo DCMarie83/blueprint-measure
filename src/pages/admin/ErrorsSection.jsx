@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useContext, Fragment } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
 import { AdminDataContext } from '../../context/AdminDataContext'
 import { logError } from '../../lib/logError'
@@ -72,6 +73,7 @@ function BoundaryTestThrower() {
 }
 
 export default function ErrorsSection() {
+  const { t } = useTranslation()
   const { companies, users, loading: contextLoading } = useErrorsContextData()
   const { formatDateTime, formatTime } = useDateFormat()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -164,7 +166,7 @@ export default function ErrorsSection() {
   const triggerTestError = (severity) => {
     const testError = new Error(`Test error fired manually at ${new Date().toISOString()}`)
     logError(testError, severity, { source: 'manual_test', triggeredBy: 'super_admin' })
-    showToast(`Test error logged with severity: ${severity}. Check errors page to verify.`)
+    showToast(t('admin:errors.testLogged', { severity }))
   }
 
   const showToast = (msg) => {
@@ -216,7 +218,7 @@ export default function ErrorsSection() {
     displayRows = Object.values(groups)
   }
 
-  if (loading || contextLoading) return <div className={styles.empty}>Loading errors...</div>
+  if (loading || contextLoading) return <div className={styles.empty}>{t('admin:errors.loading')}</div>
 
   if (throwBoundaryError) {
     return <BoundaryTestThrower />
@@ -228,7 +230,7 @@ export default function ErrorsSection() {
 
   return (
     <div>
-      <h1 className={styles.pageTitle}>System Errors</h1>
+      <h1 className={styles.pageTitle}>{t('admin:errors.title')}</h1>
 
       {/* User filter chip */}
       {userIdFilter !== 'all' && (
@@ -239,11 +241,11 @@ export default function ErrorsSection() {
             background: 'var(--color-surface, #1e1e2e)', border: '1px solid var(--color-border)',
             color: 'var(--color-text)',
           }}>
-            Filtering by user: <strong>{userFilterEmail}</strong>
+            {t('admin:errors.filteringByUser')} <strong>{userFilterEmail}</strong>
             <button
               onClick={clearUserFilter}
               style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: 14, padding: '0 2px', lineHeight: 1 }}
-              title="Clear user filter"
+              title={t('admin:errors.clearUserFilter')}
             >
               &times;
             </button>
@@ -255,19 +257,19 @@ export default function ErrorsSection() {
       <div className={styles.metricsBar}>
         <div className={styles.metricCard}>
           <div className={styles.metricValue}>{unresolvedCount}</div>
-          <div className={styles.metricLabel}>Total Unresolved</div>
+          <div className={styles.metricLabel}>{t('admin:errors.totalUnresolved')}</div>
         </div>
         <div className={styles.metricCard} style={unresolvedCritical > 0 ? { borderColor: '#dc2626' } : undefined}>
           <div className={styles.metricValue} style={unresolvedCritical > 0 ? { color: '#dc2626' } : undefined}>{unresolvedCritical}</div>
-          <div className={styles.metricLabel}>Unresolved Critical</div>
+          <div className={styles.metricLabel}>{t('admin:errors.unresolvedCritical')}</div>
         </div>
         <div className={styles.metricCard}>
           <div className={styles.metricValue}>{last24h}</div>
-          <div className={styles.metricLabel}>Errors (24h)</div>
+          <div className={styles.metricLabel}>{t('admin:errors.errors24h')}</div>
         </div>
         <div className={styles.metricCard}>
           <div className={styles.metricValue}>{displayRows.length}</div>
-          <div className={styles.metricLabel}>Showing</div>
+          <div className={styles.metricLabel}>{t('admin:errors.showing')}</div>
         </div>
       </div>
 
@@ -275,35 +277,35 @@ export default function ErrorsSection() {
       <div className={styles.toolbar}>
         <input
           className={styles.searchInput}
-          placeholder="Search error messages..."
+          placeholder={t('admin:errors.searchPlaceholder')}
           value={searchText}
           onChange={e => setSearchText(e.target.value)}
         />
         <select className={styles.filterSelect} value={tenantFilter} onChange={e => setTenantFilter(e.target.value)}>
-          <option value="all">All tenants</option>
+          <option value="all">{t('admin:errors.allTenants')}</option>
           {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         <select className={styles.filterSelect} value={severityFilter} onChange={e => setSeverityFilter(e.target.value)}>
-          <option value="all">All severities</option>
-          <option value="info">Info</option>
-          <option value="warning">Warning</option>
-          <option value="error">Error</option>
-          <option value="critical">Critical</option>
+          <option value="all">{t('admin:errors.allSeverities')}</option>
+          <option value="info">{t('admin:errors.sevInfo')}</option>
+          <option value="warning">{t('admin:errors.sevWarning')}</option>
+          <option value="error">{t('admin:errors.sevError')}</option>
+          <option value="critical">{t('admin:errors.sevCritical')}</option>
         </select>
         <select className={styles.filterSelect} value={resolvedFilter} onChange={e => setResolvedFilter(e.target.value)}>
-          <option value="unresolved">Unresolved</option>
-          <option value="resolved">Resolved</option>
-          <option value="all">All</option>
+          <option value="unresolved">{t('admin:errors.resUnresolved')}</option>
+          <option value="resolved">{t('admin:errors.resResolved')}</option>
+          <option value="all">{t('admin:errors.resAll')}</option>
         </select>
         <select className={styles.filterSelect} value={dateFilter} onChange={e => setDateFilter(e.target.value)}>
-          <option value="24h">Last 24h</option>
-          <option value="7d">Last 7 days</option>
-          <option value="30d">Last 30 days</option>
-          <option value="all">All time</option>
+          <option value="24h">{t('admin:errors.date24h')}</option>
+          <option value="7d">{t('admin:errors.date7d')}</option>
+          <option value="30d">{t('admin:errors.date30d')}</option>
+          <option value="all">{t('admin:errors.dateAll')}</option>
         </select>
         <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', whiteSpace: 'nowrap' }}>
           <input type="checkbox" checked={groupByFingerprint} onChange={e => setGroupByFingerprint(e.target.checked)} />
-          Group by fingerprint
+          {t('admin:errors.groupByFingerprint')}
         </label>
       </div>
 
@@ -311,7 +313,7 @@ export default function ErrorsSection() {
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
         <TestErrorButton onTrigger={triggerTestError} />
         <button className={styles.secondaryBtn} onClick={() => setThrowBoundaryError(true)} style={{ fontSize: 12 }}>
-          Throw real React error
+          {t('admin:errors.throwReactError')}
         </button>
       </div>
 
@@ -324,21 +326,21 @@ export default function ErrorsSection() {
 
       {/* Table */}
       {displayRows.length === 0 ? (
-        <p className={styles.empty}>No errors match current filters.</p>
+        <p className={styles.empty}>{t('admin:errors.empty')}</p>
       ) : (
         <div className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>
               <tr>
-                <th className={styles.th}>Severity</th>
-                <th className={styles.th}>Message</th>
-                {groupByFingerprint && <th className={styles.th}>Count</th>}
-                <th className={styles.th}>Tenant</th>
-                <th className={styles.th}>User</th>
-                <th className={styles.th}>Timezone</th>
-                <th className={styles.th}>Page</th>
-                <th className={styles.th}>When</th>
-                <th className={styles.th}>Actions</th>
+                <th className={styles.th}>{t('admin:errors.colSeverity')}</th>
+                <th className={styles.th}>{t('admin:errors.colMessage')}</th>
+                {groupByFingerprint && <th className={styles.th}>{t('admin:errors.colCount')}</th>}
+                <th className={styles.th}>{t('admin:errors.colTenant')}</th>
+                <th className={styles.th}>{t('admin:errors.colUser')}</th>
+                <th className={styles.th}>{t('admin:errors.colTimezone')}</th>
+                <th className={styles.th}>{t('admin:errors.colPage')}</th>
+                <th className={styles.th}>{t('admin:errors.colWhen')}</th>
+                <th className={styles.th}>{t('admin:errors.colActions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -368,10 +370,10 @@ export default function ErrorsSection() {
                             style={{ fontSize: 11, padding: '3px 8px' }}
                             onClick={(e) => { e.stopPropagation(); markResolved(ce.id) }}
                           >
-                            Resolve
+                            {t('admin:errors.resolve')}
                           </button>
                         )}
-                        {ce.resolved && <span style={{ fontSize: 10, color: '#22c55e', fontWeight: 600 }}>Resolved</span>}
+                        {ce.resolved && <span style={{ fontSize: 10, color: '#22c55e', fontWeight: 600 }}>{t('admin:errors.resolved')}</span>}
                       </td>
                     </tr>
                     {isExp && (
@@ -393,24 +395,25 @@ export default function ErrorsSection() {
 }
 
 function ErrorDetail({ error: ce, users, formatDateTime, formatTime }) {
+  const { t } = useTranslation()
   const resolvedByUser = ce.resolved_by ? users.find(u => u.id === ce.resolved_by)?.email : null
 
   return (
     <div className={styles.expandedPanel}>
-      <div><strong>Full message:</strong> {ce.error_message}</div>
-      <div><strong>Fingerprint:</strong> <code style={{ fontSize: 11 }}>{ce.error_fingerprint || '-'}</code></div>
-      <div><strong>Page URL:</strong> {ce.page_url}</div>
-      <div><strong>User Agent:</strong> <span style={{ fontSize: 11 }}>{ce.user_agent || '-'}</span></div>
+      <div><strong>{t('admin:errors.fullMessage')}</strong> {ce.error_message}</div>
+      <div><strong>{t('admin:errors.fingerprint')}</strong> <code style={{ fontSize: 11 }}>{ce.error_fingerprint || '-'}</code></div>
+      <div><strong>{t('admin:errors.pageUrl')}</strong> {ce.page_url}</div>
+      <div><strong>{t('admin:errors.userAgent')}</strong> <span style={{ fontSize: 11 }}>{ce.user_agent || '-'}</span></div>
       <div>
-        <strong>Location context:</strong>{' '}
+        <strong>{t('admin:errors.locationContext')}</strong>{' '}
         <span style={{ fontSize: 11 }}>
-          {ce.timezone || 'unknown timezone'} · {ce.locale || 'unknown locale'} · viewport {ce.viewport || '-'}
+          {ce.timezone || t('admin:errors.unknownTimezone')} · {ce.locale || t('admin:errors.unknownLocale')} · {t('admin:errors.viewport')} {ce.viewport || '-'}
         </span>
       </div>
 
       {ce.error_stack && (
         <div>
-          <strong>Stack trace:</strong>
+          <strong>{t('admin:errors.stackTrace')}</strong>
           <pre style={{ fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-all', background: 'rgba(0,0,0,0.2)', padding: 12, borderRadius: 6, maxHeight: 250, overflow: 'auto', marginTop: 4 }}>
             {ce.error_stack}
           </pre>
@@ -419,7 +422,7 @@ function ErrorDetail({ error: ce, users, formatDateTime, formatTime }) {
 
       {ce.component_stack && (
         <div>
-          <strong>Component stack:</strong>
+          <strong>{t('admin:errors.componentStack')}</strong>
           <pre style={{ fontSize: 11, whiteSpace: 'pre-wrap', background: 'rgba(0,0,0,0.2)', padding: 12, borderRadius: 6, maxHeight: 200, overflow: 'auto', marginTop: 4 }}>
             {ce.component_stack}
           </pre>
@@ -428,7 +431,7 @@ function ErrorDetail({ error: ce, users, formatDateTime, formatTime }) {
 
       {ce.breadcrumbs && ce.breadcrumbs.length > 0 && (
         <div>
-          <strong>Breadcrumbs ({ce.breadcrumbs.length}):</strong>
+          <strong>{t('admin:errors.breadcrumbsTitle', { count: ce.breadcrumbs.length })}</strong>
           <div style={{ marginTop: 6, maxHeight: 300, overflow: 'auto', background: 'rgba(0,0,0,0.15)', borderRadius: 6, padding: 8 }}>
             {ce.breadcrumbs.map((b, i) => (
               <BreadcrumbRow key={i} breadcrumb={b} formatTime={formatTime} />
@@ -439,7 +442,7 @@ function ErrorDetail({ error: ce, users, formatDateTime, formatTime }) {
 
       {ce.resolved && (
         <div style={{ fontSize: 12, color: '#22c55e' }}>
-          Resolved at {formatDateTime(ce.resolved_at)} {resolvedByUser ? `by ${resolvedByUser}` : ''}
+          {t('admin:errors.resolvedAt', { date: formatDateTime(ce.resolved_at) })} {resolvedByUser ? t('admin:errors.resolvedBy', { user: resolvedByUser }) : ''}
         </div>
       )}
     </div>
@@ -447,6 +450,7 @@ function ErrorDetail({ error: ce, users, formatDateTime, formatTime }) {
 }
 
 function BreadcrumbRow({ breadcrumb: b, formatTime }) {
+  const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
   const catColors = {
     navigation: '#3b82f6',
@@ -472,7 +476,7 @@ function BreadcrumbRow({ breadcrumb: b, formatTime }) {
           onClick={() => setExpanded(!expanded)}
           style={{ fontSize: 10, background: 'none', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', padding: 0 }}
         >
-          {expanded ? 'hide' : 'data'}
+          {expanded ? t('admin:errors.hide') : t('admin:errors.data')}
         </button>
       )}
       {expanded && b.data && (
@@ -485,6 +489,7 @@ function BreadcrumbRow({ breadcrumb: b, formatTime }) {
 }
 
 function TestErrorButton({ onTrigger }) {
+  const { t } = useTranslation()
   const [severity, setSeverity] = useState('error')
   return (
     <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
@@ -495,7 +500,7 @@ function TestErrorButton({ onTrigger }) {
         <option value="critical">critical</option>
       </select>
       <button className={styles.secondaryBtn} style={{ fontSize: 12 }} onClick={() => onTrigger(severity)}>
-        Trigger Test Error
+        {t('admin:errors.triggerTestError')}
       </button>
     </div>
   )

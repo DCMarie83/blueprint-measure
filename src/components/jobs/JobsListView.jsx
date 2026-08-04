@@ -1,4 +1,5 @@
 import { ChevronRight } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useClients } from '../../hooks/useClients'
 import { timeAgo } from '../../utils/timeAgo'
 import styles from './JobsListView.module.css'
@@ -16,6 +17,7 @@ export const DOT_COLORS = [
 ]
 
 export default function JobsListView({ projects, columns, onClickProject }) {
+  const { t } = useTranslation()
   const { clients } = useClients()
 
   const colMap = Object.fromEntries((columns ?? []).map(c => [c.id, c]))
@@ -41,12 +43,12 @@ export default function JobsListView({ projects, columns, onClickProject }) {
             <div className={styles.identity}>
               <h3 className={styles.name}>{project.name}</h3>
               <span className={styles.client}>
-                {clientLabel || <span className={styles.unlinked}>— Unlinked</span>}
+                {clientLabel || <span className={styles.unlinked}>{t('jobs:list.unlinked')}</span>}
                 {project.address && <> · {project.address}</>}
               </span>
             </div>
             <span className={styles.statusPill}>{colName}</span>
-            <span className={styles.updated}>Updated {timeAgo(project.updated_at)}</span>
+            <span className={styles.updated}>{t('jobs:label.updated', { time: timeAgo(project.updated_at) })}</span>
             <span className={styles.chevron}><ChevronRight size={16} /></span>
           </div>
         )

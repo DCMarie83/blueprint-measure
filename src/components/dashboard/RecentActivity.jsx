@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Briefcase, FilePlus, ChevronDown } from 'lucide-react';
 import { timeAgo } from '../../utils/timeAgo';
 import styles from './RecentActivity.module.css';
@@ -10,6 +11,7 @@ const ICON_MAP = {
 };
 
 export default function RecentActivity({ recentActivity }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -17,12 +19,12 @@ export default function RecentActivity({ recentActivity }) {
     <div className={styles.section}>
       <button className={styles.headerBtn} onClick={() => setCollapsed(v => !v)}>
         <ChevronDown size={16} className={collapsed ? styles.chevronClosed : styles.chevronOpen} />
-        <h3 className={styles.sectionTitle}>Recent Activity</h3>
+        <h3 className={styles.sectionTitle}>{t('dashboard:recentActivity.title')}</h3>
       </button>
 
       {!collapsed && (
         recentActivity.length === 0 ? (
-          <p className={styles.empty}>Quiet day in the yard.</p>
+          <p className={styles.empty}>{t('dashboard:recentActivity.empty')}</p>
         ) : (
           <div className={styles.list}>
             {recentActivity.slice(0, 5).map((event, i) => {

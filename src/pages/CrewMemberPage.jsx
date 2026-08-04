@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useParams, Link } from 'react-router-dom'
 import { MapPin, AlertTriangle, Copy, Check } from 'lucide-react'
 import { getCrewMemberById, getCrewMemberPunches, updateCrewMember, sendRivetPayLinkEmail } from '../data/timeTracking'
@@ -15,6 +16,7 @@ function fmtDate(iso) {
 }
 
 export default function CrewMemberPage() {
+  const { t } = useTranslation()
   const { id } = useParams()
   const [cm, setCm] = useState(null)
   const [punches, setPunches] = useState([])
@@ -30,6 +32,9 @@ export default function CrewMemberPage() {
   const [email, setEmail] = useState('')
   const [emailSending, setEmailSending] = useState(false)
   const [emailMsg, setEmailMsg] = useState('')
+  // Message type drives styling (error vs success) — never sniff the text, which
+  // breaks once the message is translated.
+  const [emailMsgType, setEmailMsgType] = useState('error')
 
   // Copy
   const [copied, setCopied] = useState(false)
@@ -75,7 +80,7 @@ export default function CrewMemberPage() {
     try {
       await updateCrewMember(cm.id, { cost_rate: value === '' ? null : Number(value) })
       setCm(prev => ({ ...prev, cost_rate: value === '' ? null : Number(value) }))
-    } catch (err) { alert('Error: ' + err.message) }
+    } catch (err) { alert(t('time:errors.generic', { error: err.message || t('common:misc.unknownError') })) }
     finally { setRateSaving(false) }
   }
 
@@ -85,7 +90,7 @@ export default function CrewMemberPage() {
     try {
       await updateCrewMember(cm.id, { link_enabled: !cm.link_enabled })
       setCm(prev => ({ ...prev, link_enabled: !prev.link_enabled }))
-    } catch (err) { alert('Error: ' + err.message) }
+    } catch (err) { alert(t('time:errors.generic', { error: err.message || t('common:misc.unknownError') })) }
     finally { setLinkSaving(false) }
   }
 
@@ -94,12 +99,12 @@ export default function CrewMemberPage() {
     try {
       await navigator.clipboard.writeText(`${window.location.origin}/rivetpay/${cm.link_token}`)
       setCopied(true); setTimeout(() => setCopied(false), 2000)
-    } catch { alert('Copy failed.') }
+    } catch { alert(t('time:errors.copyFailedShort')) }
   }
 
   async function handleSendEmail() {
     const trimmed = email.trim()
-    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) { setEmailMsg('Enter a valid email.'); return }
+    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) { setEmailMsg(t('time:share.invalidEmailShort')); setEmailMsgType('error'); return }
     setEmailSending(true); setEmailMsg('')
     try {
       if (trimmed !== (cm.email || '')) {
@@ -107,19 +112,20 @@ export default function CrewMemberPage() {
         setCm(prev => ({ ...prev, email: trimmed }))
       }
       await sendRivetPayLinkEmail(cm.id, trimmed)
-      setEmailMsg('Sent ✓')
-    } catch (err) { setEmailMsg('Error: ' + (err.message || 'Failed')) }
+      setEmailMsg(t('time:share.sent'))
+      setEmailMsgType('success')
+    } catch (err) { setEmailMsg(t('time:errors.generic', { error: err.message || t('time:share.failedFallback') })); setEmailMsgType('error') }
     finally { setEmailSending(false) }
   }
 
   function renderLoc(lat, lng, source) {
-    if (source === 'manual') return <span className={styles.muted}>manual</span>
-    if (lat) return <a href={`https://www.google.com/maps?q=${lat},${lng}`} target="_blank" rel="noopener noreferrer" className={styles.locLink}><MapPin size={10} /> loc</a>
-    return <span className={styles.noLocBadge}><AlertTriangle size={10} /> No location</span>
+    if (source === 'manual') return <span className={styles.muted}>{t('time:punch.manual')}</span>
+    if (lat) return <a href={`https://www.google.com/maps?q=${lat},${lng}`} target="_blank" rel="noopener noreferrer" className={styles.locLink}><MapPin size={10} /> {t('time:punch.loc')}</a>
+    return <span className={styles.noLocBadge}><AlertTriangle size={10} /> {t('time:punch.noLocation')}</span>
   }
 
-  if (loading) return <div className={styles.page}><main className={styles.main}><p className={styles.loading}>Loading…</p></main></div>
-  if (!cm) return <div className={styles.page}><main className={styles.main}><p className={styles.loading}>Worker not found.</p></main></div>
+  if (loading) return <div className={styles.page}><main className={styles.main}><p className={styles.loading}>{t('common:misc.loading')}</p></main></div>
+  if (!cm) return <div className={styles.page}><main className={styles.main}><p className={styles.loading}>{t('time:crewMember.notFound')}</p></main></div>
 
   const linkUrl = `${window.location.origin}/rivetpay/${cm.link_token}`
 
@@ -127,18 +133,18 @@ export default function CrewMemberPage() {
     <div className={styles.page}>
       
       <main className={styles.main}>
-        <Link to="/time" className={styles.backLink}>← Back to Time</Link>
+        <Link to="/time" className={styles.backLink}>{t('time:crewMember.backToTime')}</Link>
 
         {/* Profile header */}
         <div className={styles.profileHeader}>
           <h1 className={styles.name}>{cm.name}</h1>
           <div className={styles.badges}>
-            <span className={cm.is_active ? styles.badgeActive : styles.badgeInactive}>{cm.is_active ? 'Active' : 'Inactive'}</span>
-            <span className={styles.typeBadge}>{cm.user_id ? 'Login' : 'Link only'}</span>
+            <span className={cm.is_active ? styles.badgeActive : styles.badgeInactive}>{cm.is_active ? t('time:roster.active') : t('time:roster.inactive')}</span>
+            <span className={styles.typeBadge}>{cm.user_id ? t('time:roster.login') : t('time:crewMember.linkOnly')}</span>
           </div>
-          {cm.phone && <div className={styles.infoRow}><span className={styles.label}>Phone</span> {cm.phone}</div>}
+          {cm.phone && <div className={styles.infoRow}><span className={styles.label}>{t('time:crewMember.phone')}</span> {cm.phone}</div>}
           <div className={styles.infoRow}>
-            <span className={styles.label}>Rate</span>
+            <span className={styles.label}>{t('time:crewMember.rate')}</span>
             <input
               type="number"
               className={styles.rateInput}
@@ -150,17 +156,17 @@ export default function CrewMemberPage() {
               onKeyDown={e => { if (e.key === 'Enter') e.target.blur() }}
               disabled={rateSaving}
             />
-            <span className={styles.muted}>$/hr</span>
+            <span className={styles.muted}>{t('time:crewMember.perHour')}</span>
           </div>
         </div>
 
         {/* RivetPay controls */}
         <div className={styles.section}>
-          <h2 className={styles.sectionTitle}>Clock-in Link</h2>
+          <h2 className={styles.sectionTitle}>{t('time:crewMember.clockInLink')}</h2>
           <div className={styles.linkRow}>
             <label className={styles.toggleLabel}>
               <input type="checkbox" checked={cm.link_enabled ?? true} onChange={handleToggleLink} disabled={linkSaving} />
-              {cm.link_enabled !== false ? 'On' : 'Off'}
+              {cm.link_enabled !== false ? t('time:roster.on') : t('time:roster.off')}
             </label>
           </div>
           {cm.link_enabled !== false && (
@@ -168,22 +174,22 @@ export default function CrewMemberPage() {
               <div className={styles.urlRow}>
                 <input type="text" readOnly className={styles.urlInput} value={linkUrl} />
                 <button className={styles.copyBtn} onClick={handleCopy}>
-                  {copied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}
+                  {copied ? <><Check size={14} /> {t('time:share.copied')}</> : <><Copy size={14} /> {t('time:share.copy')}</>}
                 </button>
               </div>
               <div className={styles.emailRow}>
                 <input
                   type="email"
                   className={styles.emailInput}
-                  placeholder="worker@email.com"
+                  placeholder={t('time:share.emailPlaceholder')}
                   value={email}
                   onChange={e => { setEmail(e.target.value); setEmailMsg('') }}
                 />
                 <button className={styles.sendBtn} onClick={handleSendEmail} disabled={emailSending}>
-                  {emailSending ? 'Sending…' : 'Send'}
+                  {emailSending ? t('time:share.sending') : t('common:action.send')}
                 </button>
               </div>
-              {emailMsg && <p className={emailMsg.startsWith('Error') || emailMsg.startsWith('Enter') ? styles.errorMsg : styles.successMsg}>{emailMsg}</p>}
+              {emailMsg && <p className={emailMsgType === 'error' ? styles.errorMsg : styles.successMsg}>{emailMsg}</p>}
             </>
           )}
         </div>
@@ -191,33 +197,33 @@ export default function CrewMemberPage() {
         {/* Totals */}
         <div className={styles.totalsRow}>
           <div className={styles.totalCard}>
-            <div className={styles.totalLabel}>This Month</div>
-            <div className={styles.totalValue}>{monthHours.toFixed(1)} hrs</div>
-            <div className={styles.totalSub}>Approved hours</div>
+            <div className={styles.totalLabel}>{t('time:crewMember.thisMonth')}</div>
+            <div className={styles.totalValue}>{t('time:units.hrs', { value: monthHours.toFixed(1) })}</div>
+            <div className={styles.totalSub}>{t('time:crewMember.approvedHours')}</div>
           </div>
           <div className={styles.totalCard}>
-            <div className={styles.totalLabel}>Lifetime</div>
-            <div className={styles.totalValue}>{lifetimeHours.toFixed(1)} hrs</div>
-            <div className={styles.totalSub}>Approved hours</div>
+            <div className={styles.totalLabel}>{t('time:crewMember.lifetime')}</div>
+            <div className={styles.totalValue}>{t('time:units.hrs', { value: lifetimeHours.toFixed(1) })}</div>
+            <div className={styles.totalSub}>{t('time:crewMember.approvedHours')}</div>
           </div>
         </div>
 
         {/* Clock log */}
         <div className={styles.section}>
-          <h2 className={styles.sectionTitle}>Clock Log</h2>
+          <h2 className={styles.sectionTitle}>{t('time:crewMember.clockLog')}</h2>
           {punches.length === 0 ? (
-            <p className={styles.muted}>No submissions yet.</p>
+            <p className={styles.muted}>{t('time:crewMember.noSubmissions')}</p>
           ) : (
             <div className={styles.tableWrap}>
               <table className={styles.table}>
                 <thead><tr>
-                  <th className={styles.th}>Date</th>
-                  <th className={styles.th}>Job</th>
-                  <th className={styles.th}>Clock In</th>
-                  <th className={styles.th}>Clock Out</th>
-                  <th className={styles.th}>Hours</th>
-                  <th className={styles.th}>Status</th>
-                  <th className={styles.th}>Source</th>
+                  <th className={styles.th}>{t('time:table.date')}</th>
+                  <th className={styles.th}>{t('time:table.job')}</th>
+                  <th className={styles.th}>{t('time:table.clockIn')}</th>
+                  <th className={styles.th}>{t('time:table.clockOut')}</th>
+                  <th className={styles.th}>{t('time:table.hours')}</th>
+                  <th className={styles.th}>{t('time:table.status')}</th>
+                  <th className={styles.th}>{t('time:table.source')}</th>
                 </tr></thead>
                 <tbody>
                   {punches.map(p => (

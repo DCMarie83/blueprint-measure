@@ -1,18 +1,20 @@
 import { useNavigate, Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import styles from './PipelinePreview.module.css'
 
 export default function PipelinePreview({ pipeline, hasZeroJobs }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
 
   if (hasZeroJobs) {
     return (
       <section className={styles.section}>
         <div className={styles.sectionHeader}>
-          <span className={styles.sectionTitle}>Pipeline Overview</span>
-          <Link to="/jobs" className={styles.boardLink}>See full board &rarr;</Link>
+          <span className={styles.sectionTitle}>{t('dashboard:pipeline.title')}</span>
+          <Link to="/jobs" className={styles.boardLink}>{t('dashboard:pipeline.seeBoard')}</Link>
         </div>
         <div className={styles.empty}>
-          Quiet today. Create your first job to get started.
+          {t('dashboard:pipeline.empty')}
         </div>
       </section>
     )
@@ -21,8 +23,8 @@ export default function PipelinePreview({ pipeline, hasZeroJobs }) {
   return (
     <section className={styles.section}>
       <div className={styles.sectionHeader}>
-        <span className={styles.sectionTitle}>Pipeline Overview</span>
-        <Link to="/jobs" className={styles.boardLink}>See full board &rarr;</Link>
+        <span className={styles.sectionTitle}>{t('dashboard:pipeline.title')}</span>
+        <Link to="/jobs" className={styles.boardLink}>{t('dashboard:pipeline.seeBoard')}</Link>
       </div>
 
       <div className={styles.columns}>
@@ -45,17 +47,17 @@ export default function PipelinePreview({ pipeline, hasZeroJobs }) {
                 >
                   <div className={styles.miniName}>{item.name}</div>
                   <div className={styles.miniMeta}>
-                    {item.session_count ?? 0} blueprint{(item.session_count ?? 0) !== 1 ? 's' : ''}
+                    {t('dashboard:pipeline.blueprintCount', { count: item.session_count ?? 0 })}
                   </div>
                 </div>
               ))}
 
               {visible.length === 0 && (
-                <div className={styles.more} style={{ opacity: 0.5 }}>Empty</div>
+                <div className={styles.more} style={{ opacity: 0.5 }}>{t('dashboard:pipeline.columnEmpty')}</div>
               )}
 
               {remaining > 0 && (
-                <div className={styles.more}>+ {remaining} more</div>
+                <div className={styles.more}>{t('dashboard:pipeline.more', { count: remaining })}</div>
               )}
             </div>
           )

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
 import { Send, AlertCircle } from 'lucide-react'
 import Modal from '../ui/Modal'
 import { generateEstimatePDF } from '../../lib/generateEstimatePDF'
@@ -14,6 +15,7 @@ function fmtMoney(val) {
 }
 
 export default function SendEstimateModal({ estimate, lineItems, project, client, company, onClose, onSent }) {
+  const { t } = useTranslation()
   const [sending, setSending] = useState(false)
   const [error, setError] = useState(null)
 
@@ -45,7 +47,7 @@ export default function SendEstimateModal({ estimate, lineItems, project, client
         body: { estimate_id: estimate.id, pdf_base64: pdfBase64 },
       })
 
-      if (fnErr) throw new Error(fnErr.message || 'Failed to send estimate')
+      if (fnErr) throw new Error(fnErr.message || t('estimates:send.sendFailed'))
       if (data?.error) throw new Error(data.error)
 
       // Send-time market-position snapshot for Smart / benchmark-priced estimates.
@@ -74,31 +76,39 @@ export default function SendEstimateModal({ estimate, lineItems, project, client
   }
 
   return (
-    <Modal title="Send Estimate to Client" onClose={onClose}>
+    <Modal title={t('estimates:send.title')} onClose={onClose}>
       {!client ? (
         <div className={styles.errorBlock}>
           <AlertCircle size={18} />
-          <span>No client linked to this project. Link a client first.</span>
+          <span>{t('estimates:send.noClient')}</span>
         </div>
       ) : !hasRecipients ? (
         <div className={styles.errorBlock}>
           <AlertCircle size={18} />
-          <span>No email on file for {client.display_name}. Add a primary email to the client first.</span>
+          <span>{t('estimates:send.noEmail', { name: client.display_name })}</span>
         </div>
       ) : (
         <>
           <p className={styles.confirmText}>
-            Send <strong>{estimate.title || estimate.estimate_number}</strong> ({fmtMoney(getDisplayTotal(estimate))}) to <strong>{client.display_name}</strong>?
+            <Trans
+              i18nKey="estimates:send.confirm"
+              components={{ b: <strong /> }}
+              values={{
+                subject: estimate.title || estimate.estimate_number,
+                total: fmtMoney(getDisplayTotal(estimate)),
+                client: client.display_name,
+              }}
+            />
           </p>
 
           <div className={styles.recipientList}>
-            <span className={styles.recipientLabel}>Recipients:</span>
+            <span className={styles.recipientLabel}>{t('estimates:send.recipients')}</span>
             {recipients.map(email => (
               <span key={email} className={styles.recipientEmail}>{email}</span>
             ))}
           </div>
 
-          <p className={styles.note}>PDF attached + portal link included in email.</p>
+          <p className={styles.note}>{t('estimates:send.pdfNote')}</p>
 
           {error && (
             <div className={styles.errorBlock}>
@@ -108,9 +118,9 @@ export default function SendEstimateModal({ estimate, lineItems, project, client
           )}
 
           <div className={styles.actions}>
-            <button className={styles.cancelBtn} onClick={onClose} disabled={sending}>Cancel</button>
+            <button className={styles.cancelBtn} onClick={onClose} disabled={sending}>{t('common:action.cancel')}</button>
             <button className={styles.sendBtn} onClick={handleSend} disabled={sending}>
-              <Send size={15} /> {sending ? 'Sending...' : 'Send Estimate'}
+              <Send size={15} /> {sending ? t('estimates:send.sending') : t('estimates:send.sendEstimate')}
             </button>
           </div>
         </>

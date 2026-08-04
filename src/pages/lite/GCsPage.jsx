@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { HardHat, Plus, Mail, Phone, ChevronRight, Pencil } from 'lucide-react'
 import Modal from '../../components/ui/Modal'
 import GCForm from './GCForm'
@@ -12,6 +13,7 @@ import styles from './lite.module.css'
 
 export default function GCsPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { clients, loading, createClient, updateClient, refetch } = useClients()
   const { companyId } = useEffectiveCompany()
   const [showForm, setShowForm] = useState(false)
@@ -51,7 +53,7 @@ export default function GCsPage() {
     setEditing(null)
     refetch()
     if (isNew) {
-      setToast(TOASTS.gcAdded)
+      setToast(t(TOASTS.gcAdded))
       setTimeout(() => setToast(''), 2200)
     }
   }
@@ -66,22 +68,22 @@ export default function GCsPage() {
         {toast && <div className={styles.card} style={{ background: 'var(--color-action-open)', color: '#fff', borderColor: 'transparent' }}>{toast}</div>}
         <div className={styles.header}>
           <div>
-            <h1 className={styles.title}>GCs</h1>
-            <p className={styles.subtitle}>The general contractors you work for</p>
+            <h1 className={styles.title}>{t('lite:gcs.title')}</h1>
+            <p className={styles.subtitle}>{t('lite:gcs.subtitle')}</p>
           </div>
           {gcs.length > 0 && (
-            <button className={styles.primaryBtn} onClick={openAdd}><Plus size={16} /> Add GC</button>
+            <button className={styles.primaryBtn} onClick={openAdd}><Plus size={16} /> {t('lite:gcs.addGc')}</button>
           )}
         </div>
 
         {loading ? (
-          <div className={styles.loading}>Loading…</div>
+          <div className={styles.loading}>{t('common:misc.loading')}</div>
         ) : gcs.length === 0 ? (
           <div className={styles.empty}>
             <HardHat size={44} />
-            <div className={styles.emptyTitle}>{EMPTY.gcs}</div>
-            <p>Add the general contractors you work for to start building their catalogs.</p>
-            <button className={styles.primaryBtn} style={{ marginTop: 14 }} onClick={openAdd}><Plus size={16} /> Add your first GC</button>
+            <div className={styles.emptyTitle}>{t(EMPTY.gcs)}</div>
+            <p>{t('lite:gcs.emptyHelp')}</p>
+            <button className={styles.primaryBtn} style={{ marginTop: 14 }} onClick={openAdd}><Plus size={16} /> {t('lite:gcs.addFirstGc')}</button>
           </div>
         ) : (
           gcs.map(gc => (
@@ -93,16 +95,16 @@ export default function GCsPage() {
                   {gc.primary_phone && <><Phone size={12} style={{ verticalAlign: -1 }} /> {gc.primary_phone}</>}
                 </div>
                 <div className={styles.listSub}>
-                  {gc.active_jobs_count ?? 0} job{(gc.active_jobs_count ?? 0) !== 1 ? 's' : ''}
+                  {t('lite:gcs.jobsCount', { count: gc.active_jobs_count ?? 0 })}
                   &nbsp;·&nbsp;
-                  {catalogCounts[gc.id] ?? 0} catalog item{(catalogCounts[gc.id] ?? 0) !== 1 ? 's' : ''}
+                  {t('lite:gcs.catalogItems', { count: catalogCounts[gc.id] ?? 0 })}
                 </div>
               </div>
               <div className={styles.listRight} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span className={styles.iconBtn} role="button" tabIndex={0}
                   onClick={(e) => { e.stopPropagation(); openEdit(gc) }}
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); openEdit(gc) } }}
-                  aria-label="Edit GC">
+                  aria-label={t('lite:gcs.editGc')}>
                   <Pencil size={16} />
                 </span>
                 <ChevronRight size={18} className={styles.muted} />
@@ -113,7 +115,7 @@ export default function GCsPage() {
       </main>
 
       {showForm && (
-        <Modal title={editing ? 'Edit GC' : 'Add GC'} onClose={() => { setShowForm(false); setEditing(null) }}>
+        <Modal title={editing ? t('lite:gcs.editGc') : t('lite:gcs.addGc')} onClose={() => { setShowForm(false); setEditing(null) }}>
           <GCForm initial={editing} onSubmit={handleSubmit} onCancel={() => { setShowForm(false); setEditing(null) }} />
         </Modal>
       )}

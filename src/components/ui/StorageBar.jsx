@@ -1,13 +1,15 @@
+import { useTranslation } from 'react-i18next'
 import styles from './StorageBar.module.css'
 
 export default function StorageBar({ usedBytes, limitBytes }) {
+  const { t } = useTranslation()
   const usedGb = (usedBytes / (1024 * 1024 * 1024)).toFixed(1)
 
   // Pilot / unlimited — no bar, just text
   if (limitBytes == null) {
     return (
       <div className={styles.wrapper}>
-        <div className={styles.label}>{usedGb} GB used — Unlimited</div>
+        <div className={styles.label}>{t('ui:storageBar.unlimited', { used: usedGb })}</div>
       </div>
     )
   }
@@ -24,7 +26,7 @@ export default function StorageBar({ usedBytes, limitBytes }) {
       <div className={styles.track}>
         <div className={`${styles.fill} ${colorClass}`} style={{ width: `${percent}%` }} />
       </div>
-      <div className={styles.label}>{usedGb} GB of {limitGb} GB</div>
+      <div className={styles.label}>{t('ui:storageBar.usage', { used: usedGb, limit: limitGb })}</div>
     </div>
   )
 }

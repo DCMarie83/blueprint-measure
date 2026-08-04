@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Home, Building2, HardHat, Mail, Phone, FileText, Briefcase, Trash2, Edit, DollarSign, Clock, Tag, Globe } from 'lucide-react'
 import BackLink from '../components/BackLink'
@@ -50,6 +51,7 @@ const statValue = { fontSize: 20, fontWeight: 800, color: 'var(--color-text, #1b
 const actionBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text, #1b2426)', fontSize: 13, fontWeight: 600, cursor: 'pointer', textDecoration: 'none' }
 
 export default function ClientDetailPage() {
+  const { t } = useTranslation()
   const { id } = useParams()
   const navigate = useNavigate()
   const { client, contacts, projects, loading, error, refetch, addContact, updateContact, deleteContact } = useClient(id)
@@ -72,7 +74,7 @@ export default function ClientDetailPage() {
       .from('clients')
       .update({ ...payload, updated_at: new Date().toISOString() })
       .eq('id', id)
-    if (err) { alert('Failed to save: ' + err.message); return }
+    if (err) { alert(t('clients:detail.saveFailed', { error: err.message })); return }
     setShowEdit(false)
     refetch()
   }
@@ -83,7 +85,7 @@ export default function ClientDetailPage() {
       .from('clients')
       .update({ status: next, updated_at: new Date().toISOString() })
       .eq('id', id)
-    if (err) { alert('Failed to update status: ' + err.message); return }
+    if (err) { alert(t('clients:detail.statusUpdateFailed', { error: err.message })); return }
     trackMaterials('client_status_changed', { companyId, entityType: 'client', entityId: id, status: next, surface: 'clients' })
     refetch()
   }
@@ -93,7 +95,7 @@ export default function ClientDetailPage() {
     const projs = projects ?? []
     if (projs.length === 1) navigate(`/project/${projs[0].id}`)
     else if (projs.length > 1) setPickerOpen(true)
-    else { setNotice(`Start a job for ${client.display_name} first, then bid it.`); setTimeout(() => navigate('/jobs'), 1400) }
+    else { setNotice(t('clients:list.startJobFirst', { name: client.display_name })); setTimeout(() => navigate('/jobs'), 1400) }
   }
 
   function handleNewJob() {
@@ -107,13 +109,13 @@ export default function ClientDetailPage() {
       await deleteClient(id)
       navigate('/clients')
     } catch (err) {
-      alert('Failed to delete: ' + err.message)
+      alert(t('clients:errors.deleteFailed', { error: err.message }))
       setDeleting(false)
     }
   }
 
-  if (loading) return <div className={styles.page}><main className={styles.main}><p className={styles.loading}>Loading…</p></main></div>
-  if (error || !client) return <div className={styles.page}><main className={styles.main}><p className={styles.loading}>Client not found.</p></main></div>
+  if (loading) return <div className={styles.page}><main className={styles.main}><p className={styles.loading}>{t('common:misc.loading')}</p></main></div>
+  if (error || !client) return <div className={styles.page}><main className={styles.main}><p className={styles.loading}>{t('clients:detail.notFound')}</p></main></div>
 
   const chip = statusMeta(client.status)
 
@@ -121,7 +123,7 @@ export default function ClientDetailPage() {
     <div className={styles.page}>
       
       <main className={styles.main}>
-        <BackLink to="/clients" label="Clients" />
+        <BackLink to="/clients" label={t('clients:list.title')} />
 
         {notice && <div style={{ fontSize: 13, fontWeight: 600, color: '#F27243', margin: '8px 0' }}>{notice}</div>}
 
@@ -133,65 +135,65 @@ export default function ClientDetailPage() {
             </span>
             <div>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>
-                {client.client_type === 'general_contractor' ? <><HardHat size={14} /> general contractor</>
-                  : client.client_type === 'commercial' ? <><Building2 size={14} /> commercial</>
-                  : <><Home size={14} /> residential</>}
+                {client.client_type === 'general_contractor' ? <><HardHat size={14} /> {t('clients:detail.typeGeneralContractor')}</>
+                  : client.client_type === 'commercial' ? <><Building2 size={14} /> {t('clients:detail.typeCommercial')}</>
+                  : <><Home size={14} /> {t('clients:detail.typeResidential')}</>}
               </span>
               <h1 style={{ fontSize: 24, fontWeight: 800, margin: '2px 0 0', color: 'var(--color-text, #1b2426)' }}>{client.display_name}</h1>
               <div className="cv-underline" />
               {client.business_name && <div style={{ color: 'var(--color-text-muted)', marginTop: 6 }}>{client.business_name}</div>}
               {/* Inline status changer */}
               <div style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 9999, fontSize: 11, fontWeight: 700, background: chip.bg, color: chip.fg }}>{chip.label}</span>
+                <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 9999, fontSize: 11, fontWeight: 700, background: chip.bg, color: chip.fg }}>{t(chip.label)}</span>
                 <select
                   value={client.status}
                   onChange={e => handleStatusChange(e.target.value)}
                   style={{ padding: '4px 8px', fontSize: 12, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
                 >
-                  {CLIENT_STATUSES.map(s => <option key={s} value={s}>{statusMeta(s).label}</option>)}
+                  {CLIENT_STATUSES.map(s => <option key={s} value={s}>{t(statusMeta(s).label)}</option>)}
                 </select>
               </div>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <ClientLogoUpload clientId={id} currentLogoUrl={client.logo_url} clientName={client.display_name} onLogoChange={() => refetch()} />
-            <button style={actionBtn} onClick={() => setShowEdit(true)}><Edit size={14} /> Edit</button>
-            <button style={{ ...actionBtn, color: 'var(--color-danger, #dc2626)' }} onClick={() => setShowDelete(true)}><Trash2 size={14} /> Delete</button>
+            <button style={actionBtn} onClick={() => setShowEdit(true)}><Edit size={14} /> {t('common:action.edit')}</button>
+            <button style={{ ...actionBtn, color: 'var(--color-danger, #dc2626)' }} onClick={() => setShowDelete(true)}><Trash2 size={14} /> {t('common:action.delete')}</button>
           </div>
         </div>
 
         {/* Pinned quick actions */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
-          {client.primary_phone && <a style={actionBtn} href={`tel:${client.primary_phone}`} onClick={() => track('call')}><Phone size={14} /> Call</a>}
-          {client.primary_email && <a style={actionBtn} href={`mailto:${client.primary_email}`} onClick={() => track('email')}><Mail size={14} /> Email</a>}
-          <button style={actionBtn} onClick={handleNewEstimate}><FileText size={14} /> New Estimate</button>
-          <button style={actionBtn} onClick={handleNewJob}><Briefcase size={14} /> New Job</button>
+          {client.primary_phone && <a style={actionBtn} href={`tel:${client.primary_phone}`} onClick={() => track('call')}><Phone size={14} /> {t('clients:detail.call')}</a>}
+          {client.primary_email && <a style={actionBtn} href={`mailto:${client.primary_email}`} onClick={() => track('email')}><Mail size={14} /> {t('clients:detail.email')}</a>}
+          <button style={actionBtn} onClick={handleNewEstimate}><FileText size={14} /> {t('clients:detail.newEstimate')}</button>
+          <button style={actionBtn} onClick={handleNewJob}><Briefcase size={14} /> {t('clients:detail.newJob')}</button>
         </div>
 
         {/* Stat cards */}
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 24 }}>
           <div style={statCard}>
-            <div style={statLabel}><DollarSign size={14} /> Lifetime value</div>
+            <div style={statLabel}><DollarSign size={14} /> {t('clients:detail.lifetimeValue')}</div>
             <div style={statValue}>{fmtMoneyFlat(ltv)}</div>
           </div>
           <div style={statCard}>
-            <div style={statLabel}><Briefcase size={14} /> Projects</div>
+            <div style={statLabel}><Briefcase size={14} /> {t('clients:detail.projects')}</div>
             <div style={statValue}>{projects.length}</div>
           </div>
           <div style={statCard}>
-            <div style={statLabel}><Clock size={14} /> Last contact</div>
-            <div style={{ ...statValue, fontSize: 16 }}>{client.last_contact_at ? timeAgo(client.last_contact_at) : 'Never'}</div>
+            <div style={statLabel}><Clock size={14} /> {t('clients:detail.lastContact')}</div>
+            <div style={{ ...statValue, fontSize: 16 }}>{client.last_contact_at ? timeAgo(client.last_contact_at) : t('clients:list.never')}</div>
           </div>
         </div>
 
         {/* Details (data that isn't in quick actions) */}
         {(client.preferred_contact_method || client.billing_terms || client.property_type || client.company_website || client.notes || client.tags?.length > 0) && (
           <div className={styles.flatSection}>
-            <h3 className={styles.flatLabel}>Details</h3>
+            <h3 className={styles.flatLabel}>{t('clients:detail.detailsTitle')}</h3>
             <div className={styles.flatContent}>
-              {client.preferred_contact_method && <div className={styles.infoRow}><span className={styles.label}>Preferred:</span> {client.preferred_contact_method}</div>}
-              {client.billing_terms && <div className={styles.infoRow}><span className={styles.label}>Billing:</span> {client.billing_terms.replace(/_/g, ' ')}</div>}
-              {client.property_type && <div className={styles.infoRow}><span className={styles.label}>Property:</span> {client.property_type.replace(/_/g, ' ')}</div>}
+              {client.preferred_contact_method && <div className={styles.infoRow}><span className={styles.label}>{t('clients:detail.preferredLabel')}</span> {client.preferred_contact_method}</div>}
+              {client.billing_terms && <div className={styles.infoRow}><span className={styles.label}>{t('clients:detail.billingLabel')}</span> {client.billing_terms.replace(/_/g, ' ')}</div>}
+              {client.property_type && <div className={styles.infoRow}><span className={styles.label}>{t('clients:detail.propertyLabel')}</span> {client.property_type.replace(/_/g, ' ')}</div>}
               {client.company_website && <div className={styles.infoRow}><Globe size={14} /> <a href={client.company_website} target="_blank" rel="noopener noreferrer">{client.company_website}</a></div>}
               {client.tags?.length > 0 && <div className={styles.infoRow}><Tag size={14} /> {client.tags.map(t => <span key={t} className={styles.tag}>{t}</span>)}</div>}
               {client.notes && <div className={styles.infoRow}><FileText size={14} /> {client.notes}</div>}
@@ -201,9 +203,9 @@ export default function ClientDetailPage() {
 
         {/* Projects */}
         <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>Projects ({projects.length})</h2>
+          <h2 className={styles.sectionTitle}>{t('clients:detail.projectsCount', { count: projects.length })}</h2>
           {projects.length === 0 ? (
-            <p className={styles.muted}>No jobs linked to this client.</p>
+            <p className={styles.muted}>{t('clients:detail.noJobs')}</p>
           ) : (
             <div className={styles.jobList}>
               {projects.map(p => (
@@ -236,28 +238,28 @@ export default function ClientDetailPage() {
       </main>
 
       {showEdit && (
-        <Modal title="Edit Client" onClose={() => setShowEdit(false)}>
+        <Modal title={t('clients:detail.editClient')} onClose={() => setShowEdit(false)}>
           <ClientForm initialClient={client} initialContacts={contacts} onSubmit={handleUpdate} onCancel={() => setShowEdit(false)} />
         </Modal>
       )}
 
       {showDelete && (
-        <Modal title="Delete Client?" onClose={() => setShowDelete(false)}>
-          <p style={{ color: 'var(--color-text-muted)', marginBottom: 20 }}>This will permanently delete this client and all their contacts. Linked jobs will be unlinked but not deleted.</p>
+        <Modal title={t('clients:detail.deleteClientTitle')} onClose={() => setShowDelete(false)}>
+          <p style={{ color: 'var(--color-text-muted)', marginBottom: 20 }}>{t('clients:detail.deleteWarning')}</p>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-            <button style={{ padding: '9px 18px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', color: 'var(--color-text-muted)', cursor: 'pointer' }} onClick={() => setShowDelete(false)}>Cancel</button>
-            <button style={{ padding: '9px 18px', background: 'var(--color-danger)', border: 'none', borderRadius: 'var(--radius-md)', color: '#fff', fontWeight: 600, cursor: 'pointer' }} onClick={handleDelete} disabled={deleting}>{deleting ? 'Deleting…' : 'Delete'}</button>
+            <button style={{ padding: '9px 18px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', color: 'var(--color-text-muted)', cursor: 'pointer' }} onClick={() => setShowDelete(false)}>{t('common:action.cancel')}</button>
+            <button style={{ padding: '9px 18px', background: 'var(--color-danger)', border: 'none', borderRadius: 'var(--radius-md)', color: '#fff', fontWeight: 600, cursor: 'pointer' }} onClick={handleDelete} disabled={deleting}>{deleting ? t('clients:detail.deleting') : t('common:action.delete')}</button>
           </div>
         </Modal>
       )}
 
       {pickerOpen && (
-        <Modal title={`Which job for ${client.display_name}?`} onClose={() => setPickerOpen(false)}>
+        <Modal title={t('clients:list.whichJob', { name: client.display_name })} onClose={() => setPickerOpen(false)}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 4 }}>
             {projects.map(p => (
               <button key={p.id} onClick={() => { setPickerOpen(false); navigate(`/project/${p.id}`) }}
                 style={{ textAlign: 'left', padding: '10px 14px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)', cursor: 'pointer', fontWeight: 600, color: 'var(--color-text, #1b2426)' }}>
-                {p.name || 'Untitled job'}
+                {p.name || t('clients:list.untitledJob')}
               </button>
             ))}
           </div>

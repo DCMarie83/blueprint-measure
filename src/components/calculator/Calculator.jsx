@@ -1,8 +1,10 @@
 import { useState, useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { parseFeetInches, formatFeetInches } from '../../utils/fractions'
 import styles from './Calculator.module.css'
 
 const MODES = ['Standard', 'SF (L×W)', 'Markup %']
+const MODE_LABEL_KEYS = { 'Standard': 'pricing:calc.modeStandard', 'SF (L×W)': 'pricing:calc.modeSf', 'Markup %': 'pricing:calc.modeMarkup' }
 
 function copyToClipboard(text) {
   navigator.clipboard.writeText(text).catch(() => {})
@@ -21,6 +23,7 @@ function evaluate(a, op, b) {
 }
 
 export default function Calculator({ unitSystem = 'imperial' }) {
+  const { t } = useTranslation()
   const [mode, setMode] = useState('Standard')
 
   // Standard calc state
@@ -108,7 +111,7 @@ export default function Calculator({ unitSystem = 'imperial' }) {
             className={`${styles.tab} ${mode === m ? styles.tabActive : ''}`}
             onClick={() => setMode(m)}
           >
-            {m}
+            {t(MODE_LABEL_KEYS[m])}
           </button>
         ))}
       </div>
@@ -133,14 +136,14 @@ export default function Calculator({ unitSystem = 'imperial' }) {
 
             <button className={`${styles.numBtn} ${styles.zeroBtn}`} onClick={() => handleDigit('0')}>0</button>
             <button className={styles.numBtn} onClick={() => handleDigit('.')}>.</button>
-            <button className={styles.copyBtn} onClick={() => copyToClipboard(display)}>Copy</button>
+            <button className={styles.copyBtn} onClick={() => copyToClipboard(display)}>{t('pricing:calc.copy')}</button>
           </div>
         </div>
       )}
 
       {mode === 'SF (L×W)' && (
         <div className={styles.formMode}>
-          <label className={styles.fieldLabel}>{isMetric ? 'Length (m)' : 'Length (ft + in)'}</label>
+          <label className={styles.fieldLabel}>{isMetric ? t('pricing:calc.lengthM') : t('pricing:calc.lengthFtIn')}</label>
           <input
             className={styles.fieldInput}
             type="text"
@@ -151,7 +154,7 @@ export default function Calculator({ unitSystem = 'imperial' }) {
           {parsedLength !== null && (
             <span className={styles.parsedHint}>→ {isMetric ? `${parsedLength.toFixed(2)} m` : formatFeetInches(parsedLength)}</span>
           )}
-          <label className={styles.fieldLabel}>{isMetric ? 'Width (m)' : 'Width (ft + in)'}</label>
+          <label className={styles.fieldLabel}>{isMetric ? t('pricing:calc.widthM') : t('pricing:calc.widthFtIn')}</label>
           <input
             className={styles.fieldInput}
             type="text"
@@ -165,10 +168,10 @@ export default function Calculator({ unitSystem = 'imperial' }) {
           {sfResult !== null && (
             <>
               <div className={styles.formResult}>
-                = {sfResult.toLocaleString('en-US', { maximumFractionDigits: 2 })} {isMetric ? 'm²' : 'sq ft'}
+                = {sfResult.toLocaleString('en-US', { maximumFractionDigits: 2 })} {isMetric ? t('pricing:calc.sqM') : t('pricing:calc.sqFt')}
               </div>
               <button className={styles.formCopy} onClick={() => copyToClipboard(sfResult.toFixed(2))}>
-                Copy result
+                {t('pricing:calc.copyResult')}
               </button>
             </>
           )}
@@ -177,7 +180,7 @@ export default function Calculator({ unitSystem = 'imperial' }) {
 
       {mode === 'Markup %' && (
         <div className={styles.formMode}>
-          <label className={styles.fieldLabel}>Cost $</label>
+          <label className={styles.fieldLabel}>{t('pricing:calc.costLabel')}</label>
           <input
             className={styles.fieldInput}
             type="number"
@@ -187,7 +190,7 @@ export default function Calculator({ unitSystem = 'imperial' }) {
             onChange={e => setCost(e.target.value)}
             placeholder="0.00"
           />
-          <label className={styles.fieldLabel}>Markup %</label>
+          <label className={styles.fieldLabel}>{t('pricing:calc.markupLabel')}</label>
           <input
             className={styles.fieldInput}
             type="number"
@@ -201,7 +204,7 @@ export default function Calculator({ unitSystem = 'imperial' }) {
             = $ {markupResult.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <button className={styles.formCopy} onClick={() => copyToClipboard(markupResult.toFixed(2))}>
-            Copy result
+            {t('pricing:calc.copyResult')}
           </button>
         </div>
       )}

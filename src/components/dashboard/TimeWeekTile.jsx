@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Clock } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
@@ -8,6 +9,7 @@ import { getWeekHours } from '../../data/timeTracking'
 import styles from './TimeWeekTile.module.css'
 
 export default function TimeWeekTile() {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const { companyId } = useEffectiveCompany()
   const [hours, setHours] = useState(null)
@@ -40,11 +42,11 @@ export default function TimeWeekTile() {
       <div className={styles.left}>
         <Clock size={18} className={styles.icon} />
         <div>
-          <div className={styles.label}>Hours This Week</div>
+          <div className={styles.label}>{t('dashboard:timeWeek.label')}</div>
           <div className={styles.value}>{hours.toFixed(1)}</div>
         </div>
       </div>
-      <Link to="/time" className={styles.logBtn}>Log time</Link>
+      <Link to="/time" className={styles.logBtn}>{t('dashboard:timeWeek.logBtn')}</Link>
     </section>
   )
 }

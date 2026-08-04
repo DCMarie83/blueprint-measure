@@ -1,4 +1,5 @@
 import { useRef, useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
@@ -8,6 +9,7 @@ import styles from './BlueprintUploader.module.css'
 const MAX_FILE_SIZE_GB = 1
 
 export default function BlueprintUploader({ sessionId, projectId, onSplitFlowRedirect, onUploaded, onStorageCheck, oldBlueprintType }) {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const navigate = useNavigate()
   const inputRef = useRef(null)
@@ -36,7 +38,7 @@ export default function BlueprintUploader({ sessionId, projectId, onSplitFlowRed
     const validation = validateFile(file)
     if (!validation.valid) {
       if (validation.splittable) {
-        setError('PDF is too large for direct upload. Use the multi-file drop zone on Job Overview to split a large PDF into multiple blueprints.')
+        setError(t('blueprint:uploader.tooLargeSplit'))
         setIsSplittableError(true)
       } else {
         setError(validation.error)
@@ -59,7 +61,7 @@ export default function BlueprintUploader({ sessionId, projectId, onSplitFlowRed
     const accessToken = authSession?.access_token
 
     if (!accessToken) {
-      setError('Not authenticated. Please sign in again.')
+      setError(t('blueprint:uploader.notAuthenticated'))
       setUploading(false)
       return
     }
@@ -90,7 +92,7 @@ export default function BlueprintUploader({ sessionId, projectId, onSplitFlowRed
         setBytesTotal(total)
       },
       onError(msg) {
-        setError(`Upload failed: ${msg}. You can retry without re-selecting the file.`)
+        setError(t('blueprint:uploader.uploadFailedRetry', { msg }))
         setFailedFile(file)
         setUploading(false)
       },
@@ -139,7 +141,7 @@ export default function BlueprintUploader({ sessionId, projectId, onSplitFlowRed
       {uploading ? (
         <div className={styles.uploadingState}>
           <div className={styles.progressInfo}>
-            <span className={styles.progressLabel}>Fetching... {progress}%</span>
+            <span className={styles.progressLabel}>{t('blueprint:uploader.fetchingPct', { progress })}</span>
             <span className={styles.progressBytes}>
               {formatBytes(bytesUploaded)} / {formatBytes(bytesTotal)}
             </span>
@@ -155,9 +157,9 @@ export default function BlueprintUploader({ sessionId, projectId, onSplitFlowRed
         <>
           <div className={styles.icon}>📋</div>
           <div className={styles.text}>
-            <strong>Drop the bone here</strong> or click to browse
+            <strong>{t('blueprint:uploader.dropBone')}</strong> {t('blueprint:uploader.orClickBrowse')}
           </div>
-          <div className={styles.sub}>JPG, PNG, or PDF — up to {MAX_FILE_SIZE_GB}GB</div>
+          <div className={styles.sub}>{t('blueprint:uploader.fileHint', { gb: MAX_FILE_SIZE_GB })}</div>
           {warning && (
             <div style={{ color: '#f59e0b', fontSize: 12, marginTop: 6, padding: '6px 10px', background: 'rgba(245,158,11,0.08)', borderRadius: 4 }}>
               {warning}
@@ -168,7 +170,7 @@ export default function BlueprintUploader({ sessionId, projectId, onSplitFlowRed
               {error}
               {failedFile && (
                 <button className={styles.retryBtn} onClick={e => { e.stopPropagation(); handleRetry() }}>
-                  Retry Upload
+                  {t('blueprint:uploader.retryUpload')}
                 </button>
               )}
               {isSplittableError && projectId && (
@@ -184,7 +186,7 @@ export default function BlueprintUploader({ sessionId, projectId, onSplitFlowRed
                     cursor: 'pointer', fontSize: 13,
                   }}
                 >
-                  Go to Job Overview
+                  {t('blueprint:uploader.goToJobOverview')}
                 </button>
               )}
             </div>

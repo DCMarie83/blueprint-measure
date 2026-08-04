@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Modal from '../ui/Modal'
 import styles from './ClientContactModal.module.css'
 
 export default function ClientContactModal({ contact, onClose, onSave }) {
+  const { t } = useTranslation()
   const isEdit = !!contact
   const [form, setForm] = useState({
     name: contact?.name ?? '',
@@ -23,7 +25,7 @@ export default function ClientContactModal({ contact, onClose, onSave }) {
   async function handleSubmit(e) {
     e.preventDefault()
     if (!form.name.trim()) {
-      setError('Name is required.')
+      setError(t('clients:contact.nameRequired'))
       return
     }
     setSaving(true)
@@ -48,27 +50,27 @@ export default function ClientContactModal({ contact, onClose, onSave }) {
   }
 
   return (
-    <Modal title={isEdit ? 'Edit Contact' : 'Add Contact'} onClose={onClose}>
+    <Modal title={isEdit ? t('clients:contact.editContact') : t('clients:contact.addContact')} onClose={onClose}>
       <form onSubmit={handleSubmit} className={styles.form}>
         {error && <div className={styles.error}>{error}</div>}
 
         <label className={styles.field}>
-          <span className={styles.label}>Name</span>
+          <span className={styles.label}>{t('clients:contact.name')}</span>
           <input className={styles.input} value={form.name} onChange={e => update('name', e.target.value)} required />
         </label>
 
         <label className={styles.field}>
-          <span className={styles.label}>Title <span className={styles.optional}>(optional)</span></span>
-          <input className={styles.input} value={form.title} onChange={e => update('title', e.target.value)} placeholder="e.g. Property Manager" />
+          <span className={styles.label}>{t('clients:contact.title')} <span className={styles.optional}>{t('clients:modal.optional')}</span></span>
+          <input className={styles.input} value={form.title} onChange={e => update('title', e.target.value)} placeholder={t('clients:contact.titlePlaceholder')} />
         </label>
 
         <div className={styles.row}>
           <label className={styles.field}>
-            <span className={styles.label}>Email <span className={styles.optional}>(optional)</span></span>
+            <span className={styles.label}>{t('clients:contact.email')} <span className={styles.optional}>{t('clients:modal.optional')}</span></span>
             <input className={styles.input} type="email" value={form.email} onChange={e => update('email', e.target.value)} />
           </label>
           <label className={styles.field}>
-            <span className={styles.label}>Phone <span className={styles.optional}>(optional)</span></span>
+            <span className={styles.label}>{t('clients:contact.phone')} <span className={styles.optional}>{t('clients:modal.optional')}</span></span>
             <input className={styles.input} value={form.phone} onChange={e => update('phone', e.target.value)} />
           </label>
         </div>
@@ -76,22 +78,22 @@ export default function ClientContactModal({ contact, onClose, onSave }) {
         <div className={styles.checkGroup}>
           <label className={styles.checkRow}>
             <input type="checkbox" checked={form.is_primary} onChange={e => update('is_primary', e.target.checked)} />
-            <span>Primary contact</span>
+            <span>{t('clients:contact.primaryContact')}</span>
           </label>
           <label className={styles.checkRow}>
             <input type="checkbox" checked={form.is_portal_recipient} onChange={e => update('is_portal_recipient', e.target.checked)} />
-            <span>Receives portal updates</span>
+            <span>{t('clients:contact.portalUpdates')}</span>
           </label>
         </div>
 
         <label className={styles.field}>
-          <span className={styles.label}>Notes <span className={styles.optional}>(optional)</span></span>
+          <span className={styles.label}>{t('clients:contact.notes')} <span className={styles.optional}>{t('clients:modal.optional')}</span></span>
           <textarea className={styles.textarea} value={form.notes} onChange={e => update('notes', e.target.value)} rows={3} />
         </label>
 
         <div className={styles.actions}>
-          <button type="button" className={styles.cancelBtn} onClick={onClose}>Cancel</button>
-          <button type="submit" className={styles.submitBtn} disabled={saving}>{saving ? 'Saving…' : isEdit ? 'Save' : 'Add Contact'}</button>
+          <button type="button" className={styles.cancelBtn} onClick={onClose}>{t('common:action.cancel')}</button>
+          <button type="submit" className={styles.submitBtn} disabled={saving}>{saving ? t('clients:modal.saving') : isEdit ? t('common:action.save') : t('clients:contact.addContact')}</button>
         </div>
       </form>
     </Modal>

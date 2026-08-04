@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { useSessions } from '../../hooks/useSessions'
@@ -20,6 +21,7 @@ function buildDefaultRanges(pageCount, baseName) {
 }
 
 export default function PdfSplitModal({ file, projectId, onComplete, onCancel }) {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const { createSession } = useSessions()
   const [pageCount, setPageCount] = useState(null)
@@ -90,7 +92,7 @@ export default function PdfSplitModal({ file, projectId, onComplete, onCancel })
       const id = range.id
 
       // Extract
-      setStatuses(prev => ({ ...prev, [id]: { status: 'extracting', message: 'Extracting pages...' } }))
+      setStatuses(prev => ({ ...prev, [id]: { status: 'extracting', message: t('blueprint:split.extracting') } }))
       let bytes
       try {
         bytes = await extractPageRange(arrayBufferRef.current, range.start, range.end)
@@ -102,7 +104,7 @@ export default function PdfSplitModal({ file, projectId, onComplete, onCancel })
       if (cancelRef.current) break
 
       // Create session
-      setStatuses(prev => ({ ...prev, [id]: { status: 'creating', message: 'Creating blueprint...' } }))
+      setStatuses(prev => ({ ...prev, [id]: { status: 'creating', message: t('blueprint:split.creating') } }))
       let session
       try {
         session = await createSession({
@@ -118,13 +120,13 @@ export default function PdfSplitModal({ file, projectId, onComplete, onCancel })
       if (cancelRef.current) break
 
       // Upload
-      setStatuses(prev => ({ ...prev, [id]: { status: 'uploading', message: 'Uploading 0%', progress: 0 } }))
+      setStatuses(prev => ({ ...prev, [id]: { status: 'uploading', message: t('blueprint:split.uploadingPct', { pct: 0 }), progress: 0 } }))
       const pdfFile = bytesToFile(bytes, `${range.name.replace(/\s+/g, '_')}.pdf`)
       const { data: { session: authSession } } = await supabase.auth.getSession()
       const accessToken = authSession?.access_token
 
       if (!accessToken) {
-        setStatuses(prev => ({ ...prev, [id]: { status: 'error', message: 'Not authenticated. Please sign in again.' } }))
+        setStatuses(prev => ({ ...prev, [id]: { status: 'error', message: t('blueprint:split.notAuthFull') } }))
         continue
       }
 
@@ -136,7 +138,7 @@ export default function PdfSplitModal({ file, projectId, onComplete, onCancel })
             userId: user.id,
             accessToken,
             onProgress(pct) {
-              setStatuses(prev => ({ ...prev, [id]: { status: 'uploading', message: `Uploading ${pct}%`, progress: pct } }))
+              setStatuses(prev => ({ ...prev, [id]: { status: 'uploading', message: t('blueprint:split.uploadingPct', { pct }), progress: pct } }))
             },
             onError(msg) {
               reject(new Error(msg))
@@ -146,10 +148,10 @@ export default function PdfSplitModal({ file, projectId, onComplete, onCancel })
             },
           })
         })
-        setStatuses(prev => ({ ...prev, [id]: { status: 'done', message: 'Done' } }))
+        setStatuses(prev => ({ ...prev, [id]: { status: 'done', message: t('blueprint:split.done') } }))
         anySucceeded = true
       } catch (err) {
-        setStatuses(prev => ({ ...prev, [id]: { status: 'error', message: `Upload failed: ${err.message}` } }))
+        setStatuses(prev => ({ ...prev, [id]: { status: 'error', message: t('blueprint:split.uploadFailed', { message: err.message }) } }))
       }
     }
 
@@ -176,7 +178,7 @@ export default function PdfSplitModal({ file, projectId, onComplete, onCancel })
     ;(async () => {
       setProcessing(true)
 
-      setStatuses(prev => ({ ...prev, [rangeId]: { status: 'extracting', message: 'Extracting pages...' } }))
+      setStatuses(prev => ({ ...prev, [rangeId]: { status: 'extracting', message: t('blueprint:split.extracting') } }))
       let bytes
       try {
         bytes = await extractPageRange(arrayBufferRef.current, range.start, range.end)
@@ -186,7 +188,7 @@ export default function PdfSplitModal({ file, projectId, onComplete, onCancel })
         return
       }
 
-      setStatuses(prev => ({ ...prev, [rangeId]: { status: 'creating', message: 'Creating blueprint...' } }))
+      setStatuses(prev => ({ ...prev, [rangeId]: { status: 'creating', message: t('blueprint:split.creating') } }))
       let session
       try {
         session = await createSession({
@@ -200,13 +202,13 @@ export default function PdfSplitModal({ file, projectId, onComplete, onCancel })
         return
       }
 
-      setStatuses(prev => ({ ...prev, [rangeId]: { status: 'uploading', message: 'Uploading 0%', progress: 0 } }))
+      setStatuses(prev => ({ ...prev, [rangeId]: { status: 'uploading', message: t('blueprint:split.uploadingPct', { pct: 0 }), progress: 0 } }))
       const pdfFile = bytesToFile(bytes, `${range.name.replace(/\s+/g, '_')}.pdf`)
       const { data: { session: authSession } } = await supabase.auth.getSession()
       const accessToken = authSession?.access_token
 
       if (!accessToken) {
-        setStatuses(prev => ({ ...prev, [rangeId]: { status: 'error', message: 'Not authenticated.' } }))
+        setStatuses(prev => ({ ...prev, [rangeId]: { status: 'error', message: t('blueprint:split.notAuth') } }))
         setProcessing(false)
         return
       }
@@ -219,16 +221,16 @@ export default function PdfSplitModal({ file, projectId, onComplete, onCancel })
             userId: user.id,
             accessToken,
             onProgress(pct) {
-              setStatuses(prev => ({ ...prev, [rangeId]: { status: 'uploading', message: `Uploading ${pct}%`, progress: pct } }))
+              setStatuses(prev => ({ ...prev, [rangeId]: { status: 'uploading', message: t('blueprint:split.uploadingPct', { pct }), progress: pct } }))
             },
             onError(msg) { reject(new Error(msg)) },
             onSuccess() { resolve() },
           })
         })
-        setStatuses(prev => ({ ...prev, [rangeId]: { status: 'done', message: 'Done' } }))
+        setStatuses(prev => ({ ...prev, [rangeId]: { status: 'done', message: t('blueprint:split.done') } }))
         onComplete?.()
       } catch (err) {
-        setStatuses(prev => ({ ...prev, [rangeId]: { status: 'error', message: `Upload failed: ${err.message}` } }))
+        setStatuses(prev => ({ ...prev, [rangeId]: { status: 'error', message: t('blueprint:split.uploadFailed', { message: err.message }) } }))
       }
       setProcessing(false)
     })()
@@ -246,20 +248,20 @@ export default function PdfSplitModal({ file, projectId, onComplete, onCancel })
   }
 
   return (
-    <Modal title="Split Large PDF" onClose={handleCancel}>
+    <Modal title={t('blueprint:split.title')} onClose={handleCancel}>
       <div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
         {/* Header info */}
         <div style={{ marginBottom: 16, color: 'var(--color-text-muted)', fontSize: 13 }}>
           <strong style={{ color: 'var(--color-text)' }}>{file.name}</strong>
           {' — '}{sizeMb} MB
-          {pageCount && ` — ${pageCount} pages`}
+          {pageCount && ` — ${t('blueprint:split.pagesCount', { count: pageCount })}`}
         </div>
 
         {/* Loading state */}
         {!pageCount && !loadError && (
           <div style={{ textAlign: 'center', padding: 20 }}>
             <div className="spinner" />
-            <p style={{ marginTop: 8, color: 'var(--color-text-muted)', fontSize: 13 }}>Reading PDF...</p>
+            <p style={{ marginTop: 8, color: 'var(--color-text-muted)', fontSize: 13 }}>{t('blueprint:split.readingPdf')}</p>
           </div>
         )}
 
@@ -274,7 +276,7 @@ export default function PdfSplitModal({ file, projectId, onComplete, onCancel })
         {pageCount && !loadError && (
           <>
             <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 8 }}>
-              Define page ranges (max 100 pages each). Each range becomes a separate blueprint.
+              {t('blueprint:split.definePrompt')}
             </div>
 
             {ranges.map((range, idx) => {
@@ -292,7 +294,7 @@ export default function PdfSplitModal({ file, projectId, onComplete, onCancel })
                   flexWrap: 'wrap',
                 }}>
                   {/* Page range inputs */}
-                  <label style={{ fontSize: 12, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>Pages</label>
+                  <label style={{ fontSize: 12, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>{t('blueprint:split.pagesLabel')}</label>
                   <input
                     type="number"
                     min={1}
@@ -305,7 +307,7 @@ export default function PdfSplitModal({ file, projectId, onComplete, onCancel })
                       borderRadius: 4, background: 'var(--color-bg)', color: 'var(--color-text)', textAlign: 'center',
                     }}
                   />
-                  <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>to</span>
+                  <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>{t('blueprint:split.to')}</span>
                   <input
                     type="number"
                     min={1}
@@ -325,7 +327,7 @@ export default function PdfSplitModal({ file, projectId, onComplete, onCancel })
                     value={range.name}
                     onChange={e => updateRange(range.id, { name: e.target.value })}
                     disabled={processing}
-                    placeholder="Blueprint name"
+                    placeholder={t('blueprint:split.blueprintName')}
                     style={{
                       flex: 1, minWidth: 140, padding: '4px 8px', fontSize: 13,
                       border: '1px solid var(--color-border)', borderRadius: 4,
@@ -346,7 +348,7 @@ export default function PdfSplitModal({ file, projectId, onComplete, onCancel })
                             color: 'var(--color-text-muted)', cursor: 'pointer',
                           }}
                         >
-                          Retry
+                          {t('common:action.retry')}
                         </button>
                       )}
                     </div>
@@ -359,7 +361,7 @@ export default function PdfSplitModal({ file, projectId, onComplete, onCancel })
                         color: ranges.length <= 1 ? 'var(--color-border)' : 'var(--color-text-muted)',
                         cursor: ranges.length <= 1 ? 'default' : 'pointer', padding: '0 4px',
                       }}
-                      title="Remove range"
+                      title={t('blueprint:split.removeRange')}
                     >
                       x
                     </button>
@@ -368,8 +370,8 @@ export default function PdfSplitModal({ file, projectId, onComplete, onCancel })
                   {/* Validation messages */}
                   {hasError && (
                     <div style={{ width: '100%', fontSize: 11, color: '#ef4444', marginTop: 2 }}>
-                      {tooMany && `Too many pages (${rangeCount}). Maximum is 100 per range.`}
-                      {outOfBounds && 'Invalid range — check start and end pages.'}
+                      {tooMany && t('blueprint:split.tooManyPages', { count: rangeCount })}
+                      {outOfBounds && t('blueprint:split.invalidRange')}
                     </div>
                   )}
                 </div>
@@ -386,7 +388,7 @@ export default function PdfSplitModal({ file, projectId, onComplete, onCancel })
                   color: 'var(--color-text-muted)', cursor: 'pointer', marginTop: 4, width: '100%',
                 }}
               >
-                + Add Range
+                {t('blueprint:split.addRange')}
               </button>
             )}
           </>
@@ -403,7 +405,7 @@ export default function PdfSplitModal({ file, projectId, onComplete, onCancel })
             color: 'var(--color-text-muted)', cursor: 'pointer',
           }}
         >
-          {done ? 'Close' : processing ? 'Stop after current' : 'Cancel'}
+          {done ? t('common:action.close') : processing ? t('blueprint:split.stopAfterCurrent') : t('common:action.cancel')}
         </button>
         {!done && (
           <button
@@ -416,7 +418,7 @@ export default function PdfSplitModal({ file, projectId, onComplete, onCancel })
               cursor: isValid && !processing ? 'pointer' : 'default',
             }}
           >
-            {processing ? 'Splitting...' : `Split & Upload (${ranges.length} blueprint${ranges.length !== 1 ? 's' : ''})`}
+            {processing ? t('blueprint:split.splitting') : t('blueprint:split.splitUpload', { count: ranges.length })}
           </button>
         )}
       </div>

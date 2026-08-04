@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, Fragment } from 'react'
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { useImpersonation } from '../../context/ImpersonationContext'
@@ -25,20 +26,21 @@ function SeverityBadge({ severity }) {
   )
 }
 
-function timeAgo(dateStr) {
+function timeAgo(dateStr, t) {
   if (!dateStr) return '-'
   const diff = Date.now() - new Date(dateStr).getTime()
   const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
+  if (mins < 1) return t('admin:userDetail.justNow')
+  if (mins < 60) return t('admin:userDetail.minAgo', { mins })
   const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
+  if (hrs < 24) return t('admin:userDetail.hourAgo', { hrs })
   const days = Math.floor(hrs / 24)
-  if (days < 7) return `${days}d ago`
+  if (days < 7) return t('admin:userDetail.dayAgo', { days })
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 export default function UserDetailPage() {
+  const { t } = useTranslation()
   const { userId } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
@@ -144,10 +146,10 @@ export default function UserDetailPage() {
       .eq('user_id', userId)
 
     if (error) {
-      showToast(`Failed to update: ${error.message}`)
+      showToast(t('admin:userDetail.updateFailed', { message: error.message }))
     } else {
       setProfile(prev => ({ ...prev, [fieldName]: value || null }))
-      showToast(`${fieldName.replace(/_/g, ' ')} updated`)
+      showToast(t('admin:userDetail.fieldUpdated', { field: fieldName.replace(/_/g, ' ') }))
     }
     setSaving(false)
     setEditField(null)
@@ -163,39 +165,39 @@ export default function UserDetailPage() {
       if (data?.error) throw new Error(data.error)
 
       if (action === 'reset_password') {
-        showToast('Password reset email sent')
+        showToast(t('admin:userDetail.toastResetSent'))
       } else if (action === 'suspend') {
         setAuthInfo(prev => ({ ...prev, banned_until: '2999-12-31T00:00:00Z' }))
-        showToast('Account deactivated')
+        showToast(t('admin:userDetail.toastDeactivated'))
       } else if (action === 'unsuspend') {
         setAuthInfo(prev => ({ ...prev, banned_until: null }))
-        showToast('Account reactivated')
+        showToast(t('admin:userDetail.toastReactivated'))
       } else if (action === 'soft_delete') {
         setProfile(prev => ({ ...prev, deleted_at: new Date().toISOString() }))
         setAuthInfo(prev => ({ ...prev, banned_until: 'deleted' }))
         setConfirmDelete(false)
-        showToast('User deleted and banned from login')
+        showToast(t('admin:userDetail.toastDeleted'))
       } else if (action === 'restore') {
         setProfile(prev => ({ ...prev, deleted_at: null }))
         setAuthInfo(prev => ({ ...prev, banned_until: null }))
-        showToast('User restored and login re-enabled')
+        showToast(t('admin:userDetail.toastRestored'))
       }
     } catch (err) {
-      showToast(`Action failed: ${err.message}`)
+      showToast(t('admin:userDetail.actionFailed', { message: err.message }))
     } finally {
       setActionLoading(null)
     }
   }
 
   if (loading) {
-    return <div className={styles.empty}>Loading user...</div>
+    return <div className={styles.empty}>{t('admin:userDetail.loading')}</div>
   }
 
   if (notFound) {
     return (
       <div className={styles.empty}>
-        <p>User not found or access denied.</p>
-        <button className={styles.secondaryBtn} onClick={() => navigate(-1)} style={{ marginTop: 12 }}>Go back</button>
+        <p>{t('admin:userDetail.notFound')}</p>
+        <button className={styles.secondaryBtn} onClick={() => navigate(-1)} style={{ marginTop: 12 }}>{t('admin:userDetail.goBack')}</button>
       </div>
     )
   }
@@ -210,13 +212,13 @@ export default function UserDetailPage() {
       {/* Header with back link */}
       <BackLink
         to={location.pathname.startsWith('/admin/') ? '/admin/users' : '/dashboard/team'}
-        label={location.pathname.startsWith('/admin/') ? 'Users' : 'Team'}
+        label={location.pathname.startsWith('/admin/') ? t('admin:userDetail.backUsers') : t('admin:userDetail.backTeam')}
       />
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
         <h1 className={styles.pageTitle} style={{ margin: 0 }}>
           {profile?.full_name || profile?.email}
-          {profile?.deleted_at && <span style={{ fontSize: 12, color: '#ef4444', marginLeft: 8 }}>DELETED</span>}
-          {isBanned && <span style={{ fontSize: 12, color: '#f59e0b', marginLeft: 8 }}>DEACTIVATED</span>}
+          {profile?.deleted_at && <span style={{ fontSize: 12, color: '#ef4444', marginLeft: 8 }}>{t('admin:userDetail.deleted')}</span>}
+          {isBanned && <span style={{ fontSize: 12, color: '#f59e0b', marginLeft: 8 }}>{t('admin:userDetail.deactivated')}</span>}
         </h1>
       </div>
 
@@ -238,7 +240,7 @@ export default function UserDetailPage() {
             {/* Profile fields */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <ProfileField
-                label="Full Name"
+                label={t('admin:userDetail.fullName')}
                 value={profile?.full_name}
                 editable={!profile?.deleted_at}
                 editField={editField}
@@ -250,9 +252,9 @@ export default function UserDetailPage() {
                 onCancel={() => setEditField(null)}
                 onChangeValue={setEditValue}
               />
-              <ProfileField label="Email" value={profile?.email} />
+              <ProfileField label={t('admin:userDetail.email')} value={profile?.email} />
               <ProfileField
-                label="Phone"
+                label={t('admin:userDetail.phone')}
                 value={profile?.phone ? `${profile.phone_country || ''} ${profile.phone}` : null}
                 editable={!profile?.deleted_at}
                 editField={editField}
@@ -266,7 +268,7 @@ export default function UserDetailPage() {
               />
               {/* Role */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--color-border)' }}>
-                <span style={{ fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 500 }}>Role</span>
+                <span style={{ fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 500 }}>{t('admin:userDetail.role')}</span>
                 {!isTargetSuperAdmin ? (
                   <select
                     className={styles.roleSelect}
@@ -278,24 +280,24 @@ export default function UserDetailPage() {
                       await handleSaveField('role', newRole)
                     }}
                   >
-                    <option value="contractor_user">User</option>
-                    <option value="contractor_admin">Admin</option>
-                    {isSuperAdmin && <option value="super_admin">Super Admin</option>}
+                    <option value="contractor_user">{t('common:role.contractor_user')}</option>
+                    <option value="contractor_admin">{t('common:role.contractor_admin')}</option>
+                    {isSuperAdmin && <option value="super_admin">{t('common:role.super_admin')}</option>}
                   </select>
                 ) : (
-                  <span style={{ fontSize: 13 }}>Super Admin</span>
+                  <span style={{ fontSize: 13 }}>{t('common:role.super_admin')}</span>
                 )}
               </div>
               {/* Company */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--color-border)' }}>
-                <span style={{ fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 500 }}>Company</span>
+                <span style={{ fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 500 }}>{t('admin:userDetail.company')}</span>
                 {isSuperAdmin ? (
                   <select
                     className={styles.roleSelect}
                     value={profile?.company_id || ''}
                     onChange={(e) => handleSaveField('company_id', e.target.value || null)}
                   >
-                    <option value="">- None -</option>
+                    <option value="">{t('admin:userDetail.noneOption')}</option>
                     {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 ) : (
@@ -303,17 +305,17 @@ export default function UserDetailPage() {
                 )}
               </div>
               {/* Read-only fields */}
-              <ProfileField label="Email Consent" value={profile?.email_consent ? 'Yes' : 'No'} />
-              <ProfileField label="SMS Consent" value={profile?.sms_consent ? `Yes (${profile.sms_consent_at ? formatDate(profile.sms_consent_at) : '-'})` : 'No'} />
-              <ProfileField label="Timezone" value={profile?.timezone || '—'} />
-              <ProfileField label="Language" value={profile?.language || '—'} />
-              <ProfileField label="Units" value={profile?.measurement_units || '—'} />
-              <ProfileField label="Cancel Requested" value={profile?.subscription_cancel_requested_at ? formatDateTime(profile.subscription_cancel_requested_at) : '-'} />
-              <ProfileField label="Created" value={profile?.created_at ? formatDateTime(profile.created_at) : '-'} />
-              <ProfileField label="Setup Completed" value={profile?.setup_completed_at ? formatDateTime(profile.setup_completed_at) : 'Setup incomplete'} />
-              <ProfileField label="Last Login" value={authInfo?.last_sign_in_at ? formatDateTime(authInfo.last_sign_in_at) : '-'} />
+              <ProfileField label={t('admin:userDetail.emailConsent')} value={profile?.email_consent ? t('admin:userDetail.yes') : t('admin:userDetail.no')} />
+              <ProfileField label={t('admin:userDetail.smsConsent')} value={profile?.sms_consent ? t('admin:userDetail.smsConsentYes', { date: profile.sms_consent_at ? formatDate(profile.sms_consent_at) : '-' }) : t('admin:userDetail.no')} />
+              <ProfileField label={t('admin:userDetail.timezone')} value={profile?.timezone || '—'} />
+              <ProfileField label={t('admin:userDetail.language')} value={profile?.language || '—'} />
+              <ProfileField label={t('admin:userDetail.units')} value={profile?.measurement_units || '—'} />
+              <ProfileField label={t('admin:userDetail.cancelRequested')} value={profile?.subscription_cancel_requested_at ? formatDateTime(profile.subscription_cancel_requested_at) : '-'} />
+              <ProfileField label={t('admin:userDetail.created')} value={profile?.created_at ? formatDateTime(profile.created_at) : '-'} />
+              <ProfileField label={t('admin:userDetail.setupCompleted')} value={profile?.setup_completed_at ? formatDateTime(profile.setup_completed_at) : t('admin:userDetail.setupIncomplete')} />
+              <ProfileField label={t('admin:userDetail.lastLogin')} value={authInfo?.last_sign_in_at ? formatDateTime(authInfo.last_sign_in_at) : '-'} />
               {profile?.deleted_at && (
-                <ProfileField label="Deleted" value={`Deactivated on ${formatDateTime(profile.deleted_at)}`} valueStyle={{ color: '#ef4444' }} />
+                <ProfileField label={t('admin:userDetail.deletedField')} value={t('admin:userDetail.deactivatedOn', { date: formatDateTime(profile.deleted_at) })} valueStyle={{ color: '#ef4444' }} />
               )}
             </div>
           </div>
@@ -321,11 +323,11 @@ export default function UserDetailPage() {
           {/* Admin Actions */}
           {!isTargetSuperAdmin && (
             <div className={styles.sectionCard} style={{ marginTop: 16 }}>
-              <div className={styles.sectionCardTitle}>Admin Actions</div>
+              <div className={styles.sectionCardTitle}>{t('admin:userDetail.adminActions')}</div>
               <div className={styles.actionsList}>
                 {profile?.company_id && (
                   <button className={styles.addBtn} onClick={() => setShowEnterAccount(true)}>
-                    Enter Account
+                    {t('admin:impersonation.enterAccount')}
                   </button>
                 )}
                 {profile?.deleted_at ? (
@@ -335,7 +337,7 @@ export default function UserDetailPage() {
                     disabled={actionLoading === 'restore'}
                     onClick={() => handleAction('restore')}
                   >
-                    {actionLoading === 'restore' ? 'Restoring...' : 'Restore user'}
+                    {actionLoading === 'restore' ? t('admin:userDetail.restoring') : t('admin:userDetail.restoreUser')}
                   </button>
                 ) : (
                   /* Active user — show all actions */
@@ -345,7 +347,7 @@ export default function UserDetailPage() {
                       disabled={actionLoading === 'reset_password'}
                       onClick={() => handleAction('reset_password')}
                     >
-                      {actionLoading === 'reset_password' ? 'Sending...' : 'Send password reset email'}
+                      {actionLoading === 'reset_password' ? t('admin:userDetail.sending') : t('admin:userDetail.sendResetEmail')}
                     </button>
 
                     {!isBanned ? (
@@ -355,7 +357,7 @@ export default function UserDetailPage() {
                         disabled={actionLoading === 'suspend'}
                         onClick={() => handleAction('suspend')}
                       >
-                        {actionLoading === 'suspend' ? 'Deactivating...' : 'Deactivate account'}
+                        {actionLoading === 'suspend' ? t('admin:userDetail.deactivating') : t('admin:userDetail.deactivateAccount')}
                       </button>
                     ) : (
                       <button
@@ -364,7 +366,7 @@ export default function UserDetailPage() {
                         disabled={actionLoading === 'unsuspend'}
                         onClick={() => handleAction('unsuspend')}
                       >
-                        {actionLoading === 'unsuspend' ? 'Reactivating...' : 'Reactivate account'}
+                        {actionLoading === 'unsuspend' ? t('admin:userDetail.reactivating') : t('admin:userDetail.reactivateAccount')}
                       </button>
                     )}
 
@@ -373,12 +375,12 @@ export default function UserDetailPage() {
                         className={styles.dangerBtn}
                         onClick={() => setConfirmDelete(true)}
                       >
-                        Delete user
+                        {t('admin:userDetail.deleteUser')}
                       </button>
                     ) : (
                       <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 6, padding: 12 }}>
                         <p style={{ fontSize: 13, marginBottom: 10, color: '#fca5a5' }}>
-                          This will soft-delete the user and revoke all sessions. Are you sure?
+                          {t('admin:userDetail.deleteWarning')}
                         </p>
                         <div style={{ display: 'flex', gap: 8 }}>
                           <button
@@ -386,9 +388,9 @@ export default function UserDetailPage() {
                             disabled={actionLoading === 'soft_delete'}
                             onClick={() => handleAction('soft_delete')}
                           >
-                            {actionLoading === 'soft_delete' ? 'Deleting...' : 'Confirm delete'}
+                            {actionLoading === 'soft_delete' ? t('admin:userDetail.deleting') : t('admin:userDetail.confirmDelete')}
                           </button>
-                          <button className={styles.secondaryBtn} onClick={() => setConfirmDelete(false)}>Cancel</button>
+                          <button className={styles.secondaryBtn} onClick={() => setConfirmDelete(false)}>{t('common:action.cancel')}</button>
                     </div>
                   </div>
                 )}
@@ -402,9 +404,9 @@ export default function UserDetailPage() {
         {/* RIGHT: Recent Errors */}
         <div>
           <div className={styles.sectionCard}>
-            <div className={styles.sectionCardTitle}>Recent Errors (last 10)</div>
+            <div className={styles.sectionCardTitle}>{t('admin:userDetail.recentErrors')}</div>
             {recentErrors.length === 0 ? (
-              <p className={styles.empty}>No errors recorded for this user.</p>
+              <p className={styles.empty}>{t('admin:userDetail.noErrors')}</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                 {recentErrors.map(ce => {
@@ -420,17 +422,17 @@ export default function UserDetailPage() {
                           {ce.error_message?.slice(0, 80)}
                         </span>
                         <span style={{ color: 'var(--color-text-muted)', whiteSpace: 'nowrap', fontSize: 11 }}>
-                          {timeAgo(ce.created_at)}
+                          {timeAgo(ce.created_at, t)}
                         </span>
                       </div>
                       {isExp && (
                         <div style={{ padding: '10px 0 10px 8px', fontSize: 12, borderBottom: '1px solid var(--color-border)' }}>
-                          <div style={{ marginBottom: 6 }}><strong>Message:</strong> {ce.error_message}</div>
+                          <div style={{ marginBottom: 6 }}><strong>{t('admin:userDetail.messageLabel')}</strong> {ce.error_message}</div>
                           <div style={{ marginBottom: 6, fontSize: 11, color: 'var(--color-text-muted)' }}>
-                            <strong>Page:</strong> {ce.page_url}
+                            <strong>{t('admin:userDetail.pageLabel')}</strong> {ce.page_url}
                           </div>
                           <div style={{ marginBottom: 6, fontSize: 11, color: 'var(--color-text-muted)' }}>
-                            <strong>Fingerprint:</strong> {ce.error_fingerprint || '-'}
+                            <strong>{t('admin:userDetail.fingerprintLabel')}</strong> {ce.error_fingerprint || '-'}
                           </div>
                           {ce.error_stack && (
                             <pre style={{ fontSize: 10, whiteSpace: 'pre-wrap', wordBreak: 'break-all', background: 'rgba(0,0,0,0.2)', padding: 8, borderRadius: 4, maxHeight: 150, overflow: 'auto', marginBottom: 6 }}>
@@ -439,7 +441,7 @@ export default function UserDetailPage() {
                           )}
                           {ce.breadcrumbs && ce.breadcrumbs.length > 0 && (
                             <details style={{ fontSize: 11 }}>
-                              <summary style={{ cursor: 'pointer', color: 'var(--color-primary)' }}>Breadcrumbs ({ce.breadcrumbs.length})</summary>
+                              <summary style={{ cursor: 'pointer', color: 'var(--color-primary)' }}>{t('admin:userDetail.breadcrumbs', { count: ce.breadcrumbs.length })}</summary>
                               <div style={{ maxHeight: 150, overflow: 'auto', marginTop: 4 }}>
                                 {ce.breadcrumbs.map((b, i) => (
                                   <div key={i} style={{ padding: '2px 0', color: 'var(--color-text-muted)' }}>
@@ -461,7 +463,7 @@ export default function UserDetailPage() {
                 to={`${currentUserRole === 'super_admin' ? '/admin/errors' : '/dashboard/errors'}?user_id=${userId}`}
                 style={{ display: 'block', marginTop: 12, fontSize: 12, color: 'var(--color-primary)', textDecoration: 'none' }}
               >
-                View all errors for this user &rarr;
+                {t('admin:userDetail.viewAllErrors')} &rarr;
               </Link>
             )}
           </div>
@@ -477,9 +479,9 @@ export default function UserDetailPage() {
 
       {/* Enter account modal */}
       {showEnterAccount && profile?.company_id && (
-        <Modal title="Enter Account" onClose={() => setShowEnterAccount(false)}>
+        <Modal title={t('admin:impersonation.enterAccount')} onClose={() => setShowEnterAccount(false)}>
           <EnterAccountModal
-            companyName={companies.find(c => c.id === profile.company_id)?.name || 'this account'}
+            companyName={companies.find(c => c.id === profile.company_id)?.name || t('admin:userDetail.thisAccount')}
             onCancel={() => setShowEnterAccount(false)}
             onConfirm={async (notes) => {
               await startImpersonation(profile.company_id, { targetUserId: userId, notes })
@@ -494,6 +496,7 @@ export default function UserDetailPage() {
 }
 
 function ProfileField({ label, value, editable, editField, fieldName, editValue, saving, onStartEdit, onSave, onCancel, onChangeValue, valueStyle }) {
+  const { t } = useTranslation()
   const isEditing = editable && editField === fieldName
 
   return (
@@ -513,10 +516,10 @@ function ProfileField({ label, value, editable, editField, fieldName, editValue,
             }}
           />
           <button onClick={() => onSave(editValue)} disabled={saving} style={{ fontSize: 11, padding: '3px 8px', background: 'var(--color-primary)', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
-            {saving ? '...' : 'Save'}
+            {saving ? '...' : t('common:action.save')}
           </button>
           <button onClick={onCancel} style={{ fontSize: 11, padding: '3px 6px', background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}>
-            Cancel
+            {t('common:action.cancel')}
           </button>
         </div>
       ) : (

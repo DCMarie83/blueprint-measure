@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useEffectiveCompany } from '../hooks/useEffectiveCompany'
@@ -31,7 +32,7 @@ function money(n) {
   return '$' + (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-const STEPS = ['Measurements', 'Materials', 'Smart Bid']
+const STEP_KEYS = ['steps.measurements', 'steps.materials', 'steps.smartBid']
 
 const heroBtn = {
   display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -43,10 +44,12 @@ const heroBtn = {
 // Three-dot progress rail: dots connected by a line, filling orange as steps
 // complete, with labels beneath.
 function StepRail({ step }) {
+  const { t } = useTranslation()
   return (
     <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', maxWidth: 420, margin: '0 auto 24px' }}>
       <div style={{ position: 'absolute', top: 11, left: 12, right: 12, height: 2, background: 'var(--color-border, #d4d4d4)', zIndex: 0 }} />
-      {STEPS.map((label, i) => {
+      {STEP_KEYS.map((labelKey, i) => {
+        const label = t(`smartbid:${labelKey}`)
         const n = i + 1
         const filled = n <= step
         return (
@@ -69,6 +72,7 @@ function StepRail({ step }) {
 export default function SmartBidPage() {
   const { projectId } = useParams()
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { user } = useAuth()
   const { companyId, company } = useEffectiveCompany()
   const { createEstimate, updateEstimate } = useEstimates(projectId)
@@ -188,8 +192,8 @@ export default function SmartBidPage() {
       const unit = unitForMeasurementType(g.measurement_type)
       const label = category ? categoryLabel(category) : (g.surface_type || g.measurement_type)
       const summary = names.length === 0
-        ? `${g.zoneIds.length} zone${g.zoneIds.length === 1 ? '' : 's'}`
-        : names.length <= 3 ? names.join(', ') : `${names.slice(0, 2).join(', ')} +${names.length - 2} more`
+        ? t('smartbid:page.zonesCount', { count: g.zoneIds.length })
+        : names.length <= 3 ? names.join(', ') : `${names.slice(0, 2).join(', ')} ${t('smartbid:page.moreCount', { count: names.length - 2 })}`
       return { ...g, names, category, unit, label, summary, total: Math.round(g.total * 100) / 100 }
     }).sort((a, b) => a.label.localeCompare(b.label))
   }, [zones])
@@ -328,7 +332,7 @@ export default function SmartBidPage() {
   }
 
   // ── Create Smart Bid ─────────────────────────────────────────────────────────
-  const capGrade = (g) => (g ? g.charAt(0).toUpperCase() + g.slice(1) : '')
+  const capGrade = (g) => (g ? t(`smartbid:page.grade.${g}`) : '')
 
   function useMyList() {
     const order = existingOrders[0]
@@ -376,7 +380,7 @@ export default function SmartBidPage() {
       // Skip name+unit already in the contractor's library (case-insensitive).
       const existing = new Set((pricingItems || []).map(p => normKey(p.name, p.unit)))
       const toInsert = distinct.filter(l => !existing.has(normKey(l.description, l.unit)))
-      if (toInsert.length === 0) { setAdoptNotice('Saved 0 rates to your pricing library.'); return }
+      if (toInsert.length === 0) { setAdoptNotice(t('smartbid:steps.savedRates', { count: 0 })); return }
 
       // pricing_items.category_id is NOT NULL — adopted rates always land in the
       // company's dedicated "Market Rates" category (case-insensitive), created
@@ -405,7 +409,7 @@ export default function SmartBidPage() {
       }))
       const { error: insErr } = await supabase.from('pricing_items').insert(rows)
       if (insErr) throw insErr
-      setAdoptNotice(`Saved ${rows.length} rates to your pricing library.`)
+      setAdoptNotice(t('smartbid:steps.savedRates', { count: rows.length }))
     } catch (err) {
       setAdoptNotice(err.message)
     } finally {
@@ -414,7 +418,7 @@ export default function SmartBidPage() {
   }
 
   async function handleCreate() {
-    if (draftLines.length === 0) { setError('Include at least one measurement group.'); return }
+    if (draftLines.length === 0) { setError(t('smartbid:page.errorIncludeGroup')); return }
     setCreating(true)
     setError(null)
     try {
@@ -516,16 +520,16 @@ export default function SmartBidPage() {
   if (loading) {
     return (
       <div><div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 20px' }}>
-        <p style={{ color: 'var(--color-text-muted)' }}>Loading measurements…</p>
+        <p style={{ color: 'var(--color-text-muted)' }}>{t('smartbid:page.loadingMeasurements')}</p>
       </div></div>
     )
   }
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 20px' }}>
-      <BackLink to={`/project/${projectId}`} label="project" />
+      <BackLink to={`/project/${projectId}`} label={t('smartbid:page.backProject')} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', margin: '12px 0 16px' }}>
-          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>Smart Bid</h1>
+          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>{t('smartbid:page.title')}</h1>
           <RegionChip
             resolvedRegion={resolvedRegion}
             usedFallback={usedFallback}
@@ -542,7 +546,7 @@ export default function SmartBidPage() {
         {step === 1 && (
           <div className="sb-fadein" key="step1">
             {groups.length === 0 ? (
-              <p style={{ color: 'var(--color-text-muted)' }}>No measured zones on this job. Measure it first, then start a Smart Bid.</p>
+              <p style={{ color: 'var(--color-text-muted)' }}>{t('smartbid:steps.noZones')}</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {groups.map(g => {
@@ -559,12 +563,12 @@ export default function SmartBidPage() {
                   )
                 })}
                 <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
-                  Scope: {includedGroups.map(g => `${g.label} ${g.total}${g.unit}`).join(' · ') || 'nothing included'}
+                  {t('smartbid:page.scope')} {includedGroups.map(g => `${g.label} ${g.total}${g.unit}`).join(' · ') || t('smartbid:page.nothingIncluded')}
                 </div>
               </div>
             )}
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
-              <button style={primaryBtn} disabled={includedGroups.length === 0} onClick={() => setStep(2)}>Next: Materials</button>
+              <button style={primaryBtn} disabled={includedGroups.length === 0} onClick={() => setStep(2)}>{t('smartbid:steps.nextMaterials')}</button>
             </div>
           </div>
         )}
@@ -576,13 +580,13 @@ export default function SmartBidPage() {
             {/* Prior list exists — let the contractor reuse it or start over. */}
             {materialsMode === null && existingOrders.length > 0 && (
               <div style={{ ...card, marginBottom: 16 }}>
-                <div style={{ fontWeight: 700, marginBottom: 4 }}>You already built a materials list for this job.</div>
+                <div style={{ fontWeight: 700, marginBottom: 4 }}>{t('smartbid:steps.existingListTitle')}</div>
                 <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 12 }}>
-                  {existingOrders[0].items.length} item{existingOrders[0].items.length === 1 ? '' : 's'} at {capGrade(existingOrders[0].selected_variant || 'standard')}
+                  {t('smartbid:steps.itemsAtGrade', { count: existingOrders[0].items.length, grade: capGrade(existingOrders[0].selected_variant || 'standard') })}
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button style={primaryBtn} onClick={useMyList}>Use my list</button>
-                  <button style={secondaryBtn} onClick={startFresh}>Start fresh from measurements</button>
+                  <button style={primaryBtn} onClick={useMyList}>{t('smartbid:steps.useMyList')}</button>
+                  <button style={secondaryBtn} onClick={startFresh}>{t('smartbid:steps.startFresh')}</button>
                 </div>
               </div>
             )}
@@ -593,8 +597,8 @@ export default function SmartBidPage() {
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                     <thead><tr style={{ textAlign: 'left', color: 'var(--color-text-muted)', fontSize: 12 }}>
-                      <th style={{ padding: '6px 8px' }}>Item</th><th style={{ padding: '6px 8px' }}>Unit</th>
-                      <th style={{ padding: '6px 8px' }}>Buy qty</th><th style={{ padding: '6px 8px' }}>Est. cost</th>
+                      <th style={{ padding: '6px 8px' }}>{t('smartbid:steps.col.item')}</th><th style={{ padding: '6px 8px' }}>{t('smartbid:steps.col.unit')}</th>
+                      <th style={{ padding: '6px 8px' }}>{t('smartbid:steps.col.buyQty')}</th><th style={{ padding: '6px 8px' }}>{t('smartbid:steps.col.estCost')}</th>
                     </tr></thead>
                     <tbody>
                       {chosenOrder.items.map((it, i) => (
@@ -613,9 +617,9 @@ export default function SmartBidPage() {
                     </tbody>
                   </table>
                 </div>
-                <div style={{ marginTop: 12, fontWeight: 700 }}>Estimated materials ({grade}): {money(materialsTotal)}</div>
-                <div style={{ marginTop: 6, fontSize: 12, color: 'var(--color-text-muted)' }}>Edit this list anytime in Materials.</div>
-                <div style={{ marginTop: 6, fontSize: 12, color: 'var(--color-text-muted)' }}>Prices are regional estimates for reference and building your strongest bid. Confirm current pricing with your local store. Product photos are illustrations only.</div>
+                <div style={{ marginTop: 12, fontWeight: 700 }}>{t('smartbid:steps.estimatedMaterials', { grade })} {money(materialsTotal)}</div>
+                <div style={{ marginTop: 6, fontSize: 12, color: 'var(--color-text-muted)' }}>{t('smartbid:steps.editAnytime')}</div>
+                <div style={{ marginTop: 6, fontSize: 12, color: 'var(--color-text-muted)' }}>{t('smartbid:steps.pricingDisclaimer')}</div>
               </div>
             )}
 
@@ -624,27 +628,27 @@ export default function SmartBidPage() {
               <>
                 <div style={{ ...card, marginBottom: 16 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
-                    <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Grade:</span>
+                    <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{t('smartbid:steps.gradeLabel')}</span>
                     {GRADES.map(gr => (
                       <button key={gr} onClick={() => setGrade(gr)} style={{
                         padding: '6px 14px', borderRadius: 9999, fontSize: 13, fontWeight: 600, cursor: 'pointer',
                         border: grade === gr ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
                         background: grade === gr ? 'var(--color-primary)' : 'var(--color-surface)',
                         color: grade === gr ? 'var(--color-on-primary, #fff)' : 'var(--color-text, #1b2426)',
-                      }}>{gr.charAt(0).toUpperCase() + gr.slice(1)}</button>
+                      }}>{t(`smartbid:page.grade.${gr}`)}</button>
                     ))}
                   </div>
                   {basket.length === 0 ? (
-                    <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>No paint materials computed from these measurements.</p>
+                    <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>{t('smartbid:steps.noPaintMaterials')}</p>
                   ) : (
                     <>
-                      <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 4px' }}>Check what you want included. Your materials cost updates live.</p>
-                      <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 10px' }}>Prices are regional estimates for reference and building your strongest bid. Confirm current pricing with your local store. Product photos are illustrations only.</p>
+                      <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 4px' }}>{t('smartbid:steps.checkIncluded')}</p>
+                      <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 10px' }}>{t('smartbid:steps.pricingDisclaimer')}</p>
                       <div style={{ overflowX: 'auto' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                           <thead><tr style={{ textAlign: 'left', color: 'var(--color-text-muted)', fontSize: 12 }}>
-                            <th style={{ padding: '6px 8px', width: 28 }}></th><th style={{ padding: '6px 8px' }}>Item</th>
-                            <th style={{ padding: '6px 8px' }}>Unit</th><th style={{ padding: '6px 8px' }}>Buy qty</th><th style={{ padding: '6px 8px' }}>Est. cost</th>
+                            <th style={{ padding: '6px 8px', width: 28 }}></th><th style={{ padding: '6px 8px' }}>{t('smartbid:steps.col.item')}</th>
+                            <th style={{ padding: '6px 8px' }}>{t('smartbid:steps.col.unit')}</th><th style={{ padding: '6px 8px' }}>{t('smartbid:steps.col.buyQty')}</th><th style={{ padding: '6px 8px' }}>{t('smartbid:steps.col.estCost')}</th>
                           </tr></thead>
                           <tbody>
                             {basket.map((b, i) => {
@@ -672,18 +676,18 @@ export default function SmartBidPage() {
                       </div>
                     </>
                   )}
-                  <div style={{ marginTop: 12, fontWeight: 700 }}>Estimated materials ({grade}): {money(materialsTotal)}</div>
+                  <div style={{ marginTop: 12, fontWeight: 700 }}>{t('smartbid:steps.estimatedMaterials', { grade })} {money(materialsTotal)}</div>
                 </div>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, marginBottom: 20 }}>
                   <input type="checkbox" checked={alsoCreateOrder} onChange={e => setAlsoCreateOrder(e.target.checked)} />
-                  Also create the materials order for this job
+                  {t('smartbid:steps.alsoCreateOrder')}
                 </label>
               </>
             )}
 
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <button style={secondaryBtn} onClick={() => setStep(1)}>Back</button>
-              <button style={primaryBtn} disabled={materialsMode === null} onClick={() => setStep(3)}>Next: Smart Bid</button>
+              <button style={secondaryBtn} onClick={() => setStep(1)}>{t('common:action.back')}</button>
+              <button style={primaryBtn} disabled={materialsMode === null} onClick={() => setStep(3)}>{t('smartbid:steps.nextSmartBid')}</button>
             </div>
           </div>
         )}
@@ -694,9 +698,9 @@ export default function SmartBidPage() {
             <div style={{ ...card, marginBottom: 16, overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead><tr style={{ textAlign: 'left', color: 'var(--color-text-muted)', fontSize: 12 }}>
-                  <th style={{ padding: '6px 8px' }}>Scope</th><th style={{ padding: '6px 8px' }}>Unit</th>
-                  <th style={{ padding: '6px 8px' }}>Qty</th><th style={{ padding: '6px 8px' }}>Price</th>
-                  <th style={{ padding: '6px 8px' }}>Source</th><th style={{ padding: '6px 8px' }}>Line total</th>
+                  <th style={{ padding: '6px 8px' }}>{t('smartbid:steps.col.scope')}</th><th style={{ padding: '6px 8px' }}>{t('smartbid:steps.col.unit')}</th>
+                  <th style={{ padding: '6px 8px' }}>{t('smartbid:steps.col.qty')}</th><th style={{ padding: '6px 8px' }}>{t('smartbid:steps.col.price')}</th>
+                  <th style={{ padding: '6px 8px' }}>{t('smartbid:steps.col.source')}</th><th style={{ padding: '6px 8px' }}>{t('smartbid:steps.col.lineTotal')}</th>
                 </tr></thead>
                 <tbody>
                   {draftLines.map(l => (
@@ -708,7 +712,7 @@ export default function SmartBidPage() {
                         <input style={{ ...input, width: 90 }} type="number" step="0.01" value={rateInputValue(l)}
                           onChange={e => setRates(prev => ({ ...prev, [l.key]: e.target.value }))} />
                         {l.priced_from === 'benchmark' && l.low != null && (
-                          <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>band {money(l.low)}–{money(l.high)}/{l.unit}</div>
+                          <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{t('smartbid:steps.bandRange', { low: money(l.low), high: money(l.high), unit: l.unit })}</div>
                         )}
                       </td>
                       <td style={{ padding: '6px 8px' }}>
@@ -723,15 +727,15 @@ export default function SmartBidPage() {
 
             {/* ── Margin panel ── */}
             <div style={{ ...card, marginBottom: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}><span>Bid total</span><strong>{money(bidTotal)}</strong></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}><span>Materials cost ({grade})</span><span>{money(materialsTotal)}</span></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}><span>{t('smartbid:steps.bidTotal')}</span><strong>{money(bidTotal)}</strong></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}><span>{t('smartbid:steps.materialsCostGrade', { grade })}</span><span>{money(materialsTotal)}</span></div>
               <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
-                <span>Your estimated labor cost</span>
-                <input style={{ ...input, width: 120 }} type="number" step="0.01" placeholder="optional" value={estLaborCost} onChange={e => setEstLaborCost(e.target.value)} />
+                <span>{t('smartbid:steps.laborCost')}</span>
+                <input style={{ ...input, width: 120 }} type="number" step="0.01" placeholder={t('smartbid:steps.optional')} value={estLaborCost} onChange={e => setEstLaborCost(e.target.value)} />
               </label>
               {estLaborCost === '' ? (
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span>Gross after materials</span><strong>{money(bidTotal - materialsTotal)}</strong>
+                  <span>{t('smartbid:steps.grossAfterMaterials')}</span><strong>{money(bidTotal - materialsTotal)}</strong>
                 </div>
               ) : (() => {
                 const labor = Number(estLaborCost) || 0
@@ -739,15 +743,15 @@ export default function SmartBidPage() {
                 const pct = bidTotal > 0 ? (margin / bidTotal) * 100 : 0
                 return (
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span>Projected margin</span><strong>{money(margin)} ({pct.toFixed(1)}%)</strong>
+                    <span>{t('smartbid:steps.projectedMargin')}</span><strong>{money(margin)} ({pct.toFixed(1)}%)</strong>
                   </div>
                 )
               })()}
               {band.any && (
                 <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--color-border)', fontSize: 13 }}>
-                  Market range for this scope: {money(band.low)} to {money(band.high)} ({regionCodeUsed}).{' '}
+                  {t('smartbid:steps.marketRangeScope', { low: money(band.low), high: money(band.high), region: regionCodeUsed })}{' '}
                   <strong style={{ color: bidPosition === 'within' ? 'var(--color-success, #16a34a)' : 'var(--color-primary, #26464c)' }}>
-                    Your bid is {bidPosition}.
+                    {t('smartbid:steps.yourBidIs', { position: bidPosition })}
                   </strong>
                 </div>
               )}
@@ -755,7 +759,7 @@ export default function SmartBidPage() {
               {draftLines.some(l => l.priced_from === 'benchmark') && (
                 <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--color-border)' }}>
                   <button style={{ ...secondaryBtn, opacity: adopting ? 0.6 : 1 }} onClick={adoptMarketRates} disabled={adopting}>
-                    {adopting ? 'Saving…' : 'Save market rates to my pricing library'}
+                    {adopting ? t('smartbid:steps.savingRates') : t('smartbid:steps.saveMarketRates')}
                   </button>
                   {adoptNotice && <div style={{ marginTop: 8, fontSize: 12, color: 'var(--color-text-muted)' }}>{adoptNotice}</div>}
                 </div>
@@ -763,9 +767,9 @@ export default function SmartBidPage() {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <button style={secondaryBtn} onClick={() => setStep(2)} disabled={creating}>Back</button>
+              <button style={secondaryBtn} onClick={() => setStep(2)} disabled={creating}>{t('common:action.back')}</button>
               <button style={{ ...heroBtn, flex: '1 1 240px', opacity: creating ? 0.6 : 1 }} onClick={handleCreate} disabled={creating}>
-                <PawPrint size={16} /> {creating ? 'Creating…' : 'Create Smart Bid'}
+                <PawPrint size={16} /> {creating ? t('smartbid:steps.creating') : t('smartbid:steps.createSmartBid')}
               </button>
             </div>
           </div>

@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import { useClients } from '../../hooks/useClients'
@@ -8,26 +9,27 @@ import { downloadClientTemplate } from '../../utils/clientImportTemplate'
 import styles from './ClientImportModal.module.css'
 
 const TARGET_FIELDS = [
-  { value: 'display_name', label: 'Client Name' },
-  { value: 'business_name', label: 'Business Name' },
-  { value: 'primary_email', label: 'Email' },
-  { value: 'primary_phone', label: 'Phone' },
-  { value: 'client_type', label: 'Client Type' },
-  { value: 'property_type', label: 'Property Type' },
-  { value: 'billing_terms', label: 'Billing Terms' },
-  { value: 'company_website', label: 'Website' },
-  { value: 'tax_id', label: 'Tax ID' },
-  { value: 'notes', label: 'Notes' },
-  { value: 'addr_street', label: 'Street' },
-  { value: 'addr_unit', label: 'Unit' },
-  { value: 'addr_city', label: 'City' },
-  { value: 'addr_state', label: 'State' },
-  { value: 'addr_zip', label: 'Zip' },
+  { value: 'display_name', label: 'clients:import.fieldClientName' },
+  { value: 'business_name', label: 'clients:import.fieldBusinessName' },
+  { value: 'primary_email', label: 'clients:import.fieldEmail' },
+  { value: 'primary_phone', label: 'clients:import.fieldPhone' },
+  { value: 'client_type', label: 'clients:import.fieldClientType' },
+  { value: 'property_type', label: 'clients:import.fieldPropertyType' },
+  { value: 'billing_terms', label: 'clients:import.fieldBillingTerms' },
+  { value: 'company_website', label: 'clients:import.fieldWebsite' },
+  { value: 'tax_id', label: 'clients:import.fieldTaxId' },
+  { value: 'notes', label: 'clients:import.fieldNotes' },
+  { value: 'addr_street', label: 'clients:import.fieldStreet' },
+  { value: 'addr_unit', label: 'clients:import.fieldUnit' },
+  { value: 'addr_city', label: 'clients:import.fieldCity' },
+  { value: 'addr_state', label: 'clients:import.fieldState' },
+  { value: 'addr_zip', label: 'clients:import.fieldZip' },
 ]
 
-const STEPS = ['Upload', 'Map', 'Review', 'Import']
+const STEPS = ['clients:import.stepUpload', 'clients:import.stepMap', 'clients:import.stepReview', 'clients:import.stepImport']
 
 export default function ClientImportModal({ onClose, onImported }) {
+  const { t } = useTranslation()
   const { companyId } = useEffectiveCompany()
   const { clients, createClient } = useClients()
 
@@ -192,7 +194,7 @@ export default function ClientImportModal({ onClose, onImported }) {
       <div className={styles.steps}>
         {STEPS.map((s, i) => (
           <div key={s} className={`${styles.step} ${i === step ? styles.stepActive : i < step ? styles.stepDone : ''}`}>
-            {s}
+            {t(s)}
           </div>
         ))}
       </div>
@@ -200,7 +202,7 @@ export default function ClientImportModal({ onClose, onImported }) {
       {/* Step 1: Upload */}
       {step === 0 && (
         <div>
-          <p className={styles.info}>Upload a CSV or Excel file with your client list.</p>
+          <p className={styles.info}>{t('clients:import.uploadPrompt')}</p>
           <input
             ref={fileRef}
             type="file"
@@ -209,13 +211,13 @@ export default function ClientImportModal({ onClose, onImported }) {
             onChange={handleFileSelect}
           />
           {parseError && <div className={styles.error}>{parseError}</div>}
-          {parsed && <p className={styles.info}>{parsed.rows.length} row{parsed.rows.length !== 1 ? 's' : ''} found with {parsed.headers.length} columns.</p>}
+          {parsed && <p className={styles.info}>{t('clients:import.rowsFound', { count: parsed.rows.length, columns: parsed.headers.length })}</p>}
           <button type="button" className={styles.templateLink} onClick={downloadClientTemplate}>
-            Download import template
+            {t('clients:import.downloadTemplate')}
           </button>
           <div className={styles.actions}>
-            <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={onClose}>Cancel</button>
-            <button className={`${styles.btn} ${styles.btnPrimary}`} disabled={!parsed} onClick={handleNextToMap}>Next</button>
+            <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={onClose}>{t('common:action.cancel')}</button>
+            <button className={`${styles.btn} ${styles.btnPrimary}`} disabled={!parsed} onClick={handleNextToMap}>{t('common:action.next')}</button>
           </div>
         </div>
       )}
@@ -223,15 +225,15 @@ export default function ClientImportModal({ onClose, onImported }) {
       {/* Step 2: Map */}
       {step === 1 && (
         <div>
-          {mappingLoading && <p className={styles.info}>AI is mapping your columns...</p>}
+          {mappingLoading && <p className={styles.info}>{t('clients:import.aiMapping')}</p>}
 
           <div style={{ marginBottom: 12 }}>
             <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Default client type for imported rows
+              {t('clients:import.defaultType')}
             </label>
             <div className={styles.typeToggle}>
-              <button type="button" className={`${styles.typeBtn} ${defaultType === 'residential' ? styles.typeBtnActive : ''}`} onClick={() => setDefaultType('residential')}>Residential</button>
-              <button type="button" className={`${styles.typeBtn} ${defaultType === 'commercial' ? styles.typeBtnActive : ''}`} onClick={() => setDefaultType('commercial')}>Commercial</button>
+              <button type="button" className={`${styles.typeBtn} ${defaultType === 'residential' ? styles.typeBtnActive : ''}`} onClick={() => setDefaultType('residential')}>{t('clients:form.residential')}</button>
+              <button type="button" className={`${styles.typeBtn} ${defaultType === 'commercial' ? styles.typeBtnActive : ''}`} onClick={() => setDefaultType('commercial')}>{t('clients:form.commercial')}</button>
             </div>
           </div>
 
@@ -247,10 +249,10 @@ export default function ClientImportModal({ onClose, onImported }) {
                     value={mapping[h] || ''}
                     onChange={e => updateMapping(h, e.target.value)}
                   >
-                    <option value="">— Skip —</option>
+                    <option value="">{t('clients:import.skip')}</option>
                     {TARGET_FIELDS.map(f => (
                       <option key={f.value} value={f.value} disabled={used.has(f.value) && mapping[h] !== f.value}>
-                        {f.label}
+                        {t(f.label)}
                       </option>
                     ))}
                   </select>
@@ -260,7 +262,7 @@ export default function ClientImportModal({ onClose, onImported }) {
           </div>
 
           {!hasDisplayNameMapped && (
-            <div className={styles.error}>Map a column to Client Name to continue.</div>
+            <div className={styles.error}>{t('clients:import.mapNameHint')}</div>
           )}
 
           {/* Preview */}
@@ -280,8 +282,8 @@ export default function ClientImportModal({ onClose, onImported }) {
           )}
 
           <div className={styles.actions}>
-            <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => setStep(0)}>Back</button>
-            <button className={`${styles.btn} ${styles.btnPrimary}`} disabled={!hasDisplayNameMapped} onClick={() => setStep(2)}>Next</button>
+            <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => setStep(0)}>{t('common:action.back')}</button>
+            <button className={`${styles.btn} ${styles.btnPrimary}`} disabled={!hasDisplayNameMapped} onClick={() => setStep(2)}>{t('common:action.next')}</button>
           </div>
         </div>
       )}
@@ -292,24 +294,24 @@ export default function ClientImportModal({ onClose, onImported }) {
         return (
           <div>
             <p className={styles.info}>
-              <strong>{willImport.length}</strong> will import, <strong>{willSkip.length}</strong> skipped
-              {willSkip.length > 0 && ' (missing name or duplicate)'}
+              <strong>{willImport.length}</strong> {t('clients:import.willImport')}, <strong>{willSkip.length}</strong> {t('clients:import.skipped')}
+              {willSkip.length > 0 && ` (${t('clients:import.skipReason')})`}
             </p>
 
             <label className={styles.toggle}>
               <input type="checkbox" checked={addressesAreJobsites} onChange={e => setAddressesAreJobsites(e.target.checked)} />
-              Imported addresses are job sites
+              {t('clients:import.addressesJobsites')}
             </label>
 
             <div className={styles.previewWrap} style={{ maxHeight: 300 }}>
               <table className={styles.previewTable}>
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>Type</th>
-                    <th>Email</th>
-                    <th>Phone</th>
-                    <th>Address</th>
+                    <th>{t('clients:import.colName')}</th>
+                    <th>{t('clients:import.colType')}</th>
+                    <th>{t('clients:import.colEmail')}</th>
+                    <th>{t('clients:import.colPhone')}</th>
+                    <th>{t('clients:import.colAddress')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -319,14 +321,14 @@ export default function ClientImportModal({ onClose, onImported }) {
                     return (
                       <tr key={i} className={skip ? styles.skipRow : ''}>
                         <td>
-                          {row.display_name || '(empty)'}
-                          {row._flags.includes('missing_name') && <span className={styles.warnBadge}>no name</span>}
-                          {row._flags.includes('duplicate_in_file') && <span className={styles.warnBadge}>dup</span>}
+                          {row.display_name || t('clients:import.empty')}
+                          {row._flags.includes('missing_name') && <span className={styles.warnBadge}>{t('clients:import.badgeNoName')}</span>}
+                          {row._flags.includes('duplicate_in_file') && <span className={styles.warnBadge}>{t('clients:import.badgeDup')}</span>}
                         </td>
                         <td style={{ textTransform: 'capitalize' }}>{row.client_type}</td>
                         <td>
                           {row.primary_email || ''}
-                          {row._flags.includes('invalid_email') && <span className={styles.warnBadge}>invalid</span>}
+                          {row._flags.includes('invalid_email') && <span className={styles.warnBadge}>{t('clients:import.badgeInvalid')}</span>}
                         </td>
                         <td>{row.primary_phone || ''}</td>
                         <td>{addrParts.join(', ') || ''}</td>
@@ -338,9 +340,9 @@ export default function ClientImportModal({ onClose, onImported }) {
             </div>
 
             <div className={styles.actions}>
-              <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => setStep(1)}>Back</button>
+              <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => setStep(1)}>{t('common:action.back')}</button>
               <button className={`${styles.btn} ${styles.btnPrimary}`} disabled={willImport.length === 0} onClick={() => { setStep(3); handleImport() }}>
-                Import {willImport.length} Client{willImport.length !== 1 ? 's' : ''}
+                {t('clients:import.importBtn', { count: willImport.length })}
               </button>
             </div>
           </div>
@@ -352,7 +354,7 @@ export default function ClientImportModal({ onClose, onImported }) {
         <div>
           {importing ? (
             <>
-              <p className={styles.info}>Importing {progress.current} of {progress.total}...</p>
+              <p className={styles.info}>{t('clients:import.importingProgress', { current: progress.current, total: progress.total })}</p>
               <div className={styles.progressBar}>
                 <div className={styles.progressFill} style={{ width: progress.total > 0 ? `${(progress.current / progress.total) * 100}%` : '0%' }} />
               </div>
@@ -360,27 +362,27 @@ export default function ClientImportModal({ onClose, onImported }) {
           ) : result ? (
             <>
               <div className={styles.success}>
-                {result.imported.length} client{result.imported.length !== 1 ? 's' : ''} imported successfully.
+                {t('clients:import.importSuccess', { count: result.imported.length })}
               </div>
               {result.skipped.length > 0 && (
                 <div className={styles.resultList}>
-                  <strong>{result.skipped.length} skipped:</strong>
+                  <strong>{t('clients:import.skippedCount', { count: result.skipped.length })}</strong>
                   {result.skipped.slice(0, 10).map((s, i) => (
-                    <div key={i} className={styles.resultItem}>{s.name} — {s.reason === 'missing_name' ? 'missing name' : 'duplicate email'}</div>
+                    <div key={i} className={styles.resultItem}>{s.name} — {s.reason === 'missing_name' ? t('clients:import.reasonMissingName') : t('clients:import.reasonDuplicateEmail')}</div>
                   ))}
-                  {result.skipped.length > 10 && <div className={styles.resultItem}>...and {result.skipped.length - 10} more</div>}
+                  {result.skipped.length > 10 && <div className={styles.resultItem}>{t('clients:import.andMore', { count: result.skipped.length - 10 })}</div>}
                 </div>
               )}
               {result.failed.length > 0 && (
                 <div className={styles.resultList}>
-                  <strong>{result.failed.length} failed:</strong>
+                  <strong>{t('clients:import.failedCount', { count: result.failed.length })}</strong>
                   {result.failed.slice(0, 5).map((f, i) => (
                     <div key={i} className={styles.resultItem}>{f.name} — {f.error}</div>
                   ))}
                 </div>
               )}
               <div className={styles.actions}>
-                <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={onClose}>Done</button>
+                <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={onClose}>{t('clients:import.done')}</button>
               </div>
             </>
           ) : null}

@@ -1,29 +1,31 @@
 import { CircleCheck, Circle } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ONBOARDING_CALENDAR_URL } from '../../lib/config'
 import styles from './GettingStartedChecklist.module.css'
 
 const items = [
-  { key: 'hasLogo', label: 'Add company logo', link: '/settings' },
-  { key: 'hasTeam', label: 'Invite team members', link: '/dashboard/team' },
-  { key: 'hasTradeVertical', label: 'Set trade vertical', link: '/settings' },
-  { key: 'hasFirstJob', label: 'Create your first job', link: '#' },
-  { key: 'hasFirstBlueprint', label: 'Upload your first blueprint', link: '#' },
-  { key: 'hasBookedOnboarding', label: 'Book your onboarding call', link: ONBOARDING_CALENDAR_URL, external: true },
+  { key: 'hasLogo', label: 'dashboard:checklist.addLogo', link: '/settings' },
+  { key: 'hasTeam', label: 'dashboard:checklist.inviteTeam', link: '/dashboard/team' },
+  { key: 'hasTradeVertical', label: 'dashboard:checklist.setTrade', link: '/settings' },
+  { key: 'hasFirstJob', label: 'dashboard:checklist.createFirstJob', link: '#' },
+  { key: 'hasFirstBlueprint', label: 'dashboard:checklist.uploadFirstBlueprint', link: '#' },
+  { key: 'hasBookedOnboarding', label: 'dashboard:checklist.bookOnboarding', link: ONBOARDING_CALENDAR_URL, external: true },
 ]
 
 // Items that participate in the progress bar (excludes always-actionable external links).
 const trackableItems = items.filter(i => !i.external)
 
 export default function GettingStartedChecklist({ checklist }) {
+  const { t } = useTranslation()
   const completeCount = trackableItems.filter(i => checklist[i.key]).length
   const total = trackableItems.length
 
   return (
     <div className={styles.panel}>
       <div className={styles.header}>
-        <span className={styles.title}>Getting Started</span>
-        <span className={styles.progress}>{completeCount} of {total} complete</span>
+        <span className={styles.title}>{t('dashboard:checklist.title')}</span>
+        <span className={styles.progress}>{t('dashboard:checklist.progress', { completed: completeCount, total })}</span>
       </div>
 
       <div className={styles.track}>
@@ -43,14 +45,14 @@ export default function GettingStartedChecklist({ checklist }) {
               ) : (
                 <Circle size={18} className={styles.itemTodo} />
               )}
-              <span>{item.label}</span>
+              <span>{t(item.label)}</span>
               {item.external ? (
                 <a href={item.link} target="_blank" rel="noopener noreferrer" className={styles.itemLink}>
-                  Set up
+                  {t('dashboard:checklist.setUp')}
                 </a>
               ) : item.link !== '#' && (
                 <Link to={item.link} className={styles.itemLink}>
-                  {done ? 'View' : 'Set up'}
+                  {done ? t('dashboard:checklist.view') : t('dashboard:checklist.setUp')}
                 </Link>
               )}
             </div>

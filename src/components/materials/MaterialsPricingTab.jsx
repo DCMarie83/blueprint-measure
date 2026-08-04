@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import { trackMaterials } from '../../lib/analytics'
@@ -23,6 +24,7 @@ const td = { padding: '8px 10px', fontSize: 13, verticalAlign: 'middle' }
 const btn = { padding: '5px 12px', fontSize: 12, fontWeight: 600, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)', color: 'var(--color-text, #1b2426)', cursor: 'pointer' }
 
 export default function MaterialsPricingTab() {
+  const { t } = useTranslation()
   const { companyId } = useEffectiveCompany()
   const [rows, setRows] = useState([])
   const [stores, setStores] = useState([])
@@ -93,7 +95,7 @@ export default function MaterialsPricingTab() {
         setSavedPrices(prev => { const n = { ...prev }; delete n[row.id]; return n })
       } else {
         const price = Number(raw)
-        if (!Number.isFinite(price) || price < 0) throw new Error('Enter a price of 0 or more.')
+        if (!Number.isFinite(price) || price < 0) throw new Error(t('materials:pricing.priceError'))
         const { error: err } = await supabase
           .from('company_material_prices')
           .upsert({ company_id: companyId, catalog_item_id: row.id, price }, { onConflict: 'company_id,catalog_item_id' })
@@ -108,12 +110,12 @@ export default function MaterialsPricingTab() {
     }
   }
 
-  if (loading) return <div style={{ color: 'var(--color-text-muted)', padding: 20 }}>Loading materials pricing…</div>
+  if (loading) return <div style={{ color: 'var(--color-text-muted)', padding: 20 }}>{t('materials:pricing.loading')}</div>
 
   return (
     <div style={{ padding: '4px 0 40px' }}>
       <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 16px', maxWidth: 720, lineHeight: 1.5 }}>
-        Typical prices are estimates as of {maxPriceAsOf || '—'}. Set My Price to what you actually pay, it overrides the estimate everywhere.
+        {t('materials:pricing.intro', { date: maxPriceAsOf || '—' })}
       </p>
 
       {error && (
@@ -121,7 +123,7 @@ export default function MaterialsPricingTab() {
       )}
 
       {groups.length === 0 ? (
-        <div style={{ color: 'var(--color-text-muted)', padding: 20 }}>No active painting catalog items yet.</div>
+        <div style={{ color: 'var(--color-text-muted)', padding: 20 }}>{t('materials:pricing.empty')}</div>
       ) : groups.map(group => (
         <div key={group.slug} style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', marginBottom: 16, overflow: 'hidden' }}>
           <div style={{ padding: '10px 14px', background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)', fontWeight: 700, fontSize: 14 }}>
@@ -131,10 +133,10 @@ export default function MaterialsPricingTab() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  <th style={th}>Item</th>
-                  <th style={th}>Unit</th>
-                  <th style={th}>Typical</th>
-                  <th style={th}>My Price</th>
+                  <th style={th}>{t('materials:pricing.colItem')}</th>
+                  <th style={th}>{t('materials:pricing.colUnit')}</th>
+                  <th style={th}>{t('materials:pricing.colTypical')}</th>
+                  <th style={th}>{t('materials:pricing.colMyPrice')}</th>
                   <th style={th}></th>
                 </tr>
               </thead>
@@ -164,12 +166,12 @@ export default function MaterialsPricingTab() {
                             onChange={e => setPrices(prev => ({ ...prev, [row.id]: e.target.value }))}
                             onKeyDown={e => { if (e.key === 'Enter') savePrice(row) }}
                           />
-                          {hasOverride && <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--color-primary, #26464c)' }}>My price</span>}
+                          {hasOverride && <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--color-primary, #26464c)' }}>{t('materials:pricing.myPriceTag')}</span>}
                         </div>
                       </td>
                       <td style={{ ...td, whiteSpace: 'nowrap' }}>
                         <button style={btn} disabled={savingId === row.id} onClick={() => savePrice(row)}>
-                          {savingId === row.id ? 'Saving…' : 'Save'}
+                          {savingId === row.id ? t('materials:summary.saving') : t('common:action.save')}
                         </button>
                       </td>
                     </tr>

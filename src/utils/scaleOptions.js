@@ -15,7 +15,10 @@ export const SCALE_OPTIONS = [
   { label: '1" = 40\'',   value: '1:40', inchesPerFoot: 1/40  },
   { label: '1" = 50\'',   value: '1:50', inchesPerFoot: 1/50  },
   { label: '1" = 100\'',  value: '1:100',inchesPerFoot: 1/100 },
-  { label: 'Manual calibration…', value: 'manual', inchesPerFoot: null },
+  // NOTE: notation labels above are language-neutral symbols and stay literal.
+  // Only this manual entry's label is translatable — it holds a t() KEY that
+  // consumers resolve at render time (see ScalePanel / SessionPage).
+  { label: 'common:scale.manual', value: 'manual', inchesPerFoot: null },
 ]
 
 // Calculate how many canvas pixels equal one real-world foot.

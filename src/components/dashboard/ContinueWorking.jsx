@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../context/AuthContext'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import { useImpersonation } from '../../context/ImpersonationContext'
@@ -8,6 +9,7 @@ import { logError } from '../../lib/logError'
 import styles from './ContinueWorking.module.css'
 
 export default function ContinueWorking() {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const { companyId } = useEffectiveCompany()
   const { isImpersonating } = useImpersonation()
@@ -54,18 +56,18 @@ export default function ContinueWorking() {
 
   return (
     <section className={styles.section}>
-      <h2 className={styles.heading}>Continue Working</h2>
+      <h2 className={styles.heading}>{t('dashboard:continueWorking.title')}</h2>
       <div className={styles.grid}>
         {sessions.map((s) => (
           <button
             key={s.id}
             className={styles.card}
             onClick={() => navigate(`/session/${s.id}`)}
-            title={s.projects?.name || 'Untitled job'}
+            title={s.projects?.name || t('dashboard:continueWorking.untitled')}
           >
-            <div className={styles.projectName}>{s.projects?.name || 'Untitled job'}</div>
+            <div className={styles.projectName}>{s.projects?.name || t('dashboard:continueWorking.untitled')}</div>
             {s.description && <div className={styles.description}>{s.description}</div>}
-            <div className={styles.timestamp}>{formatRelative(s.updated_at)}</div>
+            <div className={styles.timestamp}>{formatRelative(s.updated_at, t)}</div>
           </button>
         ))}
       </div>
@@ -73,7 +75,7 @@ export default function ContinueWorking() {
   )
 }
 
-function formatRelative(timestamp) {
+function formatRelative(timestamp, t) {
   if (!timestamp) return ''
   const date = new Date(timestamp)
   const now = new Date()
@@ -82,11 +84,11 @@ function formatRelative(timestamp) {
   const diffHr = Math.floor(diffMs / 3600000)
   const diffDay = Math.floor(diffMs / 86400000)
 
-  if (diffMin < 1) return 'Just now'
-  if (diffMin < 60) return `${diffMin}m ago`
-  if (diffHr < 24) return `${diffHr}h ago`
-  if (diffDay === 1) return 'Yesterday'
-  if (diffDay < 7) return `${diffDay}d ago`
-  if (diffDay < 30) return `${Math.floor(diffDay / 7)}w ago`
+  if (diffMin < 1) return t('dashboard:time.justNow')
+  if (diffMin < 60) return t('dashboard:time.minsAgo', { count: diffMin })
+  if (diffHr < 24) return t('dashboard:time.hoursAgo', { count: diffHr })
+  if (diffDay === 1) return t('dashboard:time.yesterday')
+  if (diffDay < 7) return t('dashboard:time.daysAgo', { count: diffDay })
+  if (diffDay < 30) return t('dashboard:time.weeksAgo', { count: Math.floor(diffDay / 7) })
   return date.toLocaleDateString()
 }

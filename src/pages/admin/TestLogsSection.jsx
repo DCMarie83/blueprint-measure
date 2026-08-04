@@ -1,10 +1,12 @@
 import { useState, useEffect, Fragment } from 'react'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
 import { useAdminData } from '../../context/AdminDataContext'
 import { useDateFormat } from '../../hooks/useDateFormat'
 import styles from './sections.module.css'
 
 export default function TestLogsSection() {
+  const { t } = useTranslation()
   const { companies, users } = useAdminData()
   const { formatDateTime } = useDateFormat()
   const [logs, setLogs] = useState([])
@@ -30,40 +32,40 @@ export default function TestLogsSection() {
     .filter(l => verdictFilter === 'ALL' || l.verdict === verdictFilter)
     .filter(l => !companyFilter || l.company_id === companyFilter)
 
-  if (loading) return <div className={styles.empty}>Loading test logs…</div>
+  if (loading) return <div className={styles.empty}>{t('admin:testLogs.loading')}</div>
 
   return (
     <div>
-      <h1 className={styles.pageTitle}>Test Logs <span className={styles.pill}>{logs.length}</span></h1>
+      <h1 className={styles.pageTitle}>{t('admin:testLogs.title')} <span className={styles.pill}>{logs.length}</span></h1>
 
       <div className={styles.toolbar}>
         <select className={styles.filterSelect} value={verdictFilter} onChange={e => setVerdictFilter(e.target.value)}>
-          <option value="ALL">All verdicts</option>
+          <option value="ALL">{t('admin:testLogs.allVerdicts')}</option>
           <option value="PASS">PASS</option>
           <option value="FAIL">FAIL</option>
         </select>
         <select className={styles.filterSelect} value={companyFilter} onChange={e => setCompanyFilter(e.target.value)}>
-          <option value="">All companies</option>
+          <option value="">{t('admin:testLogs.allCompanies')}</option>
           {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </div>
 
       {filtered.length === 0 ? (
-        <p className={styles.empty}>No test logs found.</p>
+        <p className={styles.empty}>{t('admin:testLogs.empty')}</p>
       ) : (
         <div className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>
               <tr>
-                <th className={styles.th}>Date</th>
-                <th className={styles.th}>User</th>
-                <th className={styles.th}>Session</th>
-                <th className={styles.th}>Zone</th>
-                <th className={styles.th}>Type</th>
-                <th className={styles.th}>Stated</th>
-                <th className={styles.th}>Measured</th>
-                <th className={styles.th}>Variance</th>
-                <th className={styles.th}>Verdict</th>
+                <th className={styles.th}>{t('admin:testLogs.colDate')}</th>
+                <th className={styles.th}>{t('admin:testLogs.colUser')}</th>
+                <th className={styles.th}>{t('admin:testLogs.colSession')}</th>
+                <th className={styles.th}>{t('admin:testLogs.colZone')}</th>
+                <th className={styles.th}>{t('admin:testLogs.colType')}</th>
+                <th className={styles.th}>{t('admin:testLogs.colStated')}</th>
+                <th className={styles.th}>{t('admin:testLogs.colMeasured')}</th>
+                <th className={styles.th}>{t('admin:testLogs.colVariance')}</th>
+                <th className={styles.th}>{t('admin:testLogs.colVerdict')}</th>
               </tr>
             </thead>
             <tbody>
@@ -94,9 +96,9 @@ export default function TestLogsSection() {
                       <tr className={styles.expandedRow}>
                         <td colSpan={9} className={styles.expandedCell}>
                           <div className={styles.expandedPanel}>
-                            {log.error_message && <div><strong>Error:</strong> {log.error_message}</div>}
-                            {log.variance_pct != null && <div>Variance: {log.variance_pct}%</div>}
-                            {log.notes && <div><strong>Notes:</strong> {log.notes}</div>}
+                            {log.error_message && <div><strong>{t('admin:testLogs.errorLabel')}</strong> {log.error_message}</div>}
+                            {log.variance_pct != null && <div>{t('admin:testLogs.variancePct', { pct: log.variance_pct })}</div>}
+                            {log.notes && <div><strong>{t('admin:testLogs.notesLabel')}</strong> {log.notes}</div>}
                           </div>
                         </td>
                       </tr>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { formatAuthError } from '../lib/authErrors'
@@ -8,6 +9,7 @@ import LanguageToggle from '../components/LanguageToggle'
 import styles from './LoginPage.module.css'
 
 export default function LoginPage() {
+  const { t } = useTranslation()
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
   const [error,    setError]    = useState('')
@@ -25,7 +27,7 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) setError(formatAuthError(error))
+    if (error) setError(formatAuthError(error, t))
     // On success, AuthContext updates automatically and App.jsx redirects to /dashboard
     setLoading(false)
   }
@@ -61,22 +63,22 @@ export default function LoginPage() {
             <Logo variant="full" />
           </div>
 
-          <h1 className={styles.title}>Reset your password</h1>
+          <h1 className={styles.title}>{t('auth:login.resetTitle')}</h1>
 
           {forgotSent ? (
             <div className={styles.successBox}>
-              Sniff your inbox for the reset link.
+              {t('auth:login.forgotSent')}
             </div>
           ) : (
             <form className={styles.form} onSubmit={handleForgot}>
               <div className={styles.field}>
-                <label htmlFor="forgot-email">Email address</label>
+                <label htmlFor="forgot-email">{t('auth:shared.emailLabel')}</label>
                 <input
                   id="forgot-email"
                   type="email"
                   value={forgotEmail}
                   onChange={e => setForgotEmail(e.target.value)}
-                  placeholder="you@company.com"
+                  placeholder={t('auth:shared.emailPlaceholder')}
                   required
                   autoComplete="email"
                   autoFocus
@@ -86,13 +88,13 @@ export default function LoginPage() {
               {forgotError && <div className={styles.error}>{forgotError}</div>}
 
               <button type="submit" className={styles.btn} disabled={forgotLoading}>
-                {forgotLoading ? 'On the trail...' : 'Send reset link'}
+                {forgotLoading ? t('auth:login.sendingReset') : t('auth:login.sendReset')}
               </button>
             </form>
           )}
 
           <button className={styles.backLink} onClick={handleBackToLogin}>
-            ← Back to sign in
+            {t('auth:shared.backToSignIn')}
           </button>
         </div>
       </div>
@@ -110,24 +112,24 @@ export default function LoginPage() {
           <Logo variant="full" />
         </div>
 
-        <h1 className={styles.title}>Welcome back to the pack</h1>
+        <h1 className={styles.title}>{t('auth:login.title')}</h1>
 
         <form className={styles.form} onSubmit={handleLogin}>
           <div className={styles.field}>
-            <label htmlFor="email">Email address</label>
+            <label htmlFor="email">{t('auth:shared.emailLabel')}</label>
             <input
               id="email"
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="you@company.com"
+              placeholder={t('auth:shared.emailPlaceholder')}
               required
               autoComplete="email"
             />
           </div>
 
           <div className={styles.field}>
-            <label htmlFor="password">Password</label>
+            <label htmlFor="password">{t('auth:shared.passwordLabel')}</label>
             <input
               id="password"
               type="password"
@@ -142,17 +144,17 @@ export default function LoginPage() {
           {error && <div className={styles.error}>{error}</div>}
 
           <button type="submit" className={styles.btn} disabled={loading}>
-            {loading ? 'Opening the door...' : 'Sign in'}
+            {loading ? t('auth:login.signingIn') : t('auth:login.signIn')}
           </button>
         </form>
 
         <button className={styles.forgotBtn} onClick={() => setShowForgot(true)}>
-          Forgot password?
+          {t('auth:login.forgotPassword')}
         </button>
 
         <p className={styles.footer}>
-          Don't have an account?{' '}
-          <Link to="/signup" style={{ color: 'var(--color-primary)', fontWeight: 500 }}>Sign up free</Link>
+          {t('auth:login.noAccount')}{' '}
+          <Link to="/signup" style={{ color: 'var(--color-primary)', fontWeight: 500 }}>{t('auth:login.signUpFree')}</Link>
         </p>
       </div>
     </div>

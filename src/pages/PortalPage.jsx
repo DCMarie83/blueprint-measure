@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabase'
 import PortalEstimateSection from '../components/portal/PortalEstimateSection'
 import PaymentInstructionsBlock from '../components/invoices/PaymentInstructionsBlock'
@@ -7,6 +8,7 @@ import LanguageToggle from '../components/LanguageToggle'
 import styles from './PortalPage.module.css'
 
 export default function PortalPage() {
+  const { t } = useTranslation()
   const { token } = useParams()
   const [data, setData] = useState(null)
   const [estimateData, setEstimateData] = useState(null)
@@ -63,7 +65,7 @@ export default function PortalPage() {
     return (
       <div className={styles.page}>
         <div className={styles.card}>
-          <div className={styles.loading}>Loading…</div>
+          <div className={styles.loading}>{t('common:misc.loading')}</div>
         </div>
       </div>
     )
@@ -73,17 +75,17 @@ export default function PortalPage() {
     return (
       <div className={styles.page}>
         <div className={styles.card}>
-          <h1 className={styles.notFoundTitle}>Portal Not Available</h1>
+          <h1 className={styles.notFoundTitle}>{t('portal:portalPage.notFoundTitle')}</h1>
           <p className={styles.notFoundText}>
-            This portal link is invalid or has been disabled by the contractor.
+            {t('portal:portalPage.notFoundText')}
           </p>
-          <p className={styles.footer}>Powered by RivetDog</p>
+          <p className={styles.footer}>{t('common:misc.poweredBy')}</p>
         </div>
       </div>
     )
   }
 
-  const tenantName = data.company_name || 'Your Contractor'
+  const tenantName = data.company_name || t('portal:shared.fallbackContractor')
   const tenantLogoUrl = data.company_logo_url || null
   const tenantPrimary = data.company_primary_color || null
 
@@ -94,7 +96,7 @@ export default function PortalPage() {
           <LanguageToggle />
         </div>
         <div className={styles.companyHeader}>
-          {tenantLogoUrl && <img src={tenantLogoUrl} alt={`${tenantName} logo`} className={styles.companyLogo} />}
+          {tenantLogoUrl && <img src={tenantLogoUrl} alt={t('portal:shared.companyLogoAlt', { name: tenantName })} className={styles.companyLogo} />}
           <h2 className={styles.companyName}>{tenantName}</h2>
         </div>
 
@@ -105,7 +107,7 @@ export default function PortalPage() {
 
         {data.status_label && (
           <div className={styles.statusRow}>
-            <span className={styles.statusLabel}>Current Status</span>
+            <span className={styles.statusLabel}>{t('portal:portalPage.currentStatus')}</span>
             <span className={styles.statusBadge}>{data.status_label}</span>
           </div>
         )}
@@ -114,7 +116,7 @@ export default function PortalPage() {
           <div style={{ display: 'flex', gap: 24, padding: '12px 0', fontSize: 14, color: 'var(--color-text-muted, #555)' }}>
             {data.scheduled_start && (
               <div>
-                <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 2 }}>Start Date</span>
+                <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 2 }}>{t('portal:portalPage.startDate')}</span>
                 <span style={{ color: 'var(--color-text, #1b2426)', fontWeight: 500 }}>
                   {new Date(data.scheduled_start).toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })}
                 </span>
@@ -122,7 +124,7 @@ export default function PortalPage() {
             )}
             {data.estimated_completion && (
               <div>
-                <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 2 }}>Est. Completion</span>
+                <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 2 }}>{t('portal:portalPage.estCompletion')}</span>
                 <span style={{ color: 'var(--color-text, #1b2426)', fontWeight: 500 }}>
                   {new Date(data.estimated_completion).toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })}
                 </span>
@@ -133,7 +135,7 @@ export default function PortalPage() {
 
         {data.client_name && (
           <div className={styles.clientRow}>
-            <span className={styles.clientRowLabel}>Your contact</span>
+            <span className={styles.clientRowLabel}>{t('portal:portalPage.yourContact')}</span>
             <div>
               <div className={styles.clientName}>{data.client_name}</div>
               {data.client_business && (
@@ -154,14 +156,14 @@ export default function PortalPage() {
 
         {/* Deposit payment methods (only when deposit > 0) */}
         {estimateData?.estimate?.deposit_amount > 0 && (
-          <PaymentInstructionsBlock paymentInstructions={data.company_payment_instructions} variant="portal" heading="Deposit Payment Methods" />
+          <PaymentInstructionsBlock paymentInstructions={data.company_payment_instructions} variant="portal" heading={t('portal:portalPage.depositPaymentMethods')} />
         )}
 
         <div className={styles.footerWrap}>
           <p className={styles.contactNote}>
-            Have questions? Contact your contractor directly.
+            {t('portal:shared.contactNote')}
           </p>
-          <p className={styles.footer}>Powered by RivetDog for {tenantName}</p>
+          <p className={styles.footer}>{t('portal:shared.poweredByFor', { name: tenantName })}</p>
         </div>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { BRAND, FOUNDER_SPOTS_SCARCITY_THRESHOLD } from '../lib/config'
@@ -18,9 +19,9 @@ const selectStyle = {
 }
 
 const STEPS = [
-  { step: '1', title: 'Log the Day', desc: 'Hours, materials, notes — logged from your phone before you leave the site.', icon: Clock },
-  { step: '2', title: 'Build the Invoice', desc: 'Your work log becomes a clean, itemized invoice in one tap.', icon: FileText },
-  { step: '3', title: 'Get Paid', desc: 'Send it to the GC or homeowner and get paid without chasing paper.', icon: DollarSign },
+  { step: '1', titleKey: 'auth:lite.step1Title', descKey: 'auth:lite.step1Desc', icon: Clock },
+  { step: '2', titleKey: 'auth:lite.step2Title', descKey: 'auth:lite.step2Desc', icon: FileText },
+  { step: '3', titleKey: 'auth:lite.step3Title', descKey: 'auth:lite.step3Desc', icon: DollarSign },
 ]
 
 // Format a numeric monthly price without inventing a literal — always sourced
@@ -30,6 +31,7 @@ function formatPrice(n) {
 }
 
 export default function LiteSignupPage() {
+  const { t } = useTranslation()
   // ── UTM capture on landing (same stash SignupPage uses) ────
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -128,7 +130,7 @@ export default function LiteSignupPage() {
       if (msg.includes('already registered') || msg.includes('already been registered')) {
         setDuplicateEmail(true)
       } else {
-        setError(formatAuthError(signUpError))
+        setError(formatAuthError(signUpError, t))
       }
     } else if (data?.user && data.user.identities?.length === 0) {
       // Confirmations ON: Supabase obfuscates an existing confirmed email as a
@@ -150,9 +152,9 @@ export default function LiteSignupPage() {
     setResendMsg('')
     const { error } = await supabase.auth.resend({ type: 'signup', email: email.trim() })
     if (error) {
-      setResendMsg('Failed to resend. Try again in a moment.')
+      setResendMsg(t('auth:shared.resendFailed'))
     } else {
-      setResendMsg('Confirmation email resent.')
+      setResendMsg(t('auth:shared.resendOk'))
     }
     setResending(false)
   }
@@ -163,15 +165,15 @@ export default function LiteSignupPage() {
       <div className={formStyles.page}>
         <div className={formStyles.card}>
           <div className={formStyles.logo}><Logo variant="full" /></div>
-          <h1 className={formStyles.title}>Check your email</h1>
+          <h1 className={formStyles.title}>{t('auth:shared.checkEmailTitle')}</h1>
           <div className={formStyles.successBox}>
-            We sent a confirmation link to <strong>{email}</strong>. Click the link to activate your account, then you'll add a card to start your free trial.
+            {t('auth:shared.confirmationBefore')} <strong>{email}</strong>{t('auth:shared.confirmationAfter')}
           </div>
           <button className={formStyles.btn} style={{ marginTop: 16 }} onClick={handleResend} disabled={resending}>
-            {resending ? 'Resending…' : 'Resend confirmation email'}
+            {resending ? t('auth:shared.resending') : t('auth:shared.resendConfirmation')}
           </button>
           {resendMsg && <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 10, textAlign: 'center' }}>{resendMsg}</p>}
-          <Link to="/login" className={formStyles.backLink} style={{ display: 'block', marginTop: 18 }}>← Back to sign in</Link>
+          <Link to="/login" className={formStyles.backLink} style={{ display: 'block', marginTop: 18 }}>{t('auth:shared.backToSignIn')}</Link>
         </div>
       </div>
     )
@@ -201,11 +203,11 @@ export default function LiteSignupPage() {
         <div className={formStyles.page}>
           <div className={formStyles.card}>
             <div className={formStyles.logo}><Logo variant="full" /></div>
-            <h1 className={formStyles.title}>Signups are closed right now</h1>
+            <h1 className={formStyles.title}>{t('auth:lite.closedTitle')}</h1>
             <p style={{ color: 'var(--color-text-muted)', fontSize: 15, lineHeight: 1.6, textAlign: 'center' }}>
-              This plan isn't currently open for new signups. Check back soon.
+              {t('auth:lite.closedBody')}
             </p>
-            <Link to="/login" className={formStyles.backLink} style={{ display: 'block', marginTop: 18 }}>← Back to sign in</Link>
+            <Link to="/login" className={formStyles.backLink} style={{ display: 'block', marginTop: 18 }}>{t('auth:shared.backToSignIn')}</Link>
           </div>
         </div>
       </div>
@@ -234,33 +236,33 @@ export default function LiteSignupPage() {
           <Logo variant="full" className={s.titleLogo} />
         </a>
         <div className={s.titleName}>{planName}</div>
-        <div className={s.titleOffer}>{priceLabel}/mo · {trialDays}-day free trial</div>
+        <div className={s.titleOffer}>{t('auth:lite.titleOffer', { price: priceLabel, days: trialDays })}</div>
       </div>
 
       {/* ── Hero ────────────────────────────────────────────────── */}
       <div className={s.hero}>
         <div className={s.heroLeft}>
           <h1 className={s.heroH1}>
-            Log your day. Send the invoice. Get paid.
+            {t('auth:lite.heroH1')}
           </h1>
           <p className={s.heroSub}>
-            {planName} is the daily work log for subcontractors that turns into an invoice. Track your hours and materials on the job, then bill for them the same day — {priceLabel}/mo.
+            {t('auth:lite.heroSub', { plan: planName, price: priceLabel })}
           </p>
 
           <div className={s.chips}>
-            <span className={s.chip}><Shield size={14} style={{ color: 'var(--color-primary)' }} /> {trialDays}-day free trial</span>
-            <span className={s.chip}><Check size={14} style={{ color: 'var(--color-primary)' }} /> Cancel anytime</span>
+            <span className={s.chip}><Shield size={14} style={{ color: 'var(--color-primary)' }} /> {t('auth:lite.chipTrial', { days: trialDays })}</span>
+            <span className={s.chip}><Check size={14} style={{ color: 'var(--color-primary)' }} /> {t('auth:shared.cancelAnytime')}</span>
           </div>
 
           {/* Scarcity — mirrors /signup's threshold rule against the live count */}
           {spots != null && (
             spots <= scarcityThreshold ? (
               <p className={s.scarcityLine}>
-                Only {spots} founder {spots === 1 ? 'spot' : 'spots'} left at this price.
+                {t('auth:scarcity.spotsLeftAtPrice', { count: spots })}
               </p>
             ) : (
               <p className={s.scarcitySub}>
-                Only {offer.cohort_cap} founder spots at this price.
+                {t('auth:scarcity.capAtPrice', { count: offer.cohort_cap })}
               </p>
             )
           )}
@@ -268,10 +270,10 @@ export default function LiteSignupPage() {
           <div className={s.narrativeGrid} style={{ gridTemplateColumns: '1fr' }}>
             {STEPS.map(n => (
               <div key={n.step} className={s.narrativeCard} style={{ padding: '16px 20px' }}>
-                <div className={s.narrativeStep}>Step {n.step}</div>
+                <div className={s.narrativeStep}>{t('auth:shared.stepLabel', { step: n.step })}</div>
                 <n.icon size={24} style={{ color: 'var(--color-primary)', marginBottom: 4 }} />
-                <div className={s.narrativeLabel}>{n.title}</div>
-                <div className={s.narrativeDesc}>{n.desc}</div>
+                <div className={s.narrativeLabel}>{t(n.titleKey)}</div>
+                <div className={s.narrativeDesc}>{t(n.descKey)}</div>
               </div>
             ))}
           </div>
@@ -279,28 +281,28 @@ export default function LiteSignupPage() {
 
         {/* ── Form card ─────────────────────────────────────────── */}
         <div className={s.formCard}>
-          <h2 className={s.formTitle}>Start your {trialDays}-day free trial</h2>
+          <h2 className={s.formTitle}>{t('auth:lite.formTitleTrial', { days: trialDays })}</h2>
 
           <form className={formStyles.form} onSubmit={handleSubmit}>
             <div className={formStyles.field}>
-              <label htmlFor="fullName">Full name</label>
-              <input id="fullName" type="text" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Jane Smith" required autoComplete="name" />
+              <label htmlFor="fullName">{t('auth:shared.fullNameLabel')}</label>
+              <input id="fullName" type="text" value={fullName} onChange={e => setFullName(e.target.value)} placeholder={t('auth:shared.fullNamePlaceholder')} required autoComplete="name" />
             </div>
 
             <div className={formStyles.field}>
-              <label htmlFor="signupEmail">Email address</label>
-              <input id="signupEmail" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@company.com" required autoComplete="email" />
+              <label htmlFor="signupEmail">{t('auth:shared.emailLabel')}</label>
+              <input id="signupEmail" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t('auth:shared.emailPlaceholder')} required autoComplete="email" />
             </div>
 
             <div className={formStyles.field}>
-              <label htmlFor="signupPassword">Password</label>
+              <label htmlFor="signupPassword">{t('auth:shared.passwordLabel')}</label>
               <div style={{ position: 'relative' }}>
                 <input
                   id="signupPassword"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  placeholder="At least 8 characters"
+                  placeholder={t('auth:shared.passwordPlaceholder')}
                   required
                   minLength={8}
                   autoComplete="new-password"
@@ -309,7 +311,7 @@ export default function LiteSignupPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(v => !v)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-label={showPassword ? t('auth:shared.hidePassword') : t('auth:shared.showPassword')}
                   style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -318,20 +320,20 @@ export default function LiteSignupPage() {
             </div>
 
             <div className={formStyles.field}>
-              <label htmlFor="companyName">Company name <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>(optional)</span></label>
-              <input id="companyName" type="text" value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder="Working under your own name? Leave this blank." autoComplete="organization" />
+              <label htmlFor="companyName">{t('auth:shared.companyNameLabel')} <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>{t('auth:shared.optional')}</span></label>
+              <input id="companyName" type="text" value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder={t('auth:lite.companyPlaceholder')} autoComplete="organization" />
             </div>
 
             <div className={formStyles.nameRow}>
               <div className={formStyles.field}>
-                <label htmlFor="state">State</label>
+                <label htmlFor="state">{t('auth:shared.stateLabel')}</label>
                 <select id="state" value={state} onChange={e => setState(e.target.value)} style={selectStyle} required>
-                  <option value="">Select state</option>
+                  <option value="">{t('auth:shared.selectState')}</option>
                   {US_STATES.map(st => <option key={st.code} value={st.code}>{st.code}</option>)}
                 </select>
               </div>
               <div className={formStyles.field}>
-                <label htmlFor="tradeVertical">Trade</label>
+                <label htmlFor="tradeVertical">{t('auth:shared.tradeLabel')}</label>
                 <select id="tradeVertical" value={tradeVertical} onChange={e => setTradeVertical(e.target.value)} style={selectStyle}>
                   {TRADES.map(t => (
                     <option key={t.value} value={t.value}>{t.label}</option>
@@ -344,46 +346,46 @@ export default function LiteSignupPage() {
             <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: 'var(--color-text-muted)', cursor: 'pointer' }}>
               <input type="checkbox" checked={termsAccepted} onChange={e => setTermsAccepted(e.target.checked)} style={{ marginTop: 2 }} />
               <span>
-                I agree to the{' '}
-                <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)' }}>Terms of Service</a>
-                {' '}and{' '}
-                <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)' }}>Privacy Policy</a>.
+                {t('auth:shared.termsPrefix')}{' '}
+                <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)' }}>{t('auth:shared.termsOfService')}</a>
+                {' '}{t('auth:shared.and')}{' '}
+                <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)' }}>{t('auth:shared.privacyPolicy')}</a>.
               </span>
             </label>
             <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '6px 0 0', paddingLeft: 24 }}>
-              We'll email you product updates and setup tips. Unsubscribe anytime.
+              {t('auth:shared.emailOptIn')}
             </p>
 
             {error && <div className={formStyles.error}>{error}</div>}
             {duplicateEmail && (
               <div className={formStyles.error}>
-                An account with this email already exists. Try{' '}
-                <Link to="/login" style={{ color: 'inherit', fontWeight: 600 }}>logging in</Link>
-                {' '}or resetting your password.
+                {t('auth:shared.dupEmailBefore')}{' '}
+                <Link to="/login" style={{ color: 'inherit', fontWeight: 600 }}>{t('auth:shared.dupEmailLink')}</Link>
+                {' '}{t('auth:shared.dupEmailAfter')}
               </div>
             )}
 
             <button type="submit" className={formStyles.btn} disabled={!canSubmit || loading}>
-              {loading ? 'Creating account…' : 'Start free trial'}
+              {loading ? t('auth:shared.creatingAccount') : t('auth:shared.startFreeTrial')}
             </button>
           </form>
 
           <p style={{ fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center', margin: '14px 0 0' }}>
-            {priceLabel}/mo after your {trialDays}-day free trial. Cancel anytime.
+            {t('auth:lite.priceAfterTrial', { price: priceLabel, days: trialDays })}
           </p>
 
           <p className={formStyles.footer}>
-            Already have an account?{' '}
-            <Link to="/login" style={{ color: 'var(--color-primary)', fontWeight: 500 }}>Sign in</Link>
+            {t('auth:shared.alreadyHaveAccount')}{' '}
+            <Link to="/login" style={{ color: 'var(--color-primary)', fontWeight: 500 }}>{t('auth:shared.signIn')}</Link>
           </p>
         </div>
       </div>
 
       {/* ── Legal ───────────────────────────────────────────────── */}
       <div className={s.legalFooter}>
-        <a href="/terms" target="_blank" rel="noopener noreferrer">Terms</a>
+        <a href="/terms" target="_blank" rel="noopener noreferrer">{t('auth:shared.legalTerms')}</a>
         {' · '}
-        <a href="/privacy" target="_blank" rel="noopener noreferrer">Privacy</a>
+        <a href="/privacy" target="_blank" rel="noopener noreferrer">{t('auth:shared.legalPrivacy')}</a>
         {' · '}
         © {new Date().getFullYear()} {BRAND.legalEntity}
       </div>

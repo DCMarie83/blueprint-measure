@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { BRAND, FOUNDER_SPOTS_SCARCITY_THRESHOLD } from '../lib/config'
@@ -18,19 +19,20 @@ const selectStyle = {
 }
 
 const DEMOS = [
-  { id: '3LpU-EHk9OY', label: 'Measure', caption: 'Blueprint takeoff in seconds.' },
-  { id: 'gTEhwPVKymg', label: 'Estimate', caption: 'Polished estimates from your measurements, fast.' },
-  { id: 'qOaL4Mzg6HA', label: 'Manage', caption: 'Crew hours, tracked to the job.' },
+  { id: '3LpU-EHk9OY', labelKey: 'auth:signup.demoMeasure', caption: 'Blueprint takeoff in seconds.' },
+  { id: 'gTEhwPVKymg', labelKey: 'auth:signup.demoEstimate', caption: 'Polished estimates from your measurements, fast.' },
+  { id: 'qOaL4Mzg6HA', labelKey: 'auth:signup.demoManage', caption: 'Crew hours, tracked to the job.' },
 ]
 
 const NARRATIVE = [
-  { step: '1', title: 'Start the Bid', desc: 'Upload a blueprint, set scale, measure every zone in minutes.', icon: Ruler },
-  { step: '2', title: 'Win the Bid', desc: 'Send a polished estimate your client accepts right from their portal.', icon: FileText },
-  { step: '3', title: 'Perform the Job', desc: 'Track crew time, materials, and expenses against the bid — live.', icon: Clock },
-  { step: '4', title: 'Get Paid', desc: 'Invoice from the accepted estimate. Clients pay through their portal.', icon: DollarSign },
+  { step: '1', titleKey: 'auth:signup.narrative1Title', descKey: 'auth:signup.narrative1Desc', icon: Ruler },
+  { step: '2', titleKey: 'auth:signup.narrative2Title', descKey: 'auth:signup.narrative2Desc', icon: FileText },
+  { step: '3', titleKey: 'auth:signup.narrative3Title', descKey: 'auth:signup.narrative3Desc', icon: Clock },
+  { step: '4', titleKey: 'auth:signup.narrative4Title', descKey: 'auth:signup.narrative4Desc', icon: DollarSign },
 ]
 
 function DemoCard({ id, label }) {
+  const { t } = useTranslation()
   const [playing, setPlaying] = useState(false);
   return (
     <div className={s.demoCard}>
@@ -48,12 +50,12 @@ function DemoCard({ id, label }) {
             type="button"
             className={s.demoPoster}
             onClick={() => setPlaying(true)}
-            aria-label={`Play ${label} demo`}
+            aria-label={t('auth:signup.demoPlayAria', { label })}
           >
             <img
               src={`https://img.youtube.com/vi/${id}/maxresdefault.jpg`}
               onError={(e) => { e.currentTarget.src = `https://img.youtube.com/vi/${id}/hqdefault.jpg`; }}
-              alt={`${label} demo`}
+              alt={t('auth:signup.demoAlt', { label })}
               loading="lazy"
             />
             <span className={s.demoPlay} aria-hidden="true">▶</span>
@@ -65,6 +67,7 @@ function DemoCard({ id, label }) {
 }
 
 export default function SignupPage() {
+  const { t } = useTranslation()
   const formRef = useRef(null)
 
   // ── UTM capture on landing ─────────────────────────────────
@@ -144,7 +147,7 @@ export default function SignupPage() {
       if (msg.includes('already registered') || msg.includes('already been registered')) {
         setDuplicateEmail(true)
       } else {
-        setError(formatAuthError(signUpError))
+        setError(formatAuthError(signUpError, t))
       }
     } else if (data?.user && data.user.identities?.length === 0) {
       // Confirmations ON: Supabase obfuscates an existing confirmed email as a
@@ -168,9 +171,9 @@ export default function SignupPage() {
     setResendMsg('')
     const { error } = await supabase.auth.resend({ type: 'signup', email: email.trim() })
     if (error) {
-      setResendMsg('Failed to resend. Try again in a moment.')
+      setResendMsg(t('auth:shared.resendFailed'))
     } else {
-      setResendMsg('Confirmation email resent.')
+      setResendMsg(t('auth:shared.resendOk'))
     }
     setResending(false)
   }
@@ -207,15 +210,15 @@ export default function SignupPage() {
       <div className={formStyles.page}>
         <div className={formStyles.card}>
           <div className={formStyles.logo}><Logo variant="full" /></div>
-          <h1 className={formStyles.title}>Check your email</h1>
+          <h1 className={formStyles.title}>{t('auth:shared.checkEmailTitle')}</h1>
           <div className={formStyles.successBox}>
-            We sent a confirmation link to <strong>{email}</strong>. Click the link to activate your account, then you'll add a card to start your free trial.
+            {t('auth:shared.confirmationBefore')} <strong>{email}</strong>{t('auth:shared.confirmationAfter')}
           </div>
           <button className={formStyles.btn} style={{ marginTop: 16 }} onClick={handleResend} disabled={resending}>
-            {resending ? 'Resending…' : 'Resend confirmation email'}
+            {resending ? t('auth:shared.resending') : t('auth:shared.resendConfirmation')}
           </button>
           {resendMsg && <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 10, textAlign: 'center' }}>{resendMsg}</p>}
-          <Link to="/login" className={formStyles.backLink} style={{ display: 'block', marginTop: 18 }}>← Back to sign in</Link>
+          <Link to="/login" className={formStyles.backLink} style={{ display: 'block', marginTop: 18 }}>{t('auth:shared.backToSignIn')}</Link>
         </div>
       </div>
     )
@@ -233,32 +236,32 @@ export default function SignupPage() {
       <div className={s.hero}>
         <div className={s.heroLeft}>
           <h1 className={s.heroH1}>
-            First 25 trade pros in every state lock $79.99/mo — for life.
+            {t('auth:signup.heroH1')}
           </h1>
           <p className={s.heroSub}>
-            The field OS built by a contractor's developer. Measure, estimate, track, and get paid — priced like the small business you actually are.
+            {t('auth:signup.heroSub')}
           </p>
 
           <div className={s.chips}>
-            <span className={s.chip}><Shield size={14} style={{ color: 'var(--color-primary)' }} /> 14-day free trial</span>
-            <span className={s.chip}><Check size={14} style={{ color: 'var(--color-primary)' }} /> Cancel anytime</span>
-            <span className={s.chip}><Lock size={14} style={{ color: 'var(--color-primary)' }} /> Locked for life</span>
+            <span className={s.chip}><Shield size={14} style={{ color: 'var(--color-primary)' }} /> {t('auth:signup.chip14DayTrial')}</span>
+            <span className={s.chip}><Check size={14} style={{ color: 'var(--color-primary)' }} /> {t('auth:shared.cancelAnytime')}</span>
+            <span className={s.chip}><Lock size={14} style={{ color: 'var(--color-primary)' }} /> {t('auth:signup.chipLockedForLife')}</span>
           </div>
 
           {/* State scarcity */}
           <div className={s.stateBox}>
-            <div className={s.stateLabel}>Where do you work?</div>
+            <div className={s.stateLabel}>{t('auth:signup.whereWork')}</div>
             <select
               className={s.stateSelect}
               value={heroState}
               onChange={e => handleHeroStateChange(e.target.value)}
             >
-              <option value="">Select your state</option>
+              <option value="">{t('auth:signup.selectYourState')}</option>
               {US_STATES.map(st => <option key={st.code} value={st.code}>{st.name}</option>)}
             </select>
 
             {scarcityLoading && (
-              <p className={s.scarcitySub} style={{ marginTop: 12 }}>Checking availability...</p>
+              <p className={s.scarcitySub} style={{ marginTop: 12 }}>{t('auth:signup.checkingAvailability')}</p>
             )}
 
             {(() => {
@@ -269,10 +272,10 @@ export default function SignupPage() {
               const capStatement = (
                 <>
                   <p className={s.scarcityLine}>
-                    Only {scarcity.spots_total} founder spots per state.
+                    {t('auth:scarcity.capPerState', { count: scarcity.spots_total })}
                   </p>
                   <p className={s.scarcitySub}>
-                    When {stateName} fills, the price goes up.
+                    {t('auth:scarcity.whenFills', { state: stateName })}
                   </p>
                 </>
               )
@@ -286,7 +289,7 @@ export default function SignupPage() {
               if (scarcity.spots_remaining > 0) {
                 return (
                   <p className={s.scarcityLine}>
-                    Only {scarcity.spots_remaining} founder {scarcity.spots_remaining === 1 ? 'spot' : 'spots'} left in {stateName}.
+                    {t('auth:scarcity.spotsLeftInState', { count: scarcity.spots_remaining, state: stateName })}
                   </p>
                 )
               }
@@ -299,10 +302,10 @@ export default function SignupPage() {
               return (
                 <>
                   <p className={s.scarcityLine}>
-                    {scarcity.plan_name} in {stateName} is full.
+                    {t('auth:scarcity.planFull', { plan: scarcity.plan_name, state: stateName })}
                   </p>
                   <p className={s.scarcitySub}>
-                    Join {scarcity.next_tier_name} at ${scarcity.next_tier_price}/mo.
+                    {t('auth:scarcity.joinNextTier', { tier: scarcity.next_tier_name, price: scarcity.next_tier_price })}
                   </p>
                 </>
               )
@@ -313,28 +316,28 @@ export default function SignupPage() {
 
         {/* ── Form card (RIGHT column) ────────────────────────── */}
         <div className={s.formCard} ref={formRef}>
-          <h2 className={s.formTitle}>Start your free trial</h2>
+          <h2 className={s.formTitle}>{t('auth:signup.startTrial')}</h2>
 
           <form className={formStyles.form} onSubmit={handleSubmit}>
             <div className={formStyles.field}>
-              <label htmlFor="fullName">Full name</label>
-              <input id="fullName" type="text" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Jane Smith" required autoComplete="name" />
+              <label htmlFor="fullName">{t('auth:shared.fullNameLabel')}</label>
+              <input id="fullName" type="text" value={fullName} onChange={e => setFullName(e.target.value)} placeholder={t('auth:shared.fullNamePlaceholder')} required autoComplete="name" />
             </div>
 
             <div className={formStyles.field}>
-              <label htmlFor="signupEmail">Email address</label>
-              <input id="signupEmail" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@company.com" required autoComplete="email" />
+              <label htmlFor="signupEmail">{t('auth:shared.emailLabel')}</label>
+              <input id="signupEmail" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t('auth:shared.emailPlaceholder')} required autoComplete="email" />
             </div>
 
             <div className={formStyles.field}>
-              <label htmlFor="signupPassword">Password</label>
+              <label htmlFor="signupPassword">{t('auth:shared.passwordLabel')}</label>
               <div style={{ position: 'relative' }}>
                 <input
                   id="signupPassword"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  placeholder="At least 8 characters"
+                  placeholder={t('auth:shared.passwordPlaceholder')}
                   required
                   minLength={8}
                   autoComplete="new-password"
@@ -343,7 +346,7 @@ export default function SignupPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(v => !v)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-label={showPassword ? t('auth:shared.hidePassword') : t('auth:shared.showPassword')}
                   style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -352,20 +355,20 @@ export default function SignupPage() {
             </div>
 
             <div className={formStyles.field}>
-              <label htmlFor="companyName">Company name <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>(optional)</span></label>
-              <input id="companyName" type="text" value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder="Leave blank if you work under your own name." autoComplete="organization" />
+              <label htmlFor="companyName">{t('auth:shared.companyNameLabel')} <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>{t('auth:shared.optional')}</span></label>
+              <input id="companyName" type="text" value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder={t('auth:signup.companyPlaceholder')} autoComplete="organization" />
             </div>
 
             <div className={formStyles.nameRow}>
               <div className={formStyles.field}>
-                <label htmlFor="state">State</label>
+                <label htmlFor="state">{t('auth:shared.stateLabel')}</label>
                 <select id="state" value={state} onChange={e => handleHeroStateChange(e.target.value)} style={selectStyle} required>
-                  <option value="">Select state</option>
+                  <option value="">{t('auth:shared.selectState')}</option>
                   {US_STATES.map(st => <option key={st.code} value={st.code}>{st.code}</option>)}
                 </select>
               </div>
               <div className={formStyles.field}>
-                <label htmlFor="tradeVertical">Trade</label>
+                <label htmlFor="tradeVertical">{t('auth:shared.tradeLabel')}</label>
                 <select id="tradeVertical" value={tradeVertical} onChange={e => setTradeVertical(e.target.value)} style={selectStyle}>
                   {TRADES.map(t => (
                     <option key={t.value} value={t.value}>{t.label}</option>
@@ -378,57 +381,57 @@ export default function SignupPage() {
             <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: 'var(--color-text-muted)', cursor: 'pointer' }}>
               <input type="checkbox" checked={termsAccepted} onChange={e => setTermsAccepted(e.target.checked)} style={{ marginTop: 2 }} />
               <span>
-                I agree to the{' '}
-                <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)' }}>Terms of Service</a>
-                {' '}and{' '}
-                <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)' }}>Privacy Policy</a>.
+                {t('auth:shared.termsPrefix')}{' '}
+                <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)' }}>{t('auth:shared.termsOfService')}</a>
+                {' '}{t('auth:shared.and')}{' '}
+                <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)' }}>{t('auth:shared.privacyPolicy')}</a>.
               </span>
             </label>
             <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '6px 0 0', paddingLeft: 24 }}>
-              We'll email you product updates and setup tips. Unsubscribe anytime.
+              {t('auth:shared.emailOptIn')}
             </p>
 
             {error && <div className={formStyles.error}>{error}</div>}
             {duplicateEmail && (
               <div className={formStyles.error}>
-                An account with this email already exists. Try{' '}
-                <Link to="/login" style={{ color: 'inherit', fontWeight: 600 }}>logging in</Link>
-                {' '}or resetting your password.
+                {t('auth:shared.dupEmailBefore')}{' '}
+                <Link to="/login" style={{ color: 'inherit', fontWeight: 600 }}>{t('auth:shared.dupEmailLink')}</Link>
+                {' '}{t('auth:shared.dupEmailAfter')}
               </div>
             )}
 
             <button type="submit" className={formStyles.btn} disabled={!canSubmit || loading}>
-              {loading ? 'Creating account…' : 'Start free trial'}
+              {loading ? t('auth:shared.creatingAccount') : t('auth:shared.startFreeTrial')}
             </button>
           </form>
 
           <p className={formStyles.footer}>
-            Already have an account?{' '}
-            <Link to="/login" style={{ color: 'var(--color-primary)', fontWeight: 500 }}>Sign in</Link>
+            {t('auth:shared.alreadyHaveAccount')}{' '}
+            <Link to="/login" style={{ color: 'var(--color-primary)', fontWeight: 500 }}>{t('auth:shared.signIn')}</Link>
           </p>
         </div>
       </div>
 
       {/* ── 3. DEMO VIDEOS (below the fold) ─────────────────────── */}
       <div className={s.strip}>
-        <h2 className={s.stripTitle}>See it work</h2>
+        <h2 className={s.stripTitle}>{t('auth:signup.seeItWork')}</h2>
         <div className={s.demoGrid}>
           {DEMOS.map(d => (
-            <DemoCard key={d.id} id={d.id} label={d.label} />
+            <DemoCard key={d.id} id={d.id} label={t(d.labelKey)} />
           ))}
         </div>
       </div>
 
       {/* ── 4. NARRATIVE STRIP ──────────────────────────────────── */}
       <div className={s.strip}>
-        <h2 className={s.stripTitle}>Start the Bid. Win the Bid. Perform the Job. Get Paid.</h2>
+        <h2 className={s.stripTitle}>{t('auth:signup.narrativeStripTitle')}</h2>
         <div className={s.narrativeGrid}>
           {NARRATIVE.map(n => (
             <div key={n.step} className={s.narrativeCard}>
-              <div className={s.narrativeStep}>Step {n.step}</div>
+              <div className={s.narrativeStep}>{t('auth:shared.stepLabel', { step: n.step })}</div>
               <n.icon size={28} style={{ color: 'var(--color-primary)', marginBottom: 8 }} />
-              <div className={s.narrativeLabel}>{n.title}</div>
-              <div className={s.narrativeDesc}>{n.desc}</div>
+              <div className={s.narrativeLabel}>{t(n.titleKey)}</div>
+              <div className={s.narrativeDesc}>{t(n.descKey)}</div>
             </div>
           ))}
         </div>
@@ -436,37 +439,37 @@ export default function SignupPage() {
 
       {/* ── 5. TESTIMONIALS ─────────────────────────────────────── */}
       <div className={s.strip} style={{ borderTop: '1px solid var(--color-border)' }}>
-        <h2 className={s.stripTitle}>What contractors are saying</h2>
+        <h2 className={s.stripTitle}>{t('auth:signup.testimonialsTitle')}</h2>
         <div className={s.testimonialGrid}>
           <div className={s.testimonialCard}>
             <p className={s.testimonialQuote}>
-              "RivetDog replaced three tools we were duct-taping together. My crews actually use it."
+              {t('auth:signup.testimonial1Quote')}
             </p>
-            <p className={s.testimonialAttrib}>— Andrew Abraham, Operations Director, Central Custom Painting</p>
+            <p className={s.testimonialAttrib}>{t('auth:signup.testimonial1Attrib')}</p>
           </div>
           <div className={s.testimonialCard}>
             <p className={s.testimonialQuote}>
-              "I finished a takeoff for a commercial roof. I was impressed at how easy it was to complete. The tools are simple and easy to navigate and I found no bugs."
+              {t('auth:signup.testimonial2Quote')}
             </p>
-            <p className={s.testimonialAttrib}>— Matt Harmon, CEO, ACI Construction</p>
+            <p className={s.testimonialAttrib}>{t('auth:signup.testimonial2Attrib')}</p>
           </div>
         </div>
       </div>
 
       {/* ── 6. OFFER FAQ ────────────────────────────────────────── */}
       <div className={s.strip}>
-        <h2 className={s.stripTitle}>Common questions</h2>
+        <h2 className={s.stripTitle}>{t('auth:signup.faqTitle')}</h2>
         <div className={s.faqList}>
           <div className={s.faqItem}>
-            <p className={s.faqQ}>How does the free trial work?</p>
+            <p className={s.faqQ}>{t('auth:signup.faq1Q')}</p>
             <p className={s.faqA}>
-              14 days free, full access. We take your card at signup so nothing interrupts your work when the trial ends — cancel anytime from your settings before then and you're not charged.
+              {t('auth:signup.faq1A')}
             </p>
           </div>
           <div className={s.faqItem}>
-            <p className={s.faqQ}>What does "locked for life" mean?</p>
+            <p className={s.faqQ}>{t('auth:signup.faq2Q')}</p>
             <p className={s.faqA}>
-              The first 25 trade pros in each state lock the $79.99/mo founder rate permanently on the base plan. As we grow, new signups pay more — your rate never changes.
+              {t('auth:signup.faq2A')}
             </p>
           </div>
         </div>
@@ -475,21 +478,21 @@ export default function SignupPage() {
       {/* ── 7. FINAL CTA ────────────────────────────────────────── */}
       <div className={s.finalCta}>
         <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-text)', marginBottom: 8 }}>
-          $79.99/mo — locked for life.
+          {t('auth:signup.finalPrice')}
         </p>
         <p style={{ fontSize: 15, color: 'var(--color-text-muted)', marginBottom: 24 }}>
-          14-day free trial. Cancel anytime.
+          {t('auth:signup.finalSub')}
         </p>
         <button className={s.ctaButton} onClick={scrollToForm}>
-          Lock your founder rate — start free
+          {t('auth:signup.finalCta')}
         </button>
       </div>
 
       {/* ── Legal ───────────────────────────────────────────────── */}
       <div className={s.legalFooter}>
-        <a href="/terms" target="_blank" rel="noopener noreferrer">Terms</a>
+        <a href="/terms" target="_blank" rel="noopener noreferrer">{t('auth:shared.legalTerms')}</a>
         {' · '}
-        <a href="/privacy" target="_blank" rel="noopener noreferrer">Privacy</a>
+        <a href="/privacy" target="_blank" rel="noopener noreferrer">{t('auth:shared.legalPrivacy')}</a>
         {' · '}
         © {new Date().getFullYear()} {BRAND.legalEntity}
       </div>

@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
 import { useAdminData } from '../../context/AdminDataContext'
 import styles from './sections.module.css'
 
 export default function ImpersonationLogSection() {
+  const { t } = useTranslation()
   const { companies } = useAdminData()
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
@@ -28,23 +30,23 @@ export default function ImpersonationLogSection() {
     return new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
   }
 
-  if (loading) return <div className={styles.empty}>Loading...</div>
+  if (loading) return <div className={styles.empty}>{t('admin:impersonation.loading')}</div>
 
   return (
     <div>
-      <h1 className={styles.pageTitle}>Impersonation Log</h1>
+      <h1 className={styles.pageTitle}>{t('admin:impersonation.logTitle')}</h1>
 
       {sessions.length === 0 ? (
-        <div className={styles.empty}>No impersonation sessions recorded.</div>
+        <div className={styles.empty}>{t('admin:impersonation.noSessions')}</div>
       ) : (
         <div className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>
               <tr>
-                <th className={styles.th}>Company</th>
-                <th className={styles.th}>Started</th>
-                <th className={styles.th}>Ended</th>
-                <th className={styles.th}>Notes</th>
+                <th className={styles.th}>{t('admin:impersonation.colCompany')}</th>
+                <th className={styles.th}>{t('admin:impersonation.colStarted')}</th>
+                <th className={styles.th}>{t('admin:impersonation.colEnded')}</th>
+                <th className={styles.th}>{t('admin:impersonation.colNotes')}</th>
               </tr>
             </thead>
             <tbody>
@@ -52,7 +54,7 @@ export default function ImpersonationLogSection() {
                 <tr key={s.id} className={styles.tr}>
                   <td className={styles.td} style={{ fontWeight: 600 }}>{companyName(s.target_company_id)}</td>
                   <td className={styles.td}>{fmtDate(s.started_at)}</td>
-                  <td className={styles.td}>{s.ended_at ? fmtDate(s.ended_at) : <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Active</span>}</td>
+                  <td className={styles.td}>{s.ended_at ? fmtDate(s.ended_at) : <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>{t('admin:impersonation.active')}</span>}</td>
                   <td className={styles.td} style={{ color: 'var(--color-text-muted)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.notes || '—'}</td>
                 </tr>
               ))}

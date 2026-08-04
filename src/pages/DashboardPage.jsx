@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useDashboardData } from '../hooks/useDashboardData'
 import GreetingStrip from '../components/dashboard/GreetingStrip'
 import QuickActionsRow from '../components/dashboard/QuickActionsRow'
@@ -11,6 +12,7 @@ import Logo from '../components/brand/Logo'
 import styles from './DashboardPage.module.css'
 
 export default function DashboardPage() {
+  const { t } = useTranslation()
   const {
     loading, error,
     firstName, todayDate,
@@ -23,7 +25,7 @@ export default function DashboardPage() {
       
       <main className={styles.main}>
         {loading ? (
-          <div className={styles.loading}>Sniffing around...</div>
+          <div className={styles.loading}>{t('dashboard:loading')}</div>
         ) : error ? (
           <div className={styles.loading} style={{ color: 'var(--color-danger)' }}>{error}</div>
         ) : (

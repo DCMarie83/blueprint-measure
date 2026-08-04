@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -8,13 +9,15 @@ import { BRAND } from '../lib/config'
 import { useCompanyPlan } from '../lib/plans'
 import styles from './AccountPage.module.css'
 
+// Values are i18n key strings; the consuming component wraps them with t().
 const ROLE_LABELS = {
-  contractor_user: 'Member',
-  contractor_admin: 'Admin',
-  super_admin: 'Super Admin',
+  contractor_user: 'misc:account.role.member',
+  contractor_admin: 'common:role.contractor_admin',
+  super_admin: 'common:role.super_admin',
 }
 
 export default function AccountPage() {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const navigate = useNavigate()
   const { formatDate, formatDateTime } = useDateFormat()
@@ -91,9 +94,9 @@ export default function AccountPage() {
         .limit(30)
 
       sessions?.forEach(s => {
-        activityItems.push({ type: 'session', text: `Created session "${s.project_name}"`, time: s.created_at, sessionId: s.id })
+        activityItems.push({ type: 'session', text: t('misc:account.activity.createdSession', { name: s.project_name }), time: s.created_at, sessionId: s.id })
         if (s.blueprint_url) {
-          activityItems.push({ type: 'upload', text: `Uploaded blueprint for "${s.project_name}"`, time: s.created_at, sessionId: s.id })
+          activityItems.push({ type: 'upload', text: t('misc:account.activity.uploadedBlueprint', { name: s.project_name }), time: s.created_at, sessionId: s.id })
         }
       })
 
@@ -106,7 +109,7 @@ export default function AccountPage() {
           .order('created_at', { ascending: false })
           .limit(30)
         zones?.forEach(z => {
-          activityItems.push({ type: 'zone', text: `Measured ${z.name}`, time: z.created_at, sessionId: z.session_id })
+          activityItems.push({ type: 'zone', text: t('misc:account.activity.measured', { name: z.name }), time: z.created_at, sessionId: z.session_id })
         })
       }
 
@@ -127,10 +130,10 @@ export default function AccountPage() {
         .eq('user_id', user.id)
       if (error) throw new Error(error.message)
       setProfileDirty(false)
-      setProfileToast('Pawsome!')
+      setProfileToast(t('misc:account.profile.savedToast'))
       setTimeout(() => setProfileToast(''), 2000)
     } catch (err) {
-      alert('Failed to save: ' + err.message)
+      alert(t('misc:account.errors.saveFailed', { error: err.message }))
     } finally {
       setProfileSaving(false)
     }
@@ -150,7 +153,7 @@ export default function AccountPage() {
       setSmsConsent(newValue)
       if (newValue) setSmsConsentAt(update.sms_consent_at)
     } catch (err) {
-      alert('Failed to update SMS preference: ' + err.message)
+      alert(t('misc:account.errors.smsFailed', { error: err.message }))
     } finally {
       setSmsSaving(false)
     }
@@ -166,10 +169,10 @@ export default function AccountPage() {
         .eq('user_id', user.id)
       if (error) throw new Error(error.message)
       setCancelConfirm(false)
-      setCancelToast('Cancellation requested — we\'ll be in touch shortly')
+      setCancelToast(t('misc:account.danger.cancelToast'))
       setTimeout(() => setCancelToast(''), 5000)
     } catch (err) {
-      alert('Failed to request cancellation: ' + err.message)
+      alert(t('misc:account.errors.cancelFailed', { error: err.message }))
     } finally {
       setCancelling(false)
     }
@@ -188,7 +191,7 @@ export default function AccountPage() {
       await supabase.auth.signOut()
       navigate('/login')
     } catch (err) {
-      alert('Failed to delete account: ' + err.message)
+      alert(t('misc:account.errors.deleteFailed', { error: err.message }))
       setDeleting(false)
     }
   }
@@ -207,7 +210,7 @@ export default function AccountPage() {
   if (profileLoading) {
     return (
       <div className={styles.page}>
-        <div className={styles.center}>Sniffing around...</div>
+        <div className={styles.center}>{t('misc:account.loading')}</div>
       </div>
     )
   }
@@ -216,8 +219,8 @@ export default function AccountPage() {
     <div className={styles.page}>
       <header className={styles.header}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 20, flex: 1 }}>
-          <Link to="/dashboard" className={styles.backLink}>← Back to Dashboard</Link>
-          <h1 className={styles.pageTitle} style={{ margin: 0 }}>My Account</h1>
+          <Link to="/dashboard" className={styles.backLink}>{t('misc:account.backToDashboard')}</Link>
+          <h1 className={styles.pageTitle} style={{ margin: 0 }}>{t('misc:account.title')}</h1>
         </div>
         <UserMenu />
       </header>
@@ -225,34 +228,34 @@ export default function AccountPage() {
       <main className={styles.main}>
         {/* 1. Profile */}
         <section className={styles.card}>
-          <h2 className={styles.cardTitle}>Profile</h2>
+          <h2 className={styles.cardTitle}>{t('misc:account.profile.heading')}</h2>
           <form onSubmit={handleSaveProfile} className={styles.form}>
             <label className={styles.label}>
-              Full Name
+              {t('misc:account.profile.fullName')}
               <input
                 className={styles.input}
                 value={fullName}
                 onChange={e => { setFullName(e.target.value); setProfileDirty(true) }}
-                placeholder="Your full name"
+                placeholder={t('misc:account.profile.fullNamePlaceholder')}
               />
             </label>
             <label className={styles.label}>
-              Email
+              {t('misc:account.profile.email')}
               <input className={styles.input} value={user?.email ?? ''} disabled />
-              <span className={styles.hint}>Contact support to change email</span>
+              <span className={styles.hint}>{t('misc:account.profile.emailHint')}</span>
             </label>
             <label className={styles.label}>
-              Phone
+              {t('misc:account.profile.phone')}
               <input
                 className={styles.input}
                 value={phone}
                 onChange={e => { setPhone(e.target.value); setProfileDirty(true) }}
-                placeholder="(555) 123-4567"
+                placeholder={t('misc:account.profile.phonePlaceholder')}
               />
             </label>
             <div className={styles.formActions}>
               <button type="submit" className={styles.saveBtn} disabled={!profileDirty || profileSaving}>
-                {profileSaving ? 'Saving…' : 'Save Changes'}
+                {profileSaving ? t('misc:account.saving') : t('common:action.saveChanges')}
               </button>
               {profileToast && <span className={styles.toast}>{profileToast}</span>}
             </div>
@@ -261,33 +264,33 @@ export default function AccountPage() {
 
         {/* 2. Company */}
         <section className={styles.card}>
-          <h2 className={styles.cardTitle}>Company</h2>
+          <h2 className={styles.cardTitle}>{t('misc:account.company.heading')}</h2>
           <div className={styles.infoRow}>
-            <span className={styles.infoLabel}>Company</span>
-            <span className={styles.infoValue}>{company?.name ?? 'Not assigned'}</span>
+            <span className={styles.infoLabel}>{t('misc:account.company.companyLabel')}</span>
+            <span className={styles.infoValue}>{company?.name ?? t('misc:account.company.notAssigned')}</span>
           </div>
           <div className={styles.infoRow}>
-            <span className={styles.infoLabel}>Plan</span>
+            <span className={styles.infoLabel}>{t('misc:account.company.plan')}</span>
             <span className={styles.planBadge}>{companyPlan?.display_name ?? '—'}</span>
           </div>
           <div className={styles.infoRow}>
-            <span className={styles.infoLabel}>Role</span>
-            <span className={styles.infoValue}>{role ? (ROLE_LABELS[role] ?? role) : 'Member'}</span>
+            <span className={styles.infoLabel}>{t('misc:account.company.role')}</span>
+            <span className={styles.infoValue}>{role ? t(ROLE_LABELS[role] ?? role) : t('misc:account.role.member')}</span>
           </div>
-          <p className={styles.hint}>Contact your admin to change company details.</p>
+          <p className={styles.hint}>{t('misc:account.company.hint')}</p>
         </section>
 
         {/* 3. Password */}
         <section className={styles.card}>
-          <h2 className={styles.cardTitle}>Password</h2>
+          <h2 className={styles.cardTitle}>{t('misc:account.password.heading')}</h2>
           <Link to="/change-password" className={styles.changePasswordLink}>
-            Change Password
+            {t('misc:account.password.change')}
           </Link>
         </section>
 
         {/* 4. SMS Preferences */}
         <section className={styles.card}>
-          <h2 className={styles.cardTitle}>SMS Preferences</h2>
+          <h2 className={styles.cardTitle}>{t('misc:account.sms.heading')}</h2>
           <div className={styles.smsRow}>
             <label className={styles.smsToggle}>
               <input
@@ -296,18 +299,16 @@ export default function AccountPage() {
                 onChange={handleToggleSms}
                 disabled={smsSaving}
               />
-              <span className={styles.smsLabel}>Receive SMS notifications</span>
+              <span className={styles.smsLabel}>{t('misc:account.sms.receive')}</span>
             </label>
             {smsConsentAt && smsConsent && (
               <span className={styles.hint}>
-                Opted in {formatDate(smsConsentAt)}
+                {t('misc:account.sms.optedIn', { date: formatDate(smsConsentAt) })}
               </span>
             )}
           </div>
           <p className={styles.smsDisclosure}>
-            I agree to receive automated text messages from {BRAND.name} ({BRAND.legalEntity})
-            at the phone number provided, including product updates, support communications, and
-            occasional marketing. Message and data rates may apply. Reply STOP to opt out, HELP for help.
+            {t('misc:account.sms.disclosure', { brand: BRAND.name, legalEntity: BRAND.legalEntity })}
           </p>
         </section>
 
@@ -315,16 +316,16 @@ export default function AccountPage() {
         {activity.length > 0 && (
           <section className={styles.card}>
             <div className={styles.activityHeader}>
-              <h2 className={styles.cardTitle} style={{ margin: 0 }}>My Activity</h2>
+              <h2 className={styles.cardTitle} style={{ margin: 0 }}>{t('misc:account.activity.heading')}</h2>
               <select
                 className={styles.activityFilterSelect}
                 value={activityFilter}
                 onChange={e => setActivityFilter(e.target.value)}
               >
-                <option value="all">All</option>
-                <option value="sessions">Sessions</option>
-                <option value="zones">Zones</option>
-                <option value="blueprints">Blueprints</option>
+                <option value="all">{t('misc:account.activity.all')}</option>
+                <option value="sessions">{t('misc:account.activity.sessions')}</option>
+                <option value="zones">{t('misc:account.activity.zones')}</option>
+                <option value="blueprints">{t('misc:account.activity.blueprints')}</option>
               </select>
             </div>
             <div className={styles.activityList}>
@@ -341,7 +342,7 @@ export default function AccountPage() {
                 </div>
               ))}
               {filteredActivity.length === 0 && (
-                <p className={styles.hint} style={{ padding: '12px 0' }}>Quiet for this filter.</p>
+                <p className={styles.hint} style={{ padding: '12px 0' }}>{t('misc:account.activity.empty')}</p>
               )}
             </div>
           </section>
@@ -350,7 +351,7 @@ export default function AccountPage() {
         {/* 6. Subscription & Account */}
         <section className={styles.card}>
           <button className={styles.dangerToggle} onClick={() => setDangerOpen(v => !v)}>
-            {dangerOpen ? '▾' : '▸'} Subscription & Account
+            {dangerOpen ? '▾' : '▸'} {t('misc:account.danger.heading')}
           </button>
           {dangerOpen && (
             <div className={styles.dangerContent}>
@@ -359,21 +360,19 @@ export default function AccountPage() {
                 <div className={styles.cancelToast}>{cancelToast}</div>
               ) : !cancelConfirm ? (
                 <button className={styles.cancelSubBtn} onClick={() => setCancelConfirm(true)}>
-                  Cancel My Subscription
+                  {t('misc:account.danger.cancelSub')}
                 </button>
               ) : (
                 <div className={styles.deleteConfirm}>
                   <p className={styles.cancelWarning}>
-                    Cancel your subscription? Your account stays active until the end of your current
-                    billing period. After that, your account becomes read-only — you can still view
-                    your data but cannot create new sessions or measurements. You can resubscribe anytime.
+                    {t('misc:account.danger.cancelWarning')}
                   </p>
                   <div className={styles.deleteActions}>
                     <button className={styles.cancelBtn} onClick={() => setCancelConfirm(false)}>
-                      Keep Subscription
+                      {t('misc:account.danger.keepSub')}
                     </button>
                     <button className={styles.confirmCancelBtn} onClick={handleCancelSubscription} disabled={cancelling}>
-                      {cancelling ? 'Processing…' : 'Confirm Cancellation'}
+                      {cancelling ? t('misc:account.danger.processing') : t('misc:account.danger.confirmCancel')}
                     </button>
                   </div>
                 </div>
@@ -383,29 +382,26 @@ export default function AccountPage() {
               <div className={styles.deleteSectionSeparator} />
               {!deleteConfirm ? (
                 <button className={styles.deleteLink} onClick={() => setDeleteConfirm(true)}>
-                  Request Permanent Account Deletion
+                  {t('misc:account.danger.requestDeletion')}
                 </button>
               ) : (
                 <div className={styles.deleteConfirm}>
                   <p className={styles.deleteWarning}>
-                    Permanently delete your account? This will remove all your sessions, zones, and uploads.
-                    Your company data will be transferred to your admin. This action cannot be undone and is
-                    processed within 30 days per our retention policy.
+                    {t('misc:account.danger.deleteWarning')}
                   </p>
                   <div className={styles.deleteActions}>
                     <button className={styles.cancelBtn} onClick={() => setDeleteConfirm(false)}>
-                      Cancel
+                      {t('common:action.cancel')}
                     </button>
                     <button className={styles.confirmDeleteBtn} onClick={handleDeleteAccount} disabled={deleting}>
-                      {deleting ? 'Deleting…' : 'Delete My Account'}
+                      {deleting ? t('misc:account.danger.deleting') : t('misc:account.danger.deleteAccount')}
                     </button>
                   </div>
                 </div>
               )}
 
               <p className={styles.dangerFootnote}>
-                Subscription billing will be wired to Stripe in a future update.
-                For now, cancel requests are queued for manual review.
+                {t('misc:account.danger.footnote')}
               </p>
             </div>
           )}

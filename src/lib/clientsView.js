@@ -4,11 +4,12 @@
 export const CLIENT_STATUSES = ['lead', 'active', 'past', 'do_not_contact']
 
 // Status chip colors per brand spec.
+// label holds an i18n KEY STRING (shared common namespace); consumers wrap with t().
 export const STATUS_META = {
-  lead:           { label: 'Lead',           bg: 'rgba(242,114,67,0.14)', fg: '#F27243' },
-  active:         { label: 'Active',         bg: 'rgba(38,70,76,0.12)',   fg: '#26464C' },
-  past:           { label: 'Past',           bg: 'var(--color-surface-2, #eef0f0)', fg: 'var(--color-text-muted, #6b7280)' },
-  do_not_contact: { label: 'Do not contact', bg: 'var(--color-surface-2, #eef0f0)', fg: 'var(--color-text-muted, #6b7280)' },
+  lead:           { label: 'common:clientStatus.lead',           bg: 'rgba(242,114,67,0.14)', fg: '#F27243' },
+  active:         { label: 'common:clientStatus.active',         bg: 'rgba(38,70,76,0.12)',   fg: '#26464C' },
+  past:           { label: 'common:clientStatus.past',           bg: 'var(--color-surface-2, #eef0f0)', fg: 'var(--color-text-muted, #6b7280)' },
+  do_not_contact: { label: 'common:clientStatus.do_not_contact', bg: 'var(--color-surface-2, #eef0f0)', fg: 'var(--color-text-muted, #6b7280)' },
 }
 
 export function statusMeta(status) {

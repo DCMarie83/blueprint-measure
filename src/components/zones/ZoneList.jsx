@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import InfoTooltip from '../ui/InfoTooltip'
 import Chip from '../ui/Chip'
 import styles from './ZoneList.module.css'
@@ -51,15 +52,9 @@ const PITCH_OPTIONS = [1,2,3,4,5,6,7,8,9,10,12,14,16,18].map(rise => ({
 
 const PITCH_PRESETS = [4, 6, 8, 10, 12]
 
-const CEILING_TYPE_LABELS = {
-  flat: 'Flat',
-  vaulted: 'Vaulted',
-  tray: 'Tray',
-  shed: 'Shed',
-}
-
 export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartDeductionMeasure, redrawingZoneId, enabledFeatures = {}, hiddenZoneIds, onToggleVisibility,
   isTestMode, testData = {}, onTestDataChange, onLogTest, pixelsPerFoot }) {
+  const { t } = useTranslation()
   const [editingId, setEditingId] = useState(null)
   const [editName, setEditName] = useState('')
   const [editDescription, setEditDescription] = useState('')
@@ -142,8 +137,8 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
     // Validate edit-form deductions
     if (canDeductZone && editDeductions.length > 0) {
       for (const d of editDeductions) {
-        if (!d.name?.trim()) { alert('Each deduction needs a name.'); return }
-        if (!(Number(d.value) > 0)) { alert('Each deduction value must be greater than 0.'); return }
+        if (!d.name?.trim()) { alert(t('blueprint:zones.deductNeedsName')); return }
+        if (!(Number(d.value) > 0)) { alert(t('blueprint:zones.deductValuePositive')); return }
       }
     }
 
@@ -202,7 +197,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
   if (zones.length === 0) {
     return (
       <div className={styles.empty}>
-        No zones in the yard yet. Pick a tool and start drawing on the canvas.
+        {t('blueprint:zones.emptyList')}
       </div>
     )
   }
@@ -222,22 +217,22 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                   className={styles.editInput}
                   value={editName}
                   onChange={e => setEditName(e.target.value)}
-                  placeholder="Zone name"
+                  placeholder={t('blueprint:zones.zoneNamePlaceholder')}
                 />
                 <input
                   className={styles.editInput}
                   value={editDescription}
                   onChange={e => setEditDescription(e.target.value)}
-                  placeholder="Description (optional)"
+                  placeholder={t('blueprint:zones.descriptionPlaceholder')}
                 />
                 <select
                   className={styles.editSelect}
                   value={editSurfaceType}
                   onChange={e => setEditSurfaceType(e.target.value)}
                 >
-                  <option value="">Surface type (optional)</option>
-                  {SURFACE_TYPES.map(t => (
-                    <option key={t} value={t}>{t}</option>
+                  <option value="">{t('blueprint:zones.surfaceTypeOptional')}</option>
+                  {SURFACE_TYPES.map(st => (
+                    <option key={st} value={st}>{t('common:surfaceType.' + st)}</option>
                   ))}
                 </select>
 
@@ -248,10 +243,10 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                     value={editCeilingType}
                     onChange={e => setEditCeilingType(e.target.value)}
                   >
-                    <option value="flat">Flat (standard)</option>
-                    <option value="vaulted">Vaulted / Cathedral</option>
-                    <option value="tray">Tray / Coffered</option>
-                    <option value="shed">Shed / Single slope</option>
+                    <option value="flat">{t('blueprint:draw.ceilingFlat')}</option>
+                    <option value="vaulted">{t('blueprint:draw.ceilingVaulted')}</option>
+                    <option value="tray">{t('blueprint:draw.ceilingTray')}</option>
+                    <option value="shed">{t('blueprint:draw.ceilingShed')}</option>
                   </select>
                 )}
 
@@ -259,8 +254,8 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                 {editSurfaceType === 'Ceiling' && editCeilingType === 'vaulted' && (
                   <>
                     <div className={styles.editHeightRow}>
-                      <button type="button" className={`${styles.editStepBtn} ${!editPitchMode ? styles.editStepActive : ''}`} onClick={() => setEditPitchMode(false)}>Use heights</button>
-                      <button type="button" className={`${styles.editStepBtn} ${editPitchMode ? styles.editStepActive : ''}`} onClick={() => setEditPitchMode(true)}>Use pitch <InfoTooltip>Roof pitch describes the steepness as rise over run. A pitch of 8/12 means the roof rises 8 inches for every 12 inches of horizontal distance. Common residential pitches: 4/12 (low slope), 6/12 (medium), 8/12 (medium-steep), 10/12 (steep — most common for vaulted ceilings), 12/12 (very steep, 45°).</InfoTooltip></button>
+                      <button type="button" className={`${styles.editStepBtn} ${!editPitchMode ? styles.editStepActive : ''}`} onClick={() => setEditPitchMode(false)}>{t('blueprint:draw.useHeights')}</button>
+                      <button type="button" className={`${styles.editStepBtn} ${editPitchMode ? styles.editStepActive : ''}`} onClick={() => setEditPitchMode(true)}>{t('blueprint:zones.usePitch')} <InfoTooltip>{t('blueprint:draw.pitchTip')}</InfoTooltip></button>
                     </div>
                     {editPitchMode ? (
                       <>
@@ -269,7 +264,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                             <button key={p} type="button"
                               className={`${styles.editPitchPresetBtn} ${editPitchRise === p ? styles.editPitchPresetActive : ''}`}
                               onClick={() => setEditPitchRise(p)}>
-                              {p}/12{p === 10 ? <span className={styles.editPitchCommonTag}>Common</span> : null}
+                              {p}/12{p === 10 ? <span className={styles.editPitchCommonTag}>{t('blueprint:draw.common')}</span> : null}
                             </button>
                           ))}
                         </div>
@@ -280,11 +275,11 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                     ) : (
                       <div className={styles.editHeightRow}>
                         <div className={styles.editHeightField}>
-                          <span className={styles.editHeightLabel}>Peak height</span>
+                          <span className={styles.editHeightLabel}>{t('blueprint:draw.peakHeight')}</span>
                           <input className={styles.editInput} type="text" value={editCeilingPeakHeight} onChange={e => setEditCeilingPeakHeight(e.target.value)} placeholder="e.g. 14' or 13'6&quot;" />
                         </div>
                         <div className={styles.editHeightField}>
-                          <span className={styles.editHeightLabel}>Wall height</span>
+                          <span className={styles.editHeightLabel}>{t('blueprint:draw.wallHeight')}</span>
                           <input className={styles.editInput} type="text" value={editCeilingWallHeight} onChange={e => setEditCeilingWallHeight(e.target.value)} placeholder="e.g. 8' or 7'6&quot;" />
                         </div>
                       </div>
@@ -296,7 +291,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                 {editSurfaceType === 'Ceiling' && editCeilingType === 'tray' && (
                   <div className={styles.editHeightRow}>
                     <div className={styles.editHeightField}>
-                      <span className={styles.editHeightLabel}>Tray perimeter</span>
+                      <span className={styles.editHeightLabel}>{t('blueprint:draw.trayPerimeter')}</span>
                       <input
                         className={styles.editInput}
                         type="text"
@@ -306,7 +301,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                       />
                     </div>
                     <div className={styles.editHeightField}>
-                      <span className={styles.editHeightLabel}>Drop depth</span>
+                      <span className={styles.editHeightLabel}>{t('blueprint:draw.dropDepth')}</span>
                       <input
                         className={styles.editInput}
                         type="text"
@@ -322,8 +317,8 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                 {editSurfaceType === 'Ceiling' && editCeilingType === 'shed' && (
                   <>
                     <div className={styles.editHeightRow}>
-                      <button type="button" className={`${styles.editStepBtn} ${!editPitchMode ? styles.editStepActive : ''}`} onClick={() => setEditPitchMode(false)}>Use heights</button>
-                      <button type="button" className={`${styles.editStepBtn} ${editPitchMode ? styles.editStepActive : ''}`} onClick={() => setEditPitchMode(true)}>Use pitch <InfoTooltip>Roof pitch describes the steepness as rise over run. Common pitches: 4/12 (low), 6/12 (medium), 10/12 (steep, most common), 12/12 (45°).</InfoTooltip></button>
+                      <button type="button" className={`${styles.editStepBtn} ${!editPitchMode ? styles.editStepActive : ''}`} onClick={() => setEditPitchMode(false)}>{t('blueprint:draw.useHeights')}</button>
+                      <button type="button" className={`${styles.editStepBtn} ${editPitchMode ? styles.editStepActive : ''}`} onClick={() => setEditPitchMode(true)}>{t('blueprint:zones.usePitch')} <InfoTooltip>{t('blueprint:zones.pitchTipShort')}</InfoTooltip></button>
                     </div>
                     {editPitchMode ? (
                       <>
@@ -332,7 +327,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                             <button key={p} type="button"
                               className={`${styles.editPitchPresetBtn} ${editPitchRise === p ? styles.editPitchPresetActive : ''}`}
                               onClick={() => setEditPitchRise(p)}>
-                              {p}/12{p === 10 ? <span className={styles.editPitchCommonTag}>Common</span> : null}
+                              {p}/12{p === 10 ? <span className={styles.editPitchCommonTag}>{t('blueprint:draw.common')}</span> : null}
                             </button>
                           ))}
                         </div>
@@ -343,11 +338,11 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                     ) : (
                       <div className={styles.editHeightRow}>
                         <div className={styles.editHeightField}>
-                          <span className={styles.editHeightLabel}>Low wall</span>
+                          <span className={styles.editHeightLabel}>{t('blueprint:draw.lowWall')}</span>
                           <input className={styles.editInput} type="text" value={editCeilingLowWallHeight} onChange={e => setEditCeilingLowWallHeight(e.target.value)} placeholder="e.g. 8' or 7'6&quot;" />
                         </div>
                         <div className={styles.editHeightField}>
-                          <span className={styles.editHeightLabel}>High wall</span>
+                          <span className={styles.editHeightLabel}>{t('blueprint:draw.highWall')}</span>
                           <input className={styles.editInput} type="text" value={editCeilingHighWallHeight} onChange={e => setEditCeilingHighWallHeight(e.target.value)} placeholder="e.g. 12' or 11'6&quot;" />
                         </div>
                       </div>
@@ -358,12 +353,12 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                 {/* Wall height & openings — shown when editing a Wall/SF zone */}
                 {editSurfaceType === 'Wall' && !enabledFeatures.wall_calculator && (
                   <div className={styles.zoneWallLocked}>
-                    🔒 Wall calculator — available on Plus plan
+                    {t('blueprint:draw.wallCalcLocked')}
                   </div>
                 )}
                 {editSurfaceType === 'Wall' && enabledFeatures.wall_calculator && (
                   <div className={styles.editFinishGroup}>
-                    <span className={styles.editFinishLabel}>Wall Height &amp; Openings</span>
+                    <span className={styles.editFinishLabel}>{t('blueprint:draw.wallHeightOpenings')}</span>
                     <input
                       className={styles.editInput}
                       type="text"
@@ -380,7 +375,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                               value={o.name}
                               onChange={e => setEditOpenings(prev =>
                                 prev.map(x => x.id === o.id ? { ...x, name: e.target.value } : x))}
-                              placeholder="Name"
+                              placeholder={t('blueprint:draw.namePlaceholder')}
                               style={{ flex: 1 }}
                             />
                             <input
@@ -398,15 +393,15 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                         <div className={styles.editFinishBtns}>
                           <button type="button" className={styles.editStepBtn}
                             onClick={() => setEditOpenings(prev => [...prev, { id: Date.now(), name: 'Door', sf: 21 }])}>
-                            + Door
+                            {t('blueprint:zones.addDoorShort')}
                           </button>
                           <button type="button" className={styles.editStepBtn}
                             onClick={() => setEditOpenings(prev => [...prev, { id: Date.now() + 1, name: 'Window', sf: 15 }])}>
-                            + Window
+                            {t('blueprint:zones.addWindowShort')}
                           </button>
                           <button type="button" className={styles.editStepBtn}
                             onClick={() => setEditOpenings(prev => [...prev, { id: Date.now() + 2, name: 'Opening', sf: 0 }])}>
-                            + Custom
+                            {t('blueprint:draw.addCustom')}
                           </button>
                         </div>
                       </>
@@ -418,19 +413,19 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                   className={styles.editTextarea}
                   value={editNotes}
                   onChange={e => setEditNotes(e.target.value)}
-                  placeholder="Notes (optional)"
+                  placeholder={t('blueprint:zones.notesPlaceholder')}
                   rows={2}
                 />
 
                 {/* Zone color picker */}
                 <div className={styles.editColorGroup}>
-                  <span className={styles.editColorLabel}>Zone Color</span>
+                  <span className={styles.editColorLabel}>{t('blueprint:zones.zoneColor')}</span>
                   <div className={styles.editColorSwatches}>
                     <button
                       type="button"
                       className={`${styles.editColorSwatch} ${styles.editColorAuto} ${editColor === null ? styles.editColorActive : ''}`}
                       onClick={() => setEditColor(null)}
-                      title="Auto (default palette)"
+                      title={t('blueprint:zones.autoPalette')}
                     >
                       A
                     </button>
@@ -450,7 +445,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                 {/* Deductions section — non-wall SF/LF zones only */}
                 {(zone.measurement_type === 'SF' || zone.measurement_type === 'LF') && editSurfaceType !== 'Wall' && (
                   <div className={styles.editFinishGroup}>
-                    <span style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)', marginBottom: 8, display: 'block' }}>Deductions</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)', marginBottom: 8, display: 'block' }}>{t('blueprint:zones.deductions')}</span>
                     {editDeductions.map((d, idx) => {
                       const isCanvas = (d.source || 'manual') === 'canvas'
                       return (
@@ -459,7 +454,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                             className={styles.editInput}
                             value={d.name}
                             onChange={e => setEditDeductions(prev => prev.map((x, i) => i === idx ? { ...x, name: e.target.value } : x))}
-                            placeholder="Name"
+                            placeholder={t('blueprint:draw.namePlaceholder')}
                             size={1}
                             style={{ flex: 1, minWidth: 0 }}
                           />
@@ -486,7 +481,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                                   onStartDeductionMeasure(zone, ({ value, points, page_number }) => {
                                     setEditDeductions(prev => prev.map(x => x.id === dedId ? { ...x, value, points, page_number, source: 'canvas' } : x))
                                   })
-                                }}>Redo</button>
+                                }}>{t('blueprint:zones.redo')}</button>
                             )}
                             <button type="button" className={styles.editBtn}
                               onClick={() => setEditDeductions(prev => prev.filter((_, i) => i !== idx))}>✕</button>
@@ -496,7 +491,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                     })}
                     <button type="button" className={styles.editStepBtn}
                       onClick={() => setEditDeductions(prev => [...prev, { id: crypto.randomUUID(), name: '', value: '', source: 'manual' }])}>
-                      + Add deduction
+                      {t('blueprint:zones.addDeduction')}
                     </button>
                   </div>
                 )}
@@ -507,9 +502,9 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                     onClick={() => handleSave(zone.id)}
                     disabled={saving || !editName.trim()}
                   >
-                    {saving ? 'Saving…' : 'Save'}
+                    {saving ? t('blueprint:zones.saving') : t('common:action.save')}
                   </button>
-                  <button className={styles.cancelEditBtn} onClick={cancelEdit}>Cancel</button>
+                  <button className={styles.cancelEditBtn} onClick={cancelEdit}>{t('common:action.cancel')}</button>
                 </div>
               </div>
             ) : (
@@ -519,7 +514,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                   <button
                     className={`${styles.visBtn} ${hiddenZoneIds?.has(zone.id) ? styles.visBtnHidden : ''}`}
                     onClick={e => { e.stopPropagation(); onToggleVisibility?.(zone.id) }}
-                    title={hiddenZoneIds?.has(zone.id) ? 'Show on canvas' : 'Hide on canvas'}
+                    title={hiddenZoneIds?.has(zone.id) ? t('blueprint:zones.showOnCanvas') : t('blueprint:zones.hideOnCanvas')}
                   >
                     {hiddenZoneIds?.has(zone.id) ? <EyeOffIcon /> : <EyeIcon />}
                   </button>
@@ -528,7 +523,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                     <span
                       className={styles.colorDot}
                       style={{ background: zone.color }}
-                      title={`Zone color: ${zone.color}`}
+                      title={t('blueprint:zones.zoneColorTitle', { color: zone.color })}
                     />
                   )}
                   <span className={styles.zoneName}>{zone.name}</span>
@@ -556,8 +551,8 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                 {isExpanded && zone.surface_type && (
                   <div className={styles.zoneMeta}>
                     {zone.surface_type === 'Ceiling' && zone.ceiling_type && zone.ceiling_type !== 'flat'
-                      ? `${zone.surface_type} · ${CEILING_TYPE_LABELS[zone.ceiling_type] ?? zone.ceiling_type}`
-                      : zone.surface_type}
+                      ? `${t('common:surfaceType.' + zone.surface_type)} · ${t('common:ceilingType.' + zone.ceiling_type)}`
+                      : t('common:surfaceType.' + zone.surface_type)}
                   </div>
                 )}
                 {isExpanded && (<>
@@ -566,7 +561,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                   const fmtDed = (v) => zone.measurement_type === 'LF' ? formatLF(Number(v) || 0) : formatSF(Number(v) || 0)
                   return (
                     <div style={{ fontSize: 13, lineHeight: 1.6 }}>
-                      <div style={{ color: 'var(--color-text-muted)' }}>Gross: {fmtDed(zone.gross_result)}</div>
+                      <div style={{ color: 'var(--color-text-muted)' }}>{t('blueprint:zones.gross')} {fmtDed(zone.gross_result)}</div>
                       {zone.deductions.map(d => (
                         <div key={d.id} style={{ paddingLeft: 12, color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
                           <span>− {d.name}: {fmtDed(d.value)}</span>
@@ -582,11 +577,11 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                             style={{ width: 16, height: 16, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--color-text-muted)', fontSize: 13, lineHeight: 1 }}
                             onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-danger, #dc2626)' }}
                             onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-text-muted)' }}
-                            title="Remove deduction"
+                            title={t('blueprint:zones.removeDeduction')}
                           >×</button>
                         </div>
                       ))}
-                      <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--color-text)' }}>Net: {fmtDed(zone.result)}</div>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--color-text)' }}>{t('blueprint:zones.net')} {fmtDed(zone.result)}</div>
                     </div>
                   )
                 })() : (
@@ -595,41 +590,41 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                       ? formatSF(zone.result ?? 0)
                       : zone.measurement_type === 'LF'
                       ? formatLF(zone.result ?? 0)
-                      : `${Math.round(zone.result ?? 0)} items`}
+                      : t('blueprint:zones.itemsResult', { count: Math.round(zone.result ?? 0) })}
                   </div>
                 )}
                 {zone.ceiling_pitch_rise && zone.measurement_type === 'SF' && (
                   <div className={styles.zoneMeta}>
-                    {zone.ceiling_pitch_rise}/12 pitch — result is sloped surface area
+                    {t('blueprint:zones.pitchSloped', { pitch: zone.ceiling_pitch_rise })}
                   </div>
                 )}
 
                 {/* Soft warnings — visible to ALL users, always on */}
                 {zone.measurement_type === 'SF' && (zone.result ?? 0) > 0 && (zone.result ?? 0) < 10 && (
-                  <div className={styles.softWarning}>Warning: Result seems small — verify your scale is correct for this page.</div>
+                  <div className={styles.softWarning}>{t('blueprint:zones.warnSmallSF')}</div>
                 )}
                 {zone.measurement_type === 'LF' && (zone.result ?? 0) > 0 && (zone.result ?? 0) < 1 && (
-                  <div className={styles.softWarning}>Warning: LF result seems very short — verify your scale.</div>
+                  <div className={styles.softWarning}>{t('blueprint:zones.warnShortLF')}</div>
                 )}
                 {zone.measurement_type === 'SF' && (zone.points?.filter(p => p !== null && p !== undefined)?.length ?? 0) > 4 && (zone.result ?? 0) > 0 && (zone.result ?? 0) < 20 && (zone.result ?? 0) >= 10 && (
-                  <div className={styles.softWarning}>Warning: Complex zone with low SF — verify scale calibration.</div>
+                  <div className={styles.softWarning}>{t('blueprint:zones.warnComplexLowSF')}</div>
                 )}
 
                 {/* Wall breakdown — shown when wall_height is set and feature enabled */}
                 {zone.wall_height && zone.gross_wall_sf && enabledFeatures.wall_calculator && (
                   <div className={styles.zoneWallBreakdown}>
-                    <div>Wall: {formatFeetInches(zone.wall_height)} high · Gross {zone.gross_wall_sf} sf</div>
+                    <div>{t('blueprint:zones.wallBreakdown', { height: formatFeetInches(zone.wall_height), gross: zone.gross_wall_sf })}</div>
                     {zone.opening_deductions?.length > 0 && (
-                      <div>Deductions: −{(zone.opening_deductions).reduce((s, o) => s + (o.sf ?? 0), 0)} sf ({zone.opening_deductions.length} openings)</div>
+                      <div>{t('blueprint:zones.wallDeductions', { sf: (zone.opening_deductions).reduce((s, o) => s + (o.sf ?? 0), 0), count: zone.opening_deductions.length })}</div>
                     )}
-                    <div>Net wall: {zone.net_wall_sf} sf</div>
+                    <div>{t('blueprint:zones.netWall', { sf: zone.net_wall_sf })}</div>
                   </div>
                 )}
                 {(() => {
                   const reach = getMaxReach(zone)
                   return reach !== null ? (
                     <div className={styles.zoneMaxReach}>
-                      Max reach: {formatFeetInches(reach)}
+                      {t('blueprint:zones.maxReach', { reach: formatFeetInches(reach) })}
                     </div>
                   ) : null
                 })()}
@@ -644,7 +639,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                       onClick={() => { setAddingDeductionZoneId(addingDeductionZoneId === zone.id ? null : zone.id); setDeductName(''); setDeductValue(''); setDeductError('') }}
                       disabled={isRedrawing}
                     >
-                      Deduct
+                      {t('blueprint:zones.deduct')}
                     </button>
                   )}
                   <button
@@ -652,28 +647,28 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                     onClick={() => startEdit(zone)}
                     disabled={isRedrawing}
                   >
-                    Edit
+                    {t('common:action.edit')}
                   </button>
                   <button
                     className={styles.redrawBtn}
                     onClick={() => onRedraw(zone)}
                     disabled={isRedrawing}
                   >
-                    {isRedrawing ? 'Redrawing…' : 'Redraw'}
+                    {isRedrawing ? t('blueprint:zones.redrawing') : t('blueprint:zones.redraw')}
                   </button>
                   <button
                     className={styles.deleteBtn}
                     onClick={() => onDelete(zone.id)}
                     disabled={isRedrawing}
                   >
-                    Remove
+                    {t('common:action.remove')}
                   </button>
                   {isTestMode && (
                     <button
                       className={styles.testBtn}
                       onClick={() => setTestingZoneId(testingZoneId === zone.id ? null : zone.id)}
                     >
-                      {testingZoneId === zone.id ? 'Close Test' : 'Test'}
+                      {testingZoneId === zone.id ? t('blueprint:zones.closeTest') : t('blueprint:zones.testBtn')}
                     </button>
                   )}
                 </div>
@@ -684,7 +679,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
                       <input
                         type="text"
-                        placeholder="e.g. Window 1, Front door"
+                        placeholder={t('blueprint:zones.deductNamePlaceholder')}
                         maxLength={60}
                         value={deductName}
                         onChange={e => { setDeductName(e.target.value); setDeductError('') }}
@@ -715,15 +710,15 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                           className={styles.deductBtn}
                           style={{ fontSize: 12, padding: '6px 10px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', background: 'var(--color-surface)', cursor: 'pointer', color: 'var(--color-text-muted)' }}
                         >
-                          Measure on blueprint
+                          {t('blueprint:zones.measureOnBlueprint')}
                         </button>
                       )}
                       <button
                         onClick={() => {
                           const trimmed = deductName.trim()
-                          if (!trimmed) { setDeductError('Name required.'); return }
+                          if (!trimmed) { setDeductError(t('blueprint:zones.nameRequired')); return }
                           const val = parseFloat(deductValue)
-                          if (!isFinite(val) || val <= 0) { setDeductError('Value must be greater than 0.'); return }
+                          if (!isFinite(val) || val <= 0) { setDeductError(t('blueprint:zones.valuePositive')); return }
                           const newDeduction = pendingDeductionMeta?.source === 'canvas'
                             ? { id: crypto.randomUUID(), name: trimmed, value: val, source: 'canvas', points: pendingDeductionMeta.points, page_number: pendingDeductionMeta.page_number }
                             : { id: crypto.randomUUID(), name: trimmed, value: val, source: 'manual' }
@@ -738,16 +733,16 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                         }}
                         style={{ padding: '6px 14px', fontSize: 12, fontWeight: 600, background: 'var(--color-primary)', color: 'var(--color-on-primary, #fff)', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
                       >
-                        Save
+                        {t('common:action.save')}
                       </button>
                       <button
                         onClick={() => { setAddingDeductionZoneId(null); setDeductName(''); setDeductValue(''); setDeductError(''); setPendingDeductionMeta(null) }}
                         style={{ padding: '6px 10px', fontSize: 12, background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}
                       >
-                        Cancel
+                        {t('common:action.cancel')}
                       </button>
                     </div>
-                    {pendingDeductionMeta && <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 4, fontStyle: 'italic' }}>Measured from blueprint</div>}
+                    {pendingDeductionMeta && <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 4, fontStyle: 'italic' }}>{t('blueprint:zones.measuredFromBlueprint')}</div>}
                     {deductError && <div style={{ fontSize: 12, color: 'var(--color-danger, #dc2626)', marginTop: 4 }}>{deductError}</div>}
                   </div>
                 )}
@@ -776,8 +771,8 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                   const ev = evaluateZoneTest(zone, inputWithSegs, pixelsPerFoot)
                   const expectedTotal = computeExpectedTotal(segs, type)
 
-                  const sfLabels = ['main area', 'closet', 'bump-out', 'alcove', 'nook']
-                  const lfLabels = ['north wall', 'east run', 'south wall', 'west run', 'hallway']
+                  const sfLabels = [t('blueprint:zones.test.sfLabel1'), t('blueprint:zones.test.sfLabel2'), t('blueprint:zones.test.sfLabel3'), t('blueprint:zones.test.sfLabel4'), t('blueprint:zones.test.sfLabel5')]
+                  const lfLabels = [t('blueprint:zones.test.lfLabel1'), t('blueprint:zones.test.lfLabel2'), t('blueprint:zones.test.lfLabel3'), t('blueprint:zones.test.lfLabel4'), t('blueprint:zones.test.lfLabel5')]
 
                   return (
                     <div className={styles.testPanel}>
@@ -831,11 +826,11 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                           {segs.length < 10 && (
                             <button type="button" className={styles.testAddSeg}
                               onClick={() => setSegs([...segs, { label: '', mode: 'wd', width: '', depth: '', sf: '' }])}>
-                              + Add Segment
+                              {t('blueprint:zones.test.addSegment')}
                             </button>
                           )}
                           {expectedTotal != null && (
-                            <div className={styles.testCalc}><strong>Expected Total: {expectedTotal.toFixed(2)} SF</strong></div>
+                            <div className={styles.testCalc}><strong>{t('blueprint:zones.test.expectedTotalSF', { value: expectedTotal.toFixed(2) })}</strong></div>
                           )}
                         </>
                       )}
@@ -866,11 +861,11 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                           {segs.length < 10 && (
                             <button type="button" className={styles.testAddSeg}
                               onClick={() => setSegs([...segs, { label: '', lf: '' }])}>
-                              + Add Segment
+                              {t('blueprint:zones.test.addSegment')}
                             </button>
                           )}
                           {expectedTotal != null && (
-                            <div className={styles.testCalc}><strong>Expected Total: {expectedTotal.toFixed(2)} LF</strong></div>
+                            <div className={styles.testCalc}><strong>{t('blueprint:zones.test.expectedTotalLF', { value: expectedTotal.toFixed(2) })}</strong></div>
                           )}
                         </>
                       )}
@@ -878,29 +873,29 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                       {/* ── Count (unchanged) ── */}
                       {type === 'count' && (
                         <div className={styles.testCountSection}>
-                          <div className={styles.testCalc}>Count verification is manual</div>
+                          <div className={styles.testCalc}>{t('blueprint:zones.test.countManual')}</div>
                           <div className={styles.testInputRow}>
                             <button type="button"
                               className={`${styles.testModeBtn} ${input.countVerified === true ? styles.testPassBtn : ''}`}
                               onClick={() => change('countVerified', true)}>
-                              Mark Verified
+                              {t('blueprint:zones.test.markVerified')}
                             </button>
                             <button type="button"
                               className={`${styles.testModeBtn} ${input.countVerified === false ? styles.testFailBtn : ''}`}
                               onClick={() => change('countVerified', false)}>
-                              Mark Not Verified
+                              {t('blueprint:zones.test.markNotVerified')}
                             </button>
                           </div>
                         </div>
                       )}
 
                       <div className={styles.testCalc}>
-                        Measured: <strong>{zone.result ?? 0} {type}</strong>
+                        {t('blueprint:zones.test.measured')} <strong>{zone.result ?? 0} {type}</strong>
                       </div>
 
                       {ev.variance != null && (
                         <div className={styles.testCalc}>
-                          Variance: {ev.variance > 0 ? '+' : ''}{ev.variance.toFixed(2)} ({ev.variancePct > 0 ? '+' : ''}{ev.variancePct}%)
+                          {t('blueprint:zones.test.variance', { variance: (ev.variance > 0 ? '+' : '') + ev.variance.toFixed(2), pct: (ev.variancePct > 0 ? '+' : '') + ev.variancePct })}
                         </div>
                       )}
 
@@ -916,9 +911,9 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                       )}
 
                       <div className={styles.testField}>
-                        <label>Notes</label>
+                        <label>{t('blueprint:zones.test.notes')}</label>
                         <input value={input.notes} onChange={e => change('notes', e.target.value)}
-                          placeholder="Test notes" className={styles.testInput} />
+                          placeholder={t('blueprint:zones.test.notesPlaceholder')} className={styles.testInput} />
                       </div>
 
                       <button
@@ -930,7 +925,7 @@ export default function ZoneList({ zones, onDelete, onUpdate, onRedraw, onStartD
                           setLoggingTestId(null)
                         }}
                       >
-                        {loggingTestId === zone.id ? 'Logging…' : 'Log Test Result'}
+                        {loggingTestId === zone.id ? t('blueprint:zones.test.logging') : t('blueprint:zones.test.logResult')}
                       </button>
                     </div>
                   )

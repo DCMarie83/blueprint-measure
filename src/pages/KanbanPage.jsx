@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Plus, Columns3, List } from 'lucide-react'
 import {
   DndContext, DragOverlay, useDroppable,
@@ -23,20 +24,21 @@ import { supabase } from '../lib/supabase'
 import { useViewPreference } from '../hooks/useViewPreference'
 import styles from './KanbanPage.module.css'
 
-function timeAgo(dateStr) {
+function timeAgo(dateStr, t) {
   if (!dateStr) return ''
   const diff = Date.now() - new Date(dateStr).getTime()
   const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
+  if (mins < 1) return t('jobs:time.justNow')
+  if (mins < 60) return t('jobs:time.minsAgo', { count: mins })
   const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
+  if (hrs < 24) return t('jobs:time.hoursAgo', { count: hrs })
   const days = Math.floor(hrs / 24)
-  if (days < 7) return `${days}d ago`
+  if (days < 7) return t('jobs:time.daysAgo', { count: days })
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 function SortableJobCard({ project, columnId, accent }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: project.id,
@@ -50,14 +52,15 @@ function SortableJobCard({ project, columnId, accent }) {
       <div className={styles.cardName}>{project.name}</div>
       {project.address && <div className={styles.cardAddress}>{project.address}</div>}
       <div className={styles.cardMeta}>
-        <span>{project.session_count} blueprint{project.session_count !== 1 ? 's' : ''}</span>
-        <span>Updated {timeAgo(project.updated_at)}</span>
+        <span>{t('jobs:card.blueprintCount', { count: project.session_count })}</span>
+        <span>{t('jobs:label.updated', { time: timeAgo(project.updated_at, t) })}</span>
       </div>
     </div>
   )
 }
 
 function DroppableColumn({ column }) {
+  const { t } = useTranslation()
   const { setNodeRef, isOver } = useDroppable({ id: column.id, data: { columnId: column.id } })
   // Reuse the jobs list-view positional palette so the card top-accent matches
   // the status dot shown in list view (same map, keyed by column position).
@@ -71,7 +74,7 @@ function DroppableColumn({ column }) {
       <SortableContext items={column.projects.map(p => p.id)} strategy={verticalListSortingStrategy}>
         <div className={styles.cardList}>
           {column.projects.length === 0 ? (
-            <div className={styles.emptyColumn}>Drop a job here</div>
+            <div className={styles.emptyColumn}>{t('jobs:column.emptyDrop')}</div>
           ) : column.projects.map(p => <SortableJobCard key={p.id} project={p} columnId={column.id} accent={accent} />)}
         </div>
       </SortableContext>
@@ -80,22 +83,24 @@ function DroppableColumn({ column }) {
 }
 
 function DragCardDisplay({ project }) {
+  const { t } = useTranslation()
   return (
     <div className={styles.dragOverlay}>
       <div className={styles.cardName}>{project.name}</div>
       <div className={styles.cardMeta}>
-        <span>{project.session_count} blueprint{project.session_count !== 1 ? 's' : ''}</span>
+        <span>{t('jobs:card.blueprintCount', { count: project.session_count })}</span>
       </div>
     </div>
   )
 }
 
 const VIEW_OPTIONS = [
-  { value: 'kanban', icon: Columns3, label: 'Kanban view' },
-  { value: 'list', icon: List, label: 'List view' },
+  { value: 'kanban', icon: Columns3, label: 'jobs:view.kanban' },
+  { value: 'list', icon: List, label: 'jobs:view.list' },
 ]
 
 export default function KanbanPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { columns, loading, error, moveProject, refetch } = useOpportunities()
   const { createProject } = useProjects()
@@ -202,9 +207,9 @@ export default function KanbanPage() {
     // All other columns: move silently
     try {
       const result = await moveProject(active.id, fromColumnId, toColumnId)
-      if (result?.error) alert('Could not move job: ' + result.error)
+      if (result?.error) alert(t('jobs:errors.moveFailed', { error: result.error }))
     } catch (err) {
-      alert('Could not move job: ' + (err.message || 'Unknown error'))
+      alert(t('jobs:errors.moveFailed', { error: err.message || t('common:misc.unknownError') }))
     }
   }
 
@@ -214,7 +219,7 @@ export default function KanbanPage() {
     try {
       const result = await moveProject(pendingMove.projectId, pendingMove.fromColumnId, pendingMove.toColumnId)
       if (result?.error) {
-        alert('Could not move job: ' + result.error)
+        alert(t('jobs:errors.moveFailed', { error: result.error }))
         setConfirmMoving(false)
         setPendingMove(null)
         return
@@ -228,7 +233,7 @@ export default function KanbanPage() {
         }).catch(err => console.error('Status email failed', err))
       }
     } catch (err) {
-      alert('Could not move job: ' + (err.message || 'Unknown error'))
+      alert(t('jobs:errors.moveFailed', { error: err.message || t('common:misc.unknownError') }))
     } finally {
       setConfirmMoving(false)
       setPendingMove(null)
@@ -255,24 +260,24 @@ export default function KanbanPage() {
       
       <main className={styles.main}>
         <div className={styles.pageHeader}>
-          <h1 className={styles.pageTitle}>Jobs</h1>
+          <h1 className={styles.pageTitle}>{t('jobs:page.title')}</h1>
           <div className={styles.headerActions}>
-            <ViewToggle view={view} onChange={setView} options={VIEW_OPTIONS} />
+            <ViewToggle view={view} onChange={setView} options={VIEW_OPTIONS.map(o => ({ ...o, label: t(o.label) }))} />
             <button className={styles.newJobBtn} onClick={() => setShowNewJob(true)}>
-              <Plus size={16} /> New Job
+              <Plus size={16} /> {t('jobs:page.newJob')}
             </button>
           </div>
         </div>
 
         {loading ? (
-          <div className={styles.loading}>Loading…</div>
+          <div className={styles.loading}>{t('common:misc.loading')}</div>
         ) : error ? (
           <div className={styles.loading} style={{ color: 'var(--color-danger)' }}>{error}</div>
         ) : totalProjects === 0 && columns.length > 0 ? (
           <div className={styles.emptyBoard}>
-            <p>No jobs in the pack yet.</p>
+            <p>{t('jobs:empty.title')}</p>
             <button className={styles.newJobBtn} onClick={() => setShowNewJob(true)}>
-              <Plus size={16} /> Create your first job
+              <Plus size={16} /> {t('jobs:empty.createFirst')}
             </button>
           </div>
         ) : (
@@ -286,7 +291,7 @@ export default function KanbanPage() {
               onClearAll={clearAll} hasActiveFilters={hasActiveFilters}
             />
             {hasActiveFilters && (
-              <div className={styles.filterCount}>Showing {filteredProjects.length} of {totalProjects} jobs</div>
+              <div className={styles.filterCount}>{t('jobs:filterCount', { shown: filteredProjects.length, total: totalProjects })}</div>
             )}
             {view === 'kanban' ? (
               <div className={styles.boardContainer}>
@@ -314,7 +319,7 @@ export default function KanbanPage() {
       </main>
 
       {showNewJob && (
-        <Modal title="Create New Job" onClose={() => setShowNewJob(false)}>
+        <Modal title={t('jobs:newJobModalTitle')} onClose={() => setShowNewJob(false)}>
           <NewProjectForm onCreate={handleCreateJob} onCancel={() => setShowNewJob(false)} />
         </Modal>
       )}
@@ -323,7 +328,7 @@ export default function KanbanPage() {
         <Modal onClose={() => setPendingMove(null)}>
           <div style={{ padding: 24, maxWidth: 400 }}>
             <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 18, marginBottom: 8 }}>
-              Move to {pendingMove.toColName}?
+              {t('jobs:moveModal.title', { col: pendingMove.toColName })}
             </h3>
             <p style={{ fontSize: 14, color: 'var(--color-text-muted)', lineHeight: 1.5, marginBottom: 16 }}>
               {pendingMove.project?.name}
@@ -331,15 +336,15 @@ export default function KanbanPage() {
             {pendingMove.hasEmail && (
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer', marginBottom: 20 }}>
                 <input type="checkbox" checked={notifyClient} onChange={e => setNotifyClient(e.target.checked)} />
-                Notify {pendingMove.clientName || 'client'} by email
+                {t('jobs:moveModal.notify', { client: pendingMove.clientName || t('jobs:moveModal.clientFallback') })}
               </label>
             )}
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button onClick={() => setPendingMove(null)} style={{ padding: '8px 16px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontSize: 13, color: 'var(--color-text)' }}>
-                Cancel
+                {t('common:action.cancel')}
               </button>
               <button onClick={handleConfirmMove} disabled={confirmMoving} style={{ padding: '8px 16px', background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontSize: 13, fontWeight: 600, opacity: confirmMoving ? 0.6 : 1 }}>
-                {confirmMoving ? 'Moving...' : 'Confirm'}
+                {confirmMoving ? t('jobs:moveModal.moving') : t('common:action.confirm')}
               </button>
             </div>
           </div>

@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ChevronDown } from 'lucide-react'
 import styles from './FilterDropdown.module.css'
 
 export default function FilterDropdown({ label, value, options, onChange }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -33,7 +35,7 @@ export default function FilterDropdown({ label, value, options, onChange }) {
             className={`${styles.option} ${value === 'all' ? styles.optionSelected : ''}`}
             onClick={() => { onChange('all'); setOpen(false) }}
           >
-            All {label}
+            {t('ui:filterDropdown.all', { label })}
           </div>
           {options.map(opt => (
             <div

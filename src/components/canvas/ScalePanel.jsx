@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation, Trans } from 'react-i18next'
 import { SCALE_OPTIONS, calcPixelsPerFoot } from '../../utils/scaleOptions'
 import { parseFeetInches } from '../../utils/fractions'
 import { BRAND } from '../../lib/config'
@@ -8,6 +9,9 @@ export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, pdfPageI
   isSuperAdmin = false, isPdf = false, onScaleChange, onStartCalibration, calibrating, pageKey,
   enabledFeatures = {}, onDetectScale, scaleSanity, scaleDetectionBanner,
   hasZonesOnPage = false, onRescaleZones }) {
+  const { t } = useTranslation()
+  // Notation labels are literal symbols; only the 'manual' option label is a t() key.
+  const scaleOptLabel = (o) => o.value === 'manual' ? t(o.label) : o.label
   const [selected, setSelected] = useState('1/4')
   const [knownFeet, setKnownFeet] = useState('')
   const [helpOpen, setHelpOpen] = useState(false)
@@ -73,7 +77,7 @@ export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, pdfPageI
 
   return (
     <div className={styles.panel}>
-      <div className={styles.label}>Blueprint Scale</div>
+      <div className={styles.label}>{t('blueprint:scalePanel.blueprintScale')}</div>
 
       <select
         className={styles.select}
@@ -81,19 +85,19 @@ export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, pdfPageI
         onChange={e => handleSelect(e.target.value)}
       >
         {SCALE_OPTIONS.map(o => (
-          <option key={o.value} value={o.value}>{o.label}</option>
+          <option key={o.value} value={o.value}>{scaleOptLabel(o)}</option>
         ))}
       </select>
 
       {selected === 'manual' && (
         <form className={styles.calibForm} onSubmit={handleCalibrationStart}>
           <p className={styles.calibHint}>
-            Enter a known distance on the blueprint, then click two points that span that distance.
+            {t('blueprint:scalePanel.calibHint')}
           </p>
           <div className={styles.calibRow}>
             <input
               type="text"
-              placeholder="e.g. 12'6&quot; or 15"
+              placeholder={t('blueprint:scalePanel.knownDistancePlaceholder')}
               value={knownFeet}
               onChange={e => setKnownFeet(e.target.value)}
               className={styles.calibInput}
@@ -103,7 +107,7 @@ export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, pdfPageI
               type="submit"
               className={`${styles.calibBtn} ${calibrating ? styles.calibActive : ''}`}
             >
-              {calibrating ? '…Click 2 points' : 'Set Calibration Line'}
+              {calibrating ? t('blueprint:scalePanel.clickTwoPoints') : t('blueprint:scalePanel.setCalibLine')}
             </button>
           </div>
         </form>
@@ -111,13 +115,13 @@ export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, pdfPageI
 
       {pixelsPerFoot && (
         <div className={styles.activeScale}>
-          Scale active — 1 ft = {(pixelsPerFoot).toFixed(1)} px
+          {t('blueprint:scalePanel.scaleActive', { px: (pixelsPerFoot).toFixed(1) })}
         </div>
       )}
 
       {pixelsPerFoot && hasZonesOnPage && onRescaleZones && (
         <button type="button" className={styles.rescaleBtn} onClick={onRescaleZones}>
-          Rescale existing zones to this scale
+          {t('blueprint:scalePanel.rescaleExisting')}
         </button>
       )}
 
@@ -130,10 +134,10 @@ export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, pdfPageI
           <div className={`${styles.scalePill} ${styles[`scalePill_${pillColor}`]}`}>
             <span className={styles.scalePillText}>
               {pdfMissing
-                ? '⚠ PDF scale not detected — please use Manual Calibration to set the scale'
+                ? t('blueprint:scalePanel.pillPdfMissing')
                 : sanityFail
-                ? '⚠ Scale may not match'
-                : `✓ Scale set — ${selectedOption?.label ?? selected}`}
+                ? t('blueprint:scalePanel.pillMayNotMatch')
+                : t('blueprint:scalePanel.pillScaleSet', { label: selectedOption ? scaleOptLabel(selectedOption) : selected })}
             </span>
             {!pdfMissing && (
               <button type="button" className={styles.scalePillInfo}
@@ -141,15 +145,14 @@ export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, pdfPageI
             )}
             {sanityFail && !pdfMissing && (
               <div className={styles.scalePillHelper}>
-                Check the scale printed on the page title block (usually bottom right) and pick it from the dropdown. If the issue continues, use Manual Calibration.
+                {t('blueprint:scalePanel.pillHelper')}
               </div>
             )}
             {infoOpen && (
               <div className={styles.scalePillPopover} ref={infoRef}>
-                <div className={styles.scalePillPopTitle}>How the scale works</div>
+                <div className={styles.scalePillPopTitle}>{t('blueprint:scalePanel.howScaleWorksTitle')}</div>
                 <p className={styles.scalePillPopBody}>
-                  {BRAND.name} reads the rendered resolution of your PDF automatically. You only need to pick the architectural scale that matches what's printed on the blueprint's title block (usually bottom right corner, e.g. 1/4" = 1').
-                  If your scale is non-standard, or the drawing was scanned and resized, use Manual Calibration: click Manual from the dropdown, draw a line along a dimension you know (like a wall labeled 10'-0"), and enter the actual length.
+                  {t('blueprint:scalePanel.howScaleWorksBody', { brand: BRAND.name })}
                 </p>
               </div>
             )}
@@ -160,17 +163,17 @@ export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, pdfPageI
       {/* ── Scale diagnostic (super admin only) ── */}
       {isSuperAdmin && pixelsPerFoot && (
         <div className={styles.diagnostic}>
-          <div><span className={styles.diagLabel}>Source:</span> {pixelsPerInch !== 96 ? 'PDF metadata' : 'Fallback 96 DPI (non-PDF or metadata not loaded)'}</div>
-          <div><span className={styles.diagLabel}>Render:</span> {pixelsPerInch.toFixed(1)} px/inch</div>
+          <div><span className={styles.diagLabel}>{t('blueprint:scalePanel.diagSource')}</span> {pixelsPerInch !== 96 ? t('blueprint:scalePanel.diagPdfMetadata') : t('blueprint:scalePanel.diagFallback96')}</div>
+          <div><span className={styles.diagLabel}>{t('blueprint:scalePanel.diagRender')}</span> {pixelsPerInch.toFixed(1)} px/inch</div>
           {selectedOption?.inchesPerFoot && (
-            <div><span className={styles.diagLabel}>Scale:</span> {selectedOption.label} ({selectedOption.inchesPerFoot} in/ft)</div>
+            <div><span className={styles.diagLabel}>{t('blueprint:scalePanel.diagScale')}</span> {selectedOption.label} ({selectedOption.inchesPerFoot} in/ft)</div>
           )}
           {expectedPpf != null && (
-            <div><span className={styles.diagLabel}>Calc:</span> {pixelsPerInch.toFixed(1)} × {selectedOption.inchesPerFoot} = {expectedPpf.toFixed(1)} px/ft</div>
+            <div><span className={styles.diagLabel}>{t('blueprint:scalePanel.diagCalc')}</span> {pixelsPerInch.toFixed(1)} × {selectedOption.inchesPerFoot} = {expectedPpf.toFixed(1)} px/ft</div>
           )}
-          <div><span className={styles.diagLabel}>Stored:</span> {pixelsPerFoot.toFixed(1)} px/ft</div>
+          <div><span className={styles.diagLabel}>{t('blueprint:scalePanel.diagStored')}</span> {pixelsPerFoot.toFixed(1)} px/ft</div>
           {hasMismatch && (
-            <div className={styles.diagMismatch}>MISMATCH — scale state is stale, refresh the scale dropdown.</div>
+            <div className={styles.diagMismatch}>{t('blueprint:scalePanel.diagMismatch')}</div>
           )}
         </div>
       )}
@@ -178,24 +181,24 @@ export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, pdfPageI
       {/* Pixel sanity check results — shown for ALL users */}
       {scaleSanity && scaleSanity.passes && scaleSanity.source === 'calibration' && (
         <div className={styles.sanityPass}>
-          ✓ Scale calibrated — {scaleSanity.widthFt}' × {scaleSanity.heightFt}' drawing
+          {t('blueprint:scalePanel.sanityCalibrated', { widthFt: scaleSanity.widthFt, heightFt: scaleSanity.heightFt })}
         </div>
       )}
       {scaleSanity && !scaleSanity.passes && (
         <div className={styles.sanityWarn}>
-          Scale may be incorrect. At this scale the page measures {scaleSanity.widthFt}' × {scaleSanity.heightFt}'. Typical floor plans are 20–200 feet. Verify your scale or use manual calibration.
+          {t('blueprint:scalePanel.sanityWarn', { widthFt: scaleSanity.widthFt, heightFt: scaleSanity.heightFt })}
         </div>
       )}
 
       {/* AI detection result banner */}
       {scaleDetectionBanner && scaleDetectionBanner.verified === true && (
         <div className={styles.sanityPass}>
-          ✓ Scale detected and verified — {scaleDetectionBanner.label}
+          {t('blueprint:scalePanel.aiVerified', { label: scaleDetectionBanner.label })}
         </div>
       )}
       {scaleDetectionBanner && scaleDetectionBanner.verified === false && (
         <div className={styles.sanityWarn}>
-          AI detected {scaleDetectionBanner.label} but dimensions seem off. Try manual calibration.
+          {t('blueprint:scalePanel.aiUnverified', { label: scaleDetectionBanner.label })}
         </div>
       )}
 
@@ -207,7 +210,7 @@ export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, pdfPageI
           className={styles.confirmBtn}
           onClick={() => setConfirmOpen(o => !o)}
         >
-          {confirmOpen ? 'Close' : 'Confirm PDF Scale'}
+          {confirmOpen ? t('common:action.close') : t('blueprint:scalePanel.confirmPdfScale')}
         </button>
 
       {confirmOpen && (
@@ -215,18 +218,18 @@ export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, pdfPageI
           {pdfPageInfo ? (
             <>
               <div className={styles.confirmRow}>
-                <span className={styles.diagLabel}>Page:</span> {currentPage} of {pageCount}
+                <span className={styles.diagLabel}>{t('blueprint:scalePanel.confirmPage')}</span> {t('blueprint:scalePanel.pageOf', { current: currentPage, total: pageCount })}
               </div>
               <div className={styles.confirmRow}>
-                <span className={styles.diagLabel}>Physical:</span> {pdfPageInfo.widthInches.toFixed(2)}" × {pdfPageInfo.heightInches.toFixed(2)}"
+                <span className={styles.diagLabel}>{t('blueprint:scalePanel.confirmPhysical')}</span> {pdfPageInfo.widthInches.toFixed(2)}" × {pdfPageInfo.heightInches.toFixed(2)}"
               </div>
               <div className={styles.confirmRow}>
-                <span className={styles.diagLabel}>Rendered at:</span> {pdfPageInfo.pixelsPerInch.toFixed(1)} pixels per physical inch
+                <span className={styles.diagLabel}>{t('blueprint:scalePanel.confirmRenderedAt')}</span> {t('blueprint:scalePanel.pixelsPerInch', { ppi: pdfPageInfo.pixelsPerInch.toFixed(1) })}
               </div>
-              <div className={styles.confirmTableLabel}>Scale reference table:</div>
+              <div className={styles.confirmTableLabel}>{t('blueprint:scalePanel.scaleRefTable')}</div>
               <table className={styles.confirmTable}>
                 <thead>
-                  <tr><th>Scale</th><th>in/ft</th><th>px/ft</th></tr>
+                  <tr><th>{t('blueprint:scalePanel.thScale')}</th><th>in/ft</th><th>px/ft</th></tr>
                 </thead>
                 <tbody>
                   {SCALE_OPTIONS.filter(o => o.value !== 'manual').map(o => (
@@ -241,7 +244,7 @@ export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, pdfPageI
             </>
           ) : (
             <div className={styles.confirmError}>
-              PDF metadata not available. Falling back to 96 DPI. Measurements will be inaccurate until this is fixed.
+              {t('blueprint:scalePanel.confirmNoMetadata')}
             </div>
           )}
         </div>
@@ -266,15 +269,15 @@ export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, pdfPageI
               }
             }}
           >
-            {detecting ? 'Detecting…' : 'AI Detect Scale'}
+            {detecting ? t('blueprint:scalePanel.detecting') : t('blueprint:scalePanel.aiDetectScale')}
           </button>
           <p className={styles.aiHint}>
-            AI reads your blueprint title block and sets the scale automatically.
+            {t('blueprint:scalePanel.aiHint')}
           </p>
         </div>
       ) : (
         <div className={styles.aiLocked}>
-          🔒 AI Scale Detection — available on Plus plan
+          {t('blueprint:scalePanel.aiLocked')}
         </div>
       )}
 
@@ -286,41 +289,44 @@ export default function ScalePanel({ pixelsPerFoot, pixelsPerInch = 96, pdfPageI
           onClick={() => setHelpOpen(o => !o)}
         >
           <span className={styles.helpIcon}>?</span>
-          How to set scale
+          {t('blueprint:scalePanel.howToSetScale')}
           <span className={styles.helpArrow}>{helpOpen ? '▲' : '▼'}</span>
         </button>
 
         {helpOpen && (
           <div className={styles.helpBody}>
             <div className={styles.helpOption}>
-              <div className={styles.helpOptionLabel}>Most accurate — Manual calibration</div>
+              <div className={styles.helpOptionLabel}>{t('blueprint:scalePanel.helpManualLabel')}</div>
               <p className={styles.helpOptionText}>
+                <Trans i18nKey="blueprint:scalePanel.helpManualText">
                 Find any printed dimension on the drawing (e.g. a wall labeled 24'-0"). Enter that
                 distance, click <strong>Set Calibration Line</strong>, then click both endpoints
                 of that dimension on the blueprint. Scale is set exactly.
+                </Trans>
               </p>
             </div>
 
             {enabledFeatures.ai_scale_detection && (
               <div className={styles.helpOption}>
-                <div className={styles.helpOptionLabel}>Fast and accurate — AI Detection (Plus+)</div>
+                <div className={styles.helpOptionLabel}>{t('blueprint:scalePanel.helpAiLabel')}</div>
                 <p className={styles.helpOptionText}>
+                  <Trans i18nKey="blueprint:scalePanel.helpAiText">
                   Click <strong>AI Detect Scale</strong> above. AI reads the title block and applies
                   the scale. Verified automatically with a dimension check.
+                  </Trans>
                 </p>
               </div>
             )}
 
             <div className={styles.helpOption}>
-              <div className={styles.helpOptionLabel}>Quick start — Dropdown selection</div>
+              <div className={styles.helpOptionLabel}>{t('blueprint:scalePanel.helpDropdownLabel')}</div>
               <p className={styles.helpOptionText}>
-                Pick the scale stated on the drawing from the dropdown above. The system checks
-                automatically that the resulting dimensions are reasonable.
+                {t('blueprint:scalePanel.helpDropdownText')}
               </p>
             </div>
 
             <div className={styles.helpTip}>
-              Tip: For residential blueprints, 1/4 inch = 1 foot is the most common scale.
+              {t('blueprint:scalePanel.helpTip')}
             </div>
           </div>
         )}

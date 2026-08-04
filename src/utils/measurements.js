@@ -1,12 +1,13 @@
 // All measurement math lives here.
 // pixelsPerFoot = how many canvas pixels equal one real-world foot.
 
-// Human-readable labels for ceiling types (used in labels and UI)
+// i18n KEY strings for ceiling types. Consumers resolve these with t() at render
+// time (pattern a — this is a non-component module, so it must not call a hook).
 export const CEILING_TYPE_LABELS = {
-  flat: 'Flat',
-  vaulted: 'Vaulted',
-  tray: 'Tray',
-  shed: 'Shed',
+  flat: 'common:ceilingType.flat',
+  vaulted: 'common:ceilingType.vaulted',
+  tray: 'common:ceilingType.tray',
+  shed: 'common:ceilingType.shed',
 }
 
 // Distance between two canvas points in pixels

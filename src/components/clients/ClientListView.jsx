@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { ChevronUp, ChevronDown, Phone, Mail, FileText, Briefcase } from 'lucide-react'
 import { timeAgo } from '../../utils/timeAgo'
 import { statusMeta, initials, fmtMoneyFlat, clientLocation, AVATAR_GRADIENT } from '../../lib/clientsView'
@@ -22,27 +23,29 @@ function SortHeader({ label, colKey, sortKey, sortDir, onSort, align = 'left' })
 }
 
 function StatusChip({ status }) {
+  const { t } = useTranslation()
   const m = statusMeta(status)
   return (
     <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 9999, fontSize: 11, fontWeight: 700, background: m.bg, color: m.fg, whiteSpace: 'nowrap' }}>
-      {m.label}
+      {t(m.label)}
     </span>
   )
 }
 
 export default function ClientListView({ clients, sortKey, sortDir, onSort, onRowClick, onNewEstimate, onNewJob, onQuickTrack }) {
+  const { t } = useTranslation()
   return (
     <div style={{ overflowX: 'auto', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr>
-            <SortHeader label="Name" colKey="name" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
-            <SortHeader label="Status" colKey="status" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
-            <th style={th}>Location</th>
-            <SortHeader label="Last contact" colKey="last_contact" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
-            <SortHeader label="Lifetime value" colKey="lifetime_value" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="right" />
-            <th style={{ ...th, textAlign: 'right' }}>Projects</th>
-            <th style={{ ...th, textAlign: 'right' }}>Actions</th>
+            <SortHeader label={t('clients:list.colName')} colKey="name" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
+            <SortHeader label={t('clients:list.colStatus')} colKey="status" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
+            <th style={th}>{t('clients:list.colLocation')}</th>
+            <SortHeader label={t('clients:list.colLastContact')} colKey="last_contact" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
+            <SortHeader label={t('clients:list.colLifetimeValue')} colKey="lifetime_value" sortKey={sortKey} sortDir={sortDir} onSort={onSort} align="right" />
+            <th style={{ ...th, textAlign: 'right' }}>{t('clients:list.colProjects')}</th>
+            <th style={{ ...th, textAlign: 'right' }}>{t('clients:list.colActions')}</th>
           </tr>
         </thead>
         <tbody>
@@ -68,20 +71,20 @@ export default function ClientListView({ clients, sortKey, sortDir, onSort, onRo
                 <td style={td} onClick={() => onRowClick(client)}><StatusChip status={client.status} /></td>
                 <td style={{ ...td, color: loc ? 'var(--color-text)' : 'var(--color-text-muted)' }} onClick={() => onRowClick(client)}>{loc || '—'}</td>
                 <td style={{ ...td, color: client.last_contact_at ? 'var(--color-text)' : 'var(--color-text-muted)' }} onClick={() => onRowClick(client)}>
-                  {client.last_contact_at ? timeAgo(client.last_contact_at) : 'Never'}
+                  {client.last_contact_at ? timeAgo(client.last_contact_at) : t('clients:list.never')}
                 </td>
                 <td style={{ ...td, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }} onClick={() => onRowClick(client)}>{fmtMoneyFlat(client.lifetime_value)}</td>
                 <td style={{ ...td, textAlign: 'right' }} onClick={() => onRowClick(client)}>{jobCount}</td>
                 <td style={{ ...td, textAlign: 'right' }}>
                   <div style={{ display: 'inline-flex', gap: 6 }} onClick={e => e.stopPropagation()}>
                     {phone && (
-                      <a style={iconBtn} href={`tel:${phone}`} title="Call" onClick={() => onQuickTrack(client, 'call')}><Phone size={14} /></a>
+                      <a style={iconBtn} href={`tel:${phone}`} title={t('clients:detail.call')} onClick={() => onQuickTrack(client, 'call')}><Phone size={14} /></a>
                     )}
                     {email && (
-                      <a style={iconBtn} href={`mailto:${email}`} title="Email" onClick={() => onQuickTrack(client, 'email')}><Mail size={14} /></a>
+                      <a style={iconBtn} href={`mailto:${email}`} title={t('clients:detail.email')} onClick={() => onQuickTrack(client, 'email')}><Mail size={14} /></a>
                     )}
-                    <button style={iconBtn} title="New Estimate" onClick={() => onNewEstimate(client)}><FileText size={14} /></button>
-                    <button style={iconBtn} title="New Job" onClick={() => onNewJob(client)}><Briefcase size={14} /></button>
+                    <button style={iconBtn} title={t('clients:detail.newEstimate')} onClick={() => onNewEstimate(client)}><FileText size={14} /></button>
+                    <button style={iconBtn} title={t('clients:detail.newJob')} onClick={() => onNewJob(client)}><Briefcase size={14} /></button>
                   </div>
                 </td>
               </tr>

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import './smartbid.css'
 
 function fmtMoney(v) {
@@ -7,6 +8,7 @@ function fmtMoney(v) {
 // A low/typical/high market track with a marker for the current value.
 // Money labels render flat. compact shrinks labels for per-line use.
 export default function MarketBand({ low, typical, high, value, width = '100%', compact = false }) {
+  const { t } = useTranslation()
   const lo = Number(low) || 0
   const ty = Number(typical) || 0
   const hi = Number(high) || 0
@@ -51,7 +53,7 @@ export default function MarketBand({ low, typical, high, value, width = '100%', 
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: labelSize, color: 'var(--color-text-muted)', lineHeight: 1.3 }}>
         <span>{fmtMoney(lo)}</span>
-        <span>typ {fmtMoney(ty)}</span>
+        <span>{t('smartbid:band.typical', { value: fmtMoney(ty) })}</span>
         <span>{fmtMoney(hi)}</span>
       </div>
     </div>

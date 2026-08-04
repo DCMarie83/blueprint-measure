@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Home, Building2, HardHat } from 'lucide-react'
 import styles from './ClientCard.module.css'
 
@@ -9,10 +10,11 @@ function typeIcon(type, size) {
 }
 
 export default function ClientCard({ client, onUnlink }) {
+  const { t } = useTranslation()
   if (!client) return null
 
   function handleUnlink() {
-    if (window.confirm('Unlink this client from this job?')) {
+    if (window.confirm(t('clients:card.confirmUnlink'))) {
       onUnlink()
     }
   }
@@ -33,7 +35,7 @@ export default function ClientCard({ client, onUnlink }) {
           {client.primary_phone && <span>{client.primary_phone}</span>}
         </div>
       </div>
-      <button type="button" className={styles.unlinkBtn} onClick={handleUnlink}>Unlink</button>
+      <button type="button" className={styles.unlinkBtn} onClick={handleUnlink}>{t('clients:card.unlink')}</button>
     </div>
   )
 }

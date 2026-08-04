@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Info } from 'lucide-react'
 import styles from './InfoTooltip.module.css'
 
 export default function InfoTooltip({ children }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -26,7 +28,7 @@ export default function InfoTooltip({ children }) {
         type="button"
         className={`${styles.trigger} ${open ? styles.triggerOpen : ''}`}
         onClick={e => { e.preventDefault(); setOpen(v => !v) }}
-        aria-label="More info"
+        aria-label={t('ui:infoTooltip.moreInfo')}
       >
         <Info size={14} />
       </button>

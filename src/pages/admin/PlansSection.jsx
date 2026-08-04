@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
 import { useAdminData } from '../../context/AdminDataContext'
 import { FEATURE_KEYS } from '../../lib/plans'
@@ -6,6 +7,7 @@ import { usePlans } from '../../lib/plans'
 import styles from './sections.module.css'
 
 export default function PlansSection() {
+  const { t } = useTranslation()
   const { companies } = useAdminData()
   const { refetch: refetchActivePlans } = usePlans()
   const [plans, setPlans] = useState([])
@@ -103,7 +105,7 @@ export default function PlansSection() {
       refetchActivePlans()
       setExpandedId(null)
     } catch (err) {
-      alert('Failed to save plan: ' + err.message)
+      alert(t('admin:plans.saveFailed', { message: err.message }))
     } finally { setSaving(null) }
   }
 
@@ -119,15 +121,15 @@ export default function PlansSection() {
       setPlans(prev => prev.map(p => p.id === plan.id ? { ...p, ...update } : p))
       refetchActivePlans()
     } catch (err) {
-      alert('Failed: ' + err.message)
+      alert(t('admin:errors.failed', { message: err.message }))
     }
   }
 
-  if (loading) return <div className={styles.empty}>Loading plans…</div>
+  if (loading) return <div className={styles.empty}>{t('admin:plans.loading')}</div>
 
   return (
     <div>
-      <h1 className={styles.pageTitle} style={{ marginBottom: 20 }}>Plans</h1>
+      <h1 className={styles.pageTitle} style={{ marginBottom: 20 }}>{t('admin:plans.title')}</h1>
 
       {plans.map(plan => {
         const isExp = expandedId === plan.id
@@ -137,14 +139,14 @@ export default function PlansSection() {
             <div className={styles.planHeader} onClick={() => isExp ? setExpandedId(null) : startEdit(plan)}>
               <div className={styles.planHeaderLeft}>
                 <span className={styles.planName}>{plan.display_name ?? plan.key}</span>
-                <span className={styles.planPrice}>${plan.monthly_price != null ? Number(plan.monthly_price).toFixed(2) : '—'}/mo</span>
+                <span className={styles.planPrice}>${plan.monthly_price != null ? Number(plan.monthly_price).toFixed(2) : '—'}{t('admin:plans.perMonth')}</span>
                 <span className={`${styles.badge} ${plan.is_active ? styles.badgeActive : styles.badgeInactive}`}>
-                  {plan.is_active ? 'Active' : 'Archived'}
+                  {plan.is_active ? t('admin:plans.active') : t('admin:plans.archived')}
                 </span>
-                {plan.is_intro_tier && <span className={styles.pill}>Intro</span>}
-                {count > 0 && <span className={styles.pill}>{count} companies</span>}
+                {plan.is_intro_tier && <span className={styles.pill}>{t('admin:plans.intro')}</span>}
+                {count > 0 && <span className={styles.pill}>{t('admin:plans.companiesCount', { count })}</span>}
                 {plan.cohort_cap != null && (
-                  <span className={styles.pill}>{cohortUsage[plan.key] ?? 0} of {plan.cohort_cap} founder spots used</span>
+                  <span className={styles.pill}>{t('admin:plans.founderSpotsUsed', { used: cohortUsage[plan.key] ?? 0, cap: plan.cohort_cap })}</span>
                 )}
               </div>
               <span style={{ color: 'var(--color-text-muted)' }}>{isExp ? '▾' : '▸'}</span>
@@ -154,68 +156,68 @@ export default function PlansSection() {
               <div className={styles.planBody}>
                 <div className={styles.planFieldRow}>
                   <div className={styles.planField}>
-                    <span className={styles.planFieldLabel}>Display Name</span>
+                    <span className={styles.planFieldLabel}>{t('admin:plans.displayName')}</span>
                     <input className={styles.planFieldInput} value={editState.display_name} onChange={e => updateField('display_name', e.target.value)} />
                   </div>
                   <div className={styles.planField}>
-                    <span className={styles.planFieldLabel}>Plan Key</span>
+                    <span className={styles.planFieldLabel}>{t('admin:plans.planKey')}</span>
                     <input className={styles.planFieldInput} value={plan.key} disabled />
                   </div>
                 </div>
 
                 <div className={styles.planFieldRow}>
                   <div className={styles.planField}>
-                    <span className={styles.planFieldLabel}>Monthly Price ($)</span>
+                    <span className={styles.planFieldLabel}>{t('admin:plans.monthlyPrice')}</span>
                     <input className={styles.planFieldInput} type="number" step="0.01" min="0" value={editState.monthly_price} onChange={e => updateField('monthly_price', e.target.value)} />
                   </div>
                   <div className={styles.planField}>
-                    <span className={styles.planFieldLabel}>Annual Price ($)</span>
+                    <span className={styles.planFieldLabel}>{t('admin:plans.annualPrice')}</span>
                     <input className={styles.planFieldInput} type="number" step="0.01" min="0" value={editState.annual_price} onChange={e => updateField('annual_price', e.target.value)} />
                   </div>
                   <div className={styles.planField}>
-                    <span className={styles.planFieldLabel}>Trial Days</span>
+                    <span className={styles.planFieldLabel}>{t('admin:plans.trialDays')}</span>
                     <input className={styles.planFieldInput} type="number" min="0" value={editState.trial_days} onChange={e => updateField('trial_days', e.target.value)} />
                   </div>
                 </div>
 
                 <div className={styles.planFieldRow}>
                   <div className={styles.planField}>
-                    <span className={styles.planFieldLabel}>Max Seats</span>
-                    <input className={styles.planFieldInput} type="number" value={editState.max_seats} onChange={e => updateField('max_seats', e.target.value)} placeholder="Empty = unlimited" />
+                    <span className={styles.planFieldLabel}>{t('admin:plans.maxSeats')}</span>
+                    <input className={styles.planFieldInput} type="number" value={editState.max_seats} onChange={e => updateField('max_seats', e.target.value)} placeholder={t('admin:plans.emptyUnlimited')} />
                   </div>
                   <div className={styles.planField}>
-                    <span className={styles.planFieldLabel}>Max Storage (GB)</span>
-                    <input className={styles.planFieldInput} type="number" value={editState.max_storage_gb} onChange={e => updateField('max_storage_gb', e.target.value)} placeholder="Empty = unlimited" />
+                    <span className={styles.planFieldLabel}>{t('admin:plans.maxStorage')}</span>
+                    <input className={styles.planFieldInput} type="number" value={editState.max_storage_gb} onChange={e => updateField('max_storage_gb', e.target.value)} placeholder={t('admin:plans.emptyUnlimited')} />
                   </div>
                 </div>
 
                 <div className={styles.planFieldRow}>
                   <div className={styles.planField}>
-                    <span className={styles.planFieldLabel}>Display Order</span>
+                    <span className={styles.planFieldLabel}>{t('admin:plans.displayOrder')}</span>
                     <input className={styles.planFieldInput} type="number" value={editState.display_order} onChange={e => updateField('display_order', e.target.value)} />
                   </div>
                   <div className={styles.planField}>
                     <label className={styles.planToggleRow}>
                       <input type="checkbox" checked={editState.is_active} onChange={e => updateField('is_active', e.target.checked)} />
-                      <span>Active</span>
+                      <span>{t('admin:plans.active')}</span>
                     </label>
                   </div>
                   <div className={styles.planField}>
                     <label className={styles.planToggleRow}>
                       <input type="checkbox" checked={editState.is_intro_tier} onChange={e => updateField('is_intro_tier', e.target.checked)} />
-                      <span>Intro Tier</span>
+                      <span>{t('admin:plans.introTier')}</span>
                     </label>
                   </div>
                   <div className={styles.planField}>
                     <label className={styles.planToggleRow}>
                       <input type="checkbox" checked={editState.price_locked} onChange={e => updateField('price_locked', e.target.checked)} />
-                      <span>Lifetime price lock</span>
+                      <span>{t('admin:plans.lifetimePriceLock')}</span>
                     </label>
                   </div>
                 </div>
 
                 <div>
-                  <span className={styles.planFieldLabel}>Feature Flags</span>
+                  <span className={styles.planFieldLabel}>{t('admin:plans.featureFlags')}</span>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 6 }}>
                     {FEATURE_KEYS.map(({ key, label }) => (
                       <label key={key} className={styles.planToggleRow}>
@@ -228,20 +230,20 @@ export default function PlansSection() {
 
                 {plan.archived_at && (
                   <div style={{ marginTop: 12, fontSize: 12, color: 'var(--color-text-muted)' }}>
-                    Archived: {new Date(plan.archived_at).toLocaleDateString()}
+                    {t('admin:plans.archivedOn', { date: new Date(plan.archived_at).toLocaleDateString() })}
                   </div>
                 )}
 
                 <div className={styles.planActions}>
                   <button className={styles.submitBtn} onClick={() => handleSave(plan)} disabled={saving === plan.id}>
-                    {saving === plan.id ? 'Saving…' : 'Save Plan'}
+                    {saving === plan.id ? t('admin:plans.saving') : t('admin:plans.savePlan')}
                   </button>
                   <button
                     className={plan.is_active ? styles.dangerBtn : styles.submitBtn}
                     onClick={() => handleArchiveToggle(plan)}
                     style={!plan.is_active ? { background: 'var(--color-action-open)' } : undefined}
                   >
-                    {plan.is_active ? 'Archive' : 'Unarchive'}
+                    {plan.is_active ? t('admin:plans.archive') : t('admin:plans.unarchive')}
                   </button>
                 </div>
               </div>

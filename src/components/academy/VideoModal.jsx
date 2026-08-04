@@ -1,8 +1,10 @@
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { X, Bookmark, BookmarkCheck, MessageCircleQuestion } from 'lucide-react'
 import styles from './VideoModal.module.css'
 
 export default function VideoModal({ video, onClose, isBookmarked, onToggleBookmark, onAskQuestion }) {
+  const { t } = useTranslation()
   useEffect(() => {
     function onKey(e) {
       if (e.key === 'Escape') {
@@ -19,7 +21,7 @@ export default function VideoModal({ video, onClose, isBookmarked, onToggleBookm
   return (
     <div className={styles.backdrop} onClick={onClose}>
       <div className={styles.modal} onClick={e => e.stopPropagation()}>
-        <button className={styles.closeBtn} onClick={onClose} aria-label="Close">
+        <button className={styles.closeBtn} onClick={onClose} aria-label={t('common:action.close')}>
           <X size={20} />
         </button>
 
@@ -46,13 +48,13 @@ export default function VideoModal({ video, onClose, isBookmarked, onToggleBookm
           <div className={styles.actions}>
             <button className={styles.bookmarkBtn} onClick={onToggleBookmark}>
               {isBookmarked
-                ? <><BookmarkCheck size={16} fill="currentColor" /> Bookmarked</>
-                : <><Bookmark size={16} /> Bookmark</>
+                ? <><BookmarkCheck size={16} fill="currentColor" /> {t('academy:videoModal.bookmarked')}</>
+                : <><Bookmark size={16} /> {t('academy:videoModal.bookmark')}</>
               }
             </button>
             {onAskQuestion && (
               <button className={styles.askBtn} onClick={onAskQuestion}>
-                <MessageCircleQuestion size={16} /> Ask about this lesson
+                <MessageCircleQuestion size={16} /> {t('academy:videoModal.askAboutLesson')}
               </button>
             )}
           </div>

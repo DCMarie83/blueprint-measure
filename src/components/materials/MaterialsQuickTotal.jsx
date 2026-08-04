@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { GRADES, money, gradeTotal, itemVisualProps } from '../../lib/materialsView'
 import ItemVisual from './ItemVisual'
 import './materialsFlow.css'
@@ -33,6 +34,7 @@ const btn = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10
 const primaryBtn = { ...btn, border: 'none', background: 'var(--color-primary)', color: 'var(--color-on-primary, #fff)' }
 
 export default function MaterialsQuickTotal({ lines, grade, onGradeChange, maxPriceAsOf, estimateEntry, saving, onSave, onReview, onBack, lookups }) {
+  const { t } = useTranslation()
   const selectedTotal = gradeTotal(lines, grade)
   const animated = useCountUp(selectedTotal)
   const stripLines = (lines || []).slice(0, 5)   // up to five visuals per card
@@ -40,7 +42,7 @@ export default function MaterialsQuickTotal({ lines, grade, onGradeChange, maxPr
   return (
     <div className="mf-fadein" style={{ maxWidth: 620, margin: '24px auto' }}>
       <p style={{ fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center', margin: '0 0 16px' }}>
-        Pick a grade. This is your estimated materials spend for the job.
+        {t('materials:quickTotal.pickGrade')}
       </p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 16 }}>
         {GRADES.map(g => {
@@ -70,22 +72,22 @@ export default function MaterialsQuickTotal({ lines, grade, onGradeChange, maxPr
 
       <div style={{ textAlign: 'center', margin: '8px 0 6px' }}>
         <div style={{ fontSize: 40, fontWeight: 800, color: 'var(--color-text, #1b2426)', fontVariantNumeric: 'tabular-nums' }}>{money(animated)}</div>
-        <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{GRADES.find(g => g.key === grade)?.label} · {lines.length} item{lines.length === 1 ? '' : 's'}</div>
+        <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{t('materials:quickTotal.gradeSummary', { grade: GRADES.find(g => g.key === grade)?.label, count: lines.length })}</div>
       </div>
 
       <p style={{ fontSize: 12, color: 'var(--color-text-muted)', textAlign: 'center', margin: '0 0 6px', lineHeight: 1.5 }}>
-        Estimated from your measurements and current catalog prices, as of {maxPriceAsOf || '—'}. Verify with your supplier.
+        {t('materials:quickTotal.estimatedNote', { date: maxPriceAsOf || '—' })}
       </p>
       <p style={{ fontSize: 12, color: 'var(--color-text-muted)', textAlign: 'center', margin: '0 0 20px', lineHeight: 1.5 }}>
-        Prices are regional estimates for reference and building your strongest bid. Confirm current pricing with your local store. Product photos are illustrations only.
+        {t('materials:disclaimer.regionalEstimates')}
       </p>
 
       <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
         <button style={{ ...primaryBtn, opacity: saving ? 0.6 : 1 }} onClick={onSave} disabled={saving}>
-          {saving ? 'Saving…' : (estimateEntry ? 'Attach to this estimate' : 'Save as materials order')}
+          {saving ? t('materials:summary.saving') : (estimateEntry ? t('materials:quickTotal.attachToEstimate') : t('materials:quickTotal.saveAsOrder'))}
         </button>
-        <button style={btn} onClick={onReview}>Review item by item</button>
-        <button style={btn} onClick={onBack}>Back</button>
+        <button style={btn} onClick={onReview}>{t('materials:quickTotal.reviewItemByItem')}</button>
+        <button style={btn} onClick={onBack}>{t('common:action.back')}</button>
       </div>
     </div>
   )

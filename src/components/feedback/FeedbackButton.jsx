@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { MessageSquare } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
@@ -7,13 +8,14 @@ import { BRAND } from '../../lib/config'
 import styles from './FeedbackButton.module.css'
 
 const FEEDBACK_TYPES = [
-  { value: 'bug',      label: 'Bug' },
-  { value: 'feature',  label: 'Feature Request' },
-  { value: 'question', label: 'Question' },
-  { value: 'other',    label: 'Other' },
+  { value: 'bug',      label: 'feedback:type.bug' },
+  { value: 'feature',  label: 'feedback:type.feature' },
+  { value: 'question', label: 'feedback:type.question' },
+  { value: 'other',    label: 'feedback:type.other' },
 ]
 
 export default function FeedbackButton({ prefillDescription = '' }) {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const [open, setOpen] = useState(false)
   const [type, setType] = useState('bug')
@@ -40,8 +42,8 @@ export default function FeedbackButton({ prefillDescription = '' }) {
     if (!sessionStorage.getItem('bm_feedback_pulsed')) {
       setPulsed(true)
       sessionStorage.setItem('bm_feedback_pulsed', '1')
-      const t = setTimeout(() => setPulsed(false), 1000)
-      return () => clearTimeout(t)
+      const timer = setTimeout(() => setPulsed(false), 1000)
+      return () => clearTimeout(timer)
     }
   }, [])
 
@@ -68,11 +70,11 @@ export default function FeedbackButton({ prefillDescription = '' }) {
     const file = e.target.files[0]
     if (!file) return
     if (!file.type.startsWith('image/')) {
-      setToast({ type: 'error', message: 'Screenshots must be image files.' })
+      setToast({ type: 'error', message: t('feedback:errors.imageOnly') })
       return
     }
     if (file.size > 5 * 1024 * 1024) {
-      setToast({ type: 'error', message: 'Screenshot must be under 5MB.' })
+      setToast({ type: 'error', message: t('feedback:errors.fileTooLarge') })
       return
     }
     setScreenshot(file)
@@ -81,11 +83,11 @@ export default function FeedbackButton({ prefillDescription = '' }) {
   async function handleSubmit(e) {
     e.preventDefault()
     if (description.trim().length < 10) {
-      setToast({ type: 'error', message: 'Description must be at least 10 characters.' })
+      setToast({ type: 'error', message: t('feedback:errors.descriptionTooShort') })
       return
     }
     if (description.trim().length > 2000) {
-      setToast({ type: 'error', message: 'Description must be under 2000 characters.' })
+      setToast({ type: 'error', message: t('feedback:errors.descriptionTooLong') })
       return
     }
 
@@ -101,7 +103,7 @@ export default function FeedbackButton({ prefillDescription = '' }) {
           .upload(path, screenshot)
         if (uploadErr) {
           logError(uploadErr, { source: 'feedback-screenshot-upload', severity: 'error' })
-          throw new Error('Screenshot upload failed: ' + uploadErr.message)
+          throw new Error(t('feedback:errors.uploadFailed', { message: uploadErr.message }))
         }
         const { data: { publicUrl } } = supabase.storage
           .from('feedback-screenshots')
@@ -135,7 +137,7 @@ export default function FeedbackButton({ prefillDescription = '' }) {
         throw new Error(insertErr.message)
       }
 
-      setToast({ type: 'success', message: 'Feedback received — thank you!' })
+      setToast({ type: 'success', message: t('feedback:success.received') })
       setTimeout(() => { handleClose(); setToast(null) }, 1500)
     } catch (err) {
       setToast({ type: 'error', message: err.message })
@@ -152,11 +154,11 @@ export default function FeedbackButton({ prefillDescription = '' }) {
       <button
         className={`${styles.fab} ${pulsed ? styles.fabPulse : ''}`}
         onClick={handleOpen}
-        title="Send feedback"
-        aria-label="Send feedback"
+        title={t('feedback:button.aria')}
+        aria-label={t('feedback:button.aria')}
       >
         <MessageSquare size={16} />
-        <span className={styles.fabText}>Send Feedback</span>
+        <span className={styles.fabText}>{t('feedback:button.text')}</span>
         <span className={styles.betaBadge}>BETA</span>
       </button>
 
@@ -166,28 +168,28 @@ export default function FeedbackButton({ prefillDescription = '' }) {
           <div className={styles.modal} onClick={e => e.stopPropagation()}>
             <div className={styles.header}>
               <div>
-                <h3 className={styles.title}>Help us improve {BRAND.name}</h3>
-                <p className={styles.subtitle}>Found a bug or have an idea? Tell us about it.</p>
+                <h3 className={styles.title}>{t('feedback:modal.title', { brand: BRAND.name })}</h3>
+                <p className={styles.subtitle}>{t('feedback:modal.subtitle')}</p>
               </div>
               <button className={styles.closeBtn} onClick={handleClose}>✕</button>
             </div>
             <form onSubmit={handleSubmit} className={styles.form}>
               <label className={styles.label}>
-                Type
+                {t('feedback:form.typeLabel')}
                 <select value={type} onChange={e => setType(e.target.value)} className={styles.select}>
-                  {FEEDBACK_TYPES.map(t => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
+                  {FEEDBACK_TYPES.map(ft => (
+                    <option key={ft.value} value={ft.value}>{t(ft.label)}</option>
                   ))}
                 </select>
               </label>
 
               <label className={styles.label}>
-                Description *
+                {t('feedback:form.descriptionLabel')}
                 <textarea
                   className={styles.textarea}
                   value={description}
                   onChange={e => setDescription(e.target.value)}
-                  placeholder="What happened? What did you expect?"
+                  placeholder={t('feedback:form.descriptionPlaceholder')}
                   rows={5}
                   minLength={10}
                   maxLength={2000}
@@ -197,7 +199,7 @@ export default function FeedbackButton({ prefillDescription = '' }) {
               </label>
 
               <label className={styles.label}>
-                Screenshot (optional)
+                {t('feedback:form.screenshotLabel')}
                 <input
                   ref={fileRef}
                   type="file"
@@ -218,7 +220,7 @@ export default function FeedbackButton({ prefillDescription = '' }) {
                 className={styles.submitBtn}
                 disabled={submitting || description.trim().length < 10}
               >
-                {submitting ? 'Sending…' : 'Send Feedback'}
+                {submitting ? t('feedback:form.submitting') : t('feedback:button.text')}
               </button>
             </form>
 

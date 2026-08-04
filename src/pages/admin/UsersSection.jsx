@@ -1,5 +1,6 @@
 import { useState, useRef, Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { useAdminData } from '../../context/AdminDataContext'
@@ -20,6 +21,7 @@ function useTempId() {
 
 export default function UsersSection() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { isSuperAdmin } = useAuth()
   const { companies, users, setUsers, userProfiles, setUserProfiles, companyNameFor, profileCompanyIdFor, roleFor, loadAll } = useAdminData()
 
@@ -98,7 +100,7 @@ export default function UsersSection() {
   async function handleAdd(e) {
     e.preventDefault()
     if (!newEmail.trim()) return
-    if (addMethod === 'create' && !newPassword.trim()) { setUserError('Password required.'); return }
+    if (addMethod === 'create' && !newPassword.trim()) { setUserError(t('admin:users.passwordRequired')); return }
     setSavingUser(true); setUserError('')
     try {
       const body = addMethod === 'invite'
@@ -114,7 +116,7 @@ export default function UsersSection() {
 
   async function handleResend(user) {
     const { data, error } = await supabase.functions.invoke('admin-users', { body: { action: 'resend', email: user.email } })
-    if (error || data?.error) { alert('Failed: ' + (data?.error ?? error?.message)); return }
+    if (error || data?.error) { alert(t('admin:errors.failed', { message: data?.error ?? error?.message })); return }
     flashResendSent(user.id)
   }
 
@@ -129,13 +131,13 @@ export default function UsersSection() {
         return [...prev, { user_id: user.id, company_id: editCoValue || null, email: user.email }]
       })
       setEditingCoUserId(null)
-    } catch (err) { alert('Failed: ' + err.message) } finally { setSavingCoUserId(null) }
+    } catch (err) { alert(t('admin:errors.failed', { message: err.message })) } finally { setSavingCoUserId(null) }
   }
 
   async function handleResetPassword(user) {
-    if (!window.confirm(`Send reset email to ${user.email}?`)) return
+    if (!window.confirm(t('admin:users.resetConfirm', { email: user.email }))) return
     const { error } = await supabase.auth.resetPasswordForEmail(user.email)
-    if (error) { alert('Failed: ' + error.message); return }
+    if (error) { alert(t('admin:errors.failed', { message: error.message })); return }
     flashResetSent(user.id)
   }
 
@@ -144,7 +146,7 @@ export default function UsersSection() {
       const { error } = await supabase.from('user_profiles').update({ role: newRole }).eq('user_id', userId)
       if (error) throw new Error(error.message)
       setUserProfiles(prev => prev.map(p => p.user_id === userId ? { ...p, role: newRole } : p))
-    } catch (err) { alert('Failed: ' + err.message) }
+    } catch (err) { alert(t('admin:errors.failed', { message: err.message })) }
   }
 
   async function handleSetPassword(userId) {
@@ -156,7 +158,7 @@ export default function UsersSection() {
       if (data?.error) throw new Error(data.error)
       flashSetPasswordDone(userId)
       setSetPasswordUserId(null); setSetPasswordValue('')
-    } catch (err) { alert('Failed: ' + err.message) } finally { setSetPasswordSaving(false) }
+    } catch (err) { alert(t('admin:errors.failed', { message: err.message })) } finally { setSetPasswordSaving(false) }
   }
 
   function handleExportCSV() {
@@ -178,68 +180,68 @@ export default function UsersSection() {
 
   return (
     <div>
-      <h1 className={styles.pageTitle}>Users <span className={styles.pill}>{users.length}</span></h1>
+      <h1 className={styles.pageTitle}>{t('admin:users.title')} <span className={styles.pill}>{users.length}</span></h1>
 
       <div className={styles.toolbar}>
-        <input className={styles.searchInput} placeholder="Search by email or name…" value={search} onChange={e => { setSearch(e.target.value); setPage(0) }} />
+        <input className={styles.searchInput} placeholder={t('admin:users.searchPlaceholder')} value={search} onChange={e => { setSearch(e.target.value); setPage(0) }} />
         <select className={styles.filterSelect} value={roleFilter} onChange={e => { setRoleFilter(e.target.value); setPage(0) }}>
-          <option value="all">All Roles</option>
-          <option value="contractor_user">User</option>
-          <option value="contractor_admin">Admin</option>
-          <option value="super_admin">Super Admin</option>
+          <option value="all">{t('admin:users.allRoles')}</option>
+          <option value="contractor_user">{t('common:role.contractor_user')}</option>
+          <option value="contractor_admin">{t('common:role.contractor_admin')}</option>
+          <option value="super_admin">{t('common:role.super_admin')}</option>
         </select>
         <select className={styles.filterSelect} value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(0) }}>
-          <option value="all">All Status</option>
-          <option value="active">Active</option>
-          <option value="pending">Pending</option>
+          <option value="all">{t('admin:users.allStatus')}</option>
+          <option value="active">{t('admin:users.statusActive')}</option>
+          <option value="pending">{t('admin:users.statusPending')}</option>
         </select>
         <select className={styles.filterSelect} value={companyFilter} onChange={e => { setCompanyFilter(e.target.value); setPage(0) }}>
-          <option value="all">All Companies</option>
+          <option value="all">{t('admin:users.allCompanies')}</option>
           {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         <select className={styles.filterSelect} value={sortBy} onChange={e => setSortBy(e.target.value)}>
-          <option value="created">Created</option>
-          <option value="last_sign_in">Last Sign-In</option>
-          <option value="email">Email A-Z</option>
+          <option value="created">{t('admin:users.sortCreated')}</option>
+          <option value="last_sign_in">{t('admin:users.sortLastSignIn')}</option>
+          <option value="email">{t('admin:users.sortEmail')}</option>
         </select>
         <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', whiteSpace: 'nowrap', color: 'var(--color-text-muted)' }}>
           <input type="checkbox" checked={showDeleted} onChange={e => setShowDeleted(e.target.checked)} />
-          Show deleted
+          {t('admin:users.showDeleted')}
         </label>
-        <button className={styles.secondaryBtn} onClick={handleExportCSV}>Export CSV</button>
+        <button className={styles.secondaryBtn} onClick={handleExportCSV}>{t('admin:users.exportCsv')}</button>
         <button className={styles.addBtn} onClick={() => { setShowAdd(v => !v); setUserError('') }}>
-          {showAdd ? 'Cancel' : '+ Invite User'}
+          {showAdd ? t('common:action.cancel') : t('admin:users.inviteUser')}
         </button>
       </div>
 
       {showAdd && (
         <form className={styles.form} onSubmit={handleAdd}>
           <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-            <button type="button" className={addMethod === 'invite' ? styles.addBtn : styles.secondaryBtn} onClick={() => setAddMethod('invite')}>Send invitation</button>
-            <button type="button" className={addMethod === 'create' ? styles.addBtn : styles.secondaryBtn} onClick={() => setAddMethod('create')}>Set password</button>
+            <button type="button" className={addMethod === 'invite' ? styles.addBtn : styles.secondaryBtn} onClick={() => setAddMethod('invite')}>{t('admin:users.sendInvitation')}</button>
+            <button type="button" className={addMethod === 'create' ? styles.addBtn : styles.secondaryBtn} onClick={() => setAddMethod('create')}>{t('admin:users.setPassword')}</button>
           </div>
           <div className={styles.formGrid}>
             <div className={styles.formField}>
-              <label className={styles.formLabel}>Email</label>
+              <label className={styles.formLabel}>{t('admin:users.email')}</label>
               <input type="email" className={styles.formInput} value={newEmail} onChange={e => setNewEmail(e.target.value)} required />
             </div>
             {addMethod === 'create' && (
               <div className={styles.formField}>
-                <label className={styles.formLabel}>Password</label>
+                <label className={styles.formLabel}>{t('admin:users.password')}</label>
                 <input type="password" className={styles.formInput} value={newPassword} onChange={e => setNewPassword(e.target.value)} required />
               </div>
             )}
             <div className={styles.formField}>
-              <label className={styles.formLabel}>Company</label>
+              <label className={styles.formLabel}>{t('admin:users.company')}</label>
               <select className={styles.formSelect} value={newCompanyId} onChange={e => setNewCompanyId(e.target.value)}>
-                <option value="">— No company —</option>
+                <option value="">{t('admin:users.noCompanyOption')}</option>
                 {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
           </div>
           {userError && <p className={styles.fieldError}>{userError}</p>}
           <div className={styles.formActions}>
-            <button type="submit" className={styles.submitBtn} disabled={savingUser}>{savingUser ? 'Saving…' : (addMethod === 'invite' ? 'Send Invitation' : 'Create User')}</button>
+            <button type="submit" className={styles.submitBtn} disabled={savingUser}>{savingUser ? t('admin:users.saving') : (addMethod === 'invite' ? t('admin:users.sendInvitationBtn') : t('admin:users.createUser'))}</button>
           </div>
         </form>
       )}
@@ -248,12 +250,12 @@ export default function UsersSection() {
         <table className={styles.table}>
           <thead>
             <tr>
-              <th className={styles.th}>Email</th>
-              <th className={styles.th}>Company</th>
-              <th className={styles.th}>Role</th>
-              <th className={styles.th}>Last Login</th>
-              <th className={styles.th}>Created</th>
-              <th className={styles.th}>Actions</th>
+              <th className={styles.th}>{t('admin:users.colEmail')}</th>
+              <th className={styles.th}>{t('admin:users.colCompany')}</th>
+              <th className={styles.th}>{t('admin:users.colRole')}</th>
+              <th className={styles.th}>{t('admin:users.colLastLogin')}</th>
+              <th className={styles.th}>{t('admin:users.colCreated')}</th>
+              <th className={styles.th}>{t('admin:users.colActions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -264,17 +266,17 @@ export default function UsersSection() {
                 <tr className={styles.tr} onClick={() => navigate(`/admin/users/${u.id}`)} style={{ cursor: 'pointer' }}>
                   <td className={styles.td}>
                     {u.email}
-                    {!u.last_sign_in_at && <span className={styles.pendingBadge}>Pending</span>}
-                    {profile?.deleted_at && <span style={{ fontSize: 10, fontWeight: 600, color: '#ef4444', marginLeft: 6, padding: '2px 6px', background: 'rgba(239,68,68,0.1)', borderRadius: 4 }}>DELETED</span>}
+                    {!u.last_sign_in_at && <span className={styles.pendingBadge}>{t('admin:users.pendingBadge')}</span>}
+                    {profile?.deleted_at && <span style={{ fontSize: 10, fontWeight: 600, color: '#ef4444', marginLeft: 6, padding: '2px 6px', background: 'rgba(239,68,68,0.1)', borderRadius: 4 }}>{t('admin:users.deletedBadge')}</span>}
                   </td>
                   <td className={styles.td} onClick={e => e.stopPropagation()}>
                     {editingCoUserId === u.id ? (
                       <div className={styles.inlineEdit}>
                         <select className={styles.formSelect} value={editCoValue} onChange={e => setEditCoValue(e.target.value)} autoFocus>
-                          <option value="">— None —</option>
+                          <option value="">{t('admin:users.noneOption')}</option>
                           {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
-                        <button className={styles.inlineSaveBtn} onClick={() => handleSaveUserCompany(u)} disabled={savingCoUserId === u.id}>Save</button>
+                        <button className={styles.inlineSaveBtn} onClick={() => handleSaveUserCompany(u)} disabled={savingCoUserId === u.id}>{t('common:action.save')}</button>
                         <button className={styles.inlineCancelBtn} onClick={() => setEditingCoUserId(null)}>✕</button>
                       </div>
                     ) : (
@@ -286,28 +288,28 @@ export default function UsersSection() {
                   </td>
                   <td className={styles.td} onClick={e => e.stopPropagation()}>
                     <select className={styles.roleSelect} value={roleFor(u.id)} onChange={e => handleChangeRole(u.id, e.target.value)}>
-                      <option value="contractor_user">User</option>
-                      <option value="contractor_admin">Admin</option>
-                      <option value="super_admin">Super Admin</option>
+                      <option value="contractor_user">{t('common:role.contractor_user')}</option>
+                      <option value="contractor_admin">{t('common:role.contractor_admin')}</option>
+                      <option value="super_admin">{t('common:role.super_admin')}</option>
                     </select>
                   </td>
                   <td className={styles.td} style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}</td>
                   <td className={styles.td}>{new Date(u.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
                   <td className={styles.td} onClick={e => e.stopPropagation()}>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      {!u.last_sign_in_at && <button className={styles.secondaryBtn} onClick={() => handleResend(u)} disabled={resendSentId === u.id}>{resendSentId === u.id ? 'Sent!' : 'Resend'}</button>}
-                      <button className={styles.secondaryBtn} onClick={() => { setSetPasswordUserId(setPasswordUserId === u.id ? null : u.id); setSetPasswordValue('') }}>{setPasswordUserId === u.id ? 'Cancel' : 'Set Pwd'}</button>
-                      {setPasswordDoneId === u.id && <span style={{ fontSize: 11, color: '#22c55e' }}>Updated!</span>}
-                      <button className={styles.secondaryBtn} onClick={() => handleResetPassword(u)} disabled={resetSentId === u.id}>{resetSentId === u.id ? 'Sent!' : 'Reset'}</button>
+                      {!u.last_sign_in_at && <button className={styles.secondaryBtn} onClick={() => handleResend(u)} disabled={resendSentId === u.id}>{resendSentId === u.id ? t('admin:users.sent') : t('admin:users.resend')}</button>}
+                      <button className={styles.secondaryBtn} onClick={() => { setSetPasswordUserId(setPasswordUserId === u.id ? null : u.id); setSetPasswordValue('') }}>{setPasswordUserId === u.id ? t('common:action.cancel') : t('admin:users.setPwd')}</button>
+                      {setPasswordDoneId === u.id && <span style={{ fontSize: 11, color: '#22c55e' }}>{t('admin:users.updated')}</span>}
+                      <button className={styles.secondaryBtn} onClick={() => handleResetPassword(u)} disabled={resetSentId === u.id}>{resetSentId === u.id ? t('admin:users.sent') : t('admin:users.reset')}</button>
                     </div>
                   </td>
                 </tr>
                 {setPasswordUserId === u.id && (
                   <tr><td colSpan={6} className={styles.td}>
                     <div className={styles.inlineEdit}>
-                      <input type="password" className={styles.inlineInput} value={setPasswordValue} onChange={e => setSetPasswordValue(e.target.value)} placeholder="New password" autoFocus
+                      <input type="password" className={styles.inlineInput} value={setPasswordValue} onChange={e => setSetPasswordValue(e.target.value)} placeholder={t('admin:users.newPasswordPlaceholder')} autoFocus
                         onKeyDown={e => { if (e.key === 'Enter') handleSetPassword(u.id); if (e.key === 'Escape') setSetPasswordUserId(null) }} />
-                      <button className={styles.inlineSaveBtn} onClick={() => handleSetPassword(u.id)} disabled={setPasswordSaving || !setPasswordValue.trim()}>Save</button>
+                      <button className={styles.inlineSaveBtn} onClick={() => handleSetPassword(u.id)} disabled={setPasswordSaving || !setPasswordValue.trim()}>{t('common:action.save')}</button>
                     </div>
                   </td></tr>
                 )}
@@ -328,27 +330,27 @@ export default function UsersSection() {
       {isSuperAdmin && (
         <div style={{ marginTop: 32, borderTop: '1px solid var(--color-border)', paddingTop: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-            <h2 className={styles.pageTitle} style={{ margin: 0, fontSize: 16 }}>Orphan Detection</h2>
+            <h2 className={styles.pageTitle} style={{ margin: 0, fontSize: 16 }}>{t('admin:users.orphanDetection')}</h2>
             <button className={styles.secondaryBtn} onClick={handleDetectOrphans} disabled={orphanLoading}>
-              {orphanLoading ? 'Scanning…' : 'Detect Orphans'}
+              {orphanLoading ? t('admin:users.scanning') : t('admin:users.detectOrphans')}
             </button>
           </div>
           {orphanError && <p className={styles.fieldError}>{orphanError}</p>}
           {orphans !== null && (
             orphans.length === 0 ? (
-              <p style={{ color: 'var(--color-success)', fontSize: 13 }}>No orphans detected</p>
+              <p style={{ color: 'var(--color-success)', fontSize: 13 }}>{t('admin:users.noOrphans')}</p>
             ) : (
               <div className={styles.tableWrap}>
                 <table className={styles.table}>
                   <thead>
                     <tr>
-                      <th className={styles.th}>Email</th>
-                      <th className={styles.th}>Issue</th>
-                      <th className={styles.th}>Auth</th>
-                      <th className={styles.th}>Public</th>
-                      <th className={styles.th}>Profile</th>
-                      <th className={styles.th}>Profile Co.</th>
-                      <th className={styles.th}>Public Co.</th>
+                      <th className={styles.th}>{t('admin:users.colEmail')}</th>
+                      <th className={styles.th}>{t('admin:users.colIssue')}</th>
+                      <th className={styles.th}>{t('admin:users.colAuth')}</th>
+                      <th className={styles.th}>{t('admin:users.colPublic')}</th>
+                      <th className={styles.th}>{t('admin:users.colProfile')}</th>
+                      <th className={styles.th}>{t('admin:users.colProfileCo')}</th>
+                      <th className={styles.th}>{t('admin:users.colPublicCo')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -356,9 +358,9 @@ export default function UsersSection() {
                       <tr key={i} className={styles.tr}>
                         <td className={styles.td}>{o.email}</td>
                         <td className={styles.td}><span className={styles.badge} style={{ fontSize: 11 }}>{o.issue}</span></td>
-                        <td className={styles.td}>{o.has_auth_user ? 'Y' : 'N'}</td>
-                        <td className={styles.td}>{o.has_public_user ? 'Y' : 'N'}</td>
-                        <td className={styles.td}>{o.has_profile ? 'Y' : 'N'}</td>
+                        <td className={styles.td}>{o.has_auth_user ? t('admin:users.yShort') : t('admin:users.nShort')}</td>
+                        <td className={styles.td}>{o.has_public_user ? t('admin:users.yShort') : t('admin:users.nShort')}</td>
+                        <td className={styles.td}>{o.has_profile ? t('admin:users.yShort') : t('admin:users.nShort')}</td>
                         <td className={styles.td} style={{ fontSize: 11 }}>{o.profile_company_id?.slice(0, 8) ?? '—'}</td>
                         <td className={styles.td} style={{ fontSize: 11 }}>{o.public_user_company_id?.slice(0, 8) ?? '—'}</td>
                       </tr>

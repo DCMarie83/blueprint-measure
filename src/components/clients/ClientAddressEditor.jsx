@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Home, Receipt, HardHat, Mail, MapPin, Star, Edit, Trash2, Plus } from 'lucide-react'
 import { useClientAddresses } from '../../hooks/useClientAddresses'
 import ClientAddressModal from './ClientAddressModal'
@@ -13,6 +14,7 @@ const TYPE_ICONS = {
 }
 
 export default function ClientAddressEditor({ clientId }) {
+  const { t } = useTranslation()
   const { addresses, loading, addAddress, updateAddress, deleteAddress, setPrimary } = useClientAddresses(clientId)
   const [modalAddress, setModalAddress] = useState(undefined) // undefined = closed, null = new, object = edit
   const [deleting, setDeleting] = useState(null)
@@ -32,12 +34,12 @@ export default function ClientAddressEditor({ clientId }) {
   }
 
   async function handleDelete(addr) {
-    if (!window.confirm('Delete this address?')) return
+    if (!window.confirm(t('clients:address.confirmDelete'))) return
     setDeleting(addr.id)
     try {
       await deleteAddress(addr.id)
     } catch (err) {
-      alert('Failed to delete: ' + err.message)
+      alert(t('clients:errors.deleteFailed', { error: err.message }))
     } finally {
       setDeleting(null)
     }
@@ -47,25 +49,25 @@ export default function ClientAddressEditor({ clientId }) {
     try {
       await setPrimary(addr.id)
     } catch (err) {
-      alert('Failed: ' + err.message)
+      alert(t('clients:address.setPrimaryFailed', { error: err.message }))
     }
   }
 
-  if (loading) return <div className={styles.muted}>Loading addresses…</div>
+  if (loading) return <div className={styles.muted}>{t('clients:address.loading')}</div>
 
   return (
     <section className={styles.section}>
       <div className={styles.header}>
-        <h2 className={styles.title}>Addresses ({addresses.length})</h2>
+        <h2 className={styles.title}>{t('clients:address.title', { count: addresses.length })}</h2>
         <button className={styles.addBtn} onClick={() => setModalAddress(null)}>
-          <Plus size={14} /> Add Address
+          <Plus size={14} /> {t('clients:address.addAddress')}
         </button>
       </div>
 
       {addresses.length === 0 ? (
         <div className={styles.empty}>
           <MapPin size={20} />
-          <span>No addresses yet — add one to track jobsite or billing locations.</span>
+          <span>{t('clients:address.empty')}</span>
         </div>
       ) : (
         <div className={styles.list}>
@@ -85,12 +87,12 @@ export default function ClientAddressEditor({ clientId }) {
                 </div>
                 <div className={styles.cardActions}>
                   {addr.is_primary ? (
-                    <span className={styles.primaryBadge}><Star size={12} /> Primary</span>
+                    <span className={styles.primaryBadge}><Star size={12} /> {t('clients:address.primary')}</span>
                   ) : (
-                    <button className={styles.linkBtn} onClick={() => handleSetPrimary(addr)}>Set primary</button>
+                    <button className={styles.linkBtn} onClick={() => handleSetPrimary(addr)}>{t('clients:address.setPrimary')}</button>
                   )}
-                  <button className={styles.iconBtn} onClick={() => setModalAddress(addr)} title="Edit"><Edit size={14} /></button>
-                  <button className={styles.iconBtn} onClick={() => handleDelete(addr)} disabled={deleting === addr.id} title="Delete"><Trash2 size={14} /></button>
+                  <button className={styles.iconBtn} onClick={() => setModalAddress(addr)} title={t('common:action.edit')}><Edit size={14} /></button>
+                  <button className={styles.iconBtn} onClick={() => handleDelete(addr)} disabled={deleting === addr.id} title={t('common:action.delete')}><Trash2 size={14} /></button>
                 </div>
               </div>
             )

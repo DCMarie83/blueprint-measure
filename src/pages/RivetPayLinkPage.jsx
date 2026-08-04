@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabase'
 import LanguageToggle from '../components/LanguageToggle'
 import styles from './RivetPayLinkPage.module.css'
@@ -27,6 +28,7 @@ function fmtTime(iso) {
 
 export default function RivetPayLinkPage() {
   const { token } = useParams()
+  const { t } = useTranslation()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -50,6 +52,7 @@ export default function RivetPayLinkPage() {
   const [manualDesc, setManualDesc] = useState('')
   const [manualSubmitting, setManualSubmitting] = useState(false)
   const [manualMsg, setManualMsg] = useState('')
+  const [manualIsError, setManualIsError] = useState(false)
 
   const loadLink = useCallback(async () => {
     if (!token) { setError(true); setLoading(false); return }
@@ -92,14 +95,14 @@ export default function RivetPayLinkPage() {
       })
       if (rpcErr) throw rpcErr
       if (result?.error === 'already_open') { await loadLink(); return }
-      if (result?.error === 'bad_job') { setClockError('That job is no longer available.'); return }
+      if (result?.error === 'bad_job') { setClockError(t('crew:clock.badJob')); return }
       if (result?.error) { setClockError(result.error); return }
       setClockedOutMsg('')
       setDescription('')
       setSelectedJob('')
       await loadLink()
     } catch (err) {
-      setClockError(err.message || 'Clock in failed')
+      setClockError(err.message || t('crew:clock.clockInFailed'))
     } finally {
       setClockingIn(false)
     }
@@ -119,10 +122,10 @@ export default function RivetPayLinkPage() {
       if (rpcErr) throw rpcErr
       if (result?.error) { setClockError(result.error); return }
       const hrs = result?.hours ? Number(result.hours).toFixed(2) : '?'
-      setClockedOutMsg(`Submitted for approval — ${hrs} hrs.`)
+      setClockedOutMsg(t('crew:clock.submittedHours', { hours: hrs }))
       setData(prev => ({ ...prev, open_punch: null }))
     } catch (err) {
-      setClockError(err.message || 'Clock out failed')
+      setClockError(err.message || t('crew:clock.clockOutFailed'))
     } finally {
       setClockingOut(false)
     }
@@ -134,6 +137,7 @@ export default function RivetPayLinkPage() {
     if (!manualJob || !manualHours) return
     setManualSubmitting(true)
     setManualMsg('')
+    setManualIsError(false)
     try {
       const { data: result, error: rpcErr } = await supabase.rpc('rivetpay_submit_manual', {
         p_token: token,
@@ -143,13 +147,15 @@ export default function RivetPayLinkPage() {
         p_description: manualDesc || null,
       })
       if (rpcErr) throw rpcErr
-      if (result?.error) { setManualMsg('Error: ' + result.error); return }
-      setManualMsg('Submitted for approval.')
+      if (result?.error) { setManualIsError(true); setManualMsg(t('crew:manual.error', { msg: result.error })); return }
+      setManualIsError(false)
+      setManualMsg(t('crew:manual.submitted'))
       setManualJob('')
       setManualHours('')
       setManualDesc('')
     } catch (err) {
-      setManualMsg('Error: ' + (err.message || 'Failed'))
+      setManualIsError(true)
+      setManualMsg(t('crew:manual.error', { msg: err.message || t('crew:manual.failed') }))
     } finally {
       setManualSubmitting(false)
     }
@@ -161,7 +167,7 @@ export default function RivetPayLinkPage() {
     return (
       <div className={styles.page}>
         <div className={styles.card}>
-          <div className={styles.loading}>Loading…</div>
+          <div className={styles.loading}>{t('common:misc.loading')}</div>
         </div>
       </div>
     )
@@ -174,9 +180,9 @@ export default function RivetPayLinkPage() {
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <LanguageToggle />
           </div>
-          <h1 className={styles.errorTitle}>This link isn't active</h1>
-          <p className={styles.errorText}>Ask your employer for an updated link.</p>
-          <p className={styles.footer}>Powered by RivetDog</p>
+          <h1 className={styles.errorTitle}>{t('crew:error.title')}</h1>
+          <p className={styles.errorText}>{t('crew:error.text')}</p>
+          <p className={styles.footer}>{t('common:misc.poweredBy')}</p>
         </div>
       </div>
     )
@@ -193,16 +199,16 @@ export default function RivetPayLinkPage() {
             <LanguageToggle />
           </div>
           <h2 className={styles.companyName}>{data.company_name}</h2>
-          <p className={styles.workerGreeting}>Hi, {data.worker_name}</p>
+          <p className={styles.workerGreeting}>{t('crew:clock.greeting', { name: data.worker_name })}</p>
           <div className={styles.termsBox}>
             <p className={styles.termsText}>
-              By clocking in, you agree that your location is recorded at clock-in and clock-out for timekeeping.
+              {t('crew:consent.body')}
             </p>
             <button className={styles.primaryBtn} onClick={handleAcceptTerms} disabled={acceptingTerms}>
-              {acceptingTerms ? 'Please wait…' : 'I understand, continue'}
+              {acceptingTerms ? t('crew:consent.wait') : t('crew:consent.accept')}
             </button>
           </div>
-          <p className={styles.footer}>Powered by RivetDog</p>
+          <p className={styles.footer}>{t('common:misc.poweredBy')}</p>
         </div>
       </div>
     )
@@ -215,18 +221,21 @@ export default function RivetPayLinkPage() {
           <LanguageToggle />
         </div>
         <h2 className={styles.companyName}>{data.company_name}</h2>
-        <p className={styles.workerGreeting}>Hi, {data.worker_name}</p>
+        <p className={styles.workerGreeting}>{t('crew:clock.greeting', { name: data.worker_name })}</p>
 
         {isInAppBrowser() && (
           <div className={styles.inAppBanner}>
-            This works best in your phone's browser. Tap the ••• or Share menu and choose <strong>Open in Safari</strong> or <strong>Open in Chrome</strong>.
+            {t('crew:clock.inAppBanner')}{' '}
+            <strong>{t('crew:clock.openInSafari')}</strong>{' '}
+            {t('crew:clock.inAppBannerOr')}{' '}
+            <strong>{t('crew:clock.openInChrome')}</strong>{t('crew:clock.inAppBannerPeriod')}
           </div>
         )}
 
         {clockedOutMsg && (
           <div className={styles.successBox}>
             {clockedOutMsg}
-            <button className={styles.linkBtn} onClick={() => { setClockedOutMsg(''); loadLink() }}>Clock in again</button>
+            <button className={styles.linkBtn} onClick={() => { setClockedOutMsg(''); loadLink() }}>{t('crew:clock.clockInAgain')}</button>
           </div>
         )}
 
@@ -235,31 +244,31 @@ export default function RivetPayLinkPage() {
             {/* Clocked in */}
             {data.open_punch ? (
               <div className={styles.clockedInBox}>
-                <div className={styles.statusLabel}>CLOCKED IN</div>
+                <div className={styles.statusLabel}>{t('crew:clock.statusClockedIn')}</div>
                 <div className={styles.jobLabel}>{data.open_punch.project_name}</div>
-                <div className={styles.sinceLabel}>since {fmtTime(data.open_punch.clock_in_at)}</div>
+                <div className={styles.sinceLabel}>{t('crew:clock.since', { time: fmtTime(data.open_punch.clock_in_at) })}</div>
                 {clockError && <p className={styles.inlineError}>{clockError}</p>}
                 <button className={styles.clockOutBtn} onClick={handleClockOut} disabled={clockingOut}>
-                  {clockingOut ? 'Clocking out…' : 'Clock Out'}
+                  {clockingOut ? t('crew:clock.clockingOut') : t('crew:clock.clockOut')}
                 </button>
               </div>
             ) : (
               /* Clocked out — clock in form */
               <div className={styles.clockInBox}>
                 <select className={styles.jobSelect} value={selectedJob} onChange={e => setSelectedJob(e.target.value)}>
-                  <option value="">Select job…</option>
+                  <option value="">{t('crew:clock.selectJob')}</option>
                   {jobs.map(j => <option key={j.id} value={j.id}>{j.name}</option>)}
                 </select>
                 <input
                   type="text"
                   className={styles.descInput}
-                  placeholder="Description (optional)"
+                  placeholder={t('crew:clock.descriptionPlaceholder')}
                   value={description}
                   onChange={e => setDescription(e.target.value)}
                 />
                 {clockError && <p className={styles.inlineError}>{clockError}</p>}
                 <button className={styles.clockInBtn} onClick={handleClockIn} disabled={!selectedJob || clockingIn}>
-                  {clockingIn ? 'Clocking in…' : 'Clock In'}
+                  {clockingIn ? t('crew:clock.clockingIn') : t('crew:clock.clockIn')}
                 </button>
               </div>
             )}
@@ -267,28 +276,28 @@ export default function RivetPayLinkPage() {
             {/* Manual fallback */}
             <div className={styles.manualSection}>
               <button className={styles.manualToggle} onClick={() => setShowManual(v => !v)}>
-                {showManual ? 'Hide manual entry' : 'Log time manually'}
+                {showManual ? t('crew:manual.hide') : t('crew:manual.toggle')}
               </button>
               {showManual && (
                 <form className={styles.manualForm} onSubmit={handleManual}>
                   <select className={styles.jobSelect} value={manualJob} onChange={e => setManualJob(e.target.value)} required>
-                    <option value="">Select job…</option>
+                    <option value="">{t('crew:clock.selectJob')}</option>
                     {jobs.map(j => <option key={j.id} value={j.id}>{j.name}</option>)}
                   </select>
                   <input type="date" className={styles.formInput} value={manualDate} onChange={e => setManualDate(e.target.value)} required />
-                  <input type="number" className={styles.formInput} placeholder="Hours" step="0.25" min="0.25" max="24" value={manualHours} onChange={e => setManualHours(e.target.value)} required />
-                  <input type="text" className={styles.descInput} placeholder="Description (optional)" value={manualDesc} onChange={e => setManualDesc(e.target.value)} />
+                  <input type="number" className={styles.formInput} placeholder={t('crew:manual.hoursPlaceholder')} step="0.25" min="0.25" max="24" value={manualHours} onChange={e => setManualHours(e.target.value)} required />
+                  <input type="text" className={styles.descInput} placeholder={t('crew:clock.descriptionPlaceholder')} value={manualDesc} onChange={e => setManualDesc(e.target.value)} />
                   <button type="submit" className={styles.primaryBtn} disabled={manualSubmitting}>
-                    {manualSubmitting ? 'Submitting…' : 'Submit'}
+                    {manualSubmitting ? t('crew:manual.submitting') : t('common:action.submit')}
                   </button>
-                  {manualMsg && <p className={manualMsg.startsWith('Error') ? styles.inlineError : styles.successMsg}>{manualMsg}</p>}
+                  {manualMsg && <p className={manualIsError ? styles.inlineError : styles.successMsg}>{manualMsg}</p>}
                 </form>
               )}
             </div>
           </>
         )}
 
-        <p className={styles.footer}>Powered by RivetDog</p>
+        <p className={styles.footer}>{t('common:misc.poweredBy')}</p>
       </div>
     </div>
   )

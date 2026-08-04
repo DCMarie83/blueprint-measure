@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useTranslation, Trans } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 import { useImpersonation } from '../context/ImpersonationContext'
 import { useCompanyPlan } from '../lib/plans'
@@ -12,9 +13,10 @@ import LanguageToggle from '../components/LanguageToggle'
 // nothing that competes with the card form. Deliberately NOT AppHeader
 // (which brings TrialBanner, nav, hamburger, and UserMenu with it).
 function CheckoutHeader() {
+  const { t } = useTranslation()
   return (
     <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px' }}>
-      <Link to="/" aria-label="RivetDog home">
+      <Link to="/" aria-label={t('checkout:header.homeAriaLabel')}>
         <Logo />
       </Link>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -26,7 +28,7 @@ function CheckoutHeader() {
             color: 'var(--color-text-muted)', fontSize: 14, textDecoration: 'underline',
           }}
         >
-          Sign out
+          {t('checkout:header.signOut')}
         </button>
       </div>
     </header>
@@ -60,6 +62,7 @@ const INPUT_STYLE = {
 }
 
 export default function RecurlyCheckout() {
+  const { t } = useTranslation()
   const { company, refreshCompany } = useAuth()
   const { isImpersonating } = useImpersonation()
   const companyPlan = useCompanyPlan(company)
@@ -93,7 +96,7 @@ export default function RecurlyCheckout() {
       setCardMounted(true)
     } catch (err) {
       setStatus('error')
-      setMessage('Failed to initialize the card form: ' + err.message)
+      setMessage(t('checkout:form.initFailed', { error: err.message }))
     }
   }, [recurlyReady, cardMounted, company])
 
@@ -107,18 +110,18 @@ export default function RecurlyCheckout() {
   const callCheckout = useCallback(async (billingToken, threeDSResult) => {
     if (isImpersonating) {
       setStatus('error')
-      setMessage('Billing actions are disabled while impersonating a tenant.')
+      setMessage(t('common:guard.impersonationBilling'))
       return
     }
     setStatus('submitting')
-    setMessage('Setting up your subscription...')
+    setMessage(t('checkout:form.settingUp'))
     try {
       const body = { billing_token: billingToken, company_id: company.id, term }
       if (threeDSResult) {
         body.three_d_secure_action_result_token_id = threeDSResult
       }
       const { data, error } = await supabase.functions.invoke('recurly-checkout', { body })
-      if (error) throw new Error(error.message || 'Checkout failed')
+      if (error) throw new Error(error.message || t('checkout:error.checkoutFailed'))
       if (data?.error) throw new Error(data.error)
 
       if (data?.requires_3ds) {
@@ -128,13 +131,13 @@ export default function RecurlyCheckout() {
 
       if (data?.success) {
         setStatus('success')
-        setMessage("You're all set.")
+        setMessage(t('checkout:success.message'))
         await refreshCompany()
         setTimeout(() => navigate('/dashboard'), 1500)
         return
       }
 
-      throw new Error('Unexpected response')
+      throw new Error(t('checkout:error.unexpectedResponse'))
     } catch (err) {
       setStatus('error')
       setMessage(err.message)
@@ -143,19 +146,19 @@ export default function RecurlyCheckout() {
 
   function handle3DS(actionTokenId, billingToken) {
     setStatus('3ds')
-    setMessage('Your bank requires verification. Complete the challenge below.')
+    setMessage(t('checkout:form.threeDSPrompt'))
     try {
       const risk = recurlyInstance.current.Risk()
       const threeDSecure = risk.ThreeDSecure({ actionTokenId })
 
       threeDSecure.on('token', (resultToken) => {
-        setMessage('Verified. Completing subscription...')
+        setMessage(t('checkout:form.threeDSVerified'))
         callCheckout(billingToken, resultToken.id)
       })
 
       threeDSecure.on('error', (err) => {
         setStatus('error')
-        setMessage('Verification failed: ' + (err.message || err.code || 'Unknown error'))
+        setMessage(t('checkout:form.verificationFailed', { error: err.message || err.code || t('common:misc.unknownError') }))
       })
 
       if (threeDSContainerRef.current) {
@@ -163,7 +166,7 @@ export default function RecurlyCheckout() {
       }
     } catch (err) {
       setStatus('error')
-      setMessage('Verification setup failed: ' + err.message)
+      setMessage(t('checkout:form.verificationSetupFailed', { error: err.message }))
     }
   }
 
@@ -173,23 +176,23 @@ export default function RecurlyCheckout() {
 
     const form = formRef.current
     const missing = []
-    if (!form.querySelector('[data-recurly="address1"]')?.value?.trim()) missing.push('Address')
-    if (!form.querySelector('[data-recurly="city"]')?.value?.trim()) missing.push('City')
-    if (!form.querySelector('[data-recurly="postal_code"]')?.value?.trim()) missing.push('Postal code')
-    if (!form.querySelector('[data-recurly="country"]')?.value?.trim()) missing.push('Country')
+    if (!form.querySelector('[data-recurly="address1"]')?.value?.trim()) missing.push(t('checkout:form.fieldAddress'))
+    if (!form.querySelector('[data-recurly="city"]')?.value?.trim()) missing.push(t('checkout:form.fieldCity'))
+    if (!form.querySelector('[data-recurly="postal_code"]')?.value?.trim()) missing.push(t('checkout:form.fieldPostalCode'))
+    if (!form.querySelector('[data-recurly="country"]')?.value?.trim()) missing.push(t('checkout:form.fieldCountry'))
     if (missing.length > 0) {
       setStatus('error')
-      setMessage('Missing billing address: ' + missing.join(', '))
+      setMessage(t('checkout:form.missingAddress', { fields: missing.join(', ') }))
       return
     }
 
     setStatus('tokenizing')
-    setMessage('Securing your card...')
+    setMessage(t('checkout:form.securingCard'))
 
     recurlyInstance.current.token(formRef.current, (err, token) => {
       if (err) {
         setStatus('error')
-        setMessage('Card error: ' + (err.message || err.fields?.join(', ') || 'Invalid card details'))
+        setMessage(t('checkout:form.cardError', { error: err.message || err.fields?.join(', ') || t('checkout:form.invalidCardDetails') }))
         return
       }
       callCheckout(token.id)
@@ -203,12 +206,17 @@ export default function RecurlyCheckout() {
         <CheckoutHeader />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', padding: 24 }}>
           <div style={{ maxWidth: 440, textAlign: 'center', background: 'var(--color-surface)', borderRadius: 12, padding: '48px 32px', boxShadow: 'var(--shadow-lg)' }}>
-            <h1 style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, color: 'var(--color-text)', marginBottom: 12 }}>You're subscribed</h1>
+            <h1 style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, color: 'var(--color-text)', marginBottom: 12 }}>{t('checkout:success.subscribedTitle')}</h1>
             <p style={{ color: 'var(--color-text-muted)', fontSize: 15, lineHeight: 1.6, marginBottom: 24 }}>
-              Your <strong>{companyPlan?.display_name || 'plan'}</strong> is active.
+              <Trans
+                i18nKey="checkout:success.planActive"
+                values={{ plan: companyPlan?.display_name || t('checkout:success.planFallback') }}
+              >
+                Your <strong>{'{{plan}}'}</strong> is active.
+              </Trans>
             </p>
             <Link to="/dashboard" style={{ display: 'inline-block', padding: '12px 32px', background: '#f27243', color: '#fff', borderRadius: 8, fontWeight: 600, fontSize: 15, textDecoration: 'none' }}>
-              Go to Dashboard
+              {t('checkout:success.goToDashboard')}
             </Link>
           </div>
         </div>
@@ -223,12 +231,12 @@ export default function RecurlyCheckout() {
         <CheckoutHeader />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', padding: 24 }}>
           <div style={{ maxWidth: 440, textAlign: 'center', background: 'var(--color-surface)', borderRadius: 12, padding: '48px 32px', boxShadow: 'var(--shadow-lg)' }}>
-            <h1 style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, color: 'var(--color-text)', marginBottom: 12 }}>Pilot Account</h1>
+            <h1 style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, color: 'var(--color-text)', marginBottom: 12 }}>{t('checkout:success.pilotTitle')}</h1>
             <p style={{ color: 'var(--color-text-muted)', fontSize: 15, lineHeight: 1.6, marginBottom: 24 }}>
-              Your pilot account is free — no subscription needed.
+              {t('checkout:success.pilotBody')}
             </p>
             <Link to="/dashboard" style={{ display: 'inline-block', padding: '12px 32px', background: '#f27243', color: '#fff', borderRadius: 8, fontWeight: 600, fontSize: 15, textDecoration: 'none' }}>
-              Go to Dashboard
+              {t('checkout:success.goToDashboard')}
             </Link>
           </div>
         </div>
@@ -255,11 +263,11 @@ export default function RecurlyCheckout() {
   // No annual price -> hide the annual option so an unbuyable term can't be picked.
   const annualAvailable = annualPrice != null
   const price = term === 'yearly' ? annualPrice : monthlyPrice
-  const priceSuffix = term === 'yearly' ? '/yr' : '/mo'
+  const priceSuffix = term === 'yearly' ? t('checkout:form.suffixYearly') : t('checkout:form.suffixMonthly')
   const annualSavings = (annualAvailable && monthlyPrice != null)
     ? (Number(monthlyPrice) * 12 - Number(annualPrice))
     : null
-  const planName = companyPlan?.display_name || 'Founders'
+  const planName = companyPlan?.display_name || t('checkout:form.planNameFallback')
 
   return (
     <>
@@ -269,7 +277,7 @@ export default function RecurlyCheckout() {
 
           <div style={{ textAlign: 'center', marginBottom: 24 }}>
             <h1 style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, color: '#26464c', marginBottom: 6 }}>
-              Subscribe to RivetDog
+              {t('checkout:form.title')}
             </h1>
             {annualAvailable && (
               <div style={{ display: 'inline-flex', border: '1px solid var(--color-border)', borderRadius: 8, overflow: 'hidden', margin: '10px 0 12px' }}>
@@ -277,73 +285,73 @@ export default function RecurlyCheckout() {
                   style={{ padding: '6px 16px', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer',
                     background: term === 'monthly' ? '#f27243' : 'transparent',
                     color: term === 'monthly' ? '#fff' : 'var(--color-text-muted)' }}>
-                  Monthly
+                  {t('checkout:form.termMonthly')}
                 </button>
                 <button type="button" onClick={() => setTerm('yearly')}
                   style={{ padding: '6px 16px', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer',
                     background: term === 'yearly' ? '#f27243' : 'transparent',
                     color: term === 'yearly' ? '#fff' : 'var(--color-text-muted)' }}>
-                  Annual · Save 15%
+                  {t('checkout:form.termAnnual')}
                 </button>
               </div>
             )}
             <p style={{ fontSize: 15, color: 'var(--color-text-muted)', margin: 0 }}>
-              {planName} — ${price != null ? Number(price).toFixed(2) : '—'}{priceSuffix}
+              {t('checkout:form.planPrice', { plan: planName, price: price != null ? Number(price).toFixed(2) : '—', suffix: priceSuffix })}
             </p>
             {term === 'yearly' && annualSavings != null && annualSavings > 0 && (
               <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 4 }}>
-                Save ${annualSavings.toFixed(2)} vs monthly
+                {t('checkout:form.annualSavings', { amount: annualSavings.toFixed(2) })}
               </p>
             )}
             {company.subscription_status === 'trialing' && company.trial_ends_at && (
               <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 4 }}>
-                Your {company.trial_duration_days ?? 14}-day free trial starts today. You won't be charged until it ends.
+                {t('checkout:form.trialNotice', { count: company.trial_duration_days ?? 14 })}
               </p>
             )}
           </div>
 
           {blocked ? (
             <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 8, padding: '16px 20px', fontSize: 14, color: 'var(--color-text)', lineHeight: 1.5 }}>
-              <strong>Your browser blocked our secure card form.</strong><br />
-              Please disable ad-blockers or privacy extensions for this page, or try a private/incognito window.
+              <strong>{t('checkout:form.blockedTitle')}</strong><br />
+              {t('checkout:form.blockedBody')}
             </div>
           ) : status === 'success' ? (
             <div style={{ textAlign: 'center' }}>
               <div style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 8, padding: '16px 20px', fontSize: 15, color: '#22c55e', fontWeight: 600, marginBottom: 16 }}>
                 {message}
               </div>
-              <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Redirecting to your dashboard...</p>
+              <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{t('checkout:success.redirecting')}</p>
             </div>
           ) : (
             <form ref={formRef} onSubmit={handleSubmit}>
               {/* Cardholder name */}
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--color-text-muted)', marginBottom: 6 }}>
-                  Cardholder name
+                  {t('checkout:form.cardholderName')}
                 </label>
-                <input type="text" data-recurly="first_name" placeholder="First" required
+                <input type="text" data-recurly="first_name" placeholder={t('checkout:form.firstNamePlaceholder')} required
                   style={{ ...INPUT_STYLE, width: 'calc(50% - 6px)', marginRight: 12 }} />
-                <input type="text" data-recurly="last_name" placeholder="Last" required
+                <input type="text" data-recurly="last_name" placeholder={t('checkout:form.lastNamePlaceholder')} required
                   style={{ ...INPUT_STYLE, width: 'calc(50% - 6px)' }} />
               </div>
 
               {/* Billing address */}
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--color-text-muted)', marginBottom: 6 }}>
-                  Billing address
+                  {t('checkout:form.billingAddress')}
                 </label>
-                <input type="text" data-recurly="address1" placeholder="Street address" required
+                <input type="text" data-recurly="address1" placeholder={t('checkout:form.streetPlaceholder')} required
                   style={{ ...INPUT_STYLE, width: '100%', marginBottom: 8 }} />
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <input type="text" data-recurly="city" placeholder="City" required
+                  <input type="text" data-recurly="city" placeholder={t('checkout:form.cityPlaceholder')} required
                     style={{ ...INPUT_STYLE, flex: 2 }} />
-                  <input type="text" data-recurly="state" placeholder="State"
+                  <input type="text" data-recurly="state" placeholder={t('checkout:form.statePlaceholder')}
                     style={{ ...INPUT_STYLE, flex: 1 }} />
                 </div>
                 <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                  <input type="text" data-recurly="postal_code" placeholder="Postal code" required
+                  <input type="text" data-recurly="postal_code" placeholder={t('checkout:form.postalPlaceholder')} required
                     style={{ ...INPUT_STYLE, flex: 1 }} />
-                  <input type="text" data-recurly="country" placeholder="Country" defaultValue="US" required
+                  <input type="text" data-recurly="country" placeholder={t('checkout:form.countryPlaceholder')} defaultValue="US" required
                     style={{ ...INPUT_STYLE, flex: 1 }} />
                 </div>
               </div>
@@ -351,7 +359,7 @@ export default function RecurlyCheckout() {
               {/* Card details */}
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--color-text-muted)', marginBottom: 6 }}>
-                  Card details
+                  {t('checkout:form.cardDetails')}
                 </label>
                 <div ref={cardRef}
                   style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', padding: '10px 12px', background: 'var(--color-bg)', minHeight: 44 }} />
@@ -375,10 +383,10 @@ export default function RecurlyCheckout() {
                   cursor: (status === 'tokenizing' || status === 'submitting') ? 'wait' : 'pointer',
                   opacity: (!cardMounted || status === 'tokenizing' || status === 'submitting' || status === '3ds') ? 0.6 : 1,
                 }}>
-                {status === 'tokenizing' ? 'Securing card...'
-                  : status === 'submitting' ? 'Setting up subscription...'
-                  : status === '3ds' ? 'Completing verification...'
-                  : `Subscribe — $${price != null ? Number(price).toFixed(2) : '??'}${priceSuffix}`}
+                {status === 'tokenizing' ? t('checkout:form.btnSecuring')
+                  : status === 'submitting' ? t('checkout:form.btnSettingUp')
+                  : status === '3ds' ? t('checkout:form.btnCompleting')
+                  : t('checkout:form.btnSubscribe', { price: price != null ? Number(price).toFixed(2) : '??', suffix: priceSuffix })}
               </button>
             </form>
           )}
@@ -392,7 +400,7 @@ export default function RecurlyCheckout() {
           )}
 
           <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 20, textAlign: 'center' }}>
-            Secure checkout. Cancel anytime.
+            {t('checkout:form.footer')}
           </p>
         </div>
       </div>

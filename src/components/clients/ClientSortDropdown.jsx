@@ -1,15 +1,17 @@
 import { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ChevronDown } from 'lucide-react'
 import styles from './ClientSortDropdown.module.css'
 
 const OPTIONS = [
-  { value: 'recent_activity', label: 'Recent activity' },
-  { value: 'name_az', label: 'Name A-Z' },
-  { value: 'lifetime_value', label: 'Lifetime value' },
-  { value: 'last_contact', label: 'Last activity' },
+  { value: 'recent_activity', label: 'clients:sort.recentActivity' },
+  { value: 'name_az', label: 'clients:sort.nameAz' },
+  { value: 'lifetime_value', label: 'clients:sort.lifetimeValue' },
+  { value: 'last_contact', label: 'clients:sort.lastActivity' },
 ]
 
 export default function ClientSortDropdown({ value, onChange }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   const current = OPTIONS.find(o => o.value === value) ?? OPTIONS[0]
@@ -26,7 +28,7 @@ export default function ClientSortDropdown({ value, onChange }) {
   return (
     <div className={styles.wrap} ref={ref}>
       <button className={styles.trigger} onClick={() => setOpen(v => !v)}>
-        {current.label} <ChevronDown size={14} />
+        {t(current.label)} <ChevronDown size={14} />
       </button>
       {open && (
         <div className={styles.menu}>
@@ -36,7 +38,7 @@ export default function ClientSortDropdown({ value, onChange }) {
               className={`${styles.option} ${o.value === value ? styles.optionActive : ''}`}
               onClick={() => { onChange(o.value); setOpen(false) }}
             >
-              {o.label}
+              {t(o.label)}
             </button>
           ))}
         </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Download, ChevronRight } from 'lucide-react'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import { useAuth } from '../../context/AuthContext'
@@ -15,23 +16,27 @@ import styles from './lite.module.css'
 // no dog puns anywhere, including the empty states. Every figure is summed
 // client-side (there is no DB total trigger), matching the /home precedent.
 
+// Status → i18n key. Draft/Sent/Viewed/Void reuse the shared common:invoiceStatus
+// values (byte-identical); Partial/Paid differ here (shorter labels) so they live
+// in the lite namespace.
 const STATUS_LABELS = {
-  draft: 'Draft', sent: 'Sent', viewed: 'Viewed',
-  partial: 'Partial', paid: 'Paid', void: 'Void',
+  draft: 'common:invoiceStatus.draft', sent: 'common:invoiceStatus.sent', viewed: 'common:invoiceStatus.viewed',
+  partial: 'lite:reports.statusPartial', paid: 'lite:reports.statusPaid', void: 'common:invoiceStatus.void',
 }
 
 const PRESETS = [
-  { key: 'this_month', label: 'This month' },
-  { key: 'last_month', label: 'Last month' },
-  { key: 'this_year', label: 'This year' },
-  { key: 'last_year', label: 'Last year' },
-  { key: 'custom', label: 'Custom' },
+  { key: 'this_month', label: 'lite:reports.presetThisMonth' },
+  { key: 'last_month', label: 'lite:reports.presetLastMonth' },
+  { key: 'this_year', label: 'lite:reports.presetThisYear' },
+  { key: 'last_year', label: 'lite:reports.presetLastYear' },
+  { key: 'custom', label: 'lite:reports.presetCustom' },
 ]
 
 const day = d => String(d || '').slice(0, 10)
 
 export default function LiteReportsPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [searchParams, setSearchParams] = useSearchParams()
   const { companyId, company } = useEffectiveCompany()
   const { userProfile } = useAuth()
@@ -132,7 +137,7 @@ export default function LiteReportsPage() {
           invoiceId: inv?.id || null,
           date: day(p.payment_date),
           invoiceNumber: inv?.invoice_number || '—',
-          gcName: inv ? (gcNameById[inv.client_id] || 'No GC') : 'No GC',
+          gcName: inv ? (gcNameById[inv.client_id] || t('lite:reports.noGc')) : t('lite:reports.noGc'),
           method: p.payment_method || '—',
           amount: Number(p.amount) || 0,
         }
@@ -149,7 +154,7 @@ export default function LiteReportsPage() {
         return {
           id: inv.id,
           invoiceNumber: inv.invoice_number,
-          gcName: gcNameById[inv.client_id] || 'No GC',
+          gcName: gcNameById[inv.client_id] || t('lite:reports.noGc'),
           issuedDate: inv.created_at,
           total,
           collected,
@@ -170,8 +175,8 @@ export default function LiteReportsPage() {
       const key = e.project_id
       const g = unbilledByJob[key] || (unbilledByJob[key] = {
         projectId: key,
-        jobName: proj?.name || 'Unknown job',
-        gcName: proj ? (gcNameById[proj.client_id] || 'No GC') : 'No GC',
+        jobName: proj?.name || t('lite:reports.unknownJob'),
+        gcName: proj ? (gcNameById[proj.client_id] || t('lite:reports.noGc')) : t('lite:reports.noGc'),
         count: 0, total: 0,
       })
       g.count += 1
@@ -238,11 +243,11 @@ export default function LiteReportsPage() {
       <main className={styles.main}>
         <div className={styles.header}>
           <div>
-            <h1 className={styles.title}>Reports</h1>
-            <p className={styles.subtitle}>Your books for any window — ready to hand off.</p>
+            <h1 className={styles.title}>{t('lite:reports.title')}</h1>
+            <p className={styles.subtitle}>{t('lite:reports.subtitle')}</p>
           </div>
           <button className={styles.primaryBtn} onClick={handleExport} disabled={loading || exporting || !report}>
-            <Download size={16} /> {exporting ? 'Exporting…' : 'Export Excel'}
+            <Download size={16} /> {exporting ? t('lite:reports.exporting') : t('lite:reports.exportExcel')}
           </button>
         </div>
 
@@ -254,40 +259,40 @@ export default function LiteReportsPage() {
               className={`${styles.chip} ${preset === p.key ? styles.chipActive : ''}`}
               onClick={() => setPreset(p.key)}
             >
-              {p.label}
+              {t(p.label)}
             </button>
           ))}
         </div>
         {preset === 'custom' && (
           <div className={styles.fieldRow} style={{ marginBottom: 12 }}>
             <div className={styles.field}>
-              <label className={styles.fieldLabel}>From</label>
+              <label className={styles.fieldLabel}>{t('lite:reports.from')}</label>
               <input type="date" className={styles.input} value={customFrom} onChange={e => setCustomFrom(e.target.value)} />
             </div>
             <div className={styles.field}>
-              <label className={styles.fieldLabel}>To</label>
+              <label className={styles.fieldLabel}>{t('lite:reports.to')}</label>
               <input type="date" className={styles.input} value={customTo} onChange={e => setCustomTo(e.target.value)} />
             </div>
           </div>
         )}
 
         {loading || !report ? (
-          <div className={styles.loading}>Loading…</div>
+          <div className={styles.loading}>{t('common:misc.loading')}</div>
         ) : (
           <>
             {/* Section 1 — Payments Received */}
             <div className={styles.card}>
               <div className={styles.rowBetween}>
-                <h2 className={styles.title} style={{ fontSize: 18 }}>Payments received</h2>
+                <h2 className={styles.title} style={{ fontSize: 18 }}>{t('lite:reports.paymentsReceived')}</h2>
                 <div className={`${styles.statValue} ${styles.moneyIn}`} style={{ fontSize: 20 }}>{fmtMoney(report.paymentsTotal)}</div>
               </div>
               {report.paymentRows.length === 0 ? (
-                <p className={styles.muted} style={{ marginTop: 8 }}>No payments recorded in this period.</p>
+                <p className={styles.muted} style={{ marginTop: 8 }}>{t('lite:reports.noPayments')}</p>
               ) : (
                 <div className={styles.tableWrap}>
                   <table className={styles.table}>
                     <thead>
-                      <tr><th>Date</th><th>Invoice</th><th>GC</th><th>Method</th><th style={{ textAlign: 'right' }}>Amount</th><th aria-hidden="true"></th></tr>
+                      <tr><th>{t('lite:reports.colDate')}</th><th>{t('lite:reports.colInvoice')}</th><th>{t('lite:reports.colGc')}</th><th>{t('lite:reports.colMethod')}</th><th style={{ textAlign: 'right' }}>{t('lite:reports.colAmount')}</th><th aria-hidden="true"></th></tr>
                     </thead>
                     <tbody>
                       {report.paymentRows.map((r, i) => (
@@ -313,17 +318,17 @@ export default function LiteReportsPage() {
             {/* Section 2 — Invoices Issued */}
             <div className={styles.card}>
               <div className={styles.rowBetween}>
-                <h2 className={styles.title} style={{ fontSize: 18 }}>Invoices issued</h2>
+                <h2 className={styles.title} style={{ fontSize: 18 }}>{t('lite:reports.invoicesIssued')}</h2>
                 <div className={styles.statValue} style={{ fontSize: 20 }}>{fmtMoney(report.invoicedTotal)}</div>
               </div>
               {report.invoiceRows.length === 0 ? (
-                <p className={styles.muted} style={{ marginTop: 8 }}>No invoices issued in this period.</p>
+                <p className={styles.muted} style={{ marginTop: 8 }}>{t('lite:reports.noInvoices')}</p>
               ) : (
                 <>
                   <div className={styles.tableWrap}>
                     <table className={styles.table}>
                       <thead>
-                        <tr><th>Invoice</th><th>GC</th><th>Issued</th><th style={{ textAlign: 'right' }}>Total</th><th>Status</th><th style={{ textAlign: 'right' }}>Balance</th><th aria-hidden="true"></th></tr>
+                        <tr><th>{t('lite:reports.colInvoice')}</th><th>{t('lite:reports.colGc')}</th><th>{t('lite:reports.colIssued')}</th><th style={{ textAlign: 'right' }}>{t('lite:reports.colTotal')}</th><th>{t('lite:reports.colStatus')}</th><th style={{ textAlign: 'right' }}>{t('lite:reports.colBalance')}</th><th aria-hidden="true"></th></tr>
                       </thead>
                       <tbody>
                         {report.invoiceRows.map((r, i) => (
@@ -336,7 +341,7 @@ export default function LiteReportsPage() {
                             <td>{r.gcName}</td>
                             <td>{new Date(r.issuedDate).toLocaleDateString()}</td>
                             <td style={{ textAlign: 'right' }}>{fmtMoney(r.total)}</td>
-                            <td>{STATUS_LABELS[r.status] || r.status}</td>
+                            <td>{STATUS_LABELS[r.status] ? t(STATUS_LABELS[r.status]) : r.status}</td>
                             <td className={r.balance > 0 ? styles.moneyDue : undefined} style={{ textAlign: 'right' }}>{fmtMoney(r.balance)}</td>
                             <td className={styles.reportChevron}><ChevronRight size={16} /></td>
                           </tr>
@@ -345,9 +350,9 @@ export default function LiteReportsPage() {
                     </table>
                   </div>
                   <div className={styles.rowBetween} style={{ marginTop: 10 }}>
-                    <span className={styles.muted}>Issued {fmtMoney(report.invoicedTotal)}</span>
-                    <span className={styles.muted}>Collected <span className={styles.moneyIn}>{fmtMoney(report.collectedTotal)}</span></span>
-                    <span className={styles.muted}>Outstanding <span className={styles.moneyDue}>{fmtMoney(report.outstandingTotal)}</span></span>
+                    <span className={styles.muted}>{t('lite:reports.issuedAmount', { amount: fmtMoney(report.invoicedTotal) })}</span>
+                    <span className={styles.muted}>{t('lite:reports.collected')} <span className={styles.moneyIn}>{fmtMoney(report.collectedTotal)}</span></span>
+                    <span className={styles.muted}>{t('lite:reports.outstanding')} <span className={styles.moneyDue}>{fmtMoney(report.outstandingTotal)}</span></span>
                   </div>
                 </>
               )}
@@ -356,16 +361,16 @@ export default function LiteReportsPage() {
             {/* Section 3 — Unbilled Work */}
             <div className={styles.card}>
               <div className={styles.rowBetween}>
-                <h2 className={styles.title} style={{ fontSize: 18 }}>Unbilled work</h2>
+                <h2 className={styles.title} style={{ fontSize: 18 }}>{t('lite:reports.unbilledWork')}</h2>
                 <div className={`${styles.statValue} ${styles.moneyDue}`} style={{ fontSize: 20 }}>{fmtMoney(report.unbilledTotal)}</div>
               </div>
               {report.unbilledRows.length === 0 ? (
-                <p className={styles.muted} style={{ marginTop: 8 }}>No unbilled work in this period.</p>
+                <p className={styles.muted} style={{ marginTop: 8 }}>{t('lite:reports.noUnbilled')}</p>
               ) : (
                 <div className={styles.tableWrap}>
                   <table className={styles.table}>
                     <thead>
-                      <tr><th>Job</th><th>GC</th><th style={{ textAlign: 'right' }}>Entries</th><th style={{ textAlign: 'right' }}>Amount</th><th aria-hidden="true"></th></tr>
+                      <tr><th>{t('lite:reports.colJob')}</th><th>{t('lite:reports.colGc')}</th><th style={{ textAlign: 'right' }}>{t('lite:reports.colEntries')}</th><th style={{ textAlign: 'right' }}>{t('lite:reports.colAmount')}</th><th aria-hidden="true"></th></tr>
                     </thead>
                     <tbody>
                       {report.unbilledRows.map((r, i) => (

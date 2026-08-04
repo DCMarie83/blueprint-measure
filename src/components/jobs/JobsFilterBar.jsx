@@ -1,10 +1,11 @@
 import { Search } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import FilterDropdown from '../ui/FilterDropdown'
 import styles from './JobsFilterBar.module.css'
 
 const TYPE_OPTIONS = [
-  { value: 'residential', label: 'Residential' },
-  { value: 'commercial', label: 'Commercial' },
+  { value: 'residential', label: 'common:jobType.residential' },
+  { value: 'commercial', label: 'common:jobType.commercial' },
 ]
 
 export default function JobsFilterBar({
@@ -15,6 +16,8 @@ export default function JobsFilterBar({
   clientFilter, onClientChange, clientOptions,
   onClearAll, hasActiveFilters,
 }) {
+  const { t } = useTranslation()
+  const typeOptions = TYPE_OPTIONS.map(o => ({ ...o, label: t(o.label) }))
   return (
     <div className={styles.bar}>
       <div className={styles.searchWrap}>
@@ -22,19 +25,19 @@ export default function JobsFilterBar({
         <input
           className={styles.searchInput}
           type="text"
-          placeholder="Search jobs by name, address, client..."
+          placeholder={t('jobs:filterBar.searchPlaceholder')}
           value={search}
           onChange={e => onSearchChange(e.target.value)}
         />
       </div>
-      <FilterDropdown label="Status" value={statusFilter} options={statusOptions} onChange={onStatusChange} />
-      <FilterDropdown label="Type" value={typeFilter} options={TYPE_OPTIONS} onChange={onTypeChange} />
+      <FilterDropdown label={t('jobs:filterBar.status')} value={statusFilter} options={statusOptions} onChange={onStatusChange} />
+      <FilterDropdown label={t('jobs:filterBar.type')} value={typeFilter} options={typeOptions} onChange={onTypeChange} />
       {ownerOptions.length > 1 && (
-        <FilterDropdown label="Owner" value={ownerFilter} options={ownerOptions} onChange={onOwnerChange} />
+        <FilterDropdown label={t('jobs:filterBar.owner')} value={ownerFilter} options={ownerOptions} onChange={onOwnerChange} />
       )}
-      <FilterDropdown label="Client" value={clientFilter} options={clientOptions} onChange={onClientChange} />
+      <FilterDropdown label={t('jobs:filterBar.client')} value={clientFilter} options={clientOptions} onChange={onClientChange} />
       {hasActiveFilters && (
-        <button type="button" className={styles.clearBtn} onClick={onClearAll}>Clear filters</button>
+        <button type="button" className={styles.clearBtn} onClick={onClearAll}>{t('jobs:filterBar.clearFilters')}</button>
       )}
     </div>
   )

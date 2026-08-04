@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { FileText, Search, Plus } from 'lucide-react'
 import InvoiceStatusBadge from '../components/invoices/InvoiceStatusBadge'
 import { useInvoices, isOverdue } from '../hooks/useInvoices'
@@ -18,12 +19,13 @@ function fmtDate(d) {
 
 const STATUS_FILTERS = ['all', 'draft', 'sent', 'partial', 'paid', 'void']
 const SORT_OPTIONS = [
-  { value: 'recent', label: 'Recent' },
-  { value: 'due_date', label: 'Due date' },
-  { value: 'total', label: 'Total' },
+  { value: 'recent', label: 'invoices:list.sort.recent' },
+  { value: 'due_date', label: 'invoices:list.sort.dueDate' },
+  { value: 'total', label: 'invoices:list.sort.total' },
 ]
 
 export default function InvoiceListPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { invoices, loading, error } = useInvoices()
   const [search, setSearch] = useState('')
@@ -62,27 +64,27 @@ export default function InvoiceListPage() {
       <main className={styles.main}>
         <div className={styles.header}>
           <div>
-            <h1 className={styles.title}>Invoices</h1>
-            <p className={styles.subtitle}>Bill clients and track payments</p>
+            <h1 className={styles.title}>{t('invoices:list.title')}</h1>
+            <p className={styles.subtitle}>{t('invoices:list.subtitle')}</p>
           </div>
-          <button className={styles.newBtn} onClick={() => navigate('/invoices/new')}><Plus size={16} /> New Invoice</button>
+          <button className={styles.newBtn} onClick={() => navigate('/invoices/new')}><Plus size={16} /> {t('invoices:list.newInvoice')}</button>
         </div>
 
         <div className={styles.filterRow}>
           <div className={styles.searchWrap}>
             <Search size={16} className={styles.searchIcon} />
-            <input className={styles.searchInput} placeholder="Search invoices…" value={search} onChange={e => setSearch(e.target.value)} />
+            <input className={styles.searchInput} placeholder={t('invoices:list.searchPlaceholder')} value={search} onChange={e => setSearch(e.target.value)} />
           </div>
           <div className={styles.filterRight}>
             <div className={styles.chips}>
               {STATUS_FILTERS.map(s => (
                 <button key={s} className={`${styles.chip} ${statusFilter === s ? styles.chipActive : ''}`} onClick={() => setStatusFilter(s)}>
-                  {s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)} ({counts[s]})
+                  {t(`invoices:list.filter.${s}`)} ({counts[s]})
                 </button>
               ))}
             </div>
             <select className={styles.sortSelect} value={sortKey} onChange={e => setSortKey(e.target.value)}>
-              {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{t(o.label)}</option>)}
             </select>
           </div>
         </div>
@@ -90,16 +92,16 @@ export default function InvoiceListPage() {
         {error && <div className={styles.errorBanner}>{error}</div>}
 
         {loading ? (
-          <div className={styles.empty}>Loading…</div>
+          <div className={styles.empty}>{t('common:misc.loading')}</div>
         ) : sorted.length === 0 && invoices.length === 0 ? (
           <div className={styles.emptyState}>
             <FileText size={48} />
-            <h2>No invoices yet</h2>
-            <p>Create one from an accepted estimate, or click "+ New Invoice" to start fresh.</p>
-            <button className={styles.newBtn} onClick={() => navigate('/invoices/new')}><Plus size={16} /> New Invoice</button>
+            <h2>{t('invoices:list.emptyTitle')}</h2>
+            <p>{t('invoices:list.emptyBody')}</p>
+            <button className={styles.newBtn} onClick={() => navigate('/invoices/new')}><Plus size={16} /> {t('invoices:list.newInvoice')}</button>
           </div>
         ) : sorted.length === 0 ? (
-          <div className={styles.empty}>No invoices match your filters.</div>
+          <div className={styles.empty}>{t('invoices:list.noMatch')}</div>
         ) : (
           <div className={styles.list}>
             {sorted.map(inv => {

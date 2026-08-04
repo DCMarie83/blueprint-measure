@@ -1,12 +1,14 @@
 import { useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Search, ChevronDown, ChevronRight, Plus } from 'lucide-react'
 import Modal from '../ui/Modal'
 import styles from './PricingItemPicker.module.css'
 
-const UNIT_LABELS = { sf: 'SF', lf: 'LF', each: 'Each', hour: 'Hour', lump_sum: 'Lump Sum' }
-const ZONE_UNIT_LABELS = { SF: 'SF', LF: 'LF', count: 'units' }
+const UNIT_KEYS = { sf: 'common:units.sf', lf: 'common:units.lf', each: 'common:units.each', hour: 'common:units.hour', lump_sum: 'common:units.lumpSum' }
+const ZONE_UNIT_KEYS = { SF: 'common:units.sf', LF: 'common:units.lf', count: 'common:units.count' }
 
 export default function PricingItemPicker({ zone, categories, items, onPick, onClose }) {
+  const { t } = useTranslation()
   const [search, setSearch] = useState('')
   const [expandedCats, setExpandedCats] = useState(new Set())
 
@@ -47,8 +49,12 @@ export default function PricingItemPicker({ zone, categories, items, onPick, onC
   }
 
   const modalTitle = zone
-    ? `Add Line Item for: ${zone.display_name} — ${zone.total_result.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${ZONE_UNIT_LABELS[zone.measurement_type] || zone.measurement_type}`
-    : 'Add Line Item from Pricing Library'
+    ? t('estimates:pricing.addLineItemForZone', {
+        name: zone.display_name,
+        amount: zone.total_result.toLocaleString(undefined, { maximumFractionDigits: 2 }),
+        unit: ZONE_UNIT_KEYS[zone.measurement_type] ? t(ZONE_UNIT_KEYS[zone.measurement_type]) : zone.measurement_type,
+      })
+    : t('estimates:pricing.addLineItemTitle')
 
   return (
     <Modal title={modalTitle} onClose={onClose}>
@@ -58,7 +64,7 @@ export default function PricingItemPicker({ zone, categories, items, onPick, onC
           className={styles.searchInput}
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Search items..."
+          placeholder={t('estimates:pricing.searchPlaceholder')}
           autoFocus
         />
       </div>
@@ -67,8 +73,8 @@ export default function PricingItemPicker({ zone, categories, items, onPick, onC
         {grouped.length === 0 ? (
           <div className={styles.empty}>
             {items.length === 0
-              ? 'No pricing items found. Add items in the Pricing Library first.'
-              : 'No items match your search.'}
+              ? t('estimates:pricing.emptyNoItems')
+              : t('estimates:pricing.emptyNoMatch')}
           </div>
         ) : (
           grouped.map(([catId, { name, items: catItems }]) => {
@@ -85,7 +91,7 @@ export default function PricingItemPicker({ zone, categories, items, onPick, onC
                     <div className={styles.itemInfo}>
                       <span className={styles.itemName}>{item.name}</span>
                       <span className={styles.itemMeta}>
-                        <span className={styles.unitBadge}>{UNIT_LABELS[item.unit] || item.unit}</span>
+                        <span className={styles.unitBadge}>{UNIT_KEYS[item.unit] ? t(UNIT_KEYS[item.unit]) : item.unit}</span>
                         <span className={styles.rates}>
                           {fmtRate(item.default_rate)}
                         </span>
@@ -94,9 +100,9 @@ export default function PricingItemPicker({ zone, categories, items, onPick, onC
                     <button
                       className={styles.pickBtn}
                       onClick={() => onPick(item)}
-                      title="Add to estimate"
+                      title={t('estimates:pricing.addToEstimate')}
                     >
-                      <Plus size={14} /> Add
+                      <Plus size={14} /> {t('common:action.add')}
                     </button>
                   </div>
                 ))}

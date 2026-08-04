@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Briefcase, ChevronRight, Plus } from 'lucide-react'
 import NewJobSheet from '../../components/lite/NewJobSheet'
 import { useProjects } from '../../hooks/useProjects'
@@ -15,6 +16,7 @@ import styles from './lite.module.css'
 // no invoice yet) and the total ever logged. Money is summed client-side.
 export default function LiteJobsPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { companyId } = useEffectiveCompany()
   const { projects, loading: projectsLoading, createProject } = useProjects()
   const { clients } = useClients()
@@ -65,12 +67,12 @@ export default function LiteJobsPage() {
       <main className={styles.main}>
         <div className={styles.header}>
           <div>
-            <h1 className={styles.title}>Jobs</h1>
-            <p className={styles.subtitle}>Everything you're logging work against</p>
+            <h1 className={styles.title}>{t('lite:jobs.title')}</h1>
+            <p className={styles.subtitle}>{t('lite:jobs.subtitle')}</p>
           </div>
           {!showNewJob && (
             <button className={styles.primaryBtn} onClick={() => setShowNewJob(true)}>
-              <Plus size={16} /> New job
+              <Plus size={16} /> {t('lite:jobs.newJob')}
             </button>
           )}
         </div>
@@ -85,12 +87,12 @@ export default function LiteJobsPage() {
         )}
 
         {loading ? (
-          <div className={styles.loading}>Loading jobs…</div>
+          <div className={styles.loading}>{t('lite:jobs.loadingJobs')}</div>
         ) : projects.length === 0 ? (
           <div className={styles.empty}>
             <Briefcase size={44} />
-            <div className={styles.emptyTitle}>{EMPTY.jobs}</div>
-            <p>Start a job from the Daily Log to begin tracking your work and pay.</p>
+            <div className={styles.emptyTitle}>{t(EMPTY.jobs)}</div>
+            <p>{t('lite:jobs.emptyHelp')}</p>
           </div>
         ) : (
           projects.map(job => {
@@ -100,11 +102,11 @@ export default function LiteJobsPage() {
                 <div className={styles.entryMain}>
                   <div className={styles.listName}>{job.name}</div>
                   <div className={styles.listSub}>
-                    {gcName[job.client_id] || 'No GC'}
+                    {gcName[job.client_id] || t('lite:jobs.noGc')}
                     {job.last_activity ? ` · ${new Date(job.last_activity).toLocaleDateString()}` : ''}
                   </div>
                   <div className={styles.listSub}>
-                    <span className={styles.moneyDue}>{fmtMoney(s.unbilled)}</span> unbilled · {fmtMoney(s.total)} logged
+                    <span className={styles.moneyDue}>{fmtMoney(s.unbilled)}</span> {t('lite:jobs.unbilledSummary', { total: fmtMoney(s.total) })}
                   </div>
                 </div>
                 <ChevronRight size={18} className={styles.muted} />

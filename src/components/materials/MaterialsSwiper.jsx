@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Check, X, ArrowLeft, ArrowRight, RotateCcw, PawPrint } from 'lucide-react'
 import { GRADES, money, gradeTotal, lineCostAtGrade, materialBuyQuantity, itemVisualProps } from '../../lib/materialsView'
 import ItemVisual from './ItemVisual'
@@ -24,6 +25,7 @@ const heroBtn = { display: 'inline-flex', alignItems: 'center', gap: 8, padding:
 const gradeChip = (active) => ({ padding: '5px 12px', borderRadius: 9999, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: active ? '1px solid #F27243' : '1px solid var(--color-border)', background: active ? '#F27243' : 'var(--color-surface)', color: active ? '#fff' : 'var(--color-text, #1b2426)' })
 
 function Card({ line, grade, style, className, overlay, dragHandlers, lookups }) {
+  const { t } = useTranslation()
   const buyQty = materialBuyQuantity(line)
   const others = GRADES.filter(g => g.key !== grade)
   return (
@@ -42,8 +44,8 @@ function Card({ line, grade, style, className, overlay, dragHandlers, lookups })
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
           <ItemVisual {...itemVisualProps(line, lookups)} size={52} />
           <div>
-            <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text, #1b2426)' }}>{line.description || 'Untitled item'}</div>
-            {line.source_zone_name && <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>From {line.source_zone_name}</div>}
+            <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text, #1b2426)' }}>{line.description || t('materials:swiper.untitledItem')}</div>
+            {line.source_zone_name && <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>{t('materials:lineItems.fromZone', { zone: line.source_zone_name })}</div>}
           </div>
         </div>
         <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
@@ -67,6 +69,7 @@ function Card({ line, grade, style, className, overlay, dragHandlers, lookups })
 }
 
 export default function MaterialsSwiper({ lines, grade, onGradeChange, storeName, saving, onSave, onEditDetails, onExportCsv, onReviewComplete, lookups }) {
+  const { t } = useTranslation()
   const reduce = usePrefersReducedMotion()
   const containerRef = useRef(null)
   const [decided, setDecided] = useState([]) // [{ id, decision }]
@@ -140,7 +143,7 @@ export default function MaterialsSwiper({ lines, grade, onGradeChange, storeName
   }
 
   if (n === 0) {
-    return <div className="mf-fadein" style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '48px 20px' }}>Nothing to review yet. Measure the job first.</div>
+    return <div className="mf-fadein" style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '48px 20px' }}>{t('materials:swiper.nothingToReview')}</div>
   }
 
   // ── End state summary ──
@@ -149,15 +152,15 @@ export default function MaterialsSwiper({ lines, grade, onGradeChange, storeName
       <div className="mf-fadein" style={{ maxWidth: 560, margin: '24px auto', textAlign: 'center' }}>
         <div style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)', padding: '24px 20px', marginBottom: 16 }}>
           <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text, #1b2426)' }}>
-            Kept {kept.length} of {n}. Total {money(gradeTotal(kept, grade))} at {GRADES.find(g => g.key === grade)?.label}.
+            {t('materials:swiper.keptSummary', { kept: kept.length, total: n, amount: money(gradeTotal(kept, grade)), grade: GRADES.find(g => g.key === grade)?.label })}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
           <button style={{ ...heroBtn, opacity: saving ? 0.6 : 1 }} onClick={() => onSave(kept)} disabled={saving}>
-            <PawPrint size={16} /> {saving ? 'Saving…' : 'Save order'}
+            <PawPrint size={16} /> {saving ? t('materials:summary.saving') : t('materials:summary.saveOrder')}
           </button>
-          <button style={btn} onClick={() => onEditDetails(kept)}>Edit details</button>
-          <button style={btn} onClick={() => onExportCsv(kept)}>Export CSV</button>
+          <button style={btn} onClick={() => onEditDetails(kept)}>{t('materials:swiper.editDetails')}</button>
+          <button style={btn} onClick={() => onExportCsv(kept)}>{t('materials:summary.exportCsv')}</button>
         </div>
       </div>
     )
@@ -181,10 +184,10 @@ export default function MaterialsSwiper({ lines, grade, onGradeChange, storeName
       </div>
 
       <p style={{ fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center', margin: '0 0 6px' }}>
-        Swipe right to keep, left to remove. Arrow keys work too.
+        {t('materials:swiper.instructions')}
       </p>
       <p style={{ fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center', margin: '0 0 14px' }}>
-        Prices are regional estimates for reference and building your strongest bid. Confirm current pricing with your local store. Product photos are illustrations only.
+        {t('materials:disclaimer.regionalEstimates')}
       </p>
 
       {/* Deck */}
@@ -206,10 +209,10 @@ export default function MaterialsSwiper({ lines, grade, onGradeChange, storeName
                 overlay={
                   <>
                     <span style={{ position: 'absolute', top: 16, left: 16, display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 8, fontWeight: 700, fontSize: 12, background: 'rgba(38,70,76,0.16)', color: '#26464C', opacity: keepOpacity }}>
-                      <Check size={14} /> KEEP
+                      <Check size={14} /> {t('materials:swiper.keepBadge')}
                     </span>
                     <span style={{ position: 'absolute', top: 16, right: 16, display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 8, fontWeight: 700, fontSize: 12, background: 'var(--color-surface-2, #eef0f0)', color: 'var(--color-text-muted)', opacity: removeOpacity }}>
-                      <X size={14} /> REMOVE
+                      <X size={14} /> {t('materials:swiper.removeBadge')}
                     </span>
                   </>
                 }
@@ -231,13 +234,13 @@ export default function MaterialsSwiper({ lines, grade, onGradeChange, storeName
 
       {/* Controls */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
-        <button style={btn} onClick={() => commit('remove')}><X size={15} /> Remove</button>
-        <button style={{ ...btn, opacity: decided.length === 0 ? 0.5 : 1 }} onClick={undo} disabled={decided.length === 0}><RotateCcw size={14} /> Undo</button>
-        <button style={btn} onClick={() => commit('keep')}><Check size={15} /> Keep</button>
+        <button style={btn} onClick={() => commit('remove')}><X size={15} /> {t('common:action.remove')}</button>
+        <button style={{ ...btn, opacity: decided.length === 0 ? 0.5 : 1 }} onClick={undo} disabled={decided.length === 0}><RotateCcw size={14} /> {t('materials:swiper.undo')}</button>
+        <button style={btn} onClick={() => commit('keep')}><Check size={15} /> {t('materials:swiper.keep')}</button>
       </div>
       <div style={{ textAlign: 'center', marginTop: 10, fontSize: 12, color: 'var(--color-text-muted)' }}>
-        {Math.min(idx + 1, n)} of {n}
-        <span style={{ marginLeft: 12, opacity: 0.7 }}><ArrowLeft size={11} style={{ verticalAlign: 'middle' }} /> remove · keep <ArrowRight size={11} style={{ verticalAlign: 'middle' }} /></span>
+        {t('materials:swiper.progress', { current: Math.min(idx + 1, n), total: n })}
+        <span style={{ marginLeft: 12, opacity: 0.7 }}><ArrowLeft size={11} style={{ verticalAlign: 'middle' }} /> {t('materials:swiper.removeKeepHint')} <ArrowRight size={11} style={{ verticalAlign: 'middle' }} /></span>
       </div>
     </div>
   )

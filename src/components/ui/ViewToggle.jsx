@@ -1,15 +1,16 @@
+import { useTranslation } from 'react-i18next'
 import { LayoutGrid, List } from 'lucide-react'
 import styles from './ViewToggle.module.css'
 
-const DEFAULT_OPTIONS = [
-  { value: 'list', icon: List, label: 'List view' },
-  { value: 'card', icon: LayoutGrid, label: 'Card view' },
-]
-
-export default function ViewToggle({ view, onChange, options = DEFAULT_OPTIONS }) {
+export default function ViewToggle({ view, onChange, options }) {
+  const { t } = useTranslation()
+  const opts = options ?? [
+    { value: 'list', icon: List, label: t('ui:viewToggle.listView') },
+    { value: 'card', icon: LayoutGrid, label: t('ui:viewToggle.cardView') },
+  ]
   return (
     <div className={styles.toggle}>
-      {options.map(opt => {
+      {opts.map(opt => {
         const Icon = opt.icon
         return (
           <button

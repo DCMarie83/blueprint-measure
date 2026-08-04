@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import ProfileTab from '../components/settings/ProfileTab';
 import PreferencesTab from '../components/settings/PreferencesTab';
@@ -8,14 +9,15 @@ import PaymentInstructionsTab from '../components/settings/PaymentInstructionsTa
 import styles from './SettingsPage.module.css';
 
 const TABS = [
-  { id: 'profile', label: 'Profile' },
-  { id: 'preferences', label: 'Preferences' },
-  { id: 'notifications', label: 'Notifications' },
-  { id: 'branding', label: 'Branding' },
-  { id: 'payments', label: 'Payments' },
+  { id: 'profile', label: 'settings:page.tabs.profile' },
+  { id: 'preferences', label: 'settings:page.tabs.preferences' },
+  { id: 'notifications', label: 'settings:page.tabs.notifications' },
+  { id: 'branding', label: 'settings:page.tabs.branding' },
+  { id: 'payments', label: 'settings:page.tabs.payments' },
 ];
 
 export default function SettingsPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [active, setActive] = useState('profile');
   if (!user) return null;
@@ -24,18 +26,18 @@ export default function SettingsPage() {
       
       <div className={styles.content}>
         <div className={styles.settingsHeader}>
-          <h1 className={styles.title}>Settings</h1>
+          <h1 className={styles.title}>{t('settings:page.title')}</h1>
         </div>
         <nav className={styles.tabs} role="tablist">
-          {TABS.map(t => (
+          {TABS.map(tab => (
             <button
-              key={t.id}
+              key={tab.id}
               role="tab"
-              aria-selected={active === t.id}
-              className={active === t.id ? `${styles.tab} ${styles.tabActive}` : styles.tab}
-              onClick={() => setActive(t.id)}
+              aria-selected={active === tab.id}
+              className={active === tab.id ? `${styles.tab} ${styles.tabActive}` : styles.tab}
+              onClick={() => setActive(tab.id)}
             >
-              {t.label}
+              {t(tab.label)}
             </button>
           ))}
         </nav>

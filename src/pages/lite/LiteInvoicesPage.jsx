@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { FileText, ChevronRight } from 'lucide-react'
 import InvoiceStatusBadge from '../../components/invoices/InvoiceStatusBadge'
 import { useInvoices, isOverdue } from '../../hooks/useInvoices'
@@ -10,13 +11,14 @@ import styles from './lite.module.css'
 // invoice's own client_id (set at creation), falling back to the project join.
 export default function LiteInvoicesPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { invoices, loading } = useInvoices()
   const { clients } = useClients()
 
   function gcNameFor(inv) {
     const byClient = clients.find(c => c.id === inv.client_id && c.client_type === GC_CLIENT_TYPE)
     if (byClient) return byClient.business_name || byClient.display_name
-    return inv.projects?.clients?.display_name || 'No GC'
+    return inv.projects?.clients?.display_name || t('lite:invoices.noGc')
   }
 
   function fmtDate(d) {
@@ -29,8 +31,8 @@ export default function LiteInvoicesPage() {
   function gcResponseFor(inv) {
     if (!inv.gc_approval) return null
     return String(inv.gc_approval).toLowerCase().startsWith('approv')
-      ? { label: 'GC approved', approved: true }
-      : { label: 'Changes requested', approved: false }
+      ? { label: t('lite:invoices.gcApproved'), approved: true }
+      : { label: t('lite:invoices.changesRequested'), approved: false }
   }
 
   return (
@@ -39,19 +41,19 @@ export default function LiteInvoicesPage() {
       <main className={styles.main}>
         <div className={styles.header}>
           <div>
-            <h1 className={styles.title}>Invoices</h1>
-            <p className={styles.subtitle}>Everything you've billed your GCs</p>
+            <h1 className={styles.title}>{t('lite:invoices.title')}</h1>
+            <p className={styles.subtitle}>{t('lite:invoices.subtitle')}</p>
           </div>
         </div>
 
         {loading ? (
-          <div className={styles.loading}>Loading invoices…</div>
+          <div className={styles.loading}>{t('lite:invoices.loading')}</div>
         ) : invoices.length === 0 ? (
           <div className={styles.empty}>
             <FileText size={44} />
-            <div className={styles.emptyTitle}>No invoices yet</div>
-            <p>Open a job and create an invoice from its unbilled entries.</p>
-            <button className={styles.linkBtn} style={{ marginTop: 12 }} onClick={() => navigate('/jobs')}>Go to jobs</button>
+            <div className={styles.emptyTitle}>{t('lite:invoices.emptyTitle')}</div>
+            <p>{t('lite:invoices.emptyHelp')}</p>
+            <button className={styles.linkBtn} style={{ marginTop: 12 }} onClick={() => navigate('/jobs')}>{t('lite:invoices.goToJobs')}</button>
           </div>
         ) : (
           invoices.map(inv => (

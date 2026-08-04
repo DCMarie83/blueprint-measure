@@ -1,4 +1,5 @@
 import { useState, useRef, Fragment } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react'
 import Modal from '../components/ui/Modal'
 import { useAuth } from '../context/AuthContext'
@@ -17,6 +18,7 @@ export default function PricingPage() {
   const { categories, loading: catLoading, createCategory, deleteCategory } = usePricingCategories()
   const { items, loading: itemLoading, createItem, updateItem, deleteItem } = usePricingItems()
   const { userProfile, isSuperAdmin } = useAuth()
+  const { t } = useTranslation()
   const isAdmin = userProfile?.role === 'contractor_admin' || isSuperAdmin
 
   const [tab, setTab] = useState('estimate')
@@ -57,7 +59,7 @@ export default function PricingPage() {
       setEditingId(null)
       setEditValue('')
     } catch (err) {
-      setEditError(err.message || 'Could not save rate.')
+      setEditError(err.message || t('pricing:estimate.saveRateFailed'))
     } finally {
       setSavingEdit(false)
     }
@@ -96,12 +98,12 @@ export default function PricingPage() {
   }
 
   async function handleDeleteCategory(id) {
-    if (!window.confirm('Delete this category and all its items?')) return
+    if (!window.confirm(t('pricing:confirm.deleteCategory'))) return
     await deleteCategory(id)
   }
 
   async function handleDeleteItem(id) {
-    if (!window.confirm('Delete this item?')) return
+    if (!window.confirm(t('pricing:confirm.deleteItem'))) return
     await deleteItem(id)
   }
 
@@ -118,36 +120,36 @@ export default function PricingPage() {
       
       <main className={styles.main}>
         <div className={styles.pageHeader}>
-          <h1 className={styles.title}>Pricing Library</h1>
+          <h1 className={styles.title}>{t('pricing:header.title')}</h1>
           {tab === 'estimate' && isAdmin && (
             <button className={styles.newBtn} onClick={() => setShowAddCategory(true)}>
-              <Plus size={16} /> New Category
+              <Plus size={16} /> {t('pricing:actions.newCategory')}
             </button>
           )}
         </div>
 
         <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid var(--color-border)', marginBottom: 20 }}>
-          <button style={tabBtn(tab === 'estimate')} onClick={() => setTab('estimate')}>Estimate Items</button>
-          <button style={tabBtn(tab === 'materials')} onClick={() => setTab('materials')}>Materials</button>
+          <button style={tabBtn(tab === 'estimate')} onClick={() => setTab('estimate')}>{t('pricing:tabs.estimate')}</button>
+          <button style={tabBtn(tab === 'materials')} onClick={() => setTab('materials')}>{t('pricing:tabs.materials')}</button>
         </div>
 
         {tab === 'materials' && <MaterialsPricingTab />}
 
         {tab === 'estimate' && hasSeeded && (
           <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 16px' }}>
-            Starter rates are examples. Edit one to make it yours, or let Smart Bid use your regional market data.
+            {t('pricing:estimate.starterNote')}
           </p>
         )}
 
         {tab === 'estimate' && (loading ? (
-          <div className={styles.emptyState}>Loading...</div>
+          <div className={styles.emptyState}>{t('pricing:estimate.loading')}</div>
         ) : categories.length === 0 ? (
           <div className={styles.emptyState}>
-            <h2>Your pricing library is empty</h2>
-            <p>Add categories and items to build your estimate templates.</p>
+            <h2>{t('pricing:estimate.emptyTitle')}</h2>
+            <p>{t('pricing:estimate.emptyBody')}</p>
             {isAdmin && (
               <button className={styles.newBtn} onClick={() => setShowAddCategory(true)}>
-                <Plus size={16} /> Add your first category
+                <Plus size={16} /> {t('pricing:actions.addFirstCategory')}
               </button>
             )}
           </div>
@@ -160,20 +162,20 @@ export default function PricingPage() {
                 <div className={styles.categoryHeader} onClick={() => toggleCategory(cat.id)}>
                   {expanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                   <h3 className={styles.categoryName}>{cat.name}</h3>
-                  <span className={styles.itemCount}>{catItems.length} item{catItems.length !== 1 ? 's' : ''}</span>
+                  <span className={styles.itemCount}>{t('pricing:estimate.itemCount', { count: catItems.length })}</span>
                   {isAdmin && (
                     <button
                       className={styles.addItemBtn}
                       onClick={e => { e.stopPropagation(); setShowAddItem(cat.id) }}
                     >
-                      <Plus size={14} /> Add Item
+                      <Plus size={14} /> {t('pricing:actions.addItem')}
                     </button>
                   )}
                   {isAdmin && (
                     <button
                       className={styles.deleteBtn}
                       onClick={e => { e.stopPropagation(); handleDeleteCategory(cat.id) }}
-                      title="Delete category"
+                      title={t('pricing:actions.deleteCategory')}
                     >
                       <Trash2 size={15} />
                     </button>
@@ -181,19 +183,19 @@ export default function PricingPage() {
                 </div>
                 {expanded && (
                   catItems.length === 0 ? (
-                    <div className={styles.emptyCategory}>Empty bowl — no items yet.</div>
+                    <div className={styles.emptyCategory}>{t('pricing:estimate.emptyCategory')}</div>
                   ) : (
                     catItems.map(item => (
                       <Fragment key={item.id}>
                         <div className={styles.itemRow}>
                           <span className={styles.itemName}>{item.name}</span>
                           {item.source === 'seeded' && (
-                            <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 9999, background: 'var(--color-surface-2, #eef0f0)', color: 'var(--color-text-muted, #1B2426)', whiteSpace: 'nowrap' }}>Starter rate</span>
+                            <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 9999, background: 'var(--color-surface-2, #eef0f0)', color: 'var(--color-text-muted, #1B2426)', whiteSpace: 'nowrap' }}>{t('pricing:estimate.starterRate')}</span>
                           )}
                           <span className={styles.unitBadge}>{item.unit}</span>
                           <span className={styles.rateCell}>
                             {!isAdmin ? (
-                              <span><span className={styles.rateLabel}>Rate </span>{fmtRate(item.default_rate)}</span>
+                              <span><span className={styles.rateLabel}>{t('pricing:estimate.rateLabel')}</span>{fmtRate(item.default_rate)}</span>
                             ) : editingId === item.id ? (
                               <input
                                 type="number" step="0.01" min="0"
@@ -212,15 +214,15 @@ export default function PricingPage() {
                               <button
                                 type="button"
                                 onClick={() => startEditRate(item)}
-                                title="Edit rate"
+                                title={t('pricing:actions.editRate')}
                                 style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit', cursor: 'pointer', fontVariantNumeric: 'tabular-nums' }}
                               >
-                                <span className={styles.rateLabel}>Rate </span>{fmtRate(item.default_rate)}
+                                <span className={styles.rateLabel}>{t('pricing:estimate.rateLabel')}</span>{fmtRate(item.default_rate)}
                               </button>
                             )}
                           </span>
                           {isAdmin && (
-                            <button className={styles.deleteBtn} onClick={() => handleDeleteItem(item.id)} title="Delete item">
+                            <button className={styles.deleteBtn} onClick={() => handleDeleteItem(item.id)} title={t('pricing:actions.deleteItem')}>
                               <Trash2 size={15} />
                             </button>
                           )}
@@ -239,60 +241,60 @@ export default function PricingPage() {
       </main>
 
       {showAddCategory && (
-        <Modal title="New Category" onClose={() => setShowAddCategory(false)}>
+        <Modal title={t('pricing:actions.newCategory')} onClose={() => setShowAddCategory(false)}>
           <form onSubmit={handleCreateCategory}>
             <div className={styles.modalField}>
-              <label>Category Name</label>
+              <label>{t('pricing:modal.categoryName')}</label>
               <input
                 value={catForm.name}
                 onChange={e => setCatForm(f => ({ ...f, name: e.target.value }))}
-                placeholder="e.g. Interior Paint"
+                placeholder={t('pricing:modal.categoryNamePlaceholder')}
                 required
                 autoFocus
               />
             </div>
             <div className={styles.modalField}>
-              <label>Trade Vertical (optional)</label>
+              <label>{t('pricing:modal.tradeVertical')}</label>
               <input
                 value={catForm.trade_vertical}
                 onChange={e => setCatForm(f => ({ ...f, trade_vertical: e.target.value }))}
-                placeholder="e.g. Painting"
+                placeholder={t('pricing:modal.tradeVerticalPlaceholder')}
               />
             </div>
             <div className={styles.modalActions}>
-              <button type="button" onClick={() => setShowAddCategory(false)}>Cancel</button>
-              <button type="submit">Create Category</button>
+              <button type="button" onClick={() => setShowAddCategory(false)}>{t('common:action.cancel')}</button>
+              <button type="submit">{t('pricing:actions.createCategory')}</button>
             </div>
           </form>
         </Modal>
       )}
 
       {showAddItem && (
-        <Modal title="Add Item" onClose={() => setShowAddItem(null)}>
+        <Modal title={t('pricing:actions.addItem')} onClose={() => setShowAddItem(null)}>
           <form onSubmit={handleCreateItem}>
             <div className={styles.modalField}>
-              <label>Item Name</label>
+              <label>{t('pricing:modal.itemName')}</label>
               <input
                 value={itemForm.name}
                 onChange={e => setItemForm(f => ({ ...f, name: e.target.value }))}
-                placeholder="e.g. Wall Paint - Standard"
+                placeholder={t('pricing:modal.itemNamePlaceholder')}
                 required
                 autoFocus
               />
             </div>
             <div className={styles.modalField}>
-              <label>Unit</label>
+              <label>{t('pricing:modal.unit')}</label>
               <select value={itemForm.unit} onChange={e => setItemForm(f => ({ ...f, unit: e.target.value }))}>
-                <option value="sf">SF</option>
-                <option value="lf">LF</option>
-                <option value="each">Each</option>
-                <option value="hour">Hour</option>
-                <option value="lump_sum">Lump Sum</option>
+                <option value="sf">{t('common:units.sf')}</option>
+                <option value="lf">{t('common:units.lf')}</option>
+                <option value="each">{t('common:units.each')}</option>
+                <option value="hour">{t('common:units.hour')}</option>
+                <option value="lump_sum">{t('common:units.lumpSum')}</option>
               </select>
             </div>
             <div className={styles.rateFields}>
               <div className={styles.modalField}>
-                <label>Good Rate *</label>
+                <label>{t('pricing:modal.goodRate')}</label>
                 <input
                   type="number"
                   step="0.01"
@@ -305,16 +307,16 @@ export default function PricingPage() {
               </div>
             </div>
             <div className={styles.modalField}>
-              <label>Description (optional)</label>
+              <label>{t('pricing:modal.description')}</label>
               <textarea
                 value={itemForm.description}
                 onChange={e => setItemForm(f => ({ ...f, description: e.target.value }))}
-                placeholder="Notes about this item..."
+                placeholder={t('pricing:modal.descriptionPlaceholder')}
               />
             </div>
             <div className={styles.modalActions}>
-              <button type="button" onClick={() => setShowAddItem(null)}>Cancel</button>
-              <button type="submit">Add Item</button>
+              <button type="button" onClick={() => setShowAddItem(null)}>{t('common:action.cancel')}</button>
+              <button type="submit">{t('pricing:actions.addItem')}</button>
             </div>
           </form>
         </Modal>

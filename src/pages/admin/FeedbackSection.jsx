@@ -1,4 +1,5 @@
 import { useState, useEffect, Fragment } from 'react'
+import { useTranslation } from 'react-i18next'
 import { MessageCircle } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
@@ -30,6 +31,7 @@ function typeVariant(value) {
 }
 
 export default function FeedbackSection() {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const { companies, users } = useAdminData()
   const { formatDateTime } = useDateFormat()
@@ -66,7 +68,7 @@ export default function FeedbackSection() {
       const { error } = await supabase.from('beta_feedback').update({ status: editStatus, admin_notes: editNotes }).eq('id', id)
       if (error) throw new Error(error.message)
       setItems(prev => prev.map(f => f.id === id ? { ...f, status: editStatus, admin_notes: editNotes } : f))
-    } catch (err) { alert('Failed: ' + err.message) }
+    } catch (err) { alert(t('admin:errors.failed', { message: err.message })) }
   }
 
   async function fetchResponses(feedbackId) {
@@ -139,7 +141,7 @@ export default function FeedbackSection() {
       ))
     } catch (err) {
       logError(err, { source: 'feedback-reply-send', severity: 'error' })
-      alert('Failed to send response: ' + err.message)
+      alert(t('admin:feedback.sendResponseFailed', { message: err.message }))
     } finally {
       setReplySending(false)
     }
@@ -149,44 +151,44 @@ export default function FeedbackSection() {
     .filter(f => statusFilter === 'all' || f.status === statusFilter)
     .filter(f => typeFilter === 'all' || f.type === typeFilter)
 
-  if (loading) return <div className={styles.empty}>Loading feedback…</div>
+  if (loading) return <div className={styles.empty}>{t('admin:feedback.loading')}</div>
 
   return (
     <div>
-      <h1 className={styles.pageTitle}>Beta Feedback <span className={styles.pill}>{items.length}</span></h1>
+      <h1 className={styles.pageTitle}>{t('admin:feedback.title')} <span className={styles.pill}>{items.length}</span></h1>
 
       <div className={styles.toolbar}>
         <select className={styles.filterSelect} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-          <option value="all">All statuses</option>
-          <option value="new">New</option>
-          <option value="reviewed">Reviewed</option>
-          <option value="in_progress">In Progress</option>
-          <option value="resolved">Resolved</option>
-          <option value="wontfix">Won't Fix</option>
+          <option value="all">{t('admin:feedback.allStatuses')}</option>
+          <option value="new">{t('admin:feedback.statusNew')}</option>
+          <option value="reviewed">{t('admin:feedback.statusReviewed')}</option>
+          <option value="in_progress">{t('admin:feedback.statusInProgress')}</option>
+          <option value="resolved">{t('admin:feedback.statusResolved')}</option>
+          <option value="wontfix">{t('admin:feedback.statusWontfix')}</option>
         </select>
         <select className={styles.filterSelect} value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
-          <option value="all">All types</option>
-          <option value="bug">Bug</option>
-          <option value="feature">Feature</option>
-          <option value="question">Question</option>
-          <option value="other">Other</option>
+          <option value="all">{t('admin:feedback.allTypes')}</option>
+          <option value="bug">{t('admin:feedback.typeBug')}</option>
+          <option value="feature">{t('admin:feedback.typeFeature')}</option>
+          <option value="question">{t('admin:feedback.typeQuestion')}</option>
+          <option value="other">{t('admin:feedback.typeOther')}</option>
         </select>
       </div>
 
       {filtered.length === 0 ? (
-        <p className={styles.empty}>No feedback found.</p>
+        <p className={styles.empty}>{t('admin:feedback.empty')}</p>
       ) : (
         <div className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>
               <tr>
-                <th className={styles.th}>Created</th>
-                <th className={styles.th}>Type</th>
-                <th className={styles.th}>User</th>
-                <th className={styles.th}>Company</th>
-                <th className={styles.th}>Description</th>
-                <th className={styles.th}>Status</th>
-                <th className={styles.th}>Replies</th>
+                <th className={styles.th}>{t('admin:feedback.colCreated')}</th>
+                <th className={styles.th}>{t('admin:feedback.colType')}</th>
+                <th className={styles.th}>{t('admin:feedback.colUser')}</th>
+                <th className={styles.th}>{t('admin:feedback.colCompany')}</th>
+                <th className={styles.th}>{t('admin:feedback.colDescription')}</th>
+                <th className={styles.th}>{t('admin:feedback.colStatus')}</th>
+                <th className={styles.th}>{t('admin:feedback.colReplies')}</th>
               </tr>
             </thead>
             <tbody>
@@ -221,22 +223,22 @@ export default function FeedbackSection() {
                         <td colSpan={7} className={styles.expandedCell}>
                           <div className={styles.expandedPanel}>
                             {/* Feedback details */}
-                            <div><strong>Full description:</strong> {fb.description}</div>
-                            <div><strong>Page URL:</strong> {fb.page_url}</div>
-                            {fb.screenshot_url && <div><strong>Screenshot:</strong> <a href={fb.screenshot_url} target="_blank" rel="noopener noreferrer">View</a></div>}
-                            <div><strong>User Agent:</strong> <span style={{ fontSize: 11 }}>{fb.user_agent}</span></div>
+                            <div><strong>{t('admin:feedback.fullDescription')}</strong> {fb.description}</div>
+                            <div><strong>{t('admin:feedback.pageUrl')}</strong> {fb.page_url}</div>
+                            {fb.screenshot_url && <div><strong>{t('admin:feedback.screenshot')}</strong> <a href={fb.screenshot_url} target="_blank" rel="noopener noreferrer">{t('admin:feedback.view')}</a></div>}
+                            <div><strong>{t('admin:feedback.userAgent')}</strong> <span style={{ fontSize: 11 }}>{fb.user_agent}</span></div>
 
                             {/* Conversation thread */}
                             <div style={{ marginTop: 16, borderTop: '1px solid var(--color-border)', paddingTop: 14 }}>
-                              <strong style={{ fontSize: 13 }}>Conversation</strong>
+                              <strong style={{ fontSize: 13 }}>{t('admin:feedback.conversation')}</strong>
                               {respLoading ? (
-                                <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 8 }}>Loading responses…</p>
+                                <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 8 }}>{t('admin:feedback.loadingResponses')}</p>
                               ) : responses.length === 0 ? (
-                                <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 8 }}>No responses yet.</p>
+                                <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 8 }}>{t('admin:feedback.noResponses')}</p>
                               ) : (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
                                   {responses.map(r => {
-                                    const responder = users.find(u => u.id === r.responder_user_id)?.email ?? 'Admin'
+                                    const responder = users.find(u => u.id === r.responder_user_id)?.email ?? t('admin:feedback.adminResponder')
                                     return (
                                       <div key={r.id} style={{
                                         padding: '10px 12px',
@@ -248,7 +250,7 @@ export default function FeedbackSection() {
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                                           <span style={{ fontWeight: 600, fontSize: 12 }}>
                                             {responder}
-                                            {r.is_internal && <span style={{ color: '#f59e0b', marginLeft: 6, fontWeight: 500 }}>(internal)</span>}
+                                            {r.is_internal && <span style={{ color: '#f59e0b', marginLeft: 6, fontWeight: 500 }}>{t('admin:feedback.internalTag')}</span>}
                                           </span>
                                           <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
                                             {formatDateTime(r.created_at)}
@@ -267,14 +269,14 @@ export default function FeedbackSection() {
                                   className={styles.formInput}
                                   value={replyBody}
                                   onChange={e => setReplyBody(e.target.value)}
-                                  placeholder="Reply to this feedback..."
+                                  placeholder={t('admin:feedback.replyPlaceholder')}
                                   rows={3}
                                   style={{ width: '100%', resize: 'vertical', fontFamily: 'inherit' }}
                                 />
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
                                   <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--color-text-muted)', cursor: 'pointer' }}>
                                     <input type="checkbox" checked={replyInternal} onChange={e => setReplyInternal(e.target.checked)} />
-                                    Internal note (not visible to user)
+                                    {t('admin:feedback.internalNote')}
                                   </label>
                                   <button
                                     className={styles.submitBtn}
@@ -282,7 +284,7 @@ export default function FeedbackSection() {
                                     disabled={replySending || !replyBody.trim()}
                                     style={{ marginLeft: 'auto' }}
                                   >
-                                    {replySending ? 'Sending…' : 'Send Response'}
+                                    {replySending ? t('admin:feedback.sending') : t('admin:feedback.sendResponse')}
                                   </button>
                                 </div>
                               </div>
@@ -291,20 +293,20 @@ export default function FeedbackSection() {
                             {/* Status + Admin Notes */}
                             <div style={{ marginTop: 14, display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap', borderTop: '1px solid var(--color-border)', paddingTop: 14 }} onClick={e => e.stopPropagation()}>
                               <div className={styles.formField} style={{ flex: '0 0 auto' }}>
-                                <label className={styles.formLabel}>Status</label>
+                                <label className={styles.formLabel}>{t('admin:feedback.statusLabel')}</label>
                                 <select className={styles.formSelect} value={editStatus} onChange={e => setEditStatus(e.target.value)}>
-                                  <option value="new">New</option>
-                                  <option value="reviewed">Reviewed</option>
-                                  <option value="in_progress">In Progress</option>
-                                  <option value="resolved">Resolved</option>
-                                  <option value="wontfix">Won't Fix</option>
+                                  <option value="new">{t('admin:feedback.statusNew')}</option>
+                                  <option value="reviewed">{t('admin:feedback.statusReviewed')}</option>
+                                  <option value="in_progress">{t('admin:feedback.statusInProgress')}</option>
+                                  <option value="resolved">{t('admin:feedback.statusResolved')}</option>
+                                  <option value="wontfix">{t('admin:feedback.statusWontfix')}</option>
                                 </select>
                               </div>
                               <div className={styles.formField} style={{ flex: 1 }}>
-                                <label className={styles.formLabel}>Admin Notes</label>
-                                <input className={styles.formInput} value={editNotes} onChange={e => setEditNotes(e.target.value)} placeholder="Internal notes…" />
+                                <label className={styles.formLabel}>{t('admin:feedback.adminNotes')}</label>
+                                <input className={styles.formInput} value={editNotes} onChange={e => setEditNotes(e.target.value)} placeholder={t('admin:feedback.adminNotesPlaceholder')} />
                               </div>
-                              <button className={styles.submitBtn} onClick={() => handleUpdate(fb.id)}>Save</button>
+                              <button className={styles.submitBtn} onClick={() => handleUpdate(fb.id)}>{t('common:action.save')}</button>
                             </div>
                           </div>
                         </td>

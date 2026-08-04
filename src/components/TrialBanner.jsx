@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 import { TRIAL_GRACE_DAYS, ONBOARDING_CALENDAR_URL } from '../lib/config'
 
 export default function TrialBanner() {
+  const { t } = useTranslation()
   const { company } = useAuth()
 
   if (!company) return null
@@ -28,15 +30,15 @@ export default function TrialBanner() {
     const msUntilLock = graceCutoff - now
     const daysUntilLock = Math.ceil(msUntilLock / (1000 * 60 * 60 * 24))
     const urgency = daysUntilLock <= 1
-      ? 'Full lock tomorrow'
-      : `Full lock in ${daysUntilLock} days`
+      ? t('common:trialBanner.fullLockTomorrow')
+      : t('common:trialBanner.fullLockDays', { count: daysUntilLock })
 
     return (
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, flexWrap: 'wrap',
         padding: '10px 16px', background: '#7c2d12', color: '#fff', fontSize: 13, fontWeight: 600,
       }}>
-        <span>Your trial has ended — subscribe to keep your account. {urgency}.</span>
+        <span>{t('common:trialBanner.trialEnded', { urgency })}</span>
         <Link
           to="/subscribe"
           style={{
@@ -44,7 +46,7 @@ export default function TrialBanner() {
             fontWeight: 700, fontSize: 13, textDecoration: 'none',
           }}
         >
-          Subscribe
+          {t('common:trialBanner.subscribe')}
         </Link>
         {ONBOARDING_CALENDAR_URL && (
           <a
@@ -65,7 +67,7 @@ export default function TrialBanner() {
 
   // Active trial
   const daysLeft = Math.ceil(msLeftTrial / (1000 * 60 * 60 * 24))
-  const label = daysLeft <= 1 ? 'Last day of your trial' : `${daysLeft} days left in your trial`
+  const label = daysLeft <= 1 ? t('common:trialBanner.trialLastDay') : t('common:trialBanner.trialDaysLeft', { count: daysLeft })
 
   return (
     <div style={{
@@ -81,7 +83,7 @@ export default function TrialBanner() {
             fontWeight: 600, fontSize: 13, textDecoration: 'none',
           }}
         >
-          Subscribe
+          {t('common:trialBanner.subscribe')}
         </Link>
       )}
       {ONBOARDING_CALENDAR_URL && (
@@ -95,7 +97,7 @@ export default function TrialBanner() {
             fontSize: 13,
           }}
         >
-          Book your onboarding call
+          {t('common:trialBanner.bookCall')}
         </a>
       )}
     </div>

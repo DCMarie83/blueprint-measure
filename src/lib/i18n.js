@@ -46,6 +46,11 @@ function resolveInitialLanguage() {
 }
 
 // Synchronous init with English only. Spanish is added on demand (setLanguage).
+// Each top-level key in en.json is an i18next namespace (common, auth, portal,
+// dashboard, ...). Derive the ns list from the file so a newly-added namespace
+// is registered automatically without editing this file.
+const NAMESPACES = Object.keys(en)
+
 i18n
   .use(initReactI18next)
   .init({
@@ -53,7 +58,7 @@ i18n
     lng: resolveInitialLanguage(),
     fallbackLng: 'en',
     defaultNS: 'common',
-    ns: ['common'],
+    ns: NAMESPACES,
     interpolation: { escapeValue: false },
     react: { useSuspense: false },
   })
@@ -89,7 +94,11 @@ export async function setLanguage(lang) {
   if (next === 'es' && !esLoaded) {
     try {
       const mod = await import('../locales/es.json')
-      i18n.addResourceBundle('es', 'common', (mod.default || mod).common, true, true)
+      const es = mod.default || mod
+      // Register every namespace present in the Spanish bundle.
+      for (const ns of Object.keys(es)) {
+        i18n.addResourceBundle('es', ns, es[ns], true, true)
+      }
       esLoaded = true
     } catch (err) {
       // Bundle fetch failed (offline, chunk error): stay on current language

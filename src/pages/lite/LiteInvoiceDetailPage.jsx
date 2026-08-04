@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ChevronLeft, Download, Send, CheckCircle, FileSpreadsheet, BellRing } from 'lucide-react'
 import InvoiceStatusBadge from '../../components/invoices/InvoiceStatusBadge'
 import { useInvoice, useInvoiceMutations, isOverdue } from '../../hooks/useInvoices'
@@ -17,11 +18,11 @@ import styles from './lite.module.css'
 // (cash/check/card/bank_transfer/other) — a deliberately shorter list than the
 // contractor surface.
 const PAY_METHODS = [
-  { value: 'cash', label: 'Cash' },
-  { value: 'check', label: 'Check' },
-  { value: 'card', label: 'Card' },
-  { value: 'bank_transfer', label: 'Bank transfer' },
-  { value: 'other', label: 'Other' },
+  { value: 'cash', label: 'lite:invoiceDetail.methodCash' },
+  { value: 'check', label: 'lite:invoiceDetail.methodCheck' },
+  { value: 'card', label: 'lite:invoiceDetail.methodCard' },
+  { value: 'bank_transfer', label: 'lite:invoiceDetail.methodBankTransfer' },
+  { value: 'other', label: 'lite:invoiceDetail.methodOther' },
 ]
 
 function fmtDate(d) {
@@ -34,15 +35,16 @@ function fmtDate(d) {
 const REMIND_THROTTLE_MS = 72 * 60 * 60 * 1000
 const REMINDABLE_STATUSES = ['sent', 'viewed', 'partial']
 
-function remindedLabel(ts) {
+function remindedLabel(ts, t) {
   const days = Math.floor((Date.now() - new Date(ts).getTime()) / 86400000)
-  if (days <= 0) return 'Reminded today'
-  return `Reminded ${days} day${days === 1 ? '' : 's'} ago`
+  if (days <= 0) return t('lite:invoiceDetail.remindedToday')
+  return t('lite:invoiceDetail.remindedDaysAgo', { count: days })
 }
 
 export default function LiteInvoiceDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const location = useLocation()
   // When arrived from Reports, location.state.backTo holds the exact /reports URL
   // (preset + custom range) so the back action returns with the range intact.
@@ -154,8 +156,8 @@ export default function LiteInvoiceDetailPage() {
   async function handleSend() {
     const email = gc?.primary_email
     if (!email) return
-    const name = gc.business_name || gc.display_name || 'this GC'
-    if (!window.confirm(`Email this invoice to ${name} <${email}>?`)) return
+    const name = gc.business_name || gc.display_name || t('lite:invoiceDetail.thisGc')
+    if (!window.confirm(t('lite:invoiceDetail.confirmSend', { name, email }))) return
     setBusy(true); setActionError(null); setSendOk(false)
     try {
       const companyData = await buildBranding()
@@ -163,7 +165,7 @@ export default function LiteInvoiceDetailPage() {
       const { error: fnErr } = await supabase.functions.invoke('send-lite-invoice-email', {
         body: { invoice_id: id, pdf_base64: pdfBase64 },
       })
-      if (fnErr) throw new Error(fnErr.message || 'Send failed')
+      if (fnErr) throw new Error(fnErr.message || t('common:action.sendFailed'))
       setSendOk(true)
       setTimeout(() => setSendOk(false), 3000)
       await refetch()
@@ -176,8 +178,8 @@ export default function LiteInvoiceDetailPage() {
   async function handleRemind() {
     const email = gc?.primary_email
     if (!email) return
-    const name = gc.business_name || gc.display_name || 'this GC'
-    if (!window.confirm(`Email a payment reminder to ${name} <${email}>?`)) return
+    const name = gc.business_name || gc.display_name || t('lite:invoiceDetail.thisGc')
+    if (!window.confirm(t('lite:invoiceDetail.confirmRemind', { name, email }))) return
     setBusy(true); setActionError(null); setRemindOk(false)
     try {
       const companyData = await buildBranding()
@@ -185,7 +187,7 @@ export default function LiteInvoiceDetailPage() {
       const { error: fnErr } = await supabase.functions.invoke('send-lite-invoice-email', {
         body: { invoice_id: id, pdf_base64: pdfBase64, mode: 'reminder' },
       })
-      if (fnErr) throw new Error(fnErr.message || 'Reminder failed')
+      if (fnErr) throw new Error(fnErr.message || t('lite:invoiceDetail.reminderFailed'))
       const { error: upErr } = await supabase
         .from('invoices')
         .update({ last_reminded_at: new Date().toISOString(), updated_at: new Date().toISOString() })
@@ -227,7 +229,7 @@ export default function LiteInvoiceDetailPage() {
     // the invoice status is recomputed (paid when the balance is cleared, partial
     // otherwise) — the same D54 payment path the contractor surface uses.
     const amt = payMode === 'full' ? balanceDue : Number(payAmount)
-    if (!amt || amt <= 0) { setActionError('Enter a payment amount.'); return }
+    if (!amt || amt <= 0) { setActionError(t('lite:invoiceDetail.enterPayAmount')); return }
     setBusy(true); setActionError(null)
     try {
       await recordPayment(id, { amount: amt, payment_method: payMethod, payment_date: null, reference_number: null, notes: payMode === 'full' ? 'Marked paid in full' : null })
@@ -237,8 +239,8 @@ export default function LiteInvoiceDetailPage() {
     finally { setBusy(false) }
   }
 
-  if (loading) return <div className={styles.page}><main className={styles.main}><div className={styles.loading}>Loading…</div></main></div>
-  if (error || !invoice) return <div className={styles.page}><main className={styles.main}><div className={styles.loading}>Invoice not found.</div></main></div>
+  if (loading) return <div className={styles.page}><main className={styles.main}><div className={styles.loading}>{t('common:misc.loading')}</div></main></div>
+  if (error || !invoice) return <div className={styles.page}><main className={styles.main}><div className={styles.loading}>{t('lite:invoiceDetail.notFound')}</div></main></div>
 
   const total = Number(invoice.total) || 0
   const paidAmount = Number(invoice.paid_amount) || 0
@@ -253,7 +255,7 @@ export default function LiteInvoiceDetailPage() {
   const remindEligible = REMINDABLE_STATUSES.includes(invoice.status)
   const remindedAt = invoice.last_reminded_at
   const remindThrottled = !!remindedAt && (Date.now() - new Date(remindedAt).getTime() < REMIND_THROTTLE_MS)
-  const remindStamp = remindedAt ? remindedLabel(remindedAt) : null
+  const remindStamp = remindedAt ? remindedLabel(remindedAt, t) : null
 
   // The GC's online response, if they've reviewed the invoice. Any value
   // starting with "approv" is an approval; anything else set means they asked
@@ -266,12 +268,12 @@ export default function LiteInvoiceDetailPage() {
     <div className={styles.page}>
       
       <main className={styles.main}>
-        <button className={styles.backLink} onClick={() => navigate(backTo || '/invoices')}><ChevronLeft size={15} /> {backTo ? 'Reports' : 'Invoices'}</button>
+        <button className={styles.backLink} onClick={() => navigate(backTo || '/invoices')}><ChevronLeft size={15} /> {backTo ? t('lite:invoiceDetail.reports') : t('lite:invoiceDetail.invoices')}</button>
 
         <div className={styles.header}>
           <div>
             <h1 className={styles.title}>{invoice.invoice_number}</h1>
-            <p className={styles.subtitle}>{gcName} · Issued {fmtDate(invoice.created_at)}{invoice.due_date ? ` · Due ${fmtDate(invoice.due_date)}` : ''}</p>
+            <p className={styles.subtitle}>{gcName} · {t('lite:invoiceDetail.issued', { date: fmtDate(invoice.created_at) })}{invoice.due_date ? ` · ${t('lite:invoiceDetail.due', { date: fmtDate(invoice.due_date) })}` : ''}</p>
           </div>
           <InvoiceStatusBadge status={invoice.status} isOverdue={overdue} />
         </div>
@@ -280,12 +282,16 @@ export default function LiteInvoiceDetailPage() {
         {gcApproval && (
           <div className={styles.card} style={{ borderLeft: `3px solid ${gcApproved ? 'var(--color-success)' : 'var(--color-warning, #b45309)'}` }}>
             <div className={styles.statLabel} style={{ color: gcApproved ? 'var(--color-success)' : 'var(--color-warning, #b45309)', marginBottom: 6 }}>
-              {gcApproved ? 'Approved by the GC' : 'Changes requested'}
+              {gcApproved ? t('lite:invoiceDetail.approvedByGc') : t('lite:invoiceDetail.changesRequested')}
             </div>
             <p className={styles.entryMeta} style={{ margin: 0 }}>
               {gcApproved
-                ? `${gcName} approved this invoice online${invoice.gc_responded_at ? ` on ${fmtDate(invoice.gc_responded_at)}` : ''}.`
-                : `${gcName} asked for changes${invoice.gc_responded_at ? ` on ${fmtDate(invoice.gc_responded_at)}` : ''}.`}
+                ? (invoice.gc_responded_at
+                    ? t('lite:invoiceDetail.approvedOnlineOn', { gcName, date: fmtDate(invoice.gc_responded_at) })
+                    : t('lite:invoiceDetail.approvedOnline', { gcName }))
+                : (invoice.gc_responded_at
+                    ? t('lite:invoiceDetail.changesOn', { gcName, date: fmtDate(invoice.gc_responded_at) })
+                    : t('lite:invoiceDetail.changes', { gcName }))}
             </p>
             {!gcApproved && gcComment && (
               <p className={styles.entryName} style={{ marginTop: 10, whiteSpace: 'pre-wrap' }}>{gcComment}</p>
@@ -296,30 +302,30 @@ export default function LiteInvoiceDetailPage() {
         {/* Actions */}
         <div className={styles.card}>
           <div className={styles.segmentChips} style={{ marginBottom: 0 }}>
-            <button className={styles.secondaryBtn} onClick={handleDownloadPDF} disabled={busy}><Download size={15} /> PDF</button>
-            <button className={styles.secondaryBtn} onClick={handleDownloadExcel} disabled={busy}><FileSpreadsheet size={15} /> Excel</button>
+            <button className={styles.secondaryBtn} onClick={handleDownloadPDF} disabled={busy}><Download size={15} /> {t('lite:invoiceDetail.pdf')}</button>
+            <button className={styles.secondaryBtn} onClick={handleDownloadExcel} disabled={busy}><FileSpreadsheet size={15} /> {t('lite:invoiceDetail.excel')}</button>
             {hasEmail ? (
               <button className={styles.primaryBtn} onClick={handleSend} disabled={busy}>
-                <Send size={15} /> {busy ? 'Working…' : invoice.status === 'draft' ? 'Send to GC' : 'Resend to GC'}
+                <Send size={15} /> {busy ? t('lite:invoiceDetail.working') : invoice.status === 'draft' ? t('lite:invoiceDetail.sendToGc') : t('lite:invoiceDetail.resendToGc')}
               </button>
             ) : (
-              <button className={styles.primaryBtn} disabled>Send to GC</button>
+              <button className={styles.primaryBtn} disabled>{t('lite:invoiceDetail.sendToGc')}</button>
             )}
             {canPay && (
-              <button className={styles.secondaryBtn} onClick={openPaySheet} disabled={busy}><CheckCircle size={15} /> Mark paid</button>
+              <button className={styles.secondaryBtn} onClick={openPaySheet} disabled={busy}><CheckCircle size={15} /> {t('lite:invoiceDetail.markPaid')}</button>
             )}
             {remindEligible && (
               <button className={styles.secondaryBtn} onClick={handleRemind} disabled={busy || remindThrottled || !hasEmail}>
-                <BellRing size={15} /> Remind GC
+                <BellRing size={15} /> {t('lite:invoiceDetail.remindGc')}
               </button>
             )}
           </div>
           {!hasEmail && (
-            <p className={styles.helper}>No email on file for this GC. <Link to="/gcs" className={styles.linkBtn}>Add an email for this GC</Link> to send.</p>
+            <p className={styles.helper}>{t('lite:invoiceDetail.noEmailOnFile')} <Link to="/gcs" className={styles.linkBtn}>{t('lite:invoiceDetail.addEmailLink')}</Link>{t('lite:invoiceDetail.toSend')}</p>
           )}
-          {remindEligible && remindStamp && <p className={styles.helper}>{remindStamp}{remindThrottled ? ' · you can remind again 72 hours after the last reminder' : ''}</p>}
-          {sendOk && <p className={styles.helper} style={{ color: 'var(--color-success)' }}>Sent to {gcName}.</p>}
-          {remindOk && <p className={styles.helper} style={{ color: 'var(--color-success)' }}>Reminder sent to {gcName}.</p>}
+          {remindEligible && remindStamp && <p className={styles.helper}>{remindStamp}{remindThrottled ? t('lite:invoiceDetail.throttleSuffix') : ''}</p>}
+          {sendOk && <p className={styles.helper} style={{ color: 'var(--color-success)' }}>{t('lite:invoiceDetail.sentTo', { gcName })}</p>}
+          {remindOk && <p className={styles.helper} style={{ color: 'var(--color-success)' }}>{t('lite:invoiceDetail.reminderSentTo', { gcName })}</p>}
           {actionError && <div className={styles.error} style={{ marginTop: 10, marginBottom: 0 }}>{actionError}</div>}
         </div>
 
@@ -329,11 +335,11 @@ export default function LiteInvoiceDetailPage() {
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th>Description</th>
-                  <th>Unit</th>
-                  <th style={{ textAlign: 'right' }}>Qty/Hrs</th>
-                  <th style={{ textAlign: 'right' }}>Rate</th>
-                  <th style={{ textAlign: 'right' }}>Amount</th>
+                  <th>{t('lite:invoiceDetail.colDescription')}</th>
+                  <th>{t('lite:invoiceDetail.colUnit')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('lite:invoiceDetail.colQtyHrs')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('lite:invoiceDetail.colRate')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('lite:invoiceDetail.amount')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -350,33 +356,33 @@ export default function LiteInvoiceDetailPage() {
             </table>
           </div>
 
-          <div className={styles.dayTotal}><span>Total</span><span>{fmtMoney(total)}</span></div>
+          <div className={styles.dayTotal}><span>{t('lite:invoiceDetail.total')}</span><span>{fmtMoney(total)}</span></div>
           {paidAmount > 0 && (
             <div className={styles.rowBetween} style={{ paddingTop: 8 }}>
-              <span className={styles.entryMeta}>Payments received</span>
+              <span className={styles.entryMeta}>{t('lite:invoiceDetail.paymentsReceived')}</span>
               <span className={styles.entryMeta} style={{ color: 'var(--color-success)' }}>−{fmtMoney(paidAmount)}</span>
             </div>
           )}
           {balanceDue > 0 ? (
             <div className={styles.rowBetween} style={{ paddingTop: 6 }}>
-              <span className={styles.entryName}>Balance due</span>
+              <span className={styles.entryName}>{t('lite:invoiceDetail.balanceDue')}</span>
               <span className={styles.entryAmount} style={{ color: 'var(--color-danger)' }}>{fmtMoney(balanceDue)}</span>
             </div>
           ) : total > 0 && invoice.status !== 'draft' ? (
             <div className={styles.rowBetween} style={{ paddingTop: 6 }}>
-              <span className={styles.entryName} style={{ color: 'var(--color-success)' }}>Paid in full</span>
+              <span className={styles.entryName} style={{ color: 'var(--color-success)' }}>{t('common:invoiceStatus.paid')}</span>
             </div>
           ) : null}
         </div>
 
         {payments.length > 0 && (
           <div className={styles.card}>
-            <div className={styles.statLabel} style={{ marginBottom: 8 }}>Payments</div>
+            <div className={styles.statLabel} style={{ marginBottom: 8 }}>{t('lite:invoiceDetail.payments')}</div>
             {payments.map(p => (
               <div key={p.id} className={styles.entryRow}>
                 <div className={styles.entryMain}>
                   <div className={styles.entryName}>{fmtMoney(p.amount)}</div>
-                  <div className={styles.entryMeta}>{p.payment_method || 'Payment'} · {fmtDate(p.payment_date)}</div>
+                  <div className={styles.entryMeta}>{p.payment_method || t('lite:invoiceDetail.payment')} · {fmtDate(p.payment_date)}</div>
                 </div>
               </div>
             ))}
@@ -387,23 +393,23 @@ export default function LiteInvoiceDetailPage() {
       {showPaySheet && (
         <>
           <div className={styles.sheetBackdrop} onClick={() => !busy && setShowPaySheet(false)} />
-          <div className={styles.sheet} role="dialog" aria-label="Mark paid">
-            <h2 className={styles.sheetTitle}>Mark paid</h2>
+          <div className={styles.sheet} role="dialog" aria-label={t('lite:invoiceDetail.markPaid')}>
+            <h2 className={styles.sheetTitle}>{t('lite:invoiceDetail.markPaid')}</h2>
             <div className={styles.modeToggle}>
-              <button className={payMode === 'full' ? styles.modeBtnActive : styles.modeBtn} onClick={() => { setPayMode('full'); setPayAmount(balanceDue.toFixed(2)) }}>Full</button>
-              <button className={payMode === 'partial' ? styles.modeBtnActive : styles.modeBtn} onClick={() => setPayMode('partial')}>Partial</button>
+              <button className={payMode === 'full' ? styles.modeBtnActive : styles.modeBtn} onClick={() => { setPayMode('full'); setPayAmount(balanceDue.toFixed(2)) }}>{t('lite:invoiceDetail.full')}</button>
+              <button className={payMode === 'partial' ? styles.modeBtnActive : styles.modeBtn} onClick={() => setPayMode('partial')}>{t('lite:invoiceDetail.partial')}</button>
             </div>
 
             <div className={styles.fieldRow}>
               <div className={styles.field}>
-                <span className={styles.fieldLabel}>Amount</span>
+                <span className={styles.fieldLabel}>{t('lite:invoiceDetail.amount')}</span>
                 <input className={styles.input} type="number" step="0.01" min="0" value={payAmount}
                   onChange={e => setPayAmount(e.target.value)} disabled={payMode === 'full'} />
               </div>
               <div className={styles.field}>
-                <span className={styles.fieldLabel}>Method</span>
+                <span className={styles.fieldLabel}>{t('lite:invoiceDetail.method')}</span>
                 <select className={styles.select} value={payMethod} onChange={e => setPayMethod(e.target.value)}>
-                  {PAY_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                  {PAY_METHODS.map(m => <option key={m.value} value={m.value}>{t(m.label)}</option>)}
                 </select>
               </div>
             </div>
@@ -411,8 +417,8 @@ export default function LiteInvoiceDetailPage() {
             {actionError && <div className={styles.error}>{actionError}</div>}
 
             <div className={styles.sheetActions}>
-              <button className={styles.secondaryBtn} onClick={() => setShowPaySheet(false)} disabled={busy}>Cancel</button>
-              <button className={styles.primaryBtn} onClick={handleConfirmPaid} disabled={busy}>{busy ? 'Saving…' : 'Confirm'}</button>
+              <button className={styles.secondaryBtn} onClick={() => setShowPaySheet(false)} disabled={busy}>{t('common:action.cancel')}</button>
+              <button className={styles.primaryBtn} onClick={handleConfirmPaid} disabled={busy}>{busy ? t('lite:invoiceDetail.saving') : t('common:action.confirm')}</button>
             </div>
           </div>
         </>

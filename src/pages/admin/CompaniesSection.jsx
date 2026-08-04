@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ChevronRight } from 'lucide-react'
 import Modal from '../../components/ui/Modal'
 import EnterAccountModal from '../../components/admin/EnterAccountModal'
@@ -23,8 +24,9 @@ function formatStorageMb(mb) {
 }
 
 function CompanyPlanBadge({ company }) {
+  const { t } = useTranslation()
   const plan = useCompanyPlan(company)
-  return <span>{plan?.display_name ?? company.plan ?? 'Legacy'}</span>
+  return <span>{plan?.display_name ?? company.plan ?? t('admin:companies.legacy')}</span>
 }
 
 function CompanySeatDisplay({ company, companyUsers }) {
@@ -36,11 +38,12 @@ function CompanySeatDisplay({ company, companyUsers }) {
 }
 
 function CompanyStorageCell({ company, companyStorage, storageLoading, fetchStorage }) {
+  const { t } = useTranslation()
   const plan = useCompanyPlan(company)
   const limitMb = plan?.unlimited ? null : (plan?.max_storage_gb ?? GRANDFATHER_DEFAULTS.max_storage_gb) * 1024
   const stor = companyStorage[company.id]
 
-  if (!stor && !storageLoading[company.id]) return <button className={styles.iconBtn} onClick={() => fetchStorage(company.id)}>Load</button>
+  if (!stor && !storageLoading[company.id]) return <button className={styles.iconBtn} onClick={() => fetchStorage(company.id)}>{t('admin:companies.load')}</button>
   if (storageLoading[company.id]) return <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>…</span>
   const usedDisplay = formatStorageMb(stor.totalBytes / (1024 * 1024))
   const limitDisplay = limitMb != null ? formatStorageMb(limitMb) : '∞'
@@ -61,6 +64,7 @@ export default function CompaniesSection() {
   } = useAdminData()
 
   const location = useLocation()
+  const { t } = useTranslation()
 
   const [search, setSearch] = useState('')
   const [planFilter, setPlanFilter] = useState('all')
@@ -159,18 +163,18 @@ export default function CompaniesSection() {
       if (error) throw new Error(error.message)
       setCompanies(prev => prev.map(c => c.id === id ? { ...c, name: trimmed } : c))
       setEditingNameId(null)
-    } catch (err) { alert('Failed: ' + err.message) } finally { setSavingNameId(null) }
+    } catch (err) { alert(t('admin:errors.failed', { message: err.message })) } finally { setSavingNameId(null) }
   }
 
   async function handleDelete(company) {
-    if (!window.confirm(`Delete ${company.name}?\n\nUser accounts will not be deleted.`)) return
+    if (!window.confirm(t('admin:companies.deleteConfirm', { name: company.name }))) return
     setDeletingId(company.id)
     try {
       const { error } = await supabase.from('companies').delete().eq('id', company.id)
       if (error) throw new Error(error.message)
       setCompanies(prev => prev.filter(c => c.id !== company.id))
       setUserProfiles(prev => prev.map(p => p.company_id === company.id ? { ...p, company_id: null } : p))
-    } catch (err) { alert('Failed: ' + err.message) } finally { setDeletingId(null) }
+    } catch (err) { alert(t('admin:errors.failed', { message: err.message })) } finally { setDeletingId(null) }
   }
 
   async function fetchStorage(companyId) {
@@ -195,14 +199,14 @@ export default function CompaniesSection() {
   async function handleSaveSeat(companyId) {
     const val = editingSeatVal.trim()
     const override = val === '' ? null : parseInt(val, 10)
-    if (val !== '' && (isNaN(override) || override < 1)) { alert('Must be positive number or empty.'); return }
+    if (val !== '' && (isNaN(override) || override < 1)) { alert(t('admin:companies.seatInvalid')); return }
     setSavingSeatId(companyId)
     try {
       const { error } = await supabase.from('companies').update({ seat_limit_override: override }).eq('id', companyId)
       if (error) throw new Error(error.message)
       setCompanies(prev => prev.map(c => c.id === companyId ? { ...c, seat_limit_override: override } : c))
       setEditingSeatId(null)
-    } catch (err) { alert('Failed: ' + err.message) } finally { setSavingSeatId(null) }
+    } catch (err) { alert(t('admin:errors.failed', { message: err.message })) } finally { setSavingSeatId(null) }
   }
 
   async function handleSaveStatus(companyId, newStatus) {
@@ -212,7 +216,7 @@ export default function CompaniesSection() {
       if (error) throw new Error(error.message)
       setCompanies(prev => prev.map(c => c.id === companyId ? { ...c, subscription_status: newStatus, subscription_status_changed_at: new Date().toISOString() } : c))
       setEditingStatusId(null)
-    } catch (err) { alert('Failed: ' + err.message) } finally { setSavingStatusId(null) }
+    } catch (err) { alert(t('admin:errors.failed', { message: err.message })) } finally { setSavingStatusId(null) }
   }
 
   async function handleToggleInternal(company) {
@@ -225,7 +229,7 @@ export default function CompaniesSection() {
       if (error) throw new Error(error.message)
       if (data?.error) throw new Error(data.error)
       setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, is_internal: next } : c))
-    } catch (err) { alert('Failed: ' + err.message) } finally { setTogglingInternalId(null) }
+    } catch (err) { alert(t('admin:errors.failed', { message: err.message })) } finally { setTogglingInternalId(null) }
   }
 
   // Drawer open — also lazy-load zone counts
@@ -256,32 +260,32 @@ export default function CompaniesSection() {
 
   return (
     <div>
-      <h1 className={styles.pageTitle}>Companies <span className={styles.pill}>{companies.length}</span></h1>
+      <h1 className={styles.pageTitle}>{t('admin:companies.title')} <span className={styles.pill}>{companies.length}</span></h1>
 
       <div className={styles.toolbar}>
-        <input className={styles.searchInput} placeholder="Search companies…" value={search} onChange={e => { setSearch(e.target.value); setPage(0) }} />
+        <input className={styles.searchInput} placeholder={t('admin:companies.searchPlaceholder')} value={search} onChange={e => { setSearch(e.target.value); setPage(0) }} />
         <select className={styles.filterSelect} value={planFilter} onChange={e => { setPlanFilter(e.target.value); setPage(0) }}>
-          <option value="all">All Plans</option>
+          <option value="all">{t('admin:companies.allPlans')}</option>
           {planKeys.map(k => <option key={k} value={k}>{k}</option>)}
         </select>
         <select className={styles.filterSelect} value={stateFilter} onChange={e => { setStateFilter(e.target.value); setPage(0) }}>
-          <option value="all">All States</option>
+          <option value="all">{t('admin:companies.allStates')}</option>
           {US_STATES.map(s => <option key={s.code} value={s.code}>{s.name}</option>)}
         </select>
         <select className={styles.filterSelect} value={sortBy} onChange={e => setSortBy(e.target.value)}>
-          <option value="created">Created Date</option>
-          <option value="name">Name A-Z</option>
-          <option value="plan">Plan</option>
-          <option value="state">State</option>
+          <option value="created">{t('admin:companies.sortCreated')}</option>
+          <option value="name">{t('admin:companies.sortName')}</option>
+          <option value="plan">{t('admin:companies.sortPlan')}</option>
+          <option value="state">{t('admin:companies.sortState')}</option>
         </select>
         <button className={styles.addBtn} onClick={() => { setShowAdd(v => !v); setAddError('') }}>
-          {showAdd ? 'Cancel' : '+ New Company'}
+          {showAdd ? t('common:action.cancel') : t('admin:companies.newCompany')}
         </button>
       </div>
 
       {stateFilterCount !== null && (
         <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 12 }}>
-          <strong>{stateFilterLabel}</strong>: {stateFilterCount} real {stateFilterCount === 1 ? 'signup' : 'signups'} (excludes internal)
+          <strong>{stateFilterLabel}</strong>: {t('admin:companies.realSignups', { count: stateFilterCount })}
         </div>
       )}
 
@@ -289,31 +293,31 @@ export default function CompaniesSection() {
         <form className={styles.form} onSubmit={handleAdd}>
           <div className={styles.formGrid}>
             <div className={styles.formField}>
-              <label className={styles.formLabel}>Company Name</label>
-              <input className={styles.formInput} value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Coastal Coat & Paint" required />
+              <label className={styles.formLabel}>{t('admin:companies.companyName')}</label>
+              <input className={styles.formInput} value={newName} onChange={e => setNewName(e.target.value)} placeholder={t('admin:companies.companyNamePlaceholder')} required />
             </div>
           </div>
           {addError && <p className={styles.fieldError}>{addError}</p>}
           <div className={styles.formActions}>
-            <button type="submit" className={styles.submitBtn} disabled={saving}>{saving ? 'Creating…' : 'Create Company'}</button>
+            <button type="submit" className={styles.submitBtn} disabled={saving}>{saving ? t('admin:companies.creating') : t('admin:companies.createCompany')}</button>
           </div>
         </form>
       )}
 
       {paged.length === 0 ? (
-        <p className={styles.empty}>{search || planFilter !== 'all' ? 'No companies match your filters.' : 'No companies yet.'}</p>
+        <p className={styles.empty}>{search || planFilter !== 'all' ? t('admin:companies.emptyFiltered') : t('admin:companies.emptyNone')}</p>
       ) : (
         <div className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>
               <tr>
-                <th className={styles.th}>Company</th>
-                <th className={styles.th}>State</th>
-                <th className={styles.th}>Plan</th>
-                <th className={styles.th}>Status</th>
-                <th className={styles.th}>Seats</th>
-                <th className={styles.th}>Storage</th>
-                <th className={styles.th}>Usage / Month</th>
+                <th className={styles.th}>{t('admin:companies.colCompany')}</th>
+                <th className={styles.th}>{t('admin:companies.colState')}</th>
+                <th className={styles.th}>{t('admin:companies.colPlan')}</th>
+                <th className={styles.th}>{t('admin:companies.colStatus')}</th>
+                <th className={styles.th}>{t('admin:companies.colSeats')}</th>
+                <th className={styles.th}>{t('admin:companies.colStorage')}</th>
+                <th className={styles.th}>{t('admin:companies.colUsage')}</th>
                 <th className={styles.th}></th>
                 <th className={styles.th} style={{ width: 30 }}></th>
               </tr>
@@ -330,24 +334,24 @@ export default function CompaniesSection() {
                           <div className={styles.inlineEdit}>
                             <input className={styles.inlineInput} value={editingNameVal} onChange={e => setEditingNameVal(e.target.value)} autoFocus
                               onKeyDown={e => { if (e.key === 'Enter') handleSaveName(company.id); if (e.key === 'Escape') setEditingNameId(null) }} />
-                            <button className={styles.inlineSaveBtn} onClick={() => handleSaveName(company.id)} disabled={savingNameId === company.id}>{savingNameId === company.id ? '…' : 'Save'}</button>
+                            <button className={styles.inlineSaveBtn} onClick={() => handleSaveName(company.id)} disabled={savingNameId === company.id}>{savingNameId === company.id ? '…' : t('common:action.save')}</button>
                             <button className={styles.inlineCancelBtn} onClick={() => setEditingNameId(null)}>✕</button>
                           </div>
                         ) : (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                             <span style={{ fontWeight: 600 }}>{company.name}</span>
-                            <button className={styles.iconBtn} onClick={() => { setEditingNameId(company.id); setEditingNameVal(company.name) }} title="Edit">✎</button>
+                            <button className={styles.iconBtn} onClick={() => { setEditingNameId(company.id); setEditingNameVal(company.name) }} title={t('common:action.edit')}>✎</button>
                             {company.wants_branding_quote && (
-                              <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4, background: 'rgba(242,114,67,0.12)', color: 'var(--color-primary)' }}>Branding lead</span>
+                              <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4, background: 'rgba(242,114,67,0.12)', color: 'var(--color-primary)' }}>{t('admin:companies.brandingLead')}</span>
                             )}
                             {company.is_internal && (
-                              <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4, background: 'rgba(139,92,246,0.15)', color: '#8b5cf6' }}>Internal</span>
+                              <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4, background: 'rgba(139,92,246,0.15)', color: '#8b5cf6' }}>{t('admin:companies.internalBadge')}</span>
                             )}
                             <button
                               className={styles.iconBtn}
                               onClick={() => handleToggleInternal(company)}
                               disabled={togglingInternalId === company.id}
-                              title={company.is_internal ? 'Unmark internal' : 'Mark as internal'}
+                              title={company.is_internal ? t('admin:companies.unmarkInternal') : t('admin:companies.markInternal')}
                               style={{ fontSize: 11 }}
                             >
                               {togglingInternalId === company.id ? '…' : company.is_internal ? '⊘' : '⊙'}
@@ -379,15 +383,15 @@ export default function CompaniesSection() {
                           <span className={styles.badge} style={{ fontSize: 11 }}>
                             {company.subscription_status ?? 'active'}
                             {company.subscription_status === 'trialing' && !company.recurly_subscription_id && (
-                              <span style={{ fontWeight: 400, opacity: 0.7 }}> (no card)</span>
+                              <span style={{ fontWeight: 400, opacity: 0.7 }}>{t('admin:companies.noCard')}</span>
                             )}
                           </span>
-                          <button className={styles.iconBtn} onClick={() => setEditingStatusId(company.id)} title="Change status">✎</button>
+                          <button className={styles.iconBtn} onClick={() => setEditingStatusId(company.id)} title={t('admin:companies.changeStatus')}>✎</button>
                           {company.subscription_status === 'trialing' && company.trial_ends_at && (() => {
                             const msLeft = new Date(company.trial_ends_at).getTime() - Date.now()
-                            if (msLeft <= 0) return <span style={{ fontSize: 10, color: 'var(--color-danger)', fontWeight: 600 }}>Expired</span>
+                            if (msLeft <= 0) return <span style={{ fontSize: 10, color: 'var(--color-danger)', fontWeight: 600 }}>{t('admin:companies.expired')}</span>
                             const d = Math.ceil(msLeft / (1000 * 60 * 60 * 24))
-                            return <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>{d}d left</span>
+                            return <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>{t('admin:companies.daysLeft', { days: d })}</span>
                           })()}
                         </div>
                       )}
@@ -398,13 +402,13 @@ export default function CompaniesSection() {
                           <input type="number" min="1" className={styles.inlineInput} style={{ width: 50 }} value={editingSeatVal} onChange={e => setEditingSeatVal(e.target.value)} autoFocus
                             onKeyDown={e => { if (e.key === 'Enter') handleSaveSeat(company.id); if (e.key === 'Escape') setEditingSeatId(null) }}
                             placeholder="2" />
-                          <button className={styles.inlineSaveBtn} onClick={() => handleSaveSeat(company.id)} disabled={savingSeatId === company.id}>Save</button>
+                          <button className={styles.inlineSaveBtn} onClick={() => handleSaveSeat(company.id)} disabled={savingSeatId === company.id}>{t('common:action.save')}</button>
                           <button className={styles.inlineCancelBtn} onClick={() => setEditingSeatId(null)}>✕</button>
                         </div>
                       ) : (
                         <div className={styles.usageCell}>
                           <CompanySeatDisplay company={company} companyUsers={companyUsers} />
-                          <span className={styles.seatBadge}>{company.seat_limit_override != null ? '(custom)' : '(default)'}</span>
+                          <span className={styles.seatBadge}>{company.seat_limit_override != null ? t('admin:companies.custom') : t('admin:companies.default')}</span>
                           <button className={styles.iconBtn} onClick={() => { setEditingSeatId(company.id); setEditingSeatVal(company.seat_limit_override != null ? String(company.seat_limit_override) : '') }}>✎</button>
                         </div>
                       )}
@@ -415,16 +419,16 @@ export default function CompaniesSection() {
                     <td className={styles.td}>
                       <div className={styles.usageCell}>
                         <span className={styles.usageCount}>{sessionsThisMonthFor(company.id)} / {company.blueprint_limit ?? '∞'}</span>
-                        <span className={styles.usageLabel}>this month</span>
+                        <span className={styles.usageLabel}>{t('admin:companies.thisMonth')}</span>
                       </div>
                     </td>
                     <td className={styles.td} data-no-expand>
                       <div className={styles.rowActions}>
                         <button className={styles.secondaryBtn} onClick={() => setEnterAccountTarget(company)}>
-                          Enter
+                          {t('admin:companies.enter')}
                         </button>
                         <button className={styles.deleteBtn} onClick={() => handleDelete(company)} disabled={deletingId === company.id}>
-                          {deletingId === company.id ? '…' : 'Delete'}
+                          {deletingId === company.id ? '…' : t('common:action.delete')}
                         </button>
                       </div>
                     </td>
@@ -462,7 +466,7 @@ export default function CompaniesSection() {
 
       {/* Enter account modal */}
       {enterAccountTarget && (
-        <Modal title="Enter Account" onClose={() => setEnterAccountTarget(null)}>
+        <Modal title={t('admin:impersonation.enterAccount')} onClose={() => setEnterAccountTarget(null)}>
           <EnterAccountModal
             companyName={enterAccountTarget.name}
             onCancel={() => setEnterAccountTarget(null)}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useProject } from '../hooks/useProject'
@@ -26,20 +27,21 @@ import { trackMaterials } from '../lib/analytics'
 import SmartBadge from '../components/smartbid/SmartBadge'
 import styles from './DashboardPage.module.css'
 
-function timeAgo(dateStr) {
+function timeAgo(dateStr, t) {
   if (!dateStr) return ''
   const diff = Date.now() - new Date(dateStr).getTime()
   const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
+  if (mins < 1) return t('jobs:time.justNow')
+  if (mins < 60) return t('jobs:time.minsAgo', { count: mins })
   const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
+  if (hrs < 24) return t('jobs:time.hoursAgo', { count: hrs })
   const days = Math.floor(hrs / 24)
-  if (days < 7) return `${days}d ago`
+  if (days < 7) return t('jobs:time.daysAgo', { count: days })
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 export default function ProjectDetailPage() {
+  const { t } = useTranslation()
   const { projectId } = useParams()
   const navigate = useNavigate()
   const { user, userProfile, isSuperAdmin } = useAuth()
@@ -159,8 +161,8 @@ export default function ProjectDetailPage() {
       <div className={styles.page}>
         
         <main className={styles.main}>
-          <BackLink to="/jobs" label="Jobs" />
-          <p className={styles.empty}>Job not found.</p>
+          <BackLink to="/jobs" label={t('jobs:page.title')} />
+          <p className={styles.empty}>{t('jobs:errors.notFound')}</p>
         </main>
       </div>
     )
@@ -173,14 +175,14 @@ export default function ProjectDetailPage() {
       
 
       <main className={styles.main}>
-        <BackLink to="/jobs" label="Jobs" />
+        <BackLink to="/jobs" label={t('jobs:page.title')} />
 
         {/* Inline-editable project header */}
-        <div style={{ color: 'var(--color-text-muted)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>Job Overview</div>
+        <div style={{ color: 'var(--color-text-muted)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>{t('jobs:overview.eyebrow')}</div>
         <div style={{ marginBottom: 32 }}>
           <InlineField
             value={project.name}
-            placeholder="Job name"
+            placeholder={t('jobs:overview.namePlaceholder')}
             editField={editField}
             fieldName="name"
             editValue={editValue}
@@ -198,14 +200,14 @@ export default function ProjectDetailPage() {
               <>
                 {project.client_name && (
                   <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', marginBottom: 8 }}>
-                    Client: {project.client_name} <span style={{ fontSize: 12, opacity: 0.6 }}>(legacy)</span>
+                    {t('jobs:overview.clientLabel')} {project.client_name} <span style={{ fontSize: 12, opacity: 0.6 }}>{t('jobs:overview.legacy')}</span>
                   </div>
                 )}
                 <button
                   onClick={() => { setShowLinkModal(true); setLinkTab('existing'); setModalClientId(null) }}
                   style={{ fontSize: 13, background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '6px 14px', color: 'var(--color-primary)', cursor: 'pointer' }}
                 >
-                  + Link Client
+                  {t('jobs:overview.linkClient')}
                 </button>
               </>
             )}
@@ -213,7 +215,7 @@ export default function ProjectDetailPage() {
           <div style={{ marginTop: 2 }}>
             <InlineField
               value={project.address}
-              placeholder="Add address"
+              placeholder={t('jobs:overview.addressPlaceholder')}
               editField={editField}
               fieldName="address"
               editValue={editValue}
@@ -229,7 +231,7 @@ export default function ProjectDetailPage() {
           {/* Schedule fields */}
           <div style={{ display: 'flex', gap: 16, marginTop: 10, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 11, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Start Date</label>
+              <label style={{ fontSize: 11, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('jobs:schedule.startDate')}</label>
               <input
                 type="date"
                 value={project.scheduled_start ? project.scheduled_start.slice(0, 10) : ''}
@@ -244,7 +246,7 @@ export default function ProjectDetailPage() {
               />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 11, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Est. Completion</label>
+              <label style={{ fontSize: 11, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('jobs:schedule.estCompletion')}</label>
               <input
                 type="date"
                 value={project.estimated_completion ? project.estimated_completion.slice(0, 10) : ''}
@@ -282,7 +284,7 @@ export default function ProjectDetailPage() {
         {/* Blueprints section */}
         <section className={styles.dashSection}>
           <div className={styles.dashSectionHeader}>
-            <h2 className={styles.dashSectionTitle}>Blueprints ({sessions.length})</h2>
+            <h2 className={styles.dashSectionTitle}>{t('jobs:blueprints.title', { count: sessions.length })}</h2>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               {sessions.length > 1 && (
                 <select
@@ -290,24 +292,24 @@ export default function ProjectDetailPage() {
                   onChange={e => setBpSort(e.target.value)}
                   style={{ padding: '5px 10px', fontSize: 12, border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', background: 'var(--color-bg)', color: 'var(--color-text)', outline: 'none' }}
                 >
-                  <option value="updated_desc">Last edited (newest)</option>
-                  <option value="updated_asc">Last edited (oldest)</option>
-                  <option value="created_desc">Created (newest)</option>
-                  <option value="created_asc">Created (oldest)</option>
-                  <option value="name_asc">Name A→Z</option>
-                  <option value="name_desc">Name Z→A</option>
+                  <option value="updated_desc">{t('jobs:blueprints.sort.updatedDesc')}</option>
+                  <option value="updated_asc">{t('jobs:blueprints.sort.updatedAsc')}</option>
+                  <option value="created_desc">{t('jobs:blueprints.sort.createdDesc')}</option>
+                  <option value="created_asc">{t('jobs:blueprints.sort.createdAsc')}</option>
+                  <option value="name_asc">{t('jobs:blueprints.sort.nameAsc')}</option>
+                  <option value="name_desc">{t('jobs:blueprints.sort.nameDesc')}</option>
                 </select>
               )}
               <button className={styles.quickBtn} style={{ padding: '8px 16px', fontSize: 13 }} onClick={() => setShowAddBlueprint(true)}>
-                + Add Blueprint
+                {t('jobs:blueprints.add')}
               </button>
             </div>
           </div>
 
           {sessions.length === 0 ? (
             <div className={styles.emptyState}>
-              <h2>No bones in the yard yet.</h2>
-              <p>Drop files above or add your first blueprint to start measuring.</p>
+              <h2>{t('jobs:blueprints.emptyTitle')}</h2>
+              <p>{t('jobs:blueprints.emptyBody')}</p>
             </div>
           ) : (
             <div className={styles.grid}>
@@ -345,27 +347,27 @@ export default function ProjectDetailPage() {
                         <button
                           onClick={e => { e.stopPropagation(); setRenamingSessionId(session.id); setRenameValue(session.project_name || '') }}
                           style={{ fontSize: 13, background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '0 2px', opacity: 0.6 }}
-                          title="Rename blueprint"
+                          title={t('jobs:blueprints.renameTitle')}
                         >
                           &#9998;
                         </button>
                       </div>
                     )}
                     <div className={styles.cardMeta}>
-                      <span>{timeAgo(session.updated_at ?? session.created_at)}</span>
+                      <span>{timeAgo(session.updated_at ?? session.created_at, t)}</span>
                       {session.blueprint_url ? (
-                        <span>Blueprint uploaded</span>
+                        <span>{t('jobs:blueprints.uploaded')}</span>
                       ) : (
-                        <span style={{ color: '#f59e0b' }}>No file uploaded</span>
+                        <span style={{ color: '#f59e0b' }}>{t('jobs:blueprints.noFile')}</span>
                       )}
                     </div>
                   </div>
                   <div className={styles.cardActions}>
                     <button className={styles.openBtn} onClick={() => navigate(`/session/${session.id}`)}>
-                      Open
+                      {t('jobs:blueprints.open')}
                     </button>
                     <button className={styles.deleteBtn} onClick={() => setDeleteConfirm(session.id)}>
-                      Delete
+                      {t('common:action.delete')}
                     </button>
                   </div>
                 </div>
@@ -377,7 +379,7 @@ export default function ProjectDetailPage() {
         {/* Materials Orders */}
         <section style={{ marginBottom: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <h3 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 'var(--tracking-caps)', color: 'var(--color-text-muted)', margin: 0 }}>Materials ({materialOrders.length})</h3>
+            <h3 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 'var(--tracking-caps)', color: 'var(--color-text-muted)', margin: 0 }}>{t('jobs:materials.title', { count: materialOrders.length })}</h3>
             {isAdmin && (
               <button
                 onClick={async () => {
@@ -390,17 +392,17 @@ export default function ProjectDetailPage() {
                     })
                     navigate(`/materials/${order.id}`)
                   } catch (err) {
-                    alert('Failed to create materials order: ' + err.message)
+                    alert(t('jobs:materials.createFailed', { error: err.message }))
                   }
                 }}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'var(--color-primary)', color: 'var(--color-on-primary, #fff)', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
               >
-                + New Materials Order
+                {t('jobs:materials.newOrder')}
               </button>
             )}
           </div>
           {materialOrders.length === 0 ? (
-            <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>No materials orders yet. Create one, then seed it from this job's measurements or rebuild it from a linked estimate.</p>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>{t('jobs:materials.empty')}</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {materialOrders.map(order => {
@@ -423,7 +425,7 @@ export default function ProjectDetailPage() {
                           const next = editingTitle.trim()
                           if (next && next !== (order.title || '')) {
                             try { await updateMaterialOrder(order.id, { title: next }) }
-                            catch (err) { alert('Failed to rename: ' + err.message) }
+                            catch (err) { alert(t('jobs:materials.renameFailed', { error: err.message })) }
                           }
                           setEditingOrderId(null)
                           setEditingTitle('')
@@ -435,7 +437,7 @@ export default function ProjectDetailPage() {
                         onClick={() => navigate(`/materials/${order.id}`)}
                         style={{ flex: 1, textAlign: 'left', fontWeight: 600, fontSize: 14, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--color-text, #1b2426)' }}
                       >
-                        {order.title || 'Untitled order'}
+                        {order.title || t('jobs:materials.untitled')}
                       </button>
                     )}
                     <span style={{ fontSize: 12, padding: '2px 8px', borderRadius: 9999, background: 'var(--color-surface-2)', color: 'var(--color-text-muted)', textTransform: 'capitalize', whiteSpace: 'nowrap' }}>{order.status}</span>
@@ -445,18 +447,18 @@ export default function ProjectDetailPage() {
                           onClick={() => { setEditingOrderId(order.id); setEditingTitle(order.title || '') }}
                           style={{ fontSize: 12, background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '4px 6px' }}
                         >
-                          Rename
+                          {t('jobs:materials.rename')}
                         </button>
                         <button
                           onClick={async () => {
-                            if (window.confirm('Delete this materials order? This cannot be undone.')) {
+                            if (window.confirm(t('jobs:materials.deleteConfirm'))) {
                               try { await deleteMaterialOrder(order.id) }
-                              catch (err) { alert('Failed to delete: ' + err.message) }
+                              catch (err) { alert(t('jobs:materials.deleteFailed', { error: err.message })) }
                             }
                           }}
                           style={{ fontSize: 12, background: 'none', border: 'none', color: 'var(--color-danger, #dc2626)', cursor: 'pointer', padding: '4px 6px' }}
                         >
-                          Delete
+                          {t('common:action.delete')}
                         </button>
                       </>
                     )}
@@ -473,19 +475,19 @@ export default function ProjectDetailPage() {
         {/* Estimates */}
         <section style={{ marginBottom: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <h3 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 'var(--tracking-caps)', color: 'var(--color-text-muted)', margin: 0 }}>Estimates ({estimates.length})</h3>
+            <h3 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 'var(--tracking-caps)', color: 'var(--color-text-muted)', margin: 0 }}>{t('jobs:estimates.title', { count: estimates.length })}</h3>
             {isAdmin && (
               <button
                 onClick={() => setShowEstimateFork(true)}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'var(--color-primary)', color: 'var(--color-on-primary, #fff)', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
               >
-                + Generate Estimate
+                {t('jobs:estimates.generate')}
               </button>
             )}
           </div>
 
           {showEstimateFork && (
-            <Modal title="New Estimate" onClose={() => setShowEstimateFork(false)}>
+            <Modal title={t('jobs:estimates.newModalTitle')} onClose={() => setShowEstimateFork(false)}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, padding: 8, maxWidth: 560 }}>
                 <button
                   onClick={() => {
@@ -495,12 +497,12 @@ export default function ProjectDetailPage() {
                     navigate(`/projects/${projectId}/smart-bid`)
                   }}
                   disabled={!hasMeasuredZones}
-                  title={hasMeasuredZones ? '' : 'Measure this job first'}
+                  title={hasMeasuredZones ? '' : t('jobs:estimates.measureFirst')}
                   style={{ textAlign: 'left', padding: 16, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)', cursor: hasMeasuredZones ? 'pointer' : 'not-allowed', opacity: hasMeasuredZones ? 1 : 0.55 }}
                 >
-                  <div style={{ fontWeight: 700, marginBottom: 6 }}>Smart Bid</div>
+                  <div style={{ fontWeight: 700, marginBottom: 6 }}>{t('jobs:estimates.smartBid.title')}</div>
                   <div style={{ fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-                    {hasMeasuredZones ? 'Priced from your measurements, your library, and market data.' : 'Measure this job first.'}
+                    {hasMeasuredZones ? t('jobs:estimates.smartBid.descReady') : t('jobs:estimates.smartBid.descLocked')}
                   </div>
                 </button>
                 <button
@@ -510,19 +512,19 @@ export default function ProjectDetailPage() {
                       const est = await createEstimate(projectId)
                       navigate(`/estimates/${est.id}`)
                     } catch (err) {
-                      alert('Failed to create estimate: ' + err.message)
+                      alert(t('jobs:estimates.createFailed', { error: err.message }))
                     }
                   }}
                   style={{ textAlign: 'left', padding: 16, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)', cursor: 'pointer' }}
                 >
-                  <div style={{ fontWeight: 700, marginBottom: 6 }}>Manual Estimate</div>
-                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>Build it line by line, the existing flow unchanged.</div>
+                  <div style={{ fontWeight: 700, marginBottom: 6 }}>{t('jobs:estimates.manual.title')}</div>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>{t('jobs:estimates.manual.desc')}</div>
                 </button>
               </div>
             </Modal>
           )}
           {estimates.length === 0 ? (
-            <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>No estimates yet. Click Generate to fetch one.</p>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>{t('jobs:estimates.empty')}</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {estimates.map(est => (
@@ -535,7 +537,7 @@ export default function ProjectDetailPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span style={{ fontWeight: 600, fontSize: 14 }}>{est.title || est.estimate_number}</span>
                       <span style={{ fontSize: 12, padding: '2px 8px', borderRadius: 9999, background: est.status === 'accepted' ? 'var(--color-success-bg, rgba(74,222,128,0.12))' : est.status === 'declined' ? 'var(--color-danger-bg, rgba(220,38,38,0.08))' : est.status === 'changes_requested' ? 'rgba(242,114,67,0.14)' : 'var(--color-surface-2)', color: est.status === 'accepted' ? 'var(--color-success)' : est.status === 'declined' ? 'var(--color-danger)' : est.status === 'changes_requested' ? '#F27243' : 'var(--color-text-muted)' }}>
-                        {est.status === 'changes_requested' ? 'Changes requested' : est.status}
+                        {est.status === 'changes_requested' ? t('jobs:estimates.statusChangesRequested') : est.status}
                       </span>
                       {est.smart_created && <SmartBadge size="sm" />}
                     </div>
@@ -554,7 +556,7 @@ export default function ProjectDetailPage() {
       </main>
 
       {showAddBlueprint && (
-        <Modal title="Add Blueprint" onClose={() => setShowAddBlueprint(false)}>
+        <Modal title={t('jobs:blueprints.addModalTitle')} onClose={() => setShowAddBlueprint(false)}>
           <NewSessionForm
             projectId={projectId}
             onCreate={handleCreateSession}
@@ -564,22 +566,22 @@ export default function ProjectDetailPage() {
       )}
 
       {deleteConfirm && (
-        <Modal title="Delete Blueprint?" onClose={() => setDeleteConfirm(null)}>
+        <Modal title={t('jobs:blueprints.deleteModalTitle')} onClose={() => setDeleteConfirm(null)}>
           <p style={{ color: 'var(--color-text-muted)', marginBottom: 20 }}>
-            This will permanently delete this blueprint and all its zones and measurements. This cannot be undone.
+            {t('jobs:blueprints.deleteBody')}
           </p>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
             <button
               style={{ background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', padding: '9px 18px', color: 'var(--color-text-muted)', cursor: 'pointer' }}
               onClick={() => setDeleteConfirm(null)}
             >
-              Cancel
+              {t('common:action.cancel')}
             </button>
             <button
               style={{ background: 'var(--color-danger)', border: 'none', borderRadius: 'var(--radius)', padding: '9px 18px', color: 'white', fontWeight: 600, cursor: 'pointer' }}
               onClick={() => handleDeleteSession(deleteConfirm)}
             >
-              Delete
+              {t('common:action.delete')}
             </button>
           </div>
         </Modal>
@@ -587,18 +589,18 @@ export default function ProjectDetailPage() {
 
       {/* Link Client Modal */}
       {showLinkModal && (
-        <Modal title="Link Client to Job" onClose={() => setShowLinkModal(false)}>
+        <Modal title={t('jobs:linkClient.modalTitle')} onClose={() => setShowLinkModal(false)}>
           <div style={{ display: 'flex', gap: 4, marginBottom: 16, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: 3 }}>
-            <button type="button" onClick={() => setLinkTab('existing')} style={{ flex: 1, padding: '7px 10px', fontSize: 13, fontWeight: 500, border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', background: linkTab === 'existing' ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'var(--color-bg)', color: linkTab === 'existing' ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>Link Existing</button>
-            <button type="button" onClick={() => setLinkTab('new')} style={{ flex: 1, padding: '7px 10px', fontSize: 13, fontWeight: 500, border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', background: linkTab === 'new' ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'var(--color-bg)', color: linkTab === 'new' ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>Create New</button>
+            <button type="button" onClick={() => setLinkTab('existing')} style={{ flex: 1, padding: '7px 10px', fontSize: 13, fontWeight: 500, border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', background: linkTab === 'existing' ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'var(--color-bg)', color: linkTab === 'existing' ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>{t('jobs:linkClient.tabExisting')}</button>
+            <button type="button" onClick={() => setLinkTab('new')} style={{ flex: 1, padding: '7px 10px', fontSize: 13, fontWeight: 500, border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', background: linkTab === 'new' ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'var(--color-bg)', color: linkTab === 'new' ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>{t('jobs:linkClient.tabNew')}</button>
           </div>
 
           {linkTab === 'existing' ? (
             <div>
               <ClientPicker clients={clients} value={modalClientId} onChange={setModalClientId} />
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
-                <button onClick={() => setShowLinkModal(false)} style={{ padding: '9px 18px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', color: 'var(--color-text-muted)', cursor: 'pointer' }}>Cancel</button>
-                <button disabled={!modalClientId} onClick={async () => { await updateProject(projectId, { client_id: modalClientId }); setShowLinkModal(false); refetch() }} style={{ padding: '9px 18px', background: 'var(--color-primary)', border: 'none', borderRadius: 'var(--radius-md)', color: '#fff', fontWeight: 600, cursor: 'pointer', opacity: modalClientId ? 1 : 0.5 }}>Link Client</button>
+                <button onClick={() => setShowLinkModal(false)} style={{ padding: '9px 18px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', color: 'var(--color-text-muted)', cursor: 'pointer' }}>{t('common:action.cancel')}</button>
+                <button disabled={!modalClientId} onClick={async () => { await updateProject(projectId, { client_id: modalClientId }); setShowLinkModal(false); refetch() }} style={{ padding: '9px 18px', background: 'var(--color-primary)', border: 'none', borderRadius: 'var(--radius-md)', color: '#fff', fontWeight: 600, cursor: 'pointer', opacity: modalClientId ? 1 : 0.5 }}>{t('jobs:linkClient.submit')}</button>
               </div>
             </div>
           ) : (
@@ -618,6 +620,7 @@ export default function ProjectDetailPage() {
 }
 
 function InlineField({ value, placeholder, editField, fieldName, editValue, saving, onStartEdit, onSave, onCancel, onChangeValue, renderDisplay }) {
+  const { t } = useTranslation()
   const isEditing = editField === fieldName
 
   if (isEditing) {
@@ -635,10 +638,10 @@ function InlineField({ value, placeholder, editField, fieldName, editValue, savi
           }}
         />
         <button onClick={onSave} disabled={saving} style={{ fontSize: 11, padding: '4px 10px', background: 'var(--color-primary)', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>
-          {saving ? '...' : 'Save'}
+          {saving ? '...' : t('common:action.save')}
         </button>
         <button onClick={onCancel} style={{ fontSize: 11, padding: '4px 8px', background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}>
-          Cancel
+          {t('common:action.cancel')}
         </button>
       </div>
     )
@@ -655,7 +658,7 @@ function InlineField({ value, placeholder, editField, fieldName, editValue, savi
         <button
           onClick={() => onStartEdit(value)}
           style={{ fontSize: 13, background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '0 2px', opacity: 0.6 }}
-          title={`Edit ${fieldName.replace(/_/g, ' ')}`}
+          title={t('jobs:overview.editFieldTitle', { field: fieldName.replace(/_/g, ' ') })}
         >
           &#9998;
         </button>

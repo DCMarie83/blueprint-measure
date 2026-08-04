@@ -1,16 +1,18 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Modal from '../ui/Modal'
 import styles from './ClientActivityModal.module.css'
 
 const MANUAL_TYPES = [
-  { value: 'note', label: 'Note' },
-  { value: 'email', label: 'Email' },
-  { value: 'call', label: 'Call' },
-  { value: 'sms', label: 'SMS' },
-  { value: 'meeting', label: 'Meeting' },
+  { value: 'note', label: 'common:manualType.note' },
+  { value: 'email', label: 'common:manualType.email' },
+  { value: 'call', label: 'common:manualType.call' },
+  { value: 'sms', label: 'common:manualType.sms' },
+  { value: 'meeting', label: 'common:manualType.meeting' },
 ]
 
 export default function ClientActivityModal({ activity, onClose, onSave }) {
+  const { t } = useTranslation()
   const isEdit = !!activity
   const [form, setForm] = useState({
     activity_type: activity?.activity_type ?? 'note',
@@ -27,7 +29,7 @@ export default function ClientActivityModal({ activity, onClose, onSave }) {
   async function handleSubmit(e) {
     e.preventDefault()
     if (!form.title.trim()) {
-      setError('Title is required.')
+      setError(t('clients:activity.titleRequired'))
       return
     }
     setSaving(true)
@@ -47,30 +49,30 @@ export default function ClientActivityModal({ activity, onClose, onSave }) {
   }
 
   return (
-    <Modal title={isEdit ? 'Edit Activity' : 'Log Activity'} onClose={onClose}>
+    <Modal title={isEdit ? t('clients:activity.editActivity') : t('clients:activity.logActivity')} onClose={onClose}>
       <form onSubmit={handleSubmit} className={styles.form}>
         {error && <div className={styles.error}>{error}</div>}
 
         <label className={styles.field}>
-          <span className={styles.label}>Type</span>
+          <span className={styles.label}>{t('clients:modal.type')}</span>
           <select className={styles.select} value={form.activity_type} onChange={e => update('activity_type', e.target.value)}>
-            {MANUAL_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            {MANUAL_TYPES.map(mt => <option key={mt.value} value={mt.value}>{t(mt.label)}</option>)}
           </select>
         </label>
 
         <label className={styles.field}>
-          <span className={styles.label}>Title</span>
-          <input className={styles.input} value={form.title} onChange={e => update('title', e.target.value)} placeholder="Quick summary, e.g. 'Called about Q3 quote'" required />
+          <span className={styles.label}>{t('clients:activity.titleLabel')}</span>
+          <input className={styles.input} value={form.title} onChange={e => update('title', e.target.value)} placeholder={t('clients:activity.titlePlaceholder')} required />
         </label>
 
         <label className={styles.field}>
-          <span className={styles.label}>Details <span className={styles.optional}>(optional)</span></span>
-          <textarea className={styles.textarea} value={form.body} onChange={e => update('body', e.target.value)} rows={4} placeholder="Details, talking points, next steps..." />
+          <span className={styles.label}>{t('clients:activity.details')} <span className={styles.optional}>{t('clients:modal.optional')}</span></span>
+          <textarea className={styles.textarea} value={form.body} onChange={e => update('body', e.target.value)} rows={4} placeholder={t('clients:activity.detailsPlaceholder')} />
         </label>
 
         <div className={styles.actions}>
-          <button type="button" className={styles.cancelBtn} onClick={onClose}>Cancel</button>
-          <button type="submit" className={styles.submitBtn} disabled={saving}>{saving ? 'Saving…' : isEdit ? 'Save' : 'Log Activity'}</button>
+          <button type="button" className={styles.cancelBtn} onClick={onClose}>{t('common:action.cancel')}</button>
+          <button type="submit" className={styles.submitBtn} disabled={saving}>{saving ? t('clients:modal.saving') : isEdit ? t('common:action.save') : t('clients:activity.logActivity')}</button>
         </div>
       </form>
     </Modal>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Plus, Trash2 } from 'lucide-react'
 import BackLink from '../BackLink'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
@@ -8,21 +9,21 @@ import { supabase } from '../../lib/supabase'
 import styles from './InvoiceForm.module.css'
 
 const ITEM_TYPES = [
-  { value: '', label: '—' },
-  { value: 'labor', label: 'Labor' },
-  { value: 'material', label: 'Material' },
-  { value: 'supply', label: 'Supply' },
-  { value: 'equipment', label: 'Equipment' },
-  { value: 'subcontractor', label: 'Subcontractor' },
-  { value: 'other', label: 'Other' },
+  { value: '', label: 'common:itemType.blank' },
+  { value: 'labor', label: 'common:itemType.labor' },
+  { value: 'material', label: 'common:itemType.material' },
+  { value: 'supply', label: 'common:itemType.supply' },
+  { value: 'equipment', label: 'common:itemType.equipment' },
+  { value: 'subcontractor', label: 'common:itemType.subcontractor' },
+  { value: 'other', label: 'common:itemType.other' },
 ]
 
 const UNIT_OPTIONS = [
-  { value: 'each', label: 'Each' },
-  { value: 'sf', label: 'SF' },
-  { value: 'lf', label: 'LF' },
-  { value: 'hour', label: 'Hour' },
-  { value: 'lump_sum', label: 'Lump Sum' },
+  { value: 'each', label: 'common:units.each' },
+  { value: 'sf', label: 'common:units.sf' },
+  { value: 'lf', label: 'common:units.lf' },
+  { value: 'hour', label: 'common:units.hour' },
+  { value: 'lump_sum', label: 'common:units.lumpSum' },
 ]
 
 function emptyLine() {
@@ -34,6 +35,7 @@ function fmtMoney(val) {
 }
 
 export default function InvoiceForm({ existingInvoice, existingLineItems }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const fromEstimateId = searchParams.get('from_estimate')
@@ -77,7 +79,7 @@ export default function InvoiceForm({ existingInvoice, existingLineItems }) {
       if (!est) return
       setProjectId(est.project_id)
       setEstimateId(est.id)
-      setEstimateBanner(`Creating invoice from estimate ${est.estimate_number}`)
+      setEstimateBanner(t('invoices:form.fromEstimateBanner', { number: est.estimate_number }))
       setTitle(est.title || '')
       // Convert estimate line items → invoice line items using the selected variant or 'better' fallback
       const variant = est.accepted_variant || est.selected_variant || 'good'
@@ -113,9 +115,9 @@ export default function InvoiceForm({ existingInvoice, existingLineItems }) {
   async function handleSubmit(e) {
     e.preventDefault()
     setFormError(null)
-    if (!projectId) { setFormError('Please select a project.'); return }
+    if (!projectId) { setFormError(t('invoices:form.errorNoProject')); return }
     const validLines = lineItems.filter(li => li.description.trim() && Number(li.rate) > 0)
-    if (validLines.length === 0) { setFormError('Add at least one line item with a description and rate.'); return }
+    if (validLines.length === 0) { setFormError(t('invoices:form.errorNoLineItems')); return }
 
     try {
       if (isEdit) {
@@ -134,8 +136,8 @@ export default function InvoiceForm({ existingInvoice, existingLineItems }) {
     <div className={styles.page}>
       
       <main className={styles.main}>
-        <BackLink to="/invoices" label="Invoices" />
-        <h1 className={styles.title}>{isEdit ? 'Edit Invoice' : 'New Invoice'}</h1>
+        <BackLink to="/invoices" label={t('invoices:nav.invoices')} />
+        <h1 className={styles.title}>{isEdit ? t('invoices:form.editTitle') : t('invoices:form.newTitle')}</h1>
 
         {estimateBanner && <div className={styles.banner}>{estimateBanner}</div>}
         {(formError || mutError) && <div className={styles.error}>{formError || mutError}</div>}
@@ -143,44 +145,44 @@ export default function InvoiceForm({ existingInvoice, existingLineItems }) {
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.row}>
             <label className={styles.field}>
-              <span className={styles.label}>Project</span>
+              <span className={styles.label}>{t('invoices:form.project')}</span>
               <select className={styles.select} value={projectId} onChange={e => setProjectId(e.target.value)} disabled={isEdit || !!fromEstimateId} required>
-                <option value="">Select a project…</option>
+                <option value="">{t('invoices:form.selectProject')}</option>
                 {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </label>
             <label className={styles.field}>
-              <span className={styles.label}>Title (optional)</span>
-              <input className={styles.input} value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Interior Repaint — Final Invoice" />
+              <span className={styles.label}>{t('invoices:form.titleOptional')}</span>
+              <input className={styles.input} value={title} onChange={e => setTitle(e.target.value)} placeholder={t('invoices:form.titlePlaceholder')} />
             </label>
           </div>
 
           <label className={styles.field}>
-            <span className={styles.label}>Due Date</span>
+            <span className={styles.label}>{t('invoices:form.dueDate')}</span>
             <input type="date" className={styles.input} value={dueDate} onChange={e => setDueDate(e.target.value)} style={{ maxWidth: 200 }} />
           </label>
 
           {/* Line items */}
           <div className={styles.section}>
-            <h3 className={styles.sectionLabel}>Line Items</h3>
+            <h3 className={styles.sectionLabel}>{t('invoices:lineItems.sectionLabel')}</h3>
             <div className={styles.lineItemsTable}>
               <div className={styles.lineHeader}>
-                <span className={styles.lineColDesc}>Description</span>
-                <span className={styles.lineColSm}>Type</span>
-                <span className={styles.lineColSm}>Unit</span>
-                <span className={styles.lineColNum}>Qty</span>
-                <span className={styles.lineColNum}>Rate</span>
-                <span className={styles.lineColNum}>Total</span>
+                <span className={styles.lineColDesc}>{t('invoices:lineItems.description')}</span>
+                <span className={styles.lineColSm}>{t('invoices:lineItems.type')}</span>
+                <span className={styles.lineColSm}>{t('invoices:lineItems.unit')}</span>
+                <span className={styles.lineColNum}>{t('invoices:lineItems.qty')}</span>
+                <span className={styles.lineColNum}>{t('invoices:lineItems.rate')}</span>
+                <span className={styles.lineColNum}>{t('invoices:lineItems.total')}</span>
                 <span className={styles.lineColDel}></span>
               </div>
               {lineItems.map(li => (
                 <div key={li.id} className={styles.lineRow}>
-                  <input className={styles.lineInput} value={li.description} onChange={e => updateLine(li.id, 'description', e.target.value)} placeholder="Description" />
+                  <input className={styles.lineInput} value={li.description} onChange={e => updateLine(li.id, 'description', e.target.value)} placeholder={t('invoices:lineItems.descriptionPlaceholder')} />
                   <select className={styles.lineSelect} value={li.item_type} onChange={e => updateLine(li.id, 'item_type', e.target.value)}>
-                    {ITEM_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                    {ITEM_TYPES.map(it => <option key={it.value} value={it.value}>{t(it.label)}</option>)}
                   </select>
                   <select className={styles.lineSelect} value={li.unit} onChange={e => updateLine(li.id, 'unit', e.target.value)}>
-                    {UNIT_OPTIONS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}
+                    {UNIT_OPTIONS.map(u => <option key={u.value} value={u.value}>{t(u.label)}</option>)}
                   </select>
                   <input type="number" className={styles.lineNum} value={li.quantity} onChange={e => updateLine(li.id, 'quantity', e.target.value)} min="0" step="any" />
                   <input type="number" className={styles.lineNum} value={li.rate} onChange={e => updateLine(li.id, 'rate', e.target.value)} min="0" step="0.01" />
@@ -190,42 +192,42 @@ export default function InvoiceForm({ existingInvoice, existingLineItems }) {
               ))}
             </div>
             <button type="button" className={styles.addLineBtn} onClick={() => setLineItems(prev => [...prev, emptyLine()])}>
-              <Plus size={14} /> Add Line Item
+              <Plus size={14} /> {t('invoices:lineItems.add')}
             </button>
           </div>
 
           {/* Adjustment */}
           <div className={styles.row}>
             <label className={styles.field}>
-              <span className={styles.label}>Adjustment Label</span>
-              <input className={styles.input} value={adjustmentLabel} onChange={e => setAdjustmentLabel(e.target.value)} placeholder="e.g. Discount, Credit, Fee" />
+              <span className={styles.label}>{t('invoices:form.adjustmentLabel')}</span>
+              <input className={styles.input} value={adjustmentLabel} onChange={e => setAdjustmentLabel(e.target.value)} placeholder={t('invoices:form.adjustmentLabelPlaceholder')} />
             </label>
             <label className={styles.field} style={{ maxWidth: 160 }}>
-              <span className={styles.label}>Amount (+/-)</span>
-              <input type="number" className={styles.input} value={adjustmentAmount} onChange={e => setAdjustmentAmount(e.target.value)} step="0.01" placeholder="0.00" />
+              <span className={styles.label}>{t('invoices:form.amount')}</span>
+              <input type="number" className={styles.input} value={adjustmentAmount} onChange={e => setAdjustmentAmount(e.target.value)} step="0.01" placeholder={t('invoices:form.amountPlaceholder')} />
             </label>
           </div>
 
           {/* Totals */}
           <div className={styles.totals}>
-            <div className={styles.totalRow}><span>Subtotal</span><span>{fmtMoney(subtotal)}</span></div>
-            {Number(adjustmentAmount) !== 0 && <div className={styles.totalRow}><span>{adjustmentLabel || 'Adjustment'}</span><span>{fmtMoney(adjustmentAmount)}</span></div>}
-            <div className={styles.totalRowGrand}><span>Total</span><span>{fmtMoney(total)}</span></div>
+            <div className={styles.totalRow}><span>{t('invoices:totals.subtotal')}</span><span>{fmtMoney(subtotal)}</span></div>
+            {Number(adjustmentAmount) !== 0 && <div className={styles.totalRow}><span>{adjustmentLabel || t('invoices:totals.adjustment')}</span><span>{fmtMoney(adjustmentAmount)}</span></div>}
+            <div className={styles.totalRowGrand}><span>{t('invoices:totals.total')}</span><span>{fmtMoney(total)}</span></div>
           </div>
 
           {/* Notes + Terms */}
           <label className={styles.field}>
-            <span className={styles.label}>Notes (optional)</span>
-            <textarea className={styles.textarea} value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Internal or client-visible notes" />
+            <span className={styles.label}>{t('invoices:form.notesOptional')}</span>
+            <textarea className={styles.textarea} value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder={t('invoices:form.notesPlaceholder')} />
           </label>
           <label className={styles.field}>
-            <span className={styles.label}>Terms (optional)</span>
-            <textarea className={styles.textarea} value={terms} onChange={e => setTerms(e.target.value)} rows={3} placeholder="Payment terms, late fees, etc." />
+            <span className={styles.label}>{t('invoices:form.termsOptional')}</span>
+            <textarea className={styles.textarea} value={terms} onChange={e => setTerms(e.target.value)} rows={3} placeholder={t('invoices:form.termsPlaceholder')} />
           </label>
 
           <div className={styles.actions}>
-            <button type="button" className={styles.cancelBtn} onClick={() => navigate('/invoices')}>Cancel</button>
-            <button type="submit" className={styles.saveBtn} disabled={saving}>{saving ? 'Saving…' : isEdit ? 'Save Invoice' : 'Create Invoice'}</button>
+            <button type="button" className={styles.cancelBtn} onClick={() => navigate('/invoices')}>{t('common:action.cancel')}</button>
+            <button type="submit" className={styles.saveBtn} disabled={saving}>{saving ? t('invoices:form.saving') : isEdit ? t('invoices:form.saveInvoice') : t('invoices:form.createInvoice')}</button>
           </div>
         </form>
       </main>

@@ -1,5 +1,6 @@
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Layers } from 'lucide-react'
 import BackLink from '../components/BackLink'
 import { useAuth } from '../context/AuthContext'
@@ -80,6 +81,7 @@ export default function MaterialOrderBuilderPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { userProfile, isSuperAdmin } = useAuth()
+  const { t } = useTranslation()
   const isAdmin = userProfile?.role === 'contractor_admin' || isSuperAdmin
 
   const estimateEntryId = location.state?.estimateId || null
@@ -117,7 +119,7 @@ export default function MaterialOrderBuilderPage() {
       <div>
         
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 20px' }}>
-          <p style={{ color: 'var(--color-text-muted)' }}>Fetching your materials...</p>
+          <p style={{ color: 'var(--color-text-muted)' }}>{t('materials:page.loading')}</p>
         </div>
       </div>
     )
@@ -128,8 +130,8 @@ export default function MaterialOrderBuilderPage() {
       <div>
         
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 20px' }}>
-          <BackLink to="/dashboard" label="dashboard" />
-          <p style={{ color: 'var(--color-text-muted)', marginTop: 16 }}>Materials order not found.</p>
+          <BackLink to="/dashboard" label={t('materials:page.backDashboard')} />
+          <p style={{ color: 'var(--color-text-muted)', marginTop: 16 }}>{t('materials:page.notFound')}</p>
         </div>
       </div>
     )
@@ -139,7 +141,7 @@ export default function MaterialOrderBuilderPage() {
     const d = est.created_at ? new Date(est.created_at).toLocaleDateString() : ''
     const v = est.selected_variant ? ` (${est.selected_variant})` : ''
     const tail = est.id ? ` · ${est.id.slice(0, 4)}` : ''
-    return `Estimate · ${d}${v}${tail}`
+    return t('materials:page.estimateLabel', { date: d, variant: v, tail })
   }
 
   const hasZones = (zones?.length ?? 0) > 0
@@ -173,20 +175,20 @@ export default function MaterialOrderBuilderPage() {
   // ── Quick Total actions ──
   async function quickSave() {
     const ok = await saveLines(flowLines, { grade: gradeForFlow, estimateId: estimateEntryId ?? undefined })
-    if (!ok) { setNotice('Save failed — see the error above.'); return }
+    if (!ok) { setNotice(t('materials:notices.saveFailed')); return }
     trackMaterials('material_order_saved', { companyId: order.company_id, entityId: order.id, line_count: flowLines.length, selected_grade: gradeForFlow })
     if (estimateEntryId && returnTo) { navigate(returnTo); return }
-    setNotice(`Materials list saved. ${flowLines.length} items.`)
+    setNotice(t('materials:notices.listSaved', { count: flowLines.length }))
     setView('table')
   }
 
   // ── Swiper actions ──
   async function swiperSave(kept) {
     const ok = await saveLines(kept, { grade: gradeForFlow, estimateId: estimateEntryId ?? undefined })
-    if (!ok) { setNotice('Save failed — see the error above.'); return }
+    if (!ok) { setNotice(t('materials:notices.saveFailed')); return }
     trackMaterials('material_order_saved', { companyId: order.company_id, entityId: order.id, line_count: kept.length, selected_grade: gradeForFlow })
     if (estimateEntryId && returnTo) { navigate(returnTo); return }
-    setNotice(`Materials list saved. ${kept.length} items.`)
+    setNotice(t('materials:notices.listSaved', { count: kept.length }))
     setView('table')
   }
   function swiperEdit(kept) {
@@ -211,31 +213,31 @@ export default function MaterialOrderBuilderPage() {
     if (ok) {
       trackMaterials('material_order_saved', { companyId: order.company_id, entityId: order.id, storeId: order.store_id || null, line_count: items.length, selected_grade: order.selected_variant || null })
     }
-    setNotice(ok ? 'Saved.' : 'Save failed — see the error above.')
+    setNotice(ok ? t('materials:notices.saved') : t('materials:notices.saveFailed'))
   }
 
   const handleSeedFromZones = async () => {
-    setNotice('Building your materials list from this job\'s measurements…')
+    setNotice(t('materials:notices.buildingFromZones'))
     const r = seedFromZones()
     if (r?.error) { setNotice(r.error); return }
     trackMaterials('order_seeded_from_zones', { companyId: order.company_id, entityId: order.id, line_count: r.count })
     if (r.sundries > 0) trackMaterials('sundries_seeded', { companyId: order.company_id, entityId: order.id, count: r.sundries })
-    const sundryNote = r.sundries > 0 ? ` plus ${r.sundries} sundr${r.sundries === 1 ? 'y' : 'ies'} from the catalog` : ''
-    setNotice(`Built ${r.count} paint line${r.count === 1 ? '' : 's'}${sundryNote} from measurements. Match to the catalog to fill in products and pricing.`)
+    const sundryNote = r.sundries > 0 ? t('materials:notices.sundryNote', { count: r.sundries }) : ''
+    setNotice(t('materials:notices.builtPaintLines', { count: r.count, sundryNote }))
   }
 
   const handleAiSuggest = async () => {
-    if (items.length === 0) { setNotice('Add or seed at least one line first so there is something to map.'); return }
-    setNotice('Matching your lines to the catalog…')
+    if (items.length === 0) { setNotice(t('materials:notices.needLineFirst')); return }
+    setNotice(t('materials:notices.matchingLines'))
     trackMaterials('ai_map_requested', { companyId: order.company_id, entityId: order.id, storeId: order.store_id || null, line_count: items.length })
     const r = await aiSuggest()
     if (!r || r.error) {
-      setNotice(`Couldn't map to the catalog right now — you can enter products and costs by hand.${r?.error ? ` (${r.error})` : ''}`)
+      setNotice(t('materials:notices.mapFailed', { detail: r?.error ? ` (${r.error})` : '' }))
     } else {
       trackMaterials('ai_map_completed', { companyId: order.company_id, entityId: order.id, storeId: order.store_id || null, mapped: r.mapped, additions: r.additions, not_in_catalog: r.notInCatalog })
-      const addNote = r.additions ? `, added ${r.additions} suppl${r.additions === 1 ? 'y' : 'ies'}` : ''
-      const missNote = r.notInCatalog ? `, ${r.notInCatalog} not in catalog` : ''
-      setNotice(`Mapped ${r.mapped} line${r.mapped === 1 ? '' : 's'} to the catalog${addNote}${missNote}. Prices come from the catalog — set My Price on the Pricing page to override.`)
+      const addNote = r.additions ? t('materials:notices.addNote', { count: r.additions }) : ''
+      const missNote = r.notInCatalog ? t('materials:notices.missNote', { count: r.notInCatalog }) : ''
+      setNotice(t('materials:notices.mapped', { count: r.mapped, addNote, missNote }))
     }
   }
 
@@ -243,31 +245,31 @@ export default function MaterialOrderBuilderPage() {
     const nextId = estimateId || null
     updateOrderField({ estimate_id: nextId })
     const persistRes = await persistEstimateId(nextId)
-    if (persistRes?.error) { setNotice(`Couldn't save the estimate link: ${persistRes.error}`); return }
+    if (persistRes?.error) { setNotice(t('materials:notices.estimateLinkFailed', { error: persistRes.error })); return }
     if (estimateId && items.length === 0) {
-      setNotice('Building your materials list from the estimate…')
+      setNotice(t('materials:notices.buildingFromEstimate'))
       const r = await seedFromEstimate(estimateId)
       if (r?.error) setNotice(r.error)
       else {
         trackMaterials('order_seeded_from_estimate', { companyId: order.company_id, entityId: order.id, line_count: r.count, estimate_id: estimateId })
         setNotice(r.fallback
-          ? `Built ${r.count} lines from this job's measurements for the linked estimate.`
-          : `Built ${r.count} material line${r.count === 1 ? '' : 's'} from the estimate. Pick a store and suggest products to fill in pricing.`)
+          ? t('materials:notices.builtFromMeasurements', { count: r.count })
+          : t('materials:notices.builtMaterialLines', { count: r.count }))
       }
     }
   }
 
   const handleRebuild = async () => {
     if (!order?.estimate_id) return
-    if (items.length > 0 && !window.confirm('Rebuild the list from this estimate? This replaces the current line items.')) return
-    setNotice('Rebuilding from the estimate…')
+    if (items.length > 0 && !window.confirm(t('materials:notices.rebuildConfirm'))) return
+    setNotice(t('materials:notices.rebuilding'))
     const r = await seedFromEstimate(order.estimate_id)
     if (r?.error) setNotice(r.error)
     else {
       trackMaterials('order_seeded_from_estimate', { companyId: order.company_id, entityId: order.id, line_count: r.count, estimate_id: order.estimate_id, rebuild: true })
       setNotice(r.fallback
-        ? `Built ${r.count} lines from this job's measurements for the linked estimate.`
-        : `Rebuilt ${r.count} material line${r.count === 1 ? '' : 's'} from the estimate.`)
+        ? t('materials:notices.builtFromMeasurements', { count: r.count })
+        : t('materials:notices.rebuiltMaterialLines', { count: r.count }))
     }
   }
 
@@ -339,7 +341,7 @@ export default function MaterialOrderBuilderPage() {
               <input
                 value={order.title || ''}
                 disabled={!isAdmin}
-                placeholder="Untitled materials order"
+                placeholder={t('materials:table.titlePlaceholder')}
                 onChange={e => updateOrderField({ title: e.target.value })}
                 style={{ flex: 1, minWidth: 240, fontSize: 22, fontWeight: 700, padding: '6px 10px', border: '1px solid transparent', borderRadius: 'var(--radius-sm)', background: 'transparent', color: 'var(--color-text, #1b2426)' }}
               />
@@ -347,20 +349,20 @@ export default function MaterialOrderBuilderPage() {
             </div>
 
             <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 6px' }}>
-              Your full list. Edit quantities, coats, and prices per grade.
+              {t('materials:table.introLine1')}
             </p>
             <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 14px' }}>
-              Prices are regional estimates for reference and building your strongest bid. Confirm current pricing with your local store. Product photos are illustrations only.
+              {t('materials:disclaimer.regionalEstimates')}
             </p>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 16 }}>
-              <span style={brandChip}>Items {items.length}</span>
-              <span style={brandChip}>Total at {gradeLabel(gradeForFlow)} {money(gradeTotal(items, gradeForFlow))}</span>
-              <span style={brandChip}>Store {storeName || '—'}</span>
-              <span style={brandChip}>Prices as of {maxPriceAsOf || '—'}</span>
+              <span style={brandChip}>{t('materials:table.chipItems', { n: items.length })}</span>
+              <span style={brandChip}>{t('materials:summary.totalAt', { grade: gradeLabel(gradeForFlow), amount: money(gradeTotal(items, gradeForFlow)) })}</span>
+              <span style={brandChip}>{t('materials:table.chipStore', { store: storeName || '—' })}</span>
+              <span style={brandChip}>{t('materials:table.chipPricesAsOf', { date: maxPriceAsOf || '—' })}</span>
               {items.length > 0 && (
                 <button onClick={() => { setSwipeMode('existing'); setView('swipe') }} style={{ ...secondaryBtn, marginLeft: 'auto' }}>
-                  <Layers size={14} /> Review as cards
+                  <Layers size={14} /> {t('materials:table.reviewAsCards')}
                 </button>
               )}
             </div>
@@ -372,46 +374,46 @@ export default function MaterialOrderBuilderPage() {
             {isAdmin && (
               <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>
-                  Materials for:
+                  {t('materials:table.materialsForLabel')}
                   <select value={order?.estimate_id || ''} onChange={(e) => handleEstimateChange(e.target.value || null)}
                     style={{ padding: '8px 10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border, #d4d4d4)', fontSize: 14, background: 'var(--color-surface, #fff)', color: 'var(--color-text)' }}>
-                    <option value="">Select an estimate…</option>
+                    <option value="">{t('materials:table.selectEstimate')}</option>
                     {estimates.map((est) => (
                       est.__unavailable
-                        ? <option key={est.id} value={est.id} disabled>Linked estimate unavailable</option>
+                        ? <option key={est.id} value={est.id} disabled>{t('materials:table.estimateUnavailable')}</option>
                         : <option key={est.id} value={est.id}>{estimateLabel(est)}</option>
                     ))}
                   </select>
                 </label>
 
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>
-                  Buying from:
+                  {t('materials:table.buyingFromLabel')}
                   <select value={order?.store_id || ''} onChange={(e) => updateOrderField({ store_id: e.target.value || null })}
                     style={{ padding: '8px 10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border, #d4d4d4)', fontSize: 14, background: 'var(--color-surface, #fff)', color: 'var(--color-text)' }}>
-                    <option value="">Select a store…</option>
+                    <option value="">{t('materials:table.selectStore')}</option>
                     {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
                 </label>
 
-                {hasZones && <button onClick={handleSeedFromZones} style={secondaryBtn}>Suggest from measurements</button>}
+                {hasZones && <button onClick={handleSeedFromZones} style={secondaryBtn}>{t('materials:table.suggestFromMeasurements')}</button>}
 
                 <span style={{ position: 'relative', display: 'inline-flex' }} onMouseEnter={() => setShowAiTip(true)} onMouseLeave={() => setShowAiTip(false)}>
                   <button onClick={handleAiSuggest} onFocus={() => setShowAiTip(true)} onBlur={() => setShowAiTip(false)} disabled={aiSuggesting || items.length === 0}
                     style={{ ...secondaryBtn, opacity: (aiSuggesting || items.length === 0) ? 0.6 : 1, cursor: (aiSuggesting || items.length === 0) ? 'default' : 'pointer' }}>
-                    {aiSuggesting ? 'Matching…' : 'Match to catalog'}
+                    {aiSuggesting ? t('materials:table.matching') : t('materials:table.matchToCatalog')}
                   </button>
                   {showAiTip && (
                     <span role="tooltip" style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 20, width: 280, padding: '8px 10px', fontSize: 12, lineHeight: 1.4, background: 'var(--color-text, #1b2426)', color: '#fff', borderRadius: 'var(--radius-sm)', boxShadow: '0 4px 12px rgba(0,0,0,0.18)' }}>
-                      Matches each line to a catalog item and fills Premium/Standard/Commercial products and catalog prices. Catalog prices are estimates — set My Price on the Pricing page to override.
+                      {t('materials:table.matchTooltip')}
                     </span>
                   )}
                 </span>
 
-                <button onClick={() => addItem()} style={secondaryBtn}>+ Add line</button>
+                <button onClick={() => addItem()} style={secondaryBtn}>{t('materials:table.addLine')}</button>
 
                 {order?.estimate_id && (
                   <button onClick={handleRebuild} style={{ background: 'none', border: 'none', color: 'var(--color-primary, #26464c)', fontSize: 13, textDecoration: 'underline', cursor: 'pointer', padding: 0 }}>
-                    Rebuild from estimate
+                    {t('materials:table.rebuildFromEstimate')}
                   </button>
                 )}
               </div>
@@ -432,31 +434,31 @@ export default function MaterialOrderBuilderPage() {
             />
 
             <div style={{ marginTop: 28, borderTop: '1px solid var(--color-border)', paddingTop: 20 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 14px' }}>Order summary</h3>
+              <h3 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 14px' }}>{t('materials:table.orderSummary')}</h3>
 
               <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 6px' }}>
-                Estimated totals — verify final price and availability with the retailer. Pick your buying grade and save from the bar below the list.
+                {t('materials:table.summaryNote1')}
               </p>
               <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 18px' }}>
-                {maxPriceAsOf ? `Catalog prices as of ${maxPriceAsOf}, estimates only. My Price applies where you've set it.` : 'Catalog prices are estimates only. My Price applies where you’ve set it.'}
+                {maxPriceAsOf ? t('materials:table.summaryPricesWithDate', { date: maxPriceAsOf }) : t('materials:table.summaryPricesNoDate')}
               </p>
 
-              {!selectedStore && <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Select a store above to shop or export your list.</p>}
+              {!selectedStore && <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{t('materials:table.selectStoreAbove')}</p>}
               {selectedStore && shopUrl && (
                 <div>
-                  <a href={shopUrl} target="_blank" rel="noopener noreferrer" onClick={() => handleShopClick(selectedStore)} style={{ ...primaryBtn, textDecoration: 'none' }}>Shop at {selectedStore.name}</a>
+                  <a href={shopUrl} target="_blank" rel="noopener noreferrer" onClick={() => handleShopClick(selectedStore)} style={{ ...primaryBtn, textDecoration: 'none' }}>{t('materials:table.shopAt', { store: selectedStore.name })}</a>
                   {selectedStore.affiliate_disclosure && <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '8px 0 0', maxWidth: 520 }}>{selectedStore.affiliate_disclosure}</p>}
                 </div>
               )}
               {selectedStore && !shopUrl && selectedStore.integration_type === 'affiliate_deeplink' && selectedStore.website_url && (
-                <a href={selectedStore.website_url} target="_blank" rel="noopener noreferrer" onClick={() => handleShopClick(selectedStore)} style={{ ...primaryBtn, textDecoration: 'none' }}>Shop at {selectedStore.name}</a>
+                <a href={selectedStore.website_url} target="_blank" rel="noopener noreferrer" onClick={() => handleShopClick(selectedStore)} style={{ ...primaryBtn, textDecoration: 'none' }}>{t('materials:table.shopAt', { store: selectedStore.name })}</a>
               )}
               {selectedStore && !shopUrl && selectedStore.integration_type === 'affiliate_deeplink' && !selectedStore.website_url && (
-                <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>No shopping link available for {selectedStore.name} yet.</p>
+                <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{t('materials:table.noShopLink', { store: selectedStore.name })}</p>
               )}
               {selectedStore && !shopUrl && selectedStore.integration_type !== 'affiliate_deeplink' && (
                 <button onClick={handleCsvExport} style={secondaryBtn}>
-                  {selectedStore.integration_type === 'placeholder' ? `Export for ${selectedStore.name} (CSV)` : 'Export list (CSV)'}
+                  {selectedStore.integration_type === 'placeholder' ? t('materials:table.exportForStore', { store: selectedStore.name }) : t('materials:table.exportListCsv')}
                 </button>
               )}
             </div>

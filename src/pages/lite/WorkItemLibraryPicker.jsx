@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Search, ChevronDown, ChevronRight, Check } from 'lucide-react'
 import Modal from '../../components/ui/Modal'
 import { supabase } from '../../lib/supabase'
@@ -10,6 +11,7 @@ import styles from './lite.module.css'
 // (their trade_vertical plus shared 'common' items). Step 2 collects the sub's
 // own rate for each picked item before batch-inserting into their GC catalog.
 export default function WorkItemLibraryPicker({ tradeVertical, existingLibraryIds = [], onConfirm, onClose }) {
+  const { t } = useTranslation()
   const [library, setLibrary] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -57,7 +59,7 @@ export default function WorkItemLibraryPicker({ tradeVertical, existingLibraryId
   const grouped = useMemo(() => {
     const map = {}
     for (const item of filtered) {
-      const cat = item.category || 'Uncategorized'
+      const cat = item.category || t('lite:workItem.uncategorized')
       if (!map[cat]) map[cat] = []
       map[cat].push(item)
     }
@@ -104,7 +106,7 @@ export default function WorkItemLibraryPicker({ tradeVertical, existingLibraryId
   }
 
   return (
-    <Modal title={step === 'select' ? 'Add from library' : 'Set your rates'} onClose={onClose}>
+    <Modal title={step === 'select' ? t('lite:workItem.addFromLibrary') : t('lite:workItem.setRates')} onClose={onClose}>
       {error && <div className={styles.error}>{error}</div>}
 
       {step === 'select' && (
@@ -120,15 +122,15 @@ export default function WorkItemLibraryPicker({ tradeVertical, existingLibraryId
           <div className={styles.field} style={{ marginBottom: 12 }}>
             <div style={{ position: 'relative' }}>
               <Search size={15} style={{ position: 'absolute', left: 10, top: 12, color: 'var(--color-text-muted)' }} />
-              <input className={styles.input} style={{ paddingLeft: 32 }} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search items…" autoFocus />
+              <input className={styles.input} style={{ paddingLeft: 32 }} value={search} onChange={e => setSearch(e.target.value)} placeholder={t('lite:workItem.searchItems')} autoFocus />
             </div>
           </div>
 
           <div style={{ maxHeight: 340, overflowY: 'auto' }}>
             {loading ? (
-              <div className={styles.loading}>Loading library…</div>
+              <div className={styles.loading}>{t('lite:workItem.loadingLibrary')}</div>
             ) : grouped.length === 0 ? (
-              <div className={styles.empty}>{library.length === 0 ? 'No library items available for your trade yet.' : 'No items match your search.'}</div>
+              <div className={styles.empty}>{library.length === 0 ? t('lite:workItem.noLibraryItems') : t('lite:workItem.noMatch')}</div>
             ) : (
               grouped.map(([cat, items]) => {
                 const expanded = expandedCats.has(cat) || search.trim() !== ''
@@ -158,9 +160,9 @@ export default function WorkItemLibraryPicker({ tradeVertical, existingLibraryId
           </div>
 
           <div className={styles.rowBetween} style={{ marginTop: 14 }}>
-            <span className={styles.muted}>{selectedList.length} selected</span>
+            <span className={styles.muted}>{t('lite:workItem.selectedCount', { count: selectedList.length })}</span>
             <button className={styles.primaryBtn} disabled={selectedList.length === 0} onClick={() => setStep('rates')}>
-              Next: set rates
+              {t('lite:workItem.nextSetRates')}
             </button>
           </div>
         </>
@@ -168,7 +170,7 @@ export default function WorkItemLibraryPicker({ tradeVertical, existingLibraryId
 
       {step === 'rates' && (
         <>
-          <p className={styles.helper} style={{ marginBottom: 12 }}>Enter your rate for each item. You can leave a rate blank and set it later.</p>
+          <p className={styles.helper} style={{ marginBottom: 12 }}>{t('lite:workItem.ratesHelper')}</p>
           <div style={{ maxHeight: 360, overflowY: 'auto' }}>
             {selectedList.map(item => (
               <div key={item.id} className={styles.entryRow}>
@@ -191,9 +193,9 @@ export default function WorkItemLibraryPicker({ tradeVertical, existingLibraryId
             ))}
           </div>
           <div className={styles.rowBetween} style={{ marginTop: 14 }}>
-            <button className={styles.secondaryBtn} onClick={() => setStep('select')}>Back</button>
+            <button className={styles.secondaryBtn} onClick={() => setStep('select')}>{t('common:action.back')}</button>
             <button className={styles.primaryBtn} disabled={saving} onClick={handleConfirm}>
-              {saving ? 'Adding…' : `Add ${selectedList.length} item${selectedList.length !== 1 ? 's' : ''}`}
+              {saving ? t('lite:workItem.adding') : t('lite:workItem.addItems', { count: selectedList.length })}
             </button>
           </div>
         </>

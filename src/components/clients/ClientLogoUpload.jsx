@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Upload, Trash2, Loader } from 'lucide-react'
 import { useClientLogo } from '../../hooks/useClientLogo'
 import styles from './ClientLogoUpload.module.css'
 
 export default function ClientLogoUpload({ clientId, currentLogoUrl, clientName, onLogoChange }) {
+  const { t } = useTranslation()
   const { uploadLogo, deleteLogo, uploading } = useClientLogo()
   const [error, setError] = useState(null)
   const [imgError, setImgError] = useState(false)
@@ -40,7 +42,7 @@ export default function ClientLogoUpload({ clientId, currentLogoUrl, clientName,
   }
 
   async function handleDelete() {
-    if (!window.confirm('Remove logo?')) return
+    if (!window.confirm(t('clients:logo.confirmRemove'))) return
     setError(null)
     try {
       await deleteLogo(clientId)
@@ -54,7 +56,7 @@ export default function ClientLogoUpload({ clientId, currentLogoUrl, clientName,
     <div className={styles.wrap}>
       <div className={styles.avatar}>
         {showImage ? (
-          <img src={currentLogoUrl} alt={`${clientName} logo`} className={styles.img} onError={() => setImgError(true)} />
+          <img src={currentLogoUrl} alt={t('clients:logo.alt', { name: clientName })} className={styles.img} onError={() => setImgError(true)} />
         ) : (
           <span className={styles.initials}>{initials}</span>
         )}
@@ -66,11 +68,11 @@ export default function ClientLogoUpload({ clientId, currentLogoUrl, clientName,
         )}
 
         <div className={styles.hoverOverlay}>
-          <button className={styles.overlayBtn} onClick={() => fileRef.current?.click()} title="Upload logo">
+          <button className={styles.overlayBtn} onClick={() => fileRef.current?.click()} title={t('clients:logo.upload')}>
             <Upload size={16} />
           </button>
           {showImage && (
-            <button className={styles.overlayBtn} onClick={handleDelete} title="Remove logo">
+            <button className={styles.overlayBtn} onClick={handleDelete} title={t('clients:logo.remove')}>
               <Trash2 size={16} />
             </button>
           )}

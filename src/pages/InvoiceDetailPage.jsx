@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Download, Send, CheckCircle, XCircle, Edit, Trash2, RotateCcw } from 'lucide-react'
 import BackLink from '../components/BackLink'
 import { useInvoice, useInvoiceMutations, isOverdue } from '../hooks/useInvoices'
@@ -8,31 +9,31 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import styles from './InvoiceDetailPage.module.css'
 
-const UNIT_LABELS = { sf: 'SF', lf: 'LF', each: 'Each', hour: 'Hour', lump_sum: 'Lump Sum' }
+const UNIT_LABELS = { sf: 'common:units.sf', lf: 'common:units.lf', each: 'common:units.each', hour: 'common:units.hour', lump_sum: 'common:units.lumpSum' }
 const PAYMENT_METHODS = [
-  { value: 'cash', label: 'Cash' },
-  { value: 'check', label: 'Check' },
-  { value: 'ach', label: 'ACH' },
-  { value: 'card', label: 'Card' },
-  { value: 'venmo', label: 'Venmo' },
-  { value: 'other', label: 'Other' },
+  { value: 'cash', label: 'invoices:detail.method.cash' },
+  { value: 'check', label: 'invoices:detail.method.check' },
+  { value: 'ach', label: 'invoices:detail.method.ach' },
+  { value: 'card', label: 'invoices:detail.method.card' },
+  { value: 'venmo', label: 'invoices:detail.method.venmo' },
+  { value: 'other', label: 'invoices:detail.method.other' },
 ]
 
 // Local status pill for the detail-page header. Mirrors the shared
 // InvoiceStatusBadge status-color semantics (STATUS_MAP + its module.css) so the
 // shared component — still used by the portal and Lite — stays untouched.
 const STATUS_PILL = {
-  draft:   { label: 'Draft',          bg: 'var(--color-neutral-bg)',   color: 'var(--color-neutral)' },
-  sent:    { label: 'Sent',           bg: 'var(--color-warning-bg)',   color: 'var(--color-warning)' },
-  viewed:  { label: 'Viewed',         bg: 'var(--color-info-bg)',      color: 'var(--color-info)' },
-  partial: { label: 'Partially paid', bg: 'rgba(245, 158, 11, 0.12)',  color: '#d97706' },
-  paid:    { label: 'Paid in full',   bg: 'rgba(74,222,128,0.14)',     color: 'var(--color-success)' },
-  void:    { label: 'Void',           bg: 'var(--color-danger-bg)',    color: 'var(--color-danger)', strike: true },
+  draft:   { label: 'common:invoiceStatus.draft',   bg: 'var(--color-neutral-bg)',   color: 'var(--color-neutral)' },
+  sent:    { label: 'common:invoiceStatus.sent',    bg: 'var(--color-warning-bg)',   color: 'var(--color-warning)' },
+  viewed:  { label: 'common:invoiceStatus.viewed',  bg: 'var(--color-info-bg)',      color: 'var(--color-info)' },
+  partial: { label: 'common:invoiceStatus.partial', bg: 'rgba(245, 158, 11, 0.12)',  color: '#d97706' },
+  paid:    { label: 'common:invoiceStatus.paid',    bg: 'rgba(74,222,128,0.14)',     color: 'var(--color-success)' },
+  void:    { label: 'common:invoiceStatus.void',    bg: 'var(--color-danger-bg)',    color: 'var(--color-danger)', strike: true },
 }
 
 function statusPillProps(status, overdue) {
   if (overdue && (status === 'sent' || status === 'partial')) {
-    return { label: 'Overdue', bg: 'var(--color-danger-bg)', color: 'var(--color-danger)' }
+    return { label: 'common:invoiceStatus.overdue', bg: 'var(--color-danger-bg)', color: 'var(--color-danger)' }
   }
   return STATUS_PILL[status] ?? STATUS_PILL.draft
 }
@@ -53,6 +54,7 @@ function fmtDateShort(d) {
 }
 
 export default function InvoiceDetailPage() {
+  const { t } = useTranslation()
   const { id } = useParams()
   const navigate = useNavigate()
   const { company } = useAuth()
@@ -123,12 +125,12 @@ export default function InvoiceDetailPage() {
     setActionSaving(true); setActionError(null); setSendSuccess(false)
     try {
       const pdfData = await fetchPdfData()
-      if (!pdfData) throw new Error('Could not load PDF data')
+      if (!pdfData) throw new Error(t('invoices:detail.errorPdfData'))
       const pdfBase64 = generateInvoicePDF({ invoice, lineItems, project: pdfData.project, client: pdfData.client, company: pdfData.company, returnAs: 'base64' })
       const { error: fnErr } = await supabase.functions.invoke('send-invoice-email', {
         body: { invoice_id: id, pdf_base64: pdfBase64 },
       })
-      if (fnErr) throw new Error(fnErr.message || 'Send failed')
+      if (fnErr) throw new Error(fnErr.message || t('common:action.sendFailed'))
       setSendSuccess(true)
       setTimeout(() => setSendSuccess(false), 3000)
       await refetch()
@@ -138,7 +140,7 @@ export default function InvoiceDetailPage() {
 
   async function handleRecordPayment() {
     const amt = Number(payAmount)
-    if (!amt || amt <= 0) { setActionError('Enter a payment amount.'); return }
+    if (!amt || amt <= 0) { setActionError(t('invoices:detail.errorNoAmount')); return }
     setActionSaving(true); setActionError(null)
     try {
       await recordPayment(id, { amount: amt, payment_method: payMethod, payment_date: payDate, reference_number: payRef, notes: payNotes })
@@ -157,7 +159,7 @@ export default function InvoiceDetailPage() {
   }
 
   async function handleDeletePayment(paymentId) {
-    if (!window.confirm('Remove this payment?')) return
+    if (!window.confirm(t('invoices:detail.confirmRemovePayment'))) return
     setActionSaving(true); setActionError(null)
     try { await deletePayment(paymentId, id); await refetch() }
     catch (err) { setActionError(err.message) }
@@ -165,7 +167,7 @@ export default function InvoiceDetailPage() {
   }
 
   async function handleMarkVoid() {
-    if (!voidReason.trim()) { setActionError('Void reason is required.'); return }
+    if (!voidReason.trim()) { setActionError(t('invoices:detail.errorNoVoidReason')); return }
     setActionSaving(true); setActionError(null)
     try { await markVoid(id, voidReason); setShowVoidForm(false); await refetch() }
     catch (err) { setActionError(err.message) }
@@ -180,13 +182,13 @@ export default function InvoiceDetailPage() {
   }
 
   async function handleDelete() {
-    if (!window.confirm('Delete this draft invoice?')) return
+    if (!window.confirm(t('invoices:detail.confirmDelete'))) return
     try { await deleteInvoice(id); navigate('/invoices') }
-    catch (err) { alert('Failed: ' + err.message) }
+    catch (err) { alert(t('invoices:detail.deleteFailed', { message: err.message })) }
   }
 
-  if (loading) return <div className={styles.page}><main className={styles.main}><p className={styles.loading}>Loading…</p></main></div>
-  if (error || !invoice) return <div className={styles.page}><main className={styles.main}><p className={styles.loading}>Invoice not found.</p></main></div>
+  if (loading) return <div className={styles.page}><main className={styles.main}><p className={styles.loading}>{t('common:misc.loading')}</p></main></div>
+  if (error || !invoice) return <div className={styles.page}><main className={styles.main}><p className={styles.loading}>{t('invoices:detail.notFound')}</p></main></div>
 
   const status = invoice.status
   const overdue = isOverdue(invoice)
@@ -200,7 +202,7 @@ export default function InvoiceDetailPage() {
     <div className={styles.page}>
       
       <main className={styles.main}>
-        <BackLink to="/invoices" label="Invoices" />
+        <BackLink to="/invoices" label={t('invoices:nav.invoices')} />
 
         <div className={styles.topRow}>
           <div>
@@ -209,50 +211,50 @@ export default function InvoiceDetailPage() {
               {(() => {
                 const p = statusPillProps(status, overdue)
                 return (
-                  <span style={{ padding: '4px 12px', borderRadius: 9999, background: p.bg, color: p.color, fontWeight: 700, fontSize: 'var(--text-xs)', whiteSpace: 'nowrap', textDecoration: p.strike ? 'line-through' : undefined }}>{p.label}</span>
+                  <span style={{ padding: '4px 12px', borderRadius: 9999, background: p.bg, color: p.color, fontWeight: 700, fontSize: 'var(--text-xs)', whiteSpace: 'nowrap', textDecoration: p.strike ? 'line-through' : undefined }}>{t(p.label)}</span>
                 )
               })()}
             </div>
             {invoice.title && <div className={styles.invTitle}>{invoice.title}</div>}
             <div className={styles.dates}>
-              <span>Issued {fmtDate(invoice.created_at)}</span>
-              {invoice.due_date && <span> &middot; Due {fmtDate(invoice.due_date)}</span>}
+              <span>{t('invoices:detail.issued', { date: fmtDate(invoice.created_at) })}</span>
+              {invoice.due_date && <span> &middot; {t('invoices:detail.due', { date: fmtDate(invoice.due_date) })}</span>}
             </div>
           </div>
           <div className={styles.actions}>
             <button className={styles.toolBtn} onClick={handleDownloadPDF} disabled={pdfLoading}>
-              <Download size={15} /> {pdfLoading ? '…' : 'PDF'}
+              <Download size={15} /> {pdfLoading ? '…' : t('invoices:detail.pdf')}
             </button>
-            {sendSuccess && <span style={{ color: 'var(--color-success)', fontSize: 13, fontWeight: 600 }}>Sent!</span>}
+            {sendSuccess && <span style={{ color: 'var(--color-success)', fontSize: 13, fontWeight: 600 }}>{t('invoices:detail.sentConfirm')}</span>}
             {status === 'draft' && (
               <>
                 <button className={styles.toolBtn} onClick={() => navigate(`/invoices/new?edit=${id}`)}>
-                  <Edit size={15} /> Edit
+                  <Edit size={15} /> {t('common:action.edit')}
                 </button>
                 <button className={styles.actionBtn} onClick={handleSendInvoice} disabled={actionSaving}>
-                  <Send size={15} /> {actionSaving ? 'Sending…' : 'Send Invoice'}
+                  <Send size={15} /> {actionSaving ? t('invoices:detail.sending') : t('invoices:detail.sendInvoice')}
                 </button>
-                <button className={styles.dangerBtn} onClick={handleDelete}><Trash2 size={15} /> Delete</button>
+                <button className={styles.dangerBtn} onClick={handleDelete}><Trash2 size={15} /> {t('common:action.delete')}</button>
               </>
             )}
             {(status === 'sent' || status === 'viewed' || status === 'partial') && (
               <>
                 <button className={styles.toolBtn} onClick={handleSendInvoice} disabled={actionSaving}>
-                  <Send size={15} /> {actionSaving ? 'Sending…' : 'Resend'}
+                  <Send size={15} /> {actionSaving ? t('invoices:detail.sending') : t('invoices:detail.resend')}
                 </button>
                 {canRecordPayment && (
                   <button className={styles.actionBtn} onClick={handleMarkPaidInFull} disabled={actionSaving}>
-                    <CheckCircle size={15} /> Mark paid in full
+                    <CheckCircle size={15} /> {t('invoices:detail.markPaidInFull')}
                   </button>
                 )}
                 <button className={styles.dangerBtn} onClick={() => setShowVoidForm(true)}>
-                  <XCircle size={15} /> Void
+                  <XCircle size={15} /> {t('invoices:detail.void')}
                 </button>
               </>
             )}
             {isVoid && (
               <button className={styles.toolBtn} onClick={handleReopen} disabled={actionSaving}>
-                <RotateCcw size={15} /> Reopen invoice
+                <RotateCcw size={15} /> {t('invoices:detail.reopen')}
               </button>
             )}
           </div>
@@ -262,16 +264,16 @@ export default function InvoiceDetailPage() {
 
         {/* Line items */}
         <div className={styles.section}>
-          <h3 className={styles.sectionLabel}>Line Items</h3>
+          <h3 className={styles.sectionLabel}>{t('invoices:lineItems.sectionLabel')}</h3>
           <table className={styles.table}>
             <thead>
               <tr>
-                <th className={styles.th}>Description</th>
-                <th className={styles.th}>Category</th>
-                <th className={styles.thR}>Qty</th>
-                <th className={styles.thC}>Unit</th>
-                <th className={styles.thR}>Rate</th>
-                <th className={styles.thR}>Total</th>
+                <th className={styles.th}>{t('invoices:lineItems.description')}</th>
+                <th className={styles.th}>{t('invoices:lineItems.category')}</th>
+                <th className={styles.thR}>{t('invoices:lineItems.qty')}</th>
+                <th className={styles.thC}>{t('invoices:lineItems.unit')}</th>
+                <th className={styles.thR}>{t('invoices:lineItems.rate')}</th>
+                <th className={styles.thR}>{t('invoices:lineItems.total')}</th>
               </tr>
             </thead>
             <tbody>
@@ -280,7 +282,7 @@ export default function InvoiceDetailPage() {
                   <td className={styles.td}>{li.description}</td>
                   <td className={styles.td}>{li.category_name || '—'}</td>
                   <td className={styles.tdR}>{Number(li.quantity || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}</td>
-                  <td className={styles.tdC}>{UNIT_LABELS[li.unit] || li.unit}</td>
+                  <td className={styles.tdC}>{UNIT_LABELS[li.unit] ? t(UNIT_LABELS[li.unit]) : li.unit}</td>
                   <td className={styles.tdR}>{fmtMoney(li.unit_rate)}</td>
                   <td className={styles.tdR}>{fmtMoney(li.total)}</td>
                 </tr>
@@ -291,40 +293,40 @@ export default function InvoiceDetailPage() {
 
         {/* Totals + Balance */}
         <div className={styles.totals}>
-          <div className={styles.totalRow}><span>Subtotal</span><span>{fmtMoney(invoice.subtotal)}</span></div>
+          <div className={styles.totalRow}><span>{t('invoices:totals.subtotal')}</span><span>{fmtMoney(invoice.subtotal)}</span></div>
           {Number(invoice.adjustment_amount) !== 0 && (
-            <div className={styles.totalRow}><span>{invoice.adjustment_label || 'Adjustment'}</span><span>{fmtMoney(invoice.adjustment_amount)}</span></div>
+            <div className={styles.totalRow}><span>{invoice.adjustment_label || t('invoices:totals.adjustment')}</span><span>{fmtMoney(invoice.adjustment_amount)}</span></div>
           )}
-          <div className={styles.totalRowGrand}><span>Total</span><span>{fmtMoney(total)}</span></div>
+          <div className={styles.totalRowGrand}><span>{t('invoices:totals.total')}</span><span>{fmtMoney(total)}</span></div>
           {paidAmount > 0 && (
-            <div className={styles.totalRow}><span>Payments received</span><span style={{ color: 'var(--color-success)' }}>−{fmtMoney(paidAmount)}</span></div>
+            <div className={styles.totalRow}><span>{t('invoices:totals.paymentsReceived')}</span><span style={{ color: 'var(--color-success)' }}>−{fmtMoney(paidAmount)}</span></div>
           )}
           {balanceDue > 0 ? (
-            <div className={styles.totalRowPaidState}><span>Balance due</span><span style={{ color: 'var(--color-danger)' }}>{fmtMoney(balanceDue)}</span></div>
+            <div className={styles.totalRowPaidState}><span>{t('invoices:totals.balanceDue')}</span><span style={{ color: 'var(--color-danger)' }}>{fmtMoney(balanceDue)}</span></div>
           ) : total > 0 && status !== 'draft' ? (
-            <div className={styles.totalRowPaidState}><span style={{ color: 'var(--color-success)' }}>Paid in full</span><span style={{ color: 'var(--color-success)' }}>{fmtMoney(0)}</span></div>
+            <div className={styles.totalRowPaidState}><span style={{ color: 'var(--color-success)' }}>{t('common:invoiceStatus.paid')}</span><span style={{ color: 'var(--color-success)' }}>{fmtMoney(0)}</span></div>
           ) : null}
         </div>
 
         {/* Notes + Terms */}
         {invoice.notes && (
           <div className={styles.section}>
-            <h3 className={styles.sectionLabel}>Notes</h3>
+            <h3 className={styles.sectionLabel}>{t('invoices:detail.notesLabel')}</h3>
             <p className={styles.bodyText}>{invoice.notes}</p>
           </div>
         )}
         {invoice.terms && (
           <div className={styles.section}>
-            <h3 className={styles.sectionLabel}>Terms</h3>
+            <h3 className={styles.sectionLabel}>{t('invoices:detail.termsLabel')}</h3>
             <p className={styles.bodyText}>{invoice.terms}</p>
           </div>
         )}
 
         {/* Payments section */}
         <div className={styles.section}>
-          <h3 className={styles.sectionLabel}>Payments</h3>
+          <h3 className={styles.sectionLabel}>{t('invoices:detail.payments')}</h3>
           {payments.length === 0 ? (
-            <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>No payments recorded yet.</p>
+            <p style={{ fontSize: 14, color: 'var(--color-text-muted)', margin: 0 }}>{t('invoices:detail.noPayments')}</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {payments.map(pmt => (
@@ -337,7 +339,7 @@ export default function InvoiceDetailPage() {
                     </div>
                     {(pmt.reference_number || pmt.notes) && (
                       <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-                        {pmt.reference_number && <span>Ref: {pmt.reference_number}</span>}
+                        {pmt.reference_number && <span>{t('invoices:detail.ref', { ref: pmt.reference_number })}</span>}
                         {pmt.reference_number && pmt.notes && <span> · </span>}
                         {pmt.notes && <span>{pmt.notes}</span>}
                       </div>
@@ -350,7 +352,7 @@ export default function InvoiceDetailPage() {
                       style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: 16, padding: '4px 8px', opacity: 0.6, transition: 'opacity 0.15s' }}
                       onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = 'var(--color-danger)' }}
                       onMouseLeave={e => { e.currentTarget.style.opacity = '0.6'; e.currentTarget.style.color = 'var(--color-text-muted)' }}
-                      title="Remove payment"
+                      title={t('invoices:detail.removePayment')}
                     >×</button>
                   )}
                 </div>
@@ -365,18 +367,18 @@ export default function InvoiceDetailPage() {
               style={{ marginTop: 12 }}
               onClick={() => { setPayAmount(String(balanceDue.toFixed(2))); setShowPayForm(true) }}
             >
-              Record a payment
+              {t('invoices:detail.recordPayment')}
             </button>
           )}
           {isVoid && (
-            <p style={{ fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', margin: '12px 0 0' }}>Reopen this invoice to record payments.</p>
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', margin: '12px 0 0' }}>{t('invoices:detail.reopenToRecord')}</p>
           )}
         </div>
 
         {/* Void reason */}
         {invoice.void_reason && (
           <div className={styles.section}>
-            <h3 className={styles.sectionLabel}>Void Reason</h3>
+            <h3 className={styles.sectionLabel}>{t('invoices:detail.voidReasonLabel')}</h3>
             <p className={styles.bodyText}>{invoice.void_reason}</p>
           </div>
         )}
@@ -384,36 +386,36 @@ export default function InvoiceDetailPage() {
         {/* Record Payment inline form */}
         {showPayForm && (
           <div className={styles.inlineForm}>
-            <h3 className={styles.formTitle}>Record a payment</h3>
+            <h3 className={styles.formTitle}>{t('invoices:detail.recordPayment')}</h3>
             <div className={styles.formRow}>
               <label className={styles.formField}>
-                <span>Amount</span>
+                <span>{t('invoices:detail.amountLabel')}</span>
                 <input type="number" className={styles.formInput} value={payAmount} onChange={e => setPayAmount(e.target.value)} step="0.01" min="0.01" />
               </label>
               <label className={styles.formField}>
-                <span>Method</span>
+                <span>{t('invoices:detail.methodLabel')}</span>
                 <select className={styles.formSelect} value={payMethod} onChange={e => setPayMethod(e.target.value)}>
-                  {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                  {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{t(m.label)}</option>)}
                 </select>
               </label>
               <label className={styles.formField}>
-                <span>Date</span>
+                <span>{t('invoices:detail.dateLabel')}</span>
                 <input type="date" className={styles.formInput} value={payDate} onChange={e => setPayDate(e.target.value)} />
               </label>
             </div>
             <div className={styles.formRow}>
               <label className={styles.formField}>
-                <span>Reference (optional)</span>
-                <input type="text" className={styles.formInput} value={payRef} onChange={e => setPayRef(e.target.value)} placeholder="Check #, transaction ID" />
+                <span>{t('invoices:detail.referenceOptional')}</span>
+                <input type="text" className={styles.formInput} value={payRef} onChange={e => setPayRef(e.target.value)} placeholder={t('invoices:detail.referencePlaceholder')} />
               </label>
               <label className={styles.formField}>
-                <span>Notes (optional)</span>
+                <span>{t('invoices:detail.notesOptional')}</span>
                 <input type="text" className={styles.formInput} value={payNotes} onChange={e => setPayNotes(e.target.value)} />
               </label>
             </div>
             <div className={styles.formActions}>
-              <button className={styles.cancelBtn} onClick={() => setShowPayForm(false)}>Cancel</button>
-              <button className={styles.confirmBtn} onClick={handleRecordPayment} disabled={actionSaving}>{actionSaving ? 'Saving…' : 'Save payment'}</button>
+              <button className={styles.cancelBtn} onClick={() => setShowPayForm(false)}>{t('common:action.cancel')}</button>
+              <button className={styles.confirmBtn} onClick={handleRecordPayment} disabled={actionSaving}>{actionSaving ? t('invoices:detail.saving') : t('invoices:detail.savePayment')}</button>
             </div>
           </div>
         )}
@@ -421,14 +423,14 @@ export default function InvoiceDetailPage() {
         {/* Void inline form */}
         {showVoidForm && (
           <div className={styles.inlineForm}>
-            <h3 className={styles.formTitle}>Void Invoice</h3>
+            <h3 className={styles.formTitle}>{t('invoices:detail.voidInvoice')}</h3>
             <label className={styles.formField}>
-              <span>Reason (required)</span>
-              <textarea className={styles.formTextarea} value={voidReason} onChange={e => setVoidReason(e.target.value)} rows={2} placeholder="Why is this invoice being voided?" />
+              <span>{t('invoices:detail.reasonRequired')}</span>
+              <textarea className={styles.formTextarea} value={voidReason} onChange={e => setVoidReason(e.target.value)} rows={2} placeholder={t('invoices:detail.voidReasonPlaceholder')} />
             </label>
             <div className={styles.formActions}>
-              <button className={styles.cancelBtn} onClick={() => setShowVoidForm(false)}>Cancel</button>
-              <button className={styles.dangerConfirmBtn} onClick={handleMarkVoid} disabled={actionSaving}>{actionSaving ? 'Saving…' : 'Confirm Void'}</button>
+              <button className={styles.cancelBtn} onClick={() => setShowVoidForm(false)}>{t('common:action.cancel')}</button>
+              <button className={styles.dangerConfirmBtn} onClick={handleMarkVoid} disabled={actionSaving}>{actionSaving ? t('invoices:detail.saving') : t('invoices:detail.confirmVoid')}</button>
             </div>
           </div>
         )}

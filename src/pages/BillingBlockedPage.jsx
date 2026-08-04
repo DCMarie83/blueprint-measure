@@ -1,37 +1,39 @@
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabase'
 import { ONBOARDING_CALENDAR_URL } from '../lib/config'
 
+// headline/body/cta hold i18n keys under billing:blocked.*; resolved with t().
 const STATUS_MESSAGES = {
   trial_expired: {
-    headline: 'Your free trial has ended',
+    headline: 'billing:blocked.trialExpiredHeadline',
     // body is built in the component — trial length comes from the company row.
     body: null,
-    cta: 'Subscribe now',
+    cta: 'billing:blocked.trialExpiredCta',
     ctaTo: '/subscribe',
   },
   past_due: {
-    headline: "Your payment didn't go through",
-    body: 'We were unable to process your most recent payment. Please update your payment method to restore access.',
-    cta: 'Update payment',
+    headline: 'billing:blocked.pastDueHeadline',
+    body: 'billing:blocked.pastDueBody',
+    cta: 'billing:blocked.pastDueCta',
     ctaTo: '/subscribe',
   },
   paused: {
-    headline: 'Your subscription is paused',
-    body: 'Your subscription is currently paused. Resume to restore full access to your account.',
-    cta: 'Resume subscription',
+    headline: 'billing:blocked.pausedHeadline',
+    body: 'billing:blocked.pausedBody',
+    cta: 'billing:blocked.pausedCta',
     ctaTo: '/subscribe',
   },
   suspended: {
-    headline: 'Subscription suspended',
-    body: 'Your subscription has been suspended. Please resubscribe to continue using RivetDog.',
-    cta: 'Resubscribe',
+    headline: 'billing:blocked.suspendedHeadline',
+    body: 'billing:blocked.suspendedBody',
+    cta: 'billing:blocked.suspendedCta',
     ctaTo: '/subscribe',
   },
   canceled: {
-    headline: 'Subscription canceled',
-    body: 'Your subscription has been canceled. Resubscribe to continue using RivetDog.',
-    cta: 'Resubscribe',
+    headline: 'billing:blocked.canceledHeadline',
+    body: 'billing:blocked.canceledBody',
+    cta: 'billing:blocked.canceledCta',
     ctaTo: '/subscribe',
   },
 }
@@ -39,12 +41,13 @@ const STATUS_MESSAGES = {
 const CALENDAR_URL = ONBOARDING_CALENDAR_URL
 
 export default function BillingBlockedPage({ company, reason }) {
+  const { t } = useTranslation()
   const key = reason || company?.subscription_status || 'suspended'
   const msg = STATUS_MESSAGES[key] ?? STATUS_MESSAGES.suspended
   const isTrialExpired = key === 'trial_expired'
   const body = isTrialExpired
-    ? `Your ${company?.trial_duration_days ?? 14}-day free trial is over. Subscribe now to keep your account and all your data.`
-    : msg.body
+    ? t('billing:blocked.trialBody', { days: company?.trial_duration_days ?? 14 })
+    : t(msg.body)
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -64,7 +67,7 @@ export default function BillingBlockedPage({ company, reason }) {
           fontFamily: 'var(--font-heading)', fontWeight: 800,
           fontSize: 24, color: 'var(--color-text)', marginBottom: 12,
         }}>
-          {msg.headline}
+          {t(msg.headline)}
         </h1>
         <p style={{
           color: 'var(--color-text-muted)', fontSize: 15,
@@ -82,7 +85,7 @@ export default function BillingBlockedPage({ company, reason }) {
             marginBottom: 16,
           }}
         >
-          {msg.cta}
+          {t(msg.cta)}
         </Link>
 
         {isTrialExpired && CALENDAR_URL && (
@@ -96,7 +99,7 @@ export default function BillingBlockedPage({ company, reason }) {
                 textDecoration: 'underline',
               }}
             >
-              Or book your onboarding call
+              {t('billing:blocked.bookCall')}
             </a>
           </div>
         )}
@@ -110,7 +113,7 @@ export default function BillingBlockedPage({ company, reason }) {
                 textDecoration: 'underline',
               }}
             >
-              Go to Account Settings
+              {t('billing:blocked.goToSettings')}
             </Link>
           </div>
         )}
@@ -124,12 +127,12 @@ export default function BillingBlockedPage({ company, reason }) {
               textDecoration: 'underline',
             }}
           >
-            Sign out
+            {t('billing:blocked.signOut')}
           </button>
         </div>
 
         <p style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>
-          Need help? Contact <a href="mailto:info@rivetdog.com" style={{ color: 'var(--color-primary)' }}>info@rivetdog.com</a>
+          {t('billing:blocked.needHelp')} <a href="mailto:info@rivetdog.com" style={{ color: 'var(--color-primary)' }}>info@rivetdog.com</a>
         </p>
       </div>
     </div>

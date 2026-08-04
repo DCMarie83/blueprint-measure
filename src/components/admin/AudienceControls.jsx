@@ -17,7 +17,10 @@ const chipStyle = {
   color: 'var(--color-text)', marginRight: 4, border: '1px solid var(--color-border)',
 }
 
+import { useTranslation } from 'react-i18next'
+
 export function AudienceCheckboxes({ value, onChange, adminOnly, onAdminOnlyChange }) {
+  const { t } = useTranslation()
   const arr = value || []
   const has = fam => arr.includes(fam)
   const everyone = has('fieldos') && has('lite')
@@ -33,25 +36,25 @@ export function AudienceCheckboxes({ value, onChange, adminOnly, onAdminOnlyChan
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <label style={cbLabel}>
         <input type="checkbox" checked={has('fieldos')} onChange={() => toggleFamily('fieldos')} />
-        Contractors
+        {t('admin:audiences.contractors')}
       </label>
       <label style={cbLabel}>
         <input type="checkbox" checked={has('lite')} onChange={() => toggleFamily('lite')} />
-        Time &amp; Pay Lite
+        {t('admin:audiences.timePayLite')}
       </label>
       <label style={{ ...cbLabel, color: 'var(--color-text-muted)' }}>
         <input type="checkbox" checked={everyone} onChange={toggleEveryone} />
-        Everyone (Contractors + Lite)
+        {t('admin:audiences.everyone')}
       </label>
 
       {onAdminOnlyChange && (
         <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--color-border)' }}>
           <label style={cbLabel}>
             <input type="checkbox" checked={!!adminOnly} onChange={e => onAdminOnlyChange(e.target.checked)} />
-            Admins only
+            {t('admin:audiences.adminsOnly')}
           </label>
           <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2, marginLeft: 22 }}>
-            Visible only to company admins, not crew members.
+            {t('admin:audiences.adminsOnlyHelp')}
           </div>
         </div>
       )}
@@ -60,6 +63,7 @@ export function AudienceCheckboxes({ value, onChange, adminOnly, onAdminOnlyChan
 }
 
 export function AudienceBadges({ value, adminOnly }) {
+  const { t } = useTranslation()
   const arr = value || []
   const fams = arr.includes('all')
     ? AUDIENCE_FAMILIES // legacy backfill safety only
@@ -68,7 +72,7 @@ export function AudienceBadges({ value, adminOnly }) {
   return (
     <>
       {fams.map(f => <span key={f.value} style={chipStyle}>{f.chip}</span>)}
-      {adminOnly && <span style={chipStyle}>Admins</span>}
+      {adminOnly && <span style={chipStyle}>{t('admin:audiences.adminsBadge')}</span>}
     </>
   )
 }

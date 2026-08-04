@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { parseFeetInches } from '../../utils/fractions'
 import InfoTooltip from '../ui/InfoTooltip'
 import styles from './ZoneDrawPanel.module.css'
@@ -37,6 +38,7 @@ export default function ZoneDrawPanel({
   selectedType, onTypeChange,
   selectedColor, onColorChange,
 }) {
+  const { t } = useTranslation()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [surfaceType, setSurfaceType] = useState('')
@@ -101,7 +103,7 @@ export default function ZoneDrawPanel({
   // During drawing, use the type passed from the parent if available
   // (covers redraw mode where the form was never shown).
   const activeType = drawingType ?? type
-  const unitLabel = activeType === 'LF' ? 'lin ft' : activeType === 'count' ? 'items' : activeType
+  const unitLabel = activeType === 'LF' ? t('blueprint:draw.unitLinFt') : activeType === 'count' ? t('blueprint:draw.unitItems') : activeType
 
   // ── Between-segment pause: segments finished, waiting for next action ─────────
   if (isAccumulating && !isDrawing) {
@@ -109,20 +111,20 @@ export default function ZoneDrawPanel({
       <div className={styles.panel}>
         <div className={styles.status}>
           <div className={styles.dot} />
-          {segmentCount} {segmentCount === 1 ? 'segment' : 'segments'} added
+          {t('blueprint:draw.segmentsAdded', { count: segmentCount })}
         </div>
         <div className={styles.accumTotal}>
-          <span className={styles.accumLabel}>Running total</span>
+          <span className={styles.accumLabel}>{t('blueprint:draw.runningTotal')}</span>
           <span className={styles.accumValue}>{accumulatedResult} {unitLabel}</span>
         </div>
         <div className={styles.actions}>
           <button className={styles.finalizeBtn} onClick={onFinalizeZone}>
-            Done — Save Zone
+            {t('blueprint:draw.doneSaveZone')}
           </button>
           <button className={styles.addSegmentBtn} onClick={onAddSegment}>
-            + Add Another Segment
+            {t('blueprint:draw.addAnotherSegment')}
           </button>
-          <button className={styles.cancelBtn} onClick={onCancel}>Cancel All</button>
+          <button className={styles.cancelBtn} onClick={onCancel}>{t('blueprint:draw.cancelAll')}</button>
         </div>
       </div>
     )
@@ -135,23 +137,23 @@ export default function ZoneDrawPanel({
         <div className={styles.status}>
           <div className={styles.dot} />
           {isAccumulating
-            ? `Segment ${segmentCount + 1} — ${pointCount} ${pointCount === 1 ? 'point' : 'points'} placed`
+            ? t('blueprint:draw.segmentPointsPlaced', { seg: segmentCount + 1, count: pointCount })
             : activeType === 'count'
-            ? `${pointCount} ${pointCount === 1 ? 'item' : 'items'} placed`
-            : `Drawing zone — ${pointCount} ${pointCount === 1 ? 'point' : 'points'} placed`}
+            ? t('blueprint:draw.itemsPlaced', { count: pointCount })
+            : t('blueprint:draw.pointsPlaced', { count: pointCount })}
         </div>
         {activeType === 'count' && (
           <div className={styles.countDisplay}>
             <span className={styles.countNumber}>{pointCount}</span>
-            <span className={styles.countLabel}>items counted</span>
+            <span className={styles.countLabel}>{t('blueprint:draw.itemsCounted')}</span>
           </div>
         )}
 
         {/* Running total shown while adding segments in accumulation mode */}
         {isAccumulating && segmentCount > 0 && (
           <div className={styles.accumTotal}>
-            <span className={styles.accumLabel}>Added so far</span>
-            <span className={styles.accumValue}>{accumulatedResult} {unitLabel} ({segmentCount} {segmentCount === 1 ? 'seg' : 'segs'})</span>
+            <span className={styles.accumLabel}>{t('blueprint:draw.addedSoFar')}</span>
+            <span className={styles.accumValue}>{t('blueprint:draw.addedSoFarValue', { result: accumulatedResult, unit: unitLabel, count: segmentCount })}</span>
           </div>
         )}
 
@@ -159,16 +161,16 @@ export default function ZoneDrawPanel({
         {sfPreview && (
           <div className={styles.sfPreview}>
             <div className={styles.sfPreviewRow}>
-              <span className={styles.sfPreviewLabel}>Flat footprint</span>
-              <span className={styles.sfPreviewValue}>{sfPreview.flat} sq ft</span>
+              <span className={styles.sfPreviewLabel}>{t('blueprint:draw.flatFootprint')}</span>
+              <span className={styles.sfPreviewValue}>{t('blueprint:draw.sqFtValue', { value: sfPreview.flat })}</span>
             </div>
             <div className={styles.sfPreviewRow}>
-              <span className={styles.sfPreviewLabel}>Adjusted ceiling</span>
-              <span className={styles.sfPreviewValueHighlight}>{sfPreview.adjusted} sq ft</span>
+              <span className={styles.sfPreviewLabel}>{t('blueprint:draw.adjustedCeiling')}</span>
+              <span className={styles.sfPreviewValueHighlight}>{t('blueprint:draw.sqFtValue', { value: sfPreview.adjusted })}</span>
             </div>
             {sfPreview.adjustment !== 0 && (
               <div className={styles.sfPreviewAdj}>
-                {sfPreview.adjustment > 0 ? '+' : ''}{sfPreview.adjustment} sq ft for slope
+                {t('blueprint:draw.slopeAdjustment', { adj: (sfPreview.adjustment > 0 ? '+' : '') + sfPreview.adjustment })}
               </div>
             )}
           </div>
@@ -178,36 +180,36 @@ export default function ZoneDrawPanel({
         {wallPreview && (
           <div className={styles.sfPreview}>
             <div className={styles.sfPreviewRow}>
-              <span className={styles.sfPreviewLabel}>Floor area</span>
-              <span className={styles.sfPreviewValue}>{wallPreview.floorSF} sq ft</span>
+              <span className={styles.sfPreviewLabel}>{t('blueprint:draw.floorArea')}</span>
+              <span className={styles.sfPreviewValue}>{t('blueprint:draw.sqFtValue', { value: wallPreview.floorSF })}</span>
             </div>
             <div className={styles.sfPreviewRow}>
-              <span className={styles.sfPreviewLabel}>Perimeter</span>
-              <span className={styles.sfPreviewValue}>{wallPreview.perimeterLF} lin ft</span>
+              <span className={styles.sfPreviewLabel}>{t('blueprint:draw.perimeter')}</span>
+              <span className={styles.sfPreviewValue}>{t('blueprint:draw.linFtValue', { value: wallPreview.perimeterLF })}</span>
             </div>
             <div className={styles.sfPreviewRow}>
-              <span className={styles.sfPreviewLabel}>Wall SF (gross)</span>
-              <span className={styles.sfPreviewValue}>{wallPreview.grossWallSF} sq ft</span>
+              <span className={styles.sfPreviewLabel}>{t('blueprint:draw.wallSfGross')}</span>
+              <span className={styles.sfPreviewValue}>{t('blueprint:draw.sqFtValue', { value: wallPreview.grossWallSF })}</span>
             </div>
             {wallPreview.totalDeductions > 0 && (
               <div className={styles.sfPreviewRow}>
-                <span className={styles.sfPreviewLabel}>Deductions</span>
-                <span className={styles.sfPreviewValue}>-{wallPreview.totalDeductions} sq ft</span>
+                <span className={styles.sfPreviewLabel}>{t('blueprint:draw.deductions')}</span>
+                <span className={styles.sfPreviewValue}>{t('blueprint:draw.deductionValue', { value: wallPreview.totalDeductions })}</span>
               </div>
             )}
             <div className={styles.sfPreviewRow}>
-              <span className={styles.sfPreviewLabel}>Net wall SF</span>
-              <span className={styles.sfPreviewValueHighlight}>{wallPreview.netWallSF} sq ft</span>
+              <span className={styles.sfPreviewLabel}>{t('blueprint:draw.netWallSf')}</span>
+              <span className={styles.sfPreviewValueHighlight}>{t('blueprint:draw.sqFtValue', { value: wallPreview.netWallSF })}</span>
             </div>
           </div>
         )}
 
         <p className={styles.hint}>
           {activeType === 'count'
-            ? 'Click each item on the blueprint to count it.'
+            ? t('blueprint:draw.hintCount')
             : activeType === 'LF'
-            ? 'Click to trace the line. Double-click or Finish to close.'
-            : 'Click to draw polygon corners. Double-click or Finish to close.'}
+            ? t('blueprint:draw.hintLine')
+            : t('blueprint:draw.hintPolygon')}
         </p>
         <div className={styles.actions}>
           <button
@@ -215,18 +217,18 @@ export default function ZoneDrawPanel({
             onClick={onFinish}
             disabled={pointCount < (activeType === 'count' ? 1 : 2)}
           >
-            {isAccumulating ? 'Finish Segment' : 'Finish Zone'}
+            {isAccumulating ? t('blueprint:draw.finishSegment') : t('blueprint:draw.finishZone')}
           </button>
           {isAccumulating && (
             <button className={styles.finalizeBtn} onClick={onFinalizeZone}>
-              Done — Save Zone
+              {t('blueprint:draw.doneSaveZone')}
             </button>
           )}
           <button className={styles.undoBtn} onClick={onUndoPoint} disabled={pointCount === 0}>
-            Undo Last Point
+            {t('blueprint:draw.undoLastPoint')}
           </button>
           <button className={styles.cancelBtn} onClick={onCancel}>
-            {isAccumulating ? 'Cancel All' : 'Cancel'}
+            {isAccumulating ? t('blueprint:draw.cancelAll') : t('common:action.cancel')}
           </button>
         </div>
       </div>
@@ -236,34 +238,34 @@ export default function ZoneDrawPanel({
   return (
     <form className={styles.panel} onSubmit={handleStart}>
       <div className={styles.field}>
-        <label>Zone Name</label>
+        <label>{t('blueprint:draw.zoneName')}</label>
         <input
           value={name}
           onChange={e => setName(e.target.value)}
-          placeholder="e.g. Living Room, Door Frames…"
+          placeholder={t('blueprint:draw.zoneNamePlaceholder')}
           required
         />
       </div>
 
       <div className={styles.field}>
-        <label>Description <span className={styles.optional}>(optional)</span></label>
+        <label>{t('blueprint:draw.description')} <span className={styles.optional}>{t('blueprint:draw.optional')}</span></label>
         <input
           value={description}
           onChange={e => setDescription(e.target.value)}
-          placeholder="e.g. Right wall, Windows…"
+          placeholder={t('blueprint:draw.descriptionPlaceholder')}
         />
       </div>
 
       <div className={styles.field}>
-        <label>Surface Type <span className={styles.optional}>(optional)</span></label>
+        <label>{t('blueprint:draw.surfaceType')} <span className={styles.optional}>{t('blueprint:draw.optional')}</span></label>
         <select
           className={styles.select}
           value={surfaceType}
           onChange={e => setSurfaceType(e.target.value)}
         >
-          <option value="">Not specified</option>
-          {SURFACE_TYPES.map(t => (
-            <option key={t} value={t}>{t}</option>
+          <option value="">{t('blueprint:draw.notSpecified')}</option>
+          {SURFACE_TYPES.map(st => (
+            <option key={st} value={st}>{t('common:surfaceType.' + st)}</option>
           ))}
         </select>
       </div>
@@ -271,16 +273,16 @@ export default function ZoneDrawPanel({
       {/* Ceiling type selector — only shown when surface type is Ceiling */}
       {surfaceType === 'Ceiling' && (
         <div className={styles.field}>
-          <label>Ceiling Type <InfoTooltip>Vaulted = symmetric slopes meeting at a center peak. Tray = recessed center with vertical edges. Shed = single low-to-high slope. Pick the type that matches the room.</InfoTooltip></label>
+          <label>{t('blueprint:draw.ceilingType')} <InfoTooltip>{t('blueprint:draw.ceilingTypeTip')}</InfoTooltip></label>
           <select
             className={styles.select}
             value={ceilingType}
             onChange={e => setCeilingType(e.target.value)}
           >
-            <option value="flat">Flat (standard)</option>
-            <option value="vaulted">Vaulted / Cathedral</option>
-            <option value="tray">Tray / Coffered</option>
-            <option value="shed">Shed / Single slope</option>
+            <option value="flat">{t('blueprint:draw.ceilingFlat')}</option>
+            <option value="vaulted">{t('blueprint:draw.ceilingVaulted')}</option>
+            <option value="tray">{t('blueprint:draw.ceilingTray')}</option>
+            <option value="shed">{t('blueprint:draw.ceilingShed')}</option>
           </select>
         </div>
       )}
@@ -288,10 +290,10 @@ export default function ZoneDrawPanel({
       {/* Vaulted fields — heights OR pitch */}
       {surfaceType === 'Ceiling' && ceilingType === 'vaulted' && (
         <div className={styles.field}>
-          <label>Vault Slope Input <InfoTooltip>Roof pitch describes the steepness as rise over run. A pitch of 8/12 means the roof rises 8 inches for every 12 inches of horizontal distance. Common residential pitches: 4/12 (low slope), 6/12 (medium), 8/12 (medium-steep), 10/12 (steep — most common for vaulted ceilings), 12/12 (very steep, 45°).</InfoTooltip></label>
+          <label>{t('blueprint:draw.vaultSlopeInput')} <InfoTooltip>{t('blueprint:draw.pitchTip')}</InfoTooltip></label>
           <div className={styles.heightRow} style={{ marginBottom: 8 }}>
-            <button type="button" className={`${styles.typeBtn} ${!ceilingPitchMode ? styles.typeBtnActive : ''}`} onClick={() => setCeilingPitchMode(false)}>Use heights</button>
-            <button type="button" className={`${styles.typeBtn} ${ceilingPitchMode ? styles.typeBtnActive : ''}`} onClick={() => setCeilingPitchMode(true)}>Use pitch (X/12)</button>
+            <button type="button" className={`${styles.typeBtn} ${!ceilingPitchMode ? styles.typeBtnActive : ''}`} onClick={() => setCeilingPitchMode(false)}>{t('blueprint:draw.useHeights')}</button>
+            <button type="button" className={`${styles.typeBtn} ${ceilingPitchMode ? styles.typeBtnActive : ''}`} onClick={() => setCeilingPitchMode(true)}>{t('blueprint:draw.usePitchX12')}</button>
           </div>
           {ceilingPitchMode ? (
             <>
@@ -300,7 +302,7 @@ export default function ZoneDrawPanel({
                   <button key={p} type="button"
                     className={`${styles.pitchPresetBtn} ${ceilingPitchRise === p ? styles.pitchPresetActive : ''}`}
                     onClick={() => setCeilingPitchRise(p)}>
-                    {p}/12{p === 10 ? <span className={styles.pitchCommonTag}>Common</span> : null}
+                    {p}/12{p === 10 ? <span className={styles.pitchCommonTag}>{t('blueprint:draw.common')}</span> : null}
                   </button>
                 ))}
               </div>
@@ -311,11 +313,11 @@ export default function ZoneDrawPanel({
           ) : (
             <div className={styles.heightRow}>
               <div className={styles.heightField}>
-                <label>Peak height</label>
+                <label>{t('blueprint:draw.peakHeight')}</label>
                 <input type="text" value={ceilingPeakHeight} onChange={e => setCeilingPeakHeight(e.target.value)} placeholder="e.g. 14' or 13'6&quot;" />
               </div>
               <div className={styles.heightField}>
-                <label>Wall height</label>
+                <label>{t('blueprint:draw.wallHeight')}</label>
                 <input type="text" value={ceilingWallHeight} onChange={e => setCeilingWallHeight(e.target.value)} placeholder="e.g. 8' or 7'6&quot;" />
               </div>
             </div>
@@ -326,10 +328,10 @@ export default function ZoneDrawPanel({
       {/* Tray / Coffered fields — tray perimeter and drop depth */}
       {surfaceType === 'Ceiling' && ceilingType === 'tray' && (
         <div className={styles.field}>
-          <label>Tray Details</label>
+          <label>{t('blueprint:draw.trayDetails')}</label>
           <div className={styles.heightRow}>
             <div className={styles.heightField}>
-              <label>Tray perimeter</label>
+              <label>{t('blueprint:draw.trayPerimeter')}</label>
               <input
                 type="text"
                 value={ceilingTrayPerimeter}
@@ -338,7 +340,7 @@ export default function ZoneDrawPanel({
               />
             </div>
             <div className={styles.heightField}>
-              <label>Drop depth</label>
+              <label>{t('blueprint:draw.dropDepth')}</label>
               <input
                 type="text"
                 value={ceilingDropDepth}
@@ -353,10 +355,10 @@ export default function ZoneDrawPanel({
       {/* Shed / Single slope fields — heights OR pitch */}
       {surfaceType === 'Ceiling' && ceilingType === 'shed' && (
         <div className={styles.field}>
-          <label>Shed Slope Input <InfoTooltip>Roof pitch describes the steepness as rise over run. A pitch of 8/12 means the roof rises 8 inches for every 12 inches of horizontal distance. Common residential pitches: 4/12 (low slope), 6/12 (medium), 8/12 (medium-steep), 10/12 (steep — most common for vaulted ceilings), 12/12 (very steep, 45°).</InfoTooltip></label>
+          <label>{t('blueprint:draw.shedSlopeInput')} <InfoTooltip>{t('blueprint:draw.pitchTip')}</InfoTooltip></label>
           <div className={styles.heightRow} style={{ marginBottom: 8 }}>
-            <button type="button" className={`${styles.typeBtn} ${!ceilingPitchMode ? styles.typeBtnActive : ''}`} onClick={() => setCeilingPitchMode(false)}>Use heights</button>
-            <button type="button" className={`${styles.typeBtn} ${ceilingPitchMode ? styles.typeBtnActive : ''}`} onClick={() => setCeilingPitchMode(true)}>Use pitch (X/12)</button>
+            <button type="button" className={`${styles.typeBtn} ${!ceilingPitchMode ? styles.typeBtnActive : ''}`} onClick={() => setCeilingPitchMode(false)}>{t('blueprint:draw.useHeights')}</button>
+            <button type="button" className={`${styles.typeBtn} ${ceilingPitchMode ? styles.typeBtnActive : ''}`} onClick={() => setCeilingPitchMode(true)}>{t('blueprint:draw.usePitchX12')}</button>
           </div>
           {ceilingPitchMode ? (
             <>
@@ -365,7 +367,7 @@ export default function ZoneDrawPanel({
                   <button key={p} type="button"
                     className={`${styles.pitchPresetBtn} ${ceilingPitchRise === p ? styles.pitchPresetActive : ''}`}
                     onClick={() => setCeilingPitchRise(p)}>
-                    {p}/12{p === 10 ? <span className={styles.pitchCommonTag}>Common</span> : null}
+                    {p}/12{p === 10 ? <span className={styles.pitchCommonTag}>{t('blueprint:draw.common')}</span> : null}
                   </button>
                 ))}
               </div>
@@ -376,11 +378,11 @@ export default function ZoneDrawPanel({
           ) : (
             <div className={styles.heightRow}>
               <div className={styles.heightField}>
-                <label>Low wall</label>
+                <label>{t('blueprint:draw.lowWall')}</label>
                 <input type="text" value={ceilingLowWallHeight} onChange={e => setCeilingLowWallHeight(e.target.value)} placeholder="e.g. 8' or 7'6&quot;" />
               </div>
               <div className={styles.heightField}>
-                <label>High wall</label>
+                <label>{t('blueprint:draw.highWall')}</label>
                 <input type="text" value={ceilingHighWallHeight} onChange={e => setCeilingHighWallHeight(e.target.value)} placeholder="e.g. 12' or 11'6&quot;" />
               </div>
             </div>
@@ -392,10 +394,10 @@ export default function ZoneDrawPanel({
       {surfaceType === 'Wall' && type === 'SF' && (
         enabledFeatures.wall_calculator ? (
           <div className={styles.field}>
-            <label>Wall Height &amp; Openings <span className={styles.optional}>(optional)</span></label>
+            <label>{t('blueprint:draw.wallHeightOpenings')} <span className={styles.optional}>{t('blueprint:draw.optional')}</span></label>
 
             <div className={styles.heightField}>
-              <label>Wall Height (ft) <InfoTooltip>The actual height of the wall from floor to ceiling, in feet. Standard residential is 8-9 ft. Commercial spaces are typically 10-12 ft.</InfoTooltip></label>
+              <label>{t('blueprint:draw.wallHeightFt')} <InfoTooltip>{t('blueprint:draw.wallHeightTip')}</InfoTooltip></label>
               <input
                 type="text"
                 value={wallHeight}
@@ -406,14 +408,14 @@ export default function ZoneDrawPanel({
 
             {wallHeight && (
               <>
-                <div className={styles.openingsHeader}>Opening Deductions</div>
+                <div className={styles.openingsHeader}>{t('blueprint:draw.openingDeductions')}</div>
                 {openings.map(o => (
                   <div key={o.id} className={styles.openingRow}>
                     <input
                       className={styles.openingName}
                       value={o.name}
                       onChange={e => updateOpening(o.id, 'name', e.target.value)}
-                      placeholder="Name"
+                      placeholder={t('blueprint:draw.namePlaceholder')}
                     />
                     <input
                       className={styles.openingSf}
@@ -423,25 +425,25 @@ export default function ZoneDrawPanel({
                       value={o.sf}
                       onChange={e => updateOpening(o.id, 'sf', parseFloat(e.target.value) || 0)}
                     />
-                    <span className={styles.openingSfUnit}>sf</span>
+                    <span className={styles.openingSfUnit}>{t('blueprint:draw.sfUnit')}</span>
                     <button type="button" className={styles.openingRemove}
                       onClick={() => removeOpening(o.id)}>✕</button>
                   </div>
                 ))}
                 <div className={styles.openingBtns}>
                   <button type="button" className={styles.openingAddBtn}
-                    onClick={() => addOpening('Door', 21)}>+ Door (21sf) <InfoTooltip>Subtracts standard door area (21 SF) from wall surface. Standard door = 7' tall x 3' wide.</InfoTooltip></button>
+                    onClick={() => addOpening('Door', 21)}>{t('blueprint:draw.addDoor')} <InfoTooltip>{t('blueprint:draw.doorTip')}</InfoTooltip></button>
                   <button type="button" className={styles.openingAddBtn}
-                    onClick={() => addOpening('Window', 15)}>+ Window (15sf) <InfoTooltip>Subtracts standard window area (15 SF) from wall surface. Click + Custom for exact dimensions.</InfoTooltip></button>
+                    onClick={() => addOpening('Window', 15)}>{t('blueprint:draw.addWindow')} <InfoTooltip>{t('blueprint:draw.windowTip')}</InfoTooltip></button>
                   <button type="button" className={styles.openingAddBtn}
-                    onClick={() => addOpening('Opening', 0)}>+ Custom <InfoTooltip>Add a custom opening (large window, archway, fireplace) by entering exact width and height.</InfoTooltip></button>
+                    onClick={() => addOpening('Opening', 0)}>{t('blueprint:draw.addCustom')} <InfoTooltip>{t('blueprint:draw.customTip')}</InfoTooltip></button>
                 </div>
               </>
             )}
           </div>
         ) : (
           <div className={styles.lockedFeature}>
-            🔒 Wall calculator — available on Plus plan
+            {t('blueprint:draw.wallCalcLocked')}
           </div>
         )
       )}
@@ -449,7 +451,7 @@ export default function ZoneDrawPanel({
       {/* Measurement type + color picker moved to Toolbar (Phase B).
          Controlled via selectedType/selectedColor props. */}
 
-      <button type="submit" className={styles.startBtn}>Measure Zone</button>
+      <button type="submit" className={styles.startBtn}>{t('blueprint:draw.measureZone')}</button>
     </form>
   )
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Clock, Square } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { fmtMoney } from '../../lib/lite'
@@ -19,6 +20,7 @@ function formatElapsed(ms) {
 }
 
 export default function OpenPunchBar({ punch, onDone, compact = false }) {
+  const { t } = useTranslation()
   const [now, setNow] = useState(() => Date.now())
   const [rate, setRate] = useState('')
   const [busy, setBusy] = useState(false)
@@ -29,14 +31,14 @@ export default function OpenPunchBar({ punch, onDone, compact = false }) {
     return () => clearInterval(id)
   }, [])
 
-  const jobName = punch.projects?.name || 'this job'
+  const jobName = punch.projects?.name || t('lite:components.thisJob')
   const prefilledRate = Number(punch.rate_snapshot) || 0
   const needRate = !(prefilledRate > 0)
   const elapsed = formatElapsed(now - new Date(punch.clock_in_at).getTime())
 
   async function clockOut() {
     const effRate = needRate ? Number(rate) : prefilledRate
-    if (!(effRate > 0)) { setErr('Enter a rate above $0 to clock out.'); return }
+    if (!(effRate > 0)) { setErr(t('lite:components.enterRateClockOut')); return }
     setBusy(true); setErr(null)
     try {
       const outAt = new Date()
@@ -72,20 +74,20 @@ export default function OpenPunchBar({ punch, onDone, compact = false }) {
       <div className={styles.rowBetween}>
         <div className={styles.entryMain}>
           <div className={styles.entryMeta} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Clock size={14} /> Clocked in{compact ? '' : ' on'}
+            <Clock size={14} /> {compact ? t('lite:components.clockedIn') : t('lite:components.clockedInOn')}
           </div>
           <div className={styles.entryName}>{jobName}</div>
           <div className={styles.entryMeta}>
-            {elapsed} elapsed{prefilledRate > 0 ? ` · ${fmtMoney(prefilledRate)}/hr` : ''}
+            {elapsed} {t('lite:components.elapsed')}{prefilledRate > 0 ? t('lite:components.ratePerHr', { rate: fmtMoney(prefilledRate) }) : ''}
           </div>
         </div>
         <button className={styles.primaryBtn} onClick={clockOut} disabled={busy}>
-          <Square size={14} /> {busy ? 'Saving…' : 'Clock out'}
+          <Square size={14} /> {busy ? t('lite:components.saving') : t('lite:components.clockOut')}
         </button>
       </div>
       {needRate && (
         <div className={styles.field} style={{ marginTop: 10 }}>
-          <span className={styles.fieldLabel}>Rate for this job ($/hr) — needed to clock out</span>
+          <span className={styles.fieldLabel}>{t('lite:components.rateNeededClockOut')}</span>
           <input className={styles.input} type="number" step="0.01" min="0.01" value={rate}
             onChange={e => setRate(e.target.value)} placeholder="0.00" />
         </div>

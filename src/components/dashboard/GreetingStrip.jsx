@@ -1,10 +1,12 @@
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../context/AuthContext'
 import styles from './GreetingStrip.module.css'
 
 export default function GreetingStrip({ firstName }) {
+  const { t } = useTranslation()
   const { userProfile } = useAuth()
   const hour = new Date().getHours()
-  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+  const greeting = hour < 12 ? t('dashboard:greeting.morning') : hour < 17 ? t('dashboard:greeting.afternoon') : t('dashboard:greeting.evening')
 
   const logoUrl = userProfile?.logo_url || null
 
@@ -20,8 +22,8 @@ export default function GreetingStrip({ firstName }) {
       {logoUrl && (
         <img src={logoUrl} alt="" className={styles.logo} />
       )}
-      <h1 className={styles.title}>Dashboard</h1>
-      <p className={styles.greeting}>{greeting}, {firstName}</p>
+      <h1 className={styles.title}>{t('dashboard:greeting.title')}</h1>
+      <p className={styles.greeting}>{t('dashboard:greeting.line', { greeting, name: firstName })}</p>
       <p className={styles.date}>{formattedDate}</p>
     </div>
   )

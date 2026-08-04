@@ -1,5 +1,6 @@
 import { Briefcase, Columns3, BookUser, GraduationCap, Clock, Users } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useState, useEffect } from 'react'
 import Modal from '../ui/Modal'
 import NewProjectForm from '../auth/NewProjectForm'
@@ -13,6 +14,7 @@ import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import styles from './QuickActionsRow.module.css'
 
 export default function QuickActionsRow() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { user, userProfile, isSuperAdmin } = useAuth()
   const { createProject } = useProjects()
@@ -70,39 +72,39 @@ export default function QuickActionsRow() {
   }
 
   const timeDesc = isAdmin
-    ? 'Team timesheet & approvals'
+    ? t('dashboard:quickActions.timeDescAdmin')
     : weekHours != null && weekHours > 0
-      ? `${weekHours.toFixed(1)} hrs this week`
-      : 'Log your hours'
+      ? t('dashboard:quickActions.timeDescHours', { hours: weekHours.toFixed(1) })
+      : t('dashboard:quickActions.timeDescLog')
 
   const cards = [
     {
       icon: Briefcase,
-      label: '+ New Job',
-      desc: 'Create a new job',
+      label: t('dashboard:quickActions.newJob.label'),
+      desc: t('dashboard:quickActions.newJob.desc'),
       onClick: () => setShowModal(true),
     },
     {
       icon: Columns3,
-      label: 'View Jobs',
-      desc: 'Pipeline board',
+      label: t('dashboard:quickActions.viewJobs.label'),
+      desc: t('dashboard:quickActions.viewJobs.desc'),
       onClick: () => navigate('/jobs'),
     },
     {
       icon: BookUser,
-      label: 'Manage Clients',
-      desc: 'Client contacts',
+      label: t('dashboard:quickActions.clients.label'),
+      desc: t('dashboard:quickActions.clients.desc'),
       onClick: () => navigate('/clients'),
     },
     {
       icon: GraduationCap,
-      label: 'RivetDog Academy',
-      desc: 'Training videos & tutorials',
+      label: t('dashboard:quickActions.academy.label'),
+      desc: t('dashboard:quickActions.academy.desc'),
       onClick: () => navigate('/academy'),
     },
     {
       icon: isAdmin ? Users : Clock,
-      label: isAdmin ? 'Manage Time' : 'Log Time',
+      label: isAdmin ? t('dashboard:quickActions.manageTime') : t('dashboard:quickActions.logTime'),
       desc: timeDesc,
       onClick: () => navigate('/time'),
     },
@@ -121,7 +123,7 @@ export default function QuickActionsRow() {
       </div>
 
       {showModal && (
-        <Modal title="New Job" onClose={() => setShowModal(false)}>
+        <Modal title={t('dashboard:quickActions.newJobModalTitle')} onClose={() => setShowModal(false)}>
           <NewProjectForm
             onCreate={handleCreateProject}
             onCancel={() => setShowModal(false)}

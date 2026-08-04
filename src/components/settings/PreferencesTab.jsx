@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useUserPrefs } from '../../hooks/useUserPrefs';
@@ -10,9 +11,9 @@ import styles from './PreferencesTab.module.css';
 // Theme is owned by ThemeContext (writes user_profiles.theme_preference), so its
 // options live here rather than in userPrefs PREF_OPTIONS.
 const THEME_OPTIONS = [
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
-  { value: 'system', label: 'System' },
+  { value: 'light', label: 'settings:preferences.themeOptions.light' },
+  { value: 'dark', label: 'settings:preferences.themeOptions.dark' },
+  { value: 'system', label: 'settings:preferences.themeOptions.system' },
 ];
 
 const COMMON_TIMEZONES = [
@@ -34,6 +35,7 @@ function Field({ label, hint, children }) {
 }
 
 export default function PreferencesTab() {
+  const { t } = useTranslation();
   const { user, refreshUserProfile } = useAuth();
   const { theme, setTheme } = useTheme();
   const currentPrefs = useUserPrefs();
@@ -75,7 +77,7 @@ export default function PreferencesTab() {
       setSavedFlash(true);
       setTimeout(() => setSavedFlash(false), 2500);
     } catch (err) {
-      setError("Couldn't save preferences. Try again.");
+      setError(t('settings:preferences.saveError'));
       console.error(err);
     } finally {
       setSaving(false);
@@ -89,45 +91,45 @@ export default function PreferencesTab() {
   return (
     <div className={styles.tab}>
       {error && <div className={styles.error}>{error}</div>}
-      {savedFlash && <div className={styles.success}>Preferences saved.</div>}
+      {savedFlash && <div className={styles.success}>{t('settings:preferences.savedFlash')}</div>}
 
-      <Field label="Theme" hint="Light, dark, or follow your system setting.">
+      <Field label={t('settings:preferences.theme')} hint={t('settings:preferences.themeHint')}>
         <select className={styles.select} value={theme} onChange={(e) => setTheme(e.target.value)}>
-          {THEME_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          {THEME_OPTIONS.map((o) => <option key={o.value} value={o.value}>{t(o.label)}</option>)}
         </select>
       </Field>
 
-      <Field label="Language" hint="Switch the app between English and Spanish.">
+      <Field label={t('settings:preferences.language')} hint={t('settings:preferences.languageHint')}>
         <select className={styles.select} value={pending.language} onChange={(e) => update('language', e.target.value)}>
           {PREF_OPTIONS.language.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       </Field>
 
-      <Field label="Timezone" hint={`Detected: ${detected}.`}>
+      <Field label={t('settings:preferences.timezone')} hint={t('settings:preferences.timezoneHint', { tz: detected })}>
         <select className={styles.select} value={pending.timezone} onChange={(e) => update('timezone', e.target.value)}>
           {tzList.map((tz) => <option key={tz} value={tz}>{tz}</option>)}
         </select>
       </Field>
 
-      <Field label="Date format">
+      <Field label={t('settings:preferences.dateFormat')}>
         <select className={styles.select} value={pending.date_format} onChange={(e) => update('date_format', e.target.value)}>
           {PREF_OPTIONS.date_format.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       </Field>
 
-      <Field label="Time format">
+      <Field label={t('settings:preferences.timeFormat')}>
         <select className={styles.select} value={pending.time_format} onChange={(e) => update('time_format', e.target.value)}>
           {PREF_OPTIONS.time_format.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       </Field>
 
-      <Field label="First day of week">
+      <Field label={t('settings:preferences.firstDayOfWeek')}>
         <select className={styles.select} value={pending.first_day_of_week} onChange={(e) => update('first_day_of_week', e.target.value)}>
           {PREF_OPTIONS.first_day_of_week.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       </Field>
 
-      <Field label="Measurement units" hint="Affects blueprint and estimate displays.">
+      <Field label={t('settings:preferences.measurementUnits')} hint={t('settings:preferences.measurementUnitsHint')}>
         <select className={styles.select} value={pending.measurement_units} onChange={(e) => update('measurement_units', e.target.value)}>
           {PREF_OPTIONS.measurement_units.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
@@ -135,10 +137,10 @@ export default function PreferencesTab() {
 
       <div className={styles.actions}>
         <button type="button" className={styles.discardBtn} onClick={handleDiscard} disabled={!dirty || saving}>
-          Discard
+          {t('common:action.discard')}
         </button>
         <button type="button" className={styles.saveBtn} onClick={handleSave} disabled={!dirty || saving}>
-          {saving ? 'Saving…' : 'Save preferences'}
+          {saving ? t('settings:preferences.saving') : t('settings:preferences.savePreferences')}
         </button>
       </div>
     </div>

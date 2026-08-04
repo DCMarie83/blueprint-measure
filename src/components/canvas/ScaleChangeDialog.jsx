@@ -1,10 +1,12 @@
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import styles from './ScaleChangeDialog.module.css'
 
 export default function ScaleChangeDialog({
   open, zoneCount, oldScaleLabel, newScaleLabel,
   onRecalculate, onKeepAsIs, onCancel,
 }) {
+  const { t } = useTranslation()
   useEffect(() => {
     if (!open) return
     function onKey(e) { if (e.key === 'Escape') onCancel() }
@@ -14,36 +16,32 @@ export default function ScaleChangeDialog({
 
   if (!open) return null
 
-  const s = zoneCount === 1 ? '' : 's'
-  const verb = zoneCount === 1 ? 'stays' : 'stay'
-
   return (
     <div className={styles.backdrop} onClick={onCancel}>
       <div className={styles.card} onClick={e => e.stopPropagation()}>
-        <h2 className={styles.title}>Scale changed — what about your existing zones?</h2>
+        <h2 className={styles.title}>{t('blueprint:scaleChange.title')}</h2>
         <p className={styles.body}>
-          This page has {zoneCount} zone{s} drawn at {oldScaleLabel}.
-          You changed the scale to {newScaleLabel}. What about your existing zone{s}?
+          {t('blueprint:scaleChange.body', { count: zoneCount, oldScaleLabel, newScaleLabel })}
         </p>
 
         <div className={styles.options}>
           <button className={styles.primaryBtn} onClick={onRecalculate} autoFocus>
-            Update zones to new scale
+            {t('blueprint:scaleChange.updateTitle')}
             <span className={styles.subtext}>
-              Your {zoneCount} zone{s} will be recalculated at {newScaleLabel}
+              {t('blueprint:scaleChange.updateSub', { count: zoneCount, newScaleLabel })}
             </span>
           </button>
 
           <button className={styles.secondaryBtn} onClick={onKeepAsIs}>
-            Keep existing zones unchanged
+            {t('blueprint:scaleChange.keepTitle')}
             <span className={styles.subtext}>
-              Your {zoneCount} zone{s} {verb} at {oldScaleLabel}. New zones use {newScaleLabel}
+              {t('blueprint:scaleChange.keepSub', { count: zoneCount, oldScaleLabel, newScaleLabel })}
             </span>
           </button>
 
           <button className={styles.cancelBtn} onClick={onCancel}>
-            Don't change scale
-            <span className={styles.subtext}>Stay at {oldScaleLabel}. No zones change.</span>
+            {t('blueprint:scaleChange.cancelTitle')}
+            <span className={styles.subtext}>{t('blueprint:scaleChange.cancelSub', { oldScaleLabel })}</span>
           </button>
         </div>
       </div>

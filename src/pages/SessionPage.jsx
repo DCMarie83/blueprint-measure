@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useTranslation, Trans } from 'react-i18next'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -48,6 +49,7 @@ const TOOLBAR_COLORS = [
 ]
 
 export default function SessionPage() {
+  const { t } = useTranslation()
   const { sessionId } = useParams()
   const navigate = useNavigate()
   const { user, company, isSuperAdmin } = useAuth()
@@ -339,9 +341,9 @@ export default function SessionPage() {
   useEffect(() => {
     if (!isPdf || !pageCount) return
     if (pageCount > 100) {
-      setPdfError(`This PDF has ${pageCount} pages. Browser-based rendering is limited to ~100 pages. Please extract just the drawing sheets you need (typically 10-30 pages) using Adobe Acrobat or smallpdf.com, then re-upload as a new blueprint.`)
+      setPdfError(t('blueprint:session.pdfTooManyPages', { count: pageCount }))
     } else if (pageCount > 50) {
-      setPdfWarningToast(`Big bone to chew (${pageCount} pages) — rendering may be slow.`)
+      setPdfWarningToast(t('blueprint:session.bigBoneToChew', { count: pageCount }))
     }
   }, [isPdf, pageCount])
 
@@ -454,12 +456,12 @@ export default function SessionPage() {
   }
 
   function findScaleLabel(ppf) {
-    if (!ppf) return 'Custom scale'
+    if (!ppf) return t('blueprint:session.customScale')
     const match = SCALE_OPTIONS.find(o =>
       o.inchesPerFoot &&
       Math.abs(calcPixelsPerFoot(o.inchesPerFoot, pixelsPerInch) - ppf) < 0.5
     )
-    return match?.label ?? 'Custom scale'
+    return match?.label ?? t('blueprint:session.customScale')
   }
 
   // Rescale all zones on the current page using the given pixelsPerFoot
@@ -545,7 +547,7 @@ export default function SessionPage() {
     if (pageNum === currentPage) return
     if (isDrawing || isAccumulating) {
       const confirmed = window.confirm(
-        'You have an active zone in progress. Switch pages and discard it?'
+        t('blueprint:session.confirmSwitchDiscard')
       )
       if (!confirmed) return
       // Cancel the in-progress zone before switching
@@ -643,7 +645,7 @@ export default function SessionPage() {
   const handleZoneComplete = useCallback(async () => {
     if ((!activeZoneMeta && !activeDeductionContext) || drawnPoints.length < 1) return
     if (!pixelsPerFoot) {
-      alert('Please set a scale before measuring.')
+      alert(t('blueprint:session.setScaleFirst'))
       return
     }
 
@@ -741,7 +743,7 @@ export default function SessionPage() {
         if (saved) recordAction({ type: 'add', zone: saved })
       }
     } catch (err) {
-      alert('Error saving zone: ' + err.message)
+      alert(t('blueprint:session.errorSavingZone', { message: err.message }))
     }
 
     setIsDrawing(false)
@@ -761,7 +763,7 @@ export default function SessionPage() {
   const handleFinalizeZone = useCallback(async () => {
     if (!activeZoneMeta && !activeDeductionContext) return
     if (!pixelsPerFoot) {
-      alert('Please set a scale before measuring.')
+      alert(t('blueprint:session.setScaleFirst'))
       return
     }
 
@@ -833,7 +835,7 @@ export default function SessionPage() {
         if (saved) recordAction({ type: 'add', zone: saved })
       }
     } catch (err) {
-      alert('Error saving zone: ' + err.message)
+      alert(t('blueprint:session.errorSavingZone', { message: err.message }))
       return
     }
 
@@ -939,7 +941,7 @@ export default function SessionPage() {
 
       await updateZone(zoneId, finalUpdates)
     } catch (err) {
-      alert('Error updating zone: ' + err.message)
+      alert(t('blueprint:session.errorUpdatingZone', { message: err.message }))
     }
   }
 
@@ -949,7 +951,7 @@ export default function SessionPage() {
       await deleteZone(zoneId)
       if (snapshot) recordAction({ type: 'delete', zone: snapshot })
     } catch (err) {
-      alert('Error deleting zone: ' + err.message)
+      alert(t('blueprint:session.errorDeletingZone', { message: err.message }))
     }
   }
 
@@ -967,7 +969,7 @@ export default function SessionPage() {
 
   function handleExportCSV() {
     if (zones.length === 0) {
-      alert('Nothing to fetch yet.')
+      alert(t('blueprint:session.nothingToFetch'))
       return
     }
     exportCSV(session, zones)
@@ -975,7 +977,7 @@ export default function SessionPage() {
 
   async function handleExportXLSX() {
     if (zones.length === 0) {
-      alert('Nothing to fetch yet.')
+      alert(t('blueprint:session.nothingToFetch'))
       return
     }
     setDownloadingXlsx(true)
@@ -983,7 +985,7 @@ export default function SessionPage() {
       await exportXLSX(session, zones, company)
     } catch (err) {
       console.error('Excel export failed:', err)
-      alert('Excel export failed: ' + err.message)
+      alert(t('blueprint:session.excelExportFailed', { message: err.message }))
     } finally {
       setDownloadingXlsx(false)
     }
@@ -1070,7 +1072,7 @@ export default function SessionPage() {
     }
 
     const { error: err } = await supabase.from('session_test_logs').insert(payload)
-    if (err) { alert('Failed to log test: ' + err.message); return false }
+    if (err) { alert(t('blueprint:session.failedLogTest', { message: err.message })); return false }
 
     // Track consecutive fails for the calibration suggestion banner
     if (ev.verdict === 'FAIL') {
@@ -1093,7 +1095,7 @@ export default function SessionPage() {
       }
     }
     setSavingTests(false)
-    if (saved > 0) alert(`Fetched: ${saved} test result${saved > 1 ? 's' : ''}.`)
+    if (saved > 0) alert(t('blueprint:session.fetchedTests', { count: saved }))
   }
 
   // Computed test summary
@@ -1157,7 +1159,7 @@ export default function SessionPage() {
       a.click()
       URL.revokeObjectURL(blobUrl)
     } catch (err) {
-      alert('Download failed: ' + err.message)
+      alert(t('blueprint:session.downloadFailed', { message: err.message }))
     }
   }
 
@@ -1175,7 +1177,7 @@ export default function SessionPage() {
         blueprintUrl,
       })
     } catch (err) {
-      alert('PDF export failed: ' + err.message)
+      alert(t('blueprint:session.pdfExportFailed', { message: err.message }))
     } finally {
       setDownloadingPdf(false)
     }
@@ -1209,11 +1211,11 @@ export default function SessionPage() {
           setScaleDetectionBanner({ label: result.label, verified: false })
         }
       } else {
-        alert('Could not detect a scale on this page. Try a page with a visible title block, or set the scale manually.')
+        alert(t('blueprint:session.couldNotDetectScale'))
       }
     } catch (err) {
       console.error('Scale detection error:', err)
-      alert('Scale detection failed: ' + err.message)
+      alert(t('blueprint:session.scaleDetectionFailed', { message: err.message }))
     }
   }
 
@@ -1277,7 +1279,7 @@ export default function SessionPage() {
   if (loading) {
     return (
       <div className={styles.loading}>
-        <div className={styles.spinner} /> Sniffing out your session...
+        <div className={styles.spinner} /> {t('blueprint:session.sniffingSession')}
       </div>
     )
   }
@@ -1287,7 +1289,7 @@ export default function SessionPage() {
       <div className={styles.loading}>
         <p>{error}</p>
         <button onClick={() => navigate('/dashboard')} className={styles.backBtn}>
-          Back to Dashboard
+          {t('blueprint:session.backToDashboard')}
         </button>
       </div>
     )
@@ -1349,7 +1351,7 @@ export default function SessionPage() {
         {/* ── LEFT: navigation ── */}
         <IconButton
           icon={ArrowLeft}
-          label="Back to project"
+          label={t('blueprint:toolbar.backToProject')}
           onClick={() => session?.project_id ? navigate(`/project/${session.project_id}`) : navigate('/dashboard')}
         />
 
@@ -1359,23 +1361,23 @@ export default function SessionPage() {
 
         {/* Undo / Redo */}
         <ToolGroup>
-          <IconButton icon={Undo2} label="Undo (⌘Z)" onClick={handleUndo} disabled={!canUndo} size={16} />
-          <IconButton icon={Redo2} label="Redo (⌘⇧Z)" onClick={handleRedo} disabled={!canRedo} size={16} />
+          <IconButton icon={Undo2} label={t('blueprint:toolbar.undo')} onClick={handleUndo} disabled={!canUndo} size={16} />
+          <IconButton icon={Redo2} label={t('blueprint:toolbar.redo')} onClick={handleRedo} disabled={!canRedo} size={16} />
         </ToolGroup>
 
         {/* Tools */}
-        <ToolGroup label="Tools">
+        <ToolGroup label={t('blueprint:toolbar.tools')}>
           {[
-            { t: 'SF', icon: Square, lbl: 'SF' },
-            { t: 'LF', icon: Minus, lbl: 'LF' },
-            { t: 'count', icon: Hash, lbl: 'Count' },
-          ].map(({ t, icon, lbl }) => (
+            { tval: 'SF', icon: Square, lbl: t('common:units.sf') },
+            { tval: 'LF', icon: Minus, lbl: t('common:units.lf') },
+            { tval: 'count', icon: Hash, lbl: t('blueprint:toolbar.toolCount') },
+          ].map(({ tval, icon, lbl }) => (
             <IconButton
-              key={t}
+              key={tval}
               icon={icon}
               label={lbl}
-              active={(isDrawing || isAccumulating) ? (activeZoneMeta?.type ?? activeDeductionContext?.measurement_type) === t : selectedType === t}
-              onClick={() => { if (!isDrawing && !isAccumulating) setSelectedType(t) }}
+              active={(isDrawing || isAccumulating) ? (activeZoneMeta?.type ?? activeDeductionContext?.measurement_type) === tval : selectedType === tval}
+              onClick={() => { if (!isDrawing && !isAccumulating) setSelectedType(tval) }}
               disabled={isDrawing || isAccumulating}
               size={14}
             >
@@ -1385,10 +1387,10 @@ export default function SessionPage() {
         </ToolGroup>
 
         {/* Style */}
-        <ToolGroup label="Style">
+        <ToolGroup label={t('blueprint:toolbar.style')}>
           <ToolbarDropdown
             icon={Palette}
-            label="Color"
+            label={t('blueprint:toolbar.color')}
             disabled={isDrawing || isAccumulating}
           >
             {(close) => (
@@ -1396,7 +1398,7 @@ export default function SessionPage() {
                 <button
                   className={`${styles.toolbarColorSwatch} ${selectedColor === null ? styles.toolbarColorActive : ''}`}
                   onClick={() => { setSelectedColor(null); close() }}
-                  title="Auto"
+                  title={t('blueprint:toolbar.auto')}
                 >A</button>
                 {TOOLBAR_COLORS.map(c => (
                   <button
@@ -1416,7 +1418,7 @@ export default function SessionPage() {
         </ToolGroup>
 
         {/* Cal + Units */}
-        <ToolGroup label="Scale">
+        <ToolGroup label={t('blueprint:toolbar.scale')}>
           <ToolbarDropdown
             icon={Ruler}
             label={findScaleLabel(pixelsPerFoot)}
@@ -1446,7 +1448,7 @@ export default function SessionPage() {
                 <button
                   className={styles.toolbarMenuItem}
                   onClick={() => {
-                    const input = window.prompt('Enter a known distance on the blueprint (e.g. 12\'6" or 20):')
+                    const input = window.prompt(t('blueprint:session.knownDistancePrompt'))
                     if (input) {
                       const ft = parseFeetInches(input)
                       if (ft && ft > 0) handleStartCalibration(ft)
@@ -1454,13 +1456,13 @@ export default function SessionPage() {
                     close()
                   }}
                 >
-                  Manual calibration…
+                  {t('common:scale.manual')}
                 </button>
               </div>
             )}
           </ToolbarDropdown>
           <IconButton
-            label={unitSystem === 'imperial' ? 'Imperial (ft)' : 'Metric (m)'}
+            label={unitSystem === 'imperial' ? t('blueprint:toolbar.imperialFt') : t('blueprint:toolbar.metricM')}
             onClick={() => setUnitSystem(u => u === 'imperial' ? 'metric' : 'imperial')}
             size={14}
           >
@@ -1479,7 +1481,7 @@ export default function SessionPage() {
                 zonesCount={pageZones.length}
                 isSuperAdmin={isSuperAdmin}
                 onRecalibrate={() => {
-                  const input = window.prompt('Enter a known distance on the blueprint (e.g. 12\'6" or 20):')
+                  const input = window.prompt(t('blueprint:session.knownDistancePrompt'))
                   if (input) {
                     const ft = parseFeetInches(input)
                     if (ft && ft > 0) handleStartCalibration(ft)
@@ -1488,7 +1490,7 @@ export default function SessionPage() {
                 onRescale={async () => {
                   if (!pixelsPerFoot) return
                   const count = await rescaleZonesOnCurrentPage(pixelsPerFoot)
-                  setRescaleToast(`${count} zone${count === 1 ? '' : 's'} rescaled`)
+                  setRescaleToast(t('blueprint:session.zonesRescaled', { count }))
                   setTimeout(() => setRescaleToast(''), 3000)
                 }}
                 onClose={close}
@@ -1498,15 +1500,15 @@ export default function SessionPage() {
         </ToolGroup>
 
         {/* View */}
-        <ToolGroup label="View">
+        <ToolGroup label={t('blueprint:toolbar.view')}>
           <IconButton
             icon={RotateCcw}
-            label="Reset view"
+            label={t('blueprint:toolbar.resetView')}
             onClick={handleResetView}
             disabled={!blueprintUrl}
           />
           <IconButton
-            label={`Straight lines ${orthoMode ? 'ON' : 'OFF'} (O)`}
+            label={t('blueprint:toolbar.straightLines', { state: orthoMode ? t('blueprint:toolbar.on') : t('blueprint:toolbar.off') })}
             active={orthoMode}
             onClick={toggleOrtho}
             size={14}
@@ -1517,7 +1519,7 @@ export default function SessionPage() {
             <>
               <IconButton
                 icon={ChevronLeft}
-                label="Previous page"
+                label={t('blueprint:toolbar.previousPage')}
                 onClick={() => { const prev = currentPage > 1 ? currentPage - 1 : pageCount; handlePageSwitch(prev) }}
                 disabled={!blueprintUrl}
                 size={16}
@@ -1527,7 +1529,7 @@ export default function SessionPage() {
               </span>
               <IconButton
                 icon={ChevronRight}
-                label="Next page"
+                label={t('blueprint:toolbar.nextPage')}
                 onClick={() => { const next = currentPage < pageCount ? currentPage + 1 : 1; handlePageSwitch(next) }}
                 disabled={!blueprintUrl}
                 size={16}
@@ -1537,22 +1539,22 @@ export default function SessionPage() {
         </ToolGroup>
 
         {/* Export */}
-        <ToolGroup label="Export">
-          <ToolbarDropdown icon={Download} label="Export" disabled={!blueprintUrl}>
+        <ToolGroup label={t('blueprint:toolbar.export')}>
+          <ToolbarDropdown icon={Download} label={t('blueprint:toolbar.export')} disabled={!blueprintUrl}>
             {(close) => (
               <div className={styles.toolbarScaleMenu}>
                 <button className={styles.toolbarMenuItem} onClick={() => { handleExportCSV(); close() }} disabled={zones.length === 0}>
-                  <FileSpreadsheet size={14} /> CSV (all pages)
+                  <FileSpreadsheet size={14} /> {t('blueprint:toolbar.csvAllPages')}
                 </button>
                 <button className={styles.toolbarMenuItem} onClick={() => { handleExportXLSX(); close() }} disabled={zones.length === 0 || downloadingXlsx}>
-                  <FileSpreadsheet size={14} /> {downloadingXlsx ? 'Exporting…' : 'Excel (all pages)'}
+                  <FileSpreadsheet size={14} /> {downloadingXlsx ? t('blueprint:toolbar.exporting') : t('blueprint:toolbar.excelAllPages')}
                 </button>
                 <div className={styles.toolbarMenuDivider} />
                 <button className={styles.toolbarMenuItem} onClick={() => { handleDownloadClean(); close() }}>
-                  <Download size={14} /> Clean PDF
+                  <Download size={14} /> {t('blueprint:toolbar.cleanPdf')}
                 </button>
                 <button className={styles.toolbarMenuItem} onClick={() => { handleDownloadWithMeasurements(); close() }} disabled={downloadingPdf || zones.length === 0}>
-                  <Download size={14} /> {downloadingPdf ? 'Almost there...' : 'PDF with zones'}
+                  <Download size={14} /> {downloadingPdf ? t('blueprint:toolbar.almostThere') : t('blueprint:toolbar.pdfWithZones')}
                 </button>
               </div>
             )}
@@ -1560,7 +1562,7 @@ export default function SessionPage() {
         </ToolGroup>
 
         {/* Calculator */}
-        <ToolbarDropdown icon={CalcIcon} label="Calc" align="right">
+        <ToolbarDropdown icon={CalcIcon} label={t('blueprint:toolbar.calc')} align="right">
           {() => <Calculator unitSystem={unitSystem} />}
         </ToolbarDropdown>
 
@@ -1571,7 +1573,7 @@ export default function SessionPage() {
           <div className={styles.toolbarSave}>
             <span className={`${styles.saveDot} ${saveError ? styles.saveDotFailed : isSaving ? styles.saveDotSaving : styles.saveDotSaved}`} />
             <span className={styles.toolbarSaveText}>
-              {saveError ? 'Error' : isSaving ? 'Saving…' : lastSavedAt ? `Saved ${formatTime(lastSavedAt)}` : '—'}
+              {saveError ? t('blueprint:toolbar.error') : isSaving ? t('blueprint:toolbar.saving') : lastSavedAt ? t('blueprint:toolbar.savedAt', { time: formatTime(lastSavedAt) }) : '—'}
             </span>
           </div>
           <button
@@ -1579,7 +1581,7 @@ export default function SessionPage() {
             onClick={handleManualSave}
             disabled={manualSaving || isSaving}
           >
-            {manualSaving ? 'Saving…' : saveError ? 'Retry' : 'Save'}
+            {manualSaving ? t('blueprint:toolbar.saving') : saveError ? t('common:action.retry') : t('common:action.save')}
           </button>
           <UserMenu />
         </div>
@@ -1591,16 +1593,16 @@ export default function SessionPage() {
 
         {/* Print-only report header */}
         <div className={styles.printReportHeader}>
-          <h1>{BRAND.name} — Test Report</h1>
-          <div>Project: {session?.project_name}{session?.description ? ` | ${session.description}` : ''}</div>
-          <div>Tester: {user?.email} | Date: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+          <h1>{t('blueprint:session.testReportTitle', { brand: BRAND.name })}</h1>
+          <div>{t('blueprint:session.reportProject')} {session?.project_name}{session?.description ? ` | ${session.description}` : ''}</div>
+          <div>{t('blueprint:session.reportTester')} {user?.email} | {t('blueprint:session.reportDate')} {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
         </div>
 
         {/* Header */}
         <div className={styles.sidebarHeader}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div className={styles.backLink} style={{ display: 'flex', gap: 4, alignItems: 'center', fontSize: 12, flexWrap: 'wrap' }}>
-              <Link to="/dashboard" style={{ color: 'var(--color-text-muted)', textDecoration: 'none' }}>Dashboard</Link>
+              <Link to="/dashboard" style={{ color: 'var(--color-text-muted)', textDecoration: 'none' }}>{t('blueprint:session.dashboard')}</Link>
               {session?.project_id && (
                 <>
                   <span style={{ color: 'var(--color-text-muted)', opacity: 0.5 }}>/</span>
@@ -1620,7 +1622,7 @@ export default function SessionPage() {
               onClick={() => navigate(`/project/${session.project_id}`)}
               style={{ fontSize: 12, padding: '4px 10px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 4, color: 'var(--color-text-muted)', cursor: 'pointer', marginTop: 4, alignSelf: 'flex-start' }}
             >
-              + Add blueprint to this Job
+              {t('blueprint:session.addBlueprintToJob')}
             </button>
           )}
           <div className={styles.sessionInfo}>
@@ -1633,14 +1635,14 @@ export default function SessionPage() {
               className={`${styles.testToggle} ${isTestMode ? styles.testToggleOn : ''}`}
               onClick={() => setIsTestMode(v => !v)}
             >
-              {isTestMode ? 'Test Mode ON' : 'Test Mode OFF'}
+              {isTestMode ? t('blueprint:session.testModeOn') : t('blueprint:session.testModeOff')}
             </button>
           )}
         </div>
 
         {/* Blueprint upload / replace */}
         <div className={styles.section}>
-          <div className={styles.sectionTitle}>Blueprint</div>
+          <div className={styles.sectionTitle}>{t('blueprint:session.blueprint')}</div>
           {!blueprintUrl ? (
             <BlueprintUploader sessionId={sessionId} projectId={session?.project_id} onSplitFlowRedirect={handleSplitFlowRedirect} onUploaded={handleUploaded} oldBlueprintType={replacingBlueprintType} onStorageCheck={async (fileSize) => {
               try {
@@ -1649,7 +1651,7 @@ export default function SessionPage() {
                 const usage = await getCompanyStorageUsage(company.id)
                 const projectedBytes = usage.totalBytes + fileSize
                 if (projectedBytes > storageLimitMb * 1024 * 1024) {
-                  alert('Your company has reached its storage limit. Contact your admin to upgrade.')
+                  alert(t('blueprint:session.storageLimitReached'))
                   return false
                 }
                 return true
@@ -1659,7 +1661,7 @@ export default function SessionPage() {
             }} />
           ) : (
             <div className={styles.blueprintLoaded}>
-              <span className={styles.blueprintCheck}>✓</span> Blueprint fetched
+              <span className={styles.blueprintCheck}>✓</span> {t('blueprint:session.blueprintFetched')}
               <button
                 className={styles.replaceBtn}
                 onClick={() => {
@@ -1667,7 +1669,7 @@ export default function SessionPage() {
                   setShowReplaceConfirm(true)
                 }}
               >
-                Replace
+                {t('blueprint:session.replace')}
               </button>
             </div>
           )}
@@ -1678,10 +1680,12 @@ export default function SessionPage() {
           <div className={styles.section}>
             <div className={styles.sectionTitleRow}>
               <span className={styles.sectionTitle}>
-                Pages ({visiblePageCount}{visiblePageCount < pageCount ? ` of ${pageCount}` : ''})
+                {visiblePageCount < pageCount
+                  ? t('blueprint:session.pagesOf', { visible: visiblePageCount, total: pageCount })
+                  : t('blueprint:session.pagesCount', { count: visiblePageCount })}
               </span>
               <button className={styles.editPagesBtn} onClick={() => setShowPageManager(true)}>
-                Edit Pages
+                {t('blueprint:session.editPages')}
               </button>
             </div>
             <PdfPageSelector
@@ -1705,10 +1709,10 @@ export default function SessionPage() {
           <div className={styles.section}>
             <div className={styles.sectionTitle}>
               {activeDeductionContext
-                ? (isAccumulating && !isDrawing ? 'Measuring deduction…' : 'Measuring deduction…')
-                : isAccumulating && !isDrawing ? 'Adding Segments…'
-                : isDrawing ? (redrawingZoneId ? 'Redrawing…' : 'Drawing…')
-                : 'Add Zone'}
+                ? (isAccumulating && !isDrawing ? t('blueprint:session.measuringDeduction') : t('blueprint:session.measuringDeduction'))
+                : isAccumulating && !isDrawing ? t('blueprint:session.addingSegments')
+                : isDrawing ? (redrawingZoneId ? t('blueprint:session.redrawing') : t('blueprint:session.drawing'))
+                : t('blueprint:session.addZone')}
             </div>
             <ZoneDrawPanel
               onStart={handleStartDrawing}
@@ -1738,9 +1742,9 @@ export default function SessionPage() {
         {pageZones.length > 0 && (
           <div className={`${styles.section} ${styles.zoneListSection}`}>
             <div className={styles.sectionTitle}>
-              Zones ({pageZones.length})
+              {t('blueprint:session.zonesCount', { count: pageZones.length })}
               {isPdf && pageCount > 1 && (
-                <span className={styles.pageTag}> · Page {currentPage}</span>
+                <span className={styles.pageTag}> {t('blueprint:session.pageTag', { num: currentPage })}</span>
               )}
             </div>
             {/* Calibration suggestion banner — visible to ALL users */}
@@ -1748,15 +1752,15 @@ export default function SessionPage() {
               <div className={styles.calibBanner}>
                 <div className={styles.calibBannerTitle}>
                   {consecutiveFailCount >= 3
-                    ? '3 measurements have failed. Your scale may be set incorrectly.'
-                    : 'Multiple measurements look too small. Your scale may be set incorrectly.'}
+                    ? t('blueprint:session.calibTitleFails')
+                    : t('blueprint:session.calibTitleSmall')}
                 </div>
-                <div className={styles.calibBannerText}>Manual calibration is recommended.</div>
+                <div className={styles.calibBannerText}>{t('blueprint:session.calibRecommended')}</div>
                 <div className={styles.calibSteps}>
-                  <div><strong>Step 1:</strong> Find a dimension printed on your blueprint (e.g. a room labeled 24'-0")</div>
-                  <div><strong>Step 2:</strong> Enter that known distance below</div>
-                  <div><strong>Step 3:</strong> Click Start Calibration, then click the two endpoints of that dimension on the blueprint</div>
-                  <div><strong>Step 4:</strong> The scale updates automatically</div>
+                  <div><Trans i18nKey="blueprint:session.calibStep1"><strong>Step 1:</strong> Find a dimension printed on your blueprint (e.g. a room labeled 24'-0")</Trans></div>
+                  <div><Trans i18nKey="blueprint:session.calibStep2"><strong>Step 2:</strong> Enter that known distance below</Trans></div>
+                  <div><Trans i18nKey="blueprint:session.calibStep3"><strong>Step 3:</strong> Click Start Calibration, then click the two endpoints of that dimension on the blueprint</Trans></div>
+                  <div><Trans i18nKey="blueprint:session.calibStep4"><strong>Step 4:</strong> The scale updates automatically</Trans></div>
                 </div>
                 <div className={styles.calibBannerRow}>
                   <input
@@ -1774,7 +1778,7 @@ export default function SessionPage() {
                       if (ft && ft > 0) handleStartCalibration(ft)
                     }}
                   >
-                    {calibrating ? 'Click 2 points…' : 'Start Calibration'}
+                    {calibrating ? t('blueprint:session.clickTwoPoints') : t('blueprint:session.startCalibration')}
                   </button>
                 </div>
               </div>
@@ -1802,12 +1806,12 @@ export default function SessionPage() {
         {/* Test summary — shown when test mode is on */}
         {isTestMode && pageZones.length > 0 && (
           <div className={styles.section}>
-            <div className={styles.sectionTitle}>Test Results</div>
+            <div className={styles.sectionTitle}>{t('blueprint:session.testResults')}</div>
             <div className={styles.testSummary}>
               <div className={styles.testSummaryRow}>
-                <span>Tested: {testSummary.total}</span>
-                <span style={{ color: '#22c55e' }}>Pass: {testSummary.pass}</span>
-                <span style={{ color: '#ef4444' }}>Fail: {testSummary.fail}</span>
+                <span>{t('blueprint:session.tested', { count: testSummary.total })}</span>
+                <span style={{ color: '#22c55e' }}>{t('blueprint:session.pass', { count: testSummary.pass })}</span>
+                <span style={{ color: '#ef4444' }}>{t('blueprint:session.fail', { count: testSummary.fail })}</span>
               </div>
               {testSummary.verdict && (
                 <div className={`${styles.testVerdict} ${testSummary.verdict === 'ACCURATE' ? styles.testVerdictPass : styles.testVerdictFail}`}>
@@ -1816,10 +1820,10 @@ export default function SessionPage() {
               )}
               <div className={styles.testSummaryActions}>
                 <button className={styles.testSummaryBtn} onClick={handleSaveAllTests} disabled={savingTests || testSummary.total === 0}>
-                  {savingTests ? 'Saving…' : 'Save All Results'}
+                  {savingTests ? t('blueprint:toolbar.saving') : t('blueprint:session.saveAllResults')}
                 </button>
                 <button className={styles.testSummaryBtn} onClick={() => window.print()} disabled={testSummary.total === 0}>
-                  Print Report
+                  {t('blueprint:session.printReport')}
                 </button>
               </div>
             </div>
@@ -1834,13 +1838,13 @@ export default function SessionPage() {
           return (
             <div className={styles.summaryFooter}>
               <button className={styles.summaryToggle} onClick={toggleSummaryCollapsed}>
-                <span>{summaryCollapsed ? '▸' : '▾'}</span> Page Total
+                <span>{summaryCollapsed ? '▸' : '▾'}</span> {t('blueprint:session.pageTotal')}
               </button>
               {!summaryCollapsed && (
                 <div className={styles.summaryBody}>
                   {totalSF > 0 && <div className={styles.summaryLine}>{formatSF(totalSF)}</div>}
                   {totalLF > 0 && <div className={styles.summaryLine}>{formatLF(totalLF)}</div>}
-                  {totalCount > 0 && <div className={styles.summaryLine}>{Math.round(totalCount)} items</div>}
+                  {totalCount > 0 && <div className={styles.summaryLine}>{t('blueprint:session.itemsTotal', { count: Math.round(totalCount) })}</div>}
                 </div>
               )}
             </div>
@@ -1851,7 +1855,7 @@ export default function SessionPage() {
 
         {/* Print-only report footer */}
         <div className={styles.printReportFooter}>
-          rivetdog.com | Accuracy Test Report
+          {t('blueprint:session.printFooter')}
         </div>
 
       </aside>
@@ -1862,12 +1866,12 @@ export default function SessionPage() {
           /* State A — No blueprint */
           <div className={styles.emptyCanvas}>
             <div className={styles.emptyCanvasIcon}>📐</div>
-            <p>Fetch a blueprint to start measuring</p>
+            <p>{t('blueprint:session.fetchToStart')}</p>
           </div>
         ) : pdfError ? (
           /* State C — Critical PDF error (too many pages) */
           <div className={styles.emptyCanvas}>
-            <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 12, color: 'var(--color-danger, #ef4444)' }}>PDF too large to render</div>
+            <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 12, color: 'var(--color-danger, #ef4444)' }}>{t('blueprint:session.pdfTooLarge')}</div>
             <p style={{ maxWidth: 480, lineHeight: 1.6, color: 'var(--color-text-muted)' }}>{pdfError}</p>
             <button
               style={{ marginTop: 16, padding: '10px 20px', background: 'var(--color-danger, #ef4444)', color: 'white', border: 'none', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}
@@ -1876,14 +1880,14 @@ export default function SessionPage() {
                 navigate('/dashboard')
               }}
             >
-              Delete this blueprint
+              {t('blueprint:session.deleteThisBlueprint')}
             </button>
           </div>
         ) : (isPdf && (pdfLoading || !renderedPageUrl)) ? (
           /* State B — Loading PDF / rendering first page */
           <div className={styles.emptyCanvas}>
             <div className="spinner" />
-            <p style={{ marginTop: 12, color: 'var(--color-text-muted)' }}>Fetching your PDF...</p>
+            <p style={{ marginTop: 12, color: 'var(--color-text-muted)' }}>{t('blueprint:session.fetchingPdf')}</p>
           </div>
         ) : (
           /* State D — Loaded successfully */
@@ -1911,16 +1915,16 @@ export default function SessionPage() {
         {detectingScale && (
           <div className={styles.scaleBanner}>
             <span className={styles.scaleBannerDot} />
-            Sniffing for scale...
+            {t('blueprint:session.sniffingForScale')}
           </div>
         )}
         {scaleDetectionBanner && !detectingScale && (
           <div className={styles.scaleBanner}>
-            Sniffed out the scale: <strong>{scaleDetectionBanner.label}</strong>
+            {t('blueprint:session.sniffedScale')} <strong>{scaleDetectionBanner.label}</strong>
             <button
               className={styles.scaleBannerDismiss}
               onClick={() => setScaleDetectionBanner(null)}
-              aria-label="Dismiss"
+              aria-label={t('blueprint:session.dismiss')}
             >
               ✕
             </button>
@@ -1944,24 +1948,24 @@ export default function SessionPage() {
           <div className={styles.hint}>
             {(activeZoneMeta?.type ?? activeDeductionContext?.measurement_type) === 'count'
               ? isAccumulating
-                ? `Segment ${finishedSegments.length + 1} — click items · Finish Segment or Done to save`
-                : 'Click each item to count it · Finish Zone to add segments'
+                ? t('blueprint:session.hintCountSegment', { seg: finishedSegments.length + 1 })
+                : t('blueprint:session.hintCountFirst')
               : isAccumulating
-              ? `Segment ${finishedSegments.length + 1} — click points · double-click or Finish Segment`
+              ? t('blueprint:session.hintPointsSegment', { seg: finishedSegments.length + 1 })
               : redrawingZoneId
-              ? 'Retrace the zone · Double-click or Finish Zone when done'
-              : 'Click to place points · Double-click to finish'}
+              ? t('blueprint:session.hintRetrace')
+              : t('blueprint:session.hintPlacePoints')}
           </div>
         )}
         {isAccumulating && !isDrawing && (
           <div className={styles.hint}>
-            Segment saved — click "Add Another Segment" or "Done — Save Zone"
+            {t('blueprint:session.hintSegmentSaved')}
           </div>
         )}
 
         {calibrating && (
           <div className={styles.hint} style={{ background: 'rgba(245,158,11,0.15)', color: '#fbbf24' }}>
-            Click two points that span your known distance
+            {t('blueprint:session.hintCalibClick')}
           </div>
         )}
       </main>
@@ -1983,14 +1987,14 @@ export default function SessionPage() {
       <ScaleChangeDialog
         open={!!pendingScaleChange}
         zoneCount={pendingScaleChange?.zoneCount ?? 0}
-        oldScaleLabel={pendingScaleChange?.oldLabel ?? 'Custom scale'}
-        newScaleLabel={pendingScaleChange?.newLabel ?? 'Custom scale'}
+        oldScaleLabel={pendingScaleChange?.oldLabel ?? t('blueprint:session.customScale')}
+        newScaleLabel={pendingScaleChange?.newLabel ?? t('blueprint:session.customScale')}
         onRecalculate={async () => {
           const { newPPF } = pendingScaleChange
           await applyScaleChange(newPPF)
           runScaleSanityCheck(newPPF, 'dropdown')
           const count = await rescaleZonesOnCurrentPage(newPPF)
-          setRescaleToast(`${count} zone${count === 1 ? '' : 's'} rescaled`)
+          setRescaleToast(t('blueprint:session.zonesRescaled', { count }))
           setTimeout(() => setRescaleToast(''), 3000)
           setPendingScaleChange(null)
         }}
@@ -1998,7 +2002,7 @@ export default function SessionPage() {
           const { newPPF } = pendingScaleChange
           await applyScaleChange(newPPF)
           runScaleSanityCheck(newPPF, 'dropdown')
-          setRescaleToast('Scale updated. Existing zones kept at previous scale.')
+          setRescaleToast(t('blueprint:session.scaleKept'))
           setTimeout(() => setRescaleToast(''), 3000)
           setPendingScaleChange(null)
         }}
@@ -2007,9 +2011,9 @@ export default function SessionPage() {
 
       {/* Replace blueprint confirmation */}
       {showReplaceConfirm && (
-        <Modal title="Replace Blueprint?" onClose={() => setShowReplaceConfirm(false)}>
+        <Modal title={t('blueprint:session.replaceTitle')} onClose={() => setShowReplaceConfirm(false)}>
           <p style={{ color: 'var(--color-text-muted)', marginBottom: 20 }}>
-            Replacing this blueprint will permanently delete all zones and measurements on this session. This action cannot be undone.
+            {t('blueprint:session.replaceBody')}
           </p>
           {replaceError && (
             <p style={{ fontSize: 13, color: 'var(--color-danger, #dc2626)', marginBottom: 12 }}>
@@ -2021,7 +2025,7 @@ export default function SessionPage() {
               style={{ background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', padding: '9px 18px', color: 'var(--color-text-muted)', cursor: 'pointer' }}
               onClick={() => setShowReplaceConfirm(false)}
             >
-              Cancel
+              {t('common:action.cancel')}
             </button>
             <button
               style={{ background: 'var(--color-danger)', border: 'none', borderRadius: 'var(--radius)', padding: '9px 18px', color: 'white', fontWeight: 600, cursor: 'pointer' }}
@@ -2039,7 +2043,7 @@ export default function SessionPage() {
                     .eq('id', sessionId)
                   if (updErr) throw new Error(updErr.message)
                 } catch (err) {
-                  setReplaceError('Failed to clear blueprint: ' + err.message)
+                  setReplaceError(t('blueprint:session.failedClearBlueprint', { message: err.message }))
                   return
                 }
                 setReplacingBlueprintType(blueprintType)
@@ -2052,7 +2056,7 @@ export default function SessionPage() {
                 refetch()
               }}
             >
-              Replace and Start Over
+              {t('blueprint:session.replaceStartOver')}
             </button>
           </div>
         </Modal>

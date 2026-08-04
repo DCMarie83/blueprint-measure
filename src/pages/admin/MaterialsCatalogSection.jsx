@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, Fragment } from 'react'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
 import ItemVisual from '../../components/materials/ItemVisual'
 
@@ -74,6 +75,7 @@ function ruleSummary(row) {
 }
 
 export default function MaterialsCatalogSection() {
+  const { t } = useTranslation()
   const [rows, setRows] = useState([])
   const [stores, setStores] = useState([])
   const [loading, setLoading] = useState(true)
@@ -155,7 +157,7 @@ export default function MaterialsCatalogSection() {
   async function createRow(e) {
     e.preventDefault()
     if (!createState.taxonomy_slug.trim() || !createState.name.trim()) {
-      setError('taxonomy_slug and name are required.')
+      setError(t('admin:materialsCatalog.slugNameRequired'))
       return
     }
     setSaving('new')
@@ -206,9 +208,9 @@ export default function MaterialsCatalogSection() {
         <label style={label}>display_order<input style={input} type="number" step="1" value={state.display_order} onChange={e => patch('display_order', e.target.value)} /></label>
         <label style={label}>retailer_product_id<input style={input} value={state.retailer_product_id} onChange={e => patch('retailer_product_id', e.target.value)} /></label>
         <label style={label}>product_url<input style={input} value={state.product_url} onChange={e => patch('product_url', e.target.value)} /></label>
-        <label style={{ ...label, gridColumn: '1 / -1' }}>Image URL
+        <label style={{ ...label, gridColumn: '1 / -1' }}>{t('admin:materialsCatalog.imageUrl')}
           <input style={input} value={state.image_url || ''} onChange={e => patch('image_url', e.target.value)} placeholder="https://…" />
-          <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>Paste a product image link from the manufacturer's page. Leave blank for the category icon.</span>
+          <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>{t('admin:materialsCatalog.imageUrlHelp')}</span>
         </label>
         <label style={{ ...label, gridColumn: '1 / -1' }}>notes<input style={input} value={state.notes} onChange={e => patch('notes', e.target.value)} /></label>
         <label style={{ ...label, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -221,9 +223,9 @@ export default function MaterialsCatalogSection() {
   return (
     <div style={{ padding: '4px 4px 40px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>Materials Catalog</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>{t('admin:materialsCatalog.title')}</h1>
         <button style={primaryBtn} onClick={() => { setCreating(c => !c); setCreateState(blankRow()) }}>
-          {creating ? 'Close' : '+ New catalog item'}
+          {creating ? t('common:action.close') : t('admin:materialsCatalog.newItem')}
         </button>
       </div>
 
@@ -233,35 +235,35 @@ export default function MaterialsCatalogSection() {
 
       {creating && (
         <form onSubmit={createRow} style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: 16, marginBottom: 20, background: 'var(--color-surface)' }}>
-          <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>New catalog item</h3>
+          <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>{t('admin:materialsCatalog.newItemHeading')}</h3>
           {renderFieldEditor(createState, (f, v) => setCreateState(prev => ({ ...prev, [f]: v })))}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 14 }}>
-            <button type="button" style={btn} onClick={() => { setCreating(false); setCreateState(blankRow()) }}>Cancel</button>
-            <button type="submit" style={primaryBtn} disabled={saving === 'new'}>{saving === 'new' ? 'Creating…' : 'Create'}</button>
+            <button type="button" style={btn} onClick={() => { setCreating(false); setCreateState(blankRow()) }}>{t('common:action.cancel')}</button>
+            <button type="submit" style={primaryBtn} disabled={saving === 'new'}>{saving === 'new' ? t('admin:materialsCatalog.creating') : t('admin:materialsCatalog.create')}</button>
           </div>
         </form>
       )}
 
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
-        <label style={label}>Vertical
+        <label style={label}>{t('admin:materialsCatalog.filterVertical')}
           <select style={input} value={filters.vertical} onChange={e => setFilters(f => ({ ...f, vertical: e.target.value }))}>
             {verticals.map(v => <option key={v} value={v}>{v}</option>)}
           </select>
         </label>
-        <label style={label}>Grade
+        <label style={label}>{t('admin:materialsCatalog.filterGrade')}
           <select style={input} value={filters.grade} onChange={e => setFilters(f => ({ ...f, grade: e.target.value }))}>
             <option value="all">all</option>
             {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
           </select>
         </label>
-        <label style={label}>Store
+        <label style={label}>{t('admin:materialsCatalog.filterStore')}
           <select style={input} value={filters.store} onChange={e => setFilters(f => ({ ...f, store: e.target.value }))}>
             <option value="all">all</option>
             <option value="none">— none —</option>
             {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </label>
-        <label style={label}>State
+        <label style={label}>{t('admin:materialsCatalog.filterState')}
           <select style={input} value={filters.active} onChange={e => setFilters(f => ({ ...f, active: e.target.value }))}>
             <option value="active">active</option>
             <option value="inactive">inactive</option>
@@ -271,28 +273,28 @@ export default function MaterialsCatalogSection() {
       </div>
 
       {loading ? (
-        <div style={{ color: 'var(--color-text-muted)', padding: 20 }}>Loading catalog…</div>
+        <div style={{ color: 'var(--color-text-muted)', padding: 20 }}>{t('admin:materialsCatalog.loading')}</div>
       ) : (
         <div style={{ overflowX: 'auto', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                <th style={th}>Slug</th>
-                <th style={th}>Name</th>
-                <th style={th}>Grade</th>
-                <th style={th}>Store</th>
-                <th style={th}>Unit</th>
-                <th style={th}>Rule</th>
-                <th style={th}>Typical</th>
-                <th style={th}>As of</th>
-                <th style={th}>URL</th>
-                <th style={th}>Active</th>
+                <th style={th}>{t('admin:materialsCatalog.colSlug')}</th>
+                <th style={th}>{t('admin:materialsCatalog.colName')}</th>
+                <th style={th}>{t('admin:materialsCatalog.colGrade')}</th>
+                <th style={th}>{t('admin:materialsCatalog.colStore')}</th>
+                <th style={th}>{t('admin:materialsCatalog.colUnit')}</th>
+                <th style={th}>{t('admin:materialsCatalog.colRule')}</th>
+                <th style={th}>{t('admin:materialsCatalog.colTypical')}</th>
+                <th style={th}>{t('admin:materialsCatalog.colAsOf')}</th>
+                <th style={th}>{t('admin:materialsCatalog.colUrl')}</th>
+                <th style={th}>{t('admin:materialsCatalog.colActive')}</th>
                 <th style={th}></th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td style={td} colSpan={11}><span style={{ color: 'var(--color-text-muted)' }}>No catalog rows match these filters.</span></td></tr>
+                <tr><td style={td} colSpan={11}><span style={{ color: 'var(--color-text-muted)' }}>{t('admin:materialsCatalog.empty')}</span></td></tr>
               ) : filtered.map(row => (
                 <Fragment key={row.id}>
                   <tr style={{ borderBottom: '1px solid var(--color-border)', opacity: row.is_active ? 1 : 0.55 }}>
@@ -309,16 +311,16 @@ export default function MaterialsCatalogSection() {
                     <td style={td}>{ruleSummary(row)}</td>
                     <td style={td}>{row.typical_price != null ? `$${Number(row.typical_price).toFixed(2)}` : '—'}</td>
                     <td style={td}>{row.price_as_of || '—'}</td>
-                    <td style={td}>{row.product_url ? <a href={row.product_url} target="_blank" rel="noopener noreferrer">link</a> : '—'}</td>
-                    <td style={td}>{row.is_active ? 'Yes' : 'No'}</td>
+                    <td style={td}>{row.product_url ? <a href={row.product_url} target="_blank" rel="noopener noreferrer">{t('admin:materialsCatalog.link')}</a> : '—'}</td>
+                    <td style={td}>{row.is_active ? t('admin:materialsCatalog.yes') : t('admin:materialsCatalog.no')}</td>
                     <td style={{ ...td, whiteSpace: 'nowrap' }}>
                       <button style={btn} onClick={() => (expandedId === row.id ? setExpandedId(null) : startEdit(row))}>
-                        {expandedId === row.id ? 'Close' : 'Edit'}
+                        {expandedId === row.id ? t('common:action.close') : t('common:action.edit')}
                       </button>{' '}
                       {row.is_active ? (
-                        <button style={btn} disabled={saving === row.id} onClick={() => setActive(row, false)}>Deactivate</button>
+                        <button style={btn} disabled={saving === row.id} onClick={() => setActive(row, false)}>{t('admin:materialsCatalog.deactivate')}</button>
                       ) : (
-                        <button style={btn} disabled={saving === row.id} onClick={() => setActive(row, true)}>Reactivate</button>
+                        <button style={btn} disabled={saving === row.id} onClick={() => setActive(row, true)}>{t('admin:materialsCatalog.reactivate')}</button>
                       )}
                     </td>
                   </tr>
@@ -327,8 +329,8 @@ export default function MaterialsCatalogSection() {
                       <td style={{ ...td, background: 'var(--color-surface)' }} colSpan={11}>
                         {renderFieldEditor(editState, patchEdit)}
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 14 }}>
-                          <button type="button" style={btn} onClick={() => setExpandedId(null)}>Cancel</button>
-                          <button type="button" style={primaryBtn} disabled={saving === row.id} onClick={() => saveEdit(row.id)}>{saving === row.id ? 'Saving…' : 'Save'}</button>
+                          <button type="button" style={btn} onClick={() => setExpandedId(null)}>{t('common:action.cancel')}</button>
+                          <button type="button" style={primaryBtn} disabled={saving === row.id} onClick={() => saveEdit(row.id)}>{saving === row.id ? t('admin:materialsCatalog.saving') : t('common:action.save')}</button>
                         </div>
                       </td>
                     </tr>

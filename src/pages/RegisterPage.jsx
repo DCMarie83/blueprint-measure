@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input'
 import 'react-phone-number-input/style.css'
@@ -10,13 +11,14 @@ import LanguageToggle from '../components/LanguageToggle'
 import styles from './RegisterPage.module.css'
 
 const PW_RULES = [
-  { test: v => v.length >= 8, label: 'At least 8 characters' },
-  { test: v => /[A-Z]/.test(v), label: 'At least 1 uppercase letter' },
-  { test: v => /[0-9]/.test(v), label: 'At least 1 number' },
-  { test: v => /[!@#$%^&*]/.test(v), label: 'At least 1 special character (!@#$%^&*)' },
+  { test: v => v.length >= 8, label: 'auth:register.pwRuleLen' },
+  { test: v => /[A-Z]/.test(v), label: 'auth:register.pwRuleUpper' },
+  { test: v => /[0-9]/.test(v), label: 'auth:register.pwRuleNumber' },
+  { test: v => /[!@#$%^&*]/.test(v), label: 'auth:register.pwRuleSpecial' },
 ]
 
 export default function RegisterPage() {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const navigate = useNavigate()
 
@@ -87,32 +89,32 @@ export default function RegisterPage() {
           <LanguageToggle />
         </div>
         <div className={styles.logo}><Logo variant="full" /></div>
-        <h1 className={styles.title}>Welcome to the pack! Let's get you set up.</h1>
+        <h1 className={styles.title}>{t('auth:register.title')}</h1>
 
         {error && <div className={styles.error}>{error}</div>}
 
         <form className={styles.form} onSubmit={handleSubmit}>
           <div className={styles.field}>
-            <label>Full Name *</label>
+            <label>{t('auth:register.fullNameLabel')}</label>
             <input
               type="text"
               value={fullName}
               onChange={e => setFullName(e.target.value)}
               onBlur={() => setTouched(t => ({ ...t, name: true }))}
-              placeholder="Your full name"
+              placeholder={t('auth:register.fullNamePlaceholder')}
               required
               autoFocus
             />
-            {touched.name && !fullName.trim() && <span className={styles.fieldError}>Name is required</span>}
+            {touched.name && !fullName.trim() && <span className={styles.fieldError}>{t('auth:register.nameRequired')}</span>}
           </div>
 
           <div className={styles.field}>
-            <label>Email</label>
+            <label>{t('auth:register.emailLabel')}</label>
             <input type="email" value={user?.email ?? ''} disabled className={styles.disabledInput} />
           </div>
 
           <div className={styles.field}>
-            <label>Phone *</label>
+            <label>{t('auth:register.phoneLabel')}</label>
             <PhoneInput
               international
               defaultCountry="US"
@@ -120,25 +122,25 @@ export default function RegisterPage() {
               onChange={setPhone}
               className={styles.phoneInput}
             />
-            {touched.phone && phone && !phoneValid && <span className={styles.fieldError}>Enter a valid phone number</span>}
-            {touched.phone && !phone && <span className={styles.fieldError}>Phone is required</span>}
+            {touched.phone && phone && !phoneValid && <span className={styles.fieldError}>{t('auth:register.phoneInvalid')}</span>}
+            {touched.phone && !phone && <span className={styles.fieldError}>{t('auth:register.phoneRequired')}</span>}
           </div>
 
           <div className={styles.field}>
-            <label>Password *</label>
+            <label>{t('auth:register.passwordLabel')}</label>
             <input
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
               onBlur={() => setTouched(t => ({ ...t, password: true }))}
-              placeholder="At least 8 characters"
+              placeholder={t('auth:register.passwordPlaceholder')}
               required
             />
             {touched.password && password && pwErrors.length > 0 && (
               <div className={styles.pwRules}>
                 {PW_RULES.map(r => (
                   <div key={r.label} className={r.test(password) ? styles.pwRulePass : styles.pwRuleFail}>
-                    {r.test(password) ? '✓' : '✕'} {r.label}
+                    {r.test(password) ? '✓' : '✕'} {t(r.label)}
                   </div>
                 ))}
               </div>
@@ -146,46 +148,46 @@ export default function RegisterPage() {
           </div>
 
           <div className={styles.field}>
-            <label>Confirm Password *</label>
+            <label>{t('auth:register.confirmLabel')}</label>
             <input
               type="password"
               value={confirmPassword}
               onChange={e => setConfirmPassword(e.target.value)}
               onBlur={() => setTouched(t => ({ ...t, confirm: true }))}
-              placeholder="Repeat password"
+              placeholder={t('auth:register.confirmPlaceholder')}
               required
             />
             {touched.confirm && confirmPassword && !passwordsMatch && (
-              <span className={styles.fieldError}>Passwords do not match</span>
+              <span className={styles.fieldError}>{t('auth:register.confirmMismatch')}</span>
             )}
           </div>
 
           <div className={styles.consentGroup}>
             <label className={styles.checkbox}>
               <input type="checkbox" checked={emailConsent} onChange={e => setEmailConsent(e.target.checked)} />
-              <span>I agree to receive product updates and account-related emails from {BRAND.name}</span>
+              <span>{t('auth:register.emailConsent', { brand: BRAND.name })}</span>
             </label>
             <label className={styles.checkbox}>
               <input type="checkbox" checked={smsConsent} onChange={e => setSmsConsent(e.target.checked)} />
-              <span>I agree to receive text messages about my account from {BRAND.name}</span>
+              <span>{t('auth:register.smsConsent', { brand: BRAND.name })}</span>
             </label>
           </div>
 
           <button type="submit" className={styles.submitBtn} disabled={!canSubmit || submitting}>
-            {submitting ? 'Setting up your den...' : 'Complete Setup'}
+            {submitting ? t('auth:register.settingUp') : t('auth:register.submit')}
           </button>
         </form>
 
         {ONBOARDING_CALENDAR_URL && (
           <p style={{ textAlign: 'center', fontSize: 14, color: 'var(--color-text-muted)', marginTop: 20, lineHeight: 1.5 }}>
-            Want help getting set up?{' '}
+            {t('auth:register.helpPrompt')}{' '}
             <a
               href={ONBOARDING_CALENDAR_URL}
               target="_blank"
               rel="noopener noreferrer"
               style={{ color: '#f27243', fontWeight: 600, textDecoration: 'underline' }}
             >
-              Book a free onboarding call
+              {t('auth:register.bookCall')}
             </a>
           </p>
         )}

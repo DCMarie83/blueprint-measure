@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Menu, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useIsLite } from '../hooks/useIsLite'
@@ -11,25 +12,26 @@ import TrialBanner from './TrialBanner'
 import LanguageToggle from './LanguageToggle'
 import styles from './AppHeader.module.css'
 
+// label = i18n key under common:nav.*; resolved with t() at render.
 const CONTRACTOR_NAV = [
-  { to: '/dashboard', label: 'Dashboard' },
-  { to: '/jobs', label: 'Jobs' },
-  { to: '/clients', label: 'Clients' },
-  { to: '/invoices', label: 'Invoices' },
-  { to: '/time', label: 'Time' },
-  { to: '/academy', label: 'Academy' },
-  { to: '/resources', label: 'Resources' },
-  { to: '/reports', label: 'Reports' },
+  { to: '/dashboard', label: 'common:nav.dashboard' },
+  { to: '/jobs', label: 'common:nav.jobs' },
+  { to: '/clients', label: 'common:nav.clients' },
+  { to: '/invoices', label: 'common:nav.invoices' },
+  { to: '/time', label: 'common:nav.time' },
+  { to: '/academy', label: 'common:nav.academy' },
+  { to: '/resources', label: 'common:nav.resources' },
+  { to: '/reports', label: 'common:nav.reports' },
 ]
 
 // Lite tenants get a deliberately tiny nav — Home leads, Log stays the composer.
 const LITE_NAV = [
-  { to: '/home', label: 'Home' },
-  { to: '/log', label: 'Log' },
-  { to: '/jobs', label: 'Jobs' },
-  { to: '/gcs', label: 'GCs' },
-  { to: '/invoices', label: 'Invoices' },
-  { to: '/reports', label: 'Reports' },
+  { to: '/home', label: 'common:nav.home' },
+  { to: '/log', label: 'common:nav.log' },
+  { to: '/jobs', label: 'common:nav.jobs' },
+  { to: '/gcs', label: 'common:nav.gcs' },
+  { to: '/invoices', label: 'common:nav.invoices' },
+  { to: '/reports', label: 'common:nav.reports' },
 ]
 
 function NavLink({ to, label, active, onClick }) {
@@ -46,6 +48,7 @@ function NavLink({ to, label, active, onClick }) {
 
 export default function AppHeader({ extras = null }) {
   const location = useLocation()
+  const { t } = useTranslation()
   const { company, user, refreshUserProfile } = useAuth()
   const { isLite, resolved } = useIsLite()
   const liteSections = useLiteNavSections(isLite && resolved)
@@ -86,12 +89,12 @@ export default function AppHeader({ extras = null }) {
       <TrialBanner />
       <header className={styles.header}>
         <div className={styles.left}>
-          <Link to={homeLink} className={styles.logoLink} aria-label={hasTenantLogo ? `${company.name} home` : 'RivetDog home'}>
+          <Link to={homeLink} className={styles.logoLink} aria-label={hasTenantLogo ? t('common:nav.companyHome', { company: company.name }) : t('common:nav.rivetdogHome')}>
             {hasTenantLogo ? (
               <>
                 <img
                   src={company.logo_url}
-                  alt={`${company.name} logo`}
+                  alt={t('common:nav.companyLogo', { company: company.name })}
                   onError={() => setLogoError(true)}
                   className={styles.tenantLogo}
                 />
@@ -103,7 +106,7 @@ export default function AppHeader({ extras = null }) {
           </Link>
           <nav className={styles.primaryNav}>
             {primaryNav.map(item => (
-              <NavLink key={item.to} to={item.to} label={item.label} active={isActive(item.to)} />
+              <NavLink key={item.to} to={item.to} label={t(item.label)} active={isActive(item.to)} />
             ))}
           </nav>
         </div>
@@ -113,7 +116,7 @@ export default function AppHeader({ extras = null }) {
           <button
             className={styles.hamburger}
             onClick={() => setMobileOpen(true)}
-            aria-label="Open navigation menu"
+            aria-label={t('common:nav.openMenu')}
           >
             <Menu size={22} />
           </button>
@@ -127,11 +130,11 @@ export default function AppHeader({ extras = null }) {
           <div className={styles.drawerBackdrop} onClick={() => setMobileOpen(false)} />
           <aside className={styles.drawer}>
             <div className={styles.drawerHeader}>
-              <span className={styles.drawerTitle}>Menu</span>
+              <span className={styles.drawerTitle}>{t('common:nav.menu')}</span>
               <button
                 className={styles.drawerClose}
                 onClick={() => setMobileOpen(false)}
-                aria-label="Close menu"
+                aria-label={t('common:nav.closeMenu')}
               >
                 <X size={20} />
               </button>
@@ -141,7 +144,7 @@ export default function AppHeader({ extras = null }) {
                 <NavLink
                   key={item.to}
                   to={item.to}
-                  label={item.label}
+                  label={t(item.label)}
                   active={isActive(item.to)}
                   onClick={() => setMobileOpen(false)}
                 />

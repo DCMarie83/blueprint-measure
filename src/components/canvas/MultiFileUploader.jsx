@@ -1,4 +1,5 @@
 import { useRef, useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { useSessions } from '../../hooks/useSessions'
@@ -17,6 +18,7 @@ function formatBytes(bytes) {
 }
 
 export default function MultiFileUploader({ projectId, project, existingEmptySessions, storageLimitMb, onComplete }) {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const { createSessionsBatch } = useSessions()
   const inputRef = useRef(null)
@@ -41,7 +43,7 @@ export default function MultiFileUploader({ projectId, project, existingEmptySes
     const { data: { session: authSession } } = await supabase.auth.getSession()
     const accessToken = authSession?.access_token
     if (!accessToken) {
-      updateFileState(idx, { status: 'error', error: 'Not authenticated' })
+      updateFileState(idx, { status: 'error', error: t('blueprint:multiUpload.notAuthenticated') })
       activeUploads.current--
       kickQueue()
       return
@@ -105,7 +107,7 @@ export default function MultiFileUploader({ projectId, project, existingEmptySes
     // Handle splittable files
     if (splittable.length > 0) {
       if (splittable.length > 1 || errors.length > 0 || files.length > splittable.length) {
-        setBatchError('Drop one large PDF at a time for splitting. Re-drop other files separately.')
+        setBatchError(t('blueprint:multiUpload.oneLargePdf'))
         return
       }
       setSplittableFile(splittable[0])
@@ -127,9 +129,11 @@ export default function MultiFileUploader({ projectId, project, existingEmptySes
         const limitBytes = storageLimitMb * 1024 * 1024
         if (projectedBytes > limitBytes) {
           setBatchError(
-            `This batch (${formatBytes(totalBatchBytes)}) would exceed your remaining storage ` +
-            `(${formatBytes(limitBytes - usage.totalBytes)} remaining of ${formatBytes(limitBytes)}). ` +
-            `Upgrade or remove some files.`
+            t('blueprint:multiUpload.batchExceedsStorage', {
+              batch: formatBytes(totalBatchBytes),
+              remaining: formatBytes(limitBytes - usage.totalBytes),
+              limit: formatBytes(limitBytes),
+            })
           )
           return
         }
@@ -223,10 +227,10 @@ export default function MultiFileUploader({ projectId, project, existingEmptySes
         />
         <div className={styles.dropzoneIcon}>📂</div>
         <div className={styles.dropzoneText}>
-          <strong>Drop multiple blueprints here</strong> or click to browse
+          <strong>{t('blueprint:multiUpload.dropMultiple')}</strong> {t('blueprint:multiUpload.orClickBrowse')}
         </div>
         <div className={styles.dropzoneSub}>
-          JPG, PNG, or PDF — up to 1GB each — multiple files supported
+          {t('blueprint:multiUpload.fileHint')}
         </div>
       </div>
 
@@ -247,8 +251,8 @@ export default function MultiFileUploader({ projectId, project, existingEmptySes
             <div key={i} className={styles.fileItem}>
               <span className={styles.fileName}>{f.name}</span>
               <span className={styles.fileSize}>{formatBytes(f.file.size)}</span>
-              {f.status === 'creating' && <span className={`${styles.fileStatus} ${styles.statusQueued}`}>Creating...</span>}
-              {f.status === 'queued' && <span className={`${styles.fileStatus} ${styles.statusQueued}`}>Queued</span>}
+              {f.status === 'creating' && <span className={`${styles.fileStatus} ${styles.statusQueued}`}>{t('blueprint:multiUpload.creating')}</span>}
+              {f.status === 'queued' && <span className={`${styles.fileStatus} ${styles.statusQueued}`}>{t('blueprint:multiUpload.queued')}</span>}
               {f.status === 'uploading' && (
                 <>
                   <div className={styles.fileProgress}>
@@ -257,20 +261,20 @@ export default function MultiFileUploader({ projectId, project, existingEmptySes
                   <span className={`${styles.fileStatus} ${styles.statusUploading}`}>{f.progress}%</span>
                 </>
               )}
-              {f.status === 'done' && <span className={`${styles.fileStatus} ${styles.statusDone}`}>Done</span>}
+              {f.status === 'done' && <span className={`${styles.fileStatus} ${styles.statusDone}`}>{t('blueprint:multiUpload.done')}</span>}
               {f.status === 'error' && (
                 <>
-                  <span className={`${styles.fileStatus} ${styles.statusError}`} title={f.error}>Failed</span>
-                  {f.sessionId && <button className={styles.retryBtn} onClick={() => handleRetry(i)}>Retry</button>}
+                  <span className={`${styles.fileStatus} ${styles.statusError}`} title={f.error}>{t('blueprint:multiUpload.failed')}</span>
+                  {f.sessionId && <button className={styles.retryBtn} onClick={() => handleRetry(i)}>{t('common:action.retry')}</button>}
                 </>
               )}
             </div>
           ))}
           {(doneCount > 0 || errorCount > 0) && (
             <div className={styles.summary}>
-              {doneCount > 0 && `${doneCount} uploaded`}
+              {doneCount > 0 && t('blueprint:multiUpload.uploadedCount', { count: doneCount })}
               {doneCount > 0 && errorCount > 0 && ' · '}
-              {errorCount > 0 && `${errorCount} failed`}
+              {errorCount > 0 && t('blueprint:multiUpload.failedCount', { count: errorCount })}
             </div>
           )}
         </div>
@@ -278,17 +282,16 @@ export default function MultiFileUploader({ projectId, project, existingEmptySes
 
       {/* E1 Resume prompt */}
       {showResumePrompt && (
-        <Modal title="Empty Blueprints Found" onClose={() => setShowResumePrompt(null)}>
+        <Modal title={t('blueprint:multiUpload.emptyFoundTitle')} onClose={() => setShowResumePrompt(null)}>
           <p style={{ color: 'var(--color-text-muted)', marginBottom: 20 }}>
-            You have {showResumePrompt.emptyCount} empty blueprint{showResumePrompt.emptyCount !== 1 ? 's' : ''} in this project
-            (created but no file uploaded). Would you like to create new blueprints or use the existing empty ones first?
+            {t('blueprint:multiUpload.emptyFoundBody', { count: showResumePrompt.emptyCount })}
           </p>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
             <button
               style={{ background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', padding: '9px 18px', color: 'var(--color-text-muted)', cursor: 'pointer' }}
               onClick={() => setShowResumePrompt(null)}
             >
-              Cancel
+              {t('common:action.cancel')}
             </button>
             <button
               style={{ background: 'var(--color-primary)', border: 'none', borderRadius: 'var(--radius)', padding: '9px 18px', color: 'white', fontWeight: 600, cursor: 'pointer' }}
@@ -298,7 +301,7 @@ export default function MultiFileUploader({ projectId, project, existingEmptySes
                 startBatch(files)
               }}
             >
-              Create New Blueprints
+              {t('blueprint:multiUpload.createNew')}
             </button>
           </div>
         </Modal>
