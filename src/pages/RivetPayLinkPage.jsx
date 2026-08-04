@@ -171,6 +171,9 @@ export default function RivetPayLinkPage() {
     return (
       <div className={styles.page}>
         <div className={styles.card}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <LanguageToggle />
+          </div>
           <h1 className={styles.errorTitle}>This link isn't active</h1>
           <p className={styles.errorText}>Ask your employer for an updated link.</p>
           <p className={styles.footer}>Powered by RivetDog</p>
@@ -186,6 +189,9 @@ export default function RivetPayLinkPage() {
     return (
       <div className={styles.page}>
         <div className={styles.card}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <LanguageToggle />
+          </div>
           <h2 className={styles.companyName}>{data.company_name}</h2>
           <p className={styles.workerGreeting}>Hi, {data.worker_name}</p>
           <div className={styles.termsBox}>
