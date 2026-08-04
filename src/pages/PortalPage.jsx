@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabase'
+import { resolvePortalStatus } from '../lib/kanbanColumnLabel'
 import PortalEstimateSection from '../components/portal/PortalEstimateSection'
 import PaymentInstructionsBlock from '../components/invoices/PaymentInstructionsBlock'
 import LanguageToggle from '../components/LanguageToggle'
@@ -108,7 +109,7 @@ export default function PortalPage() {
         {data.status_label && (
           <div className={styles.statusRow}>
             <span className={styles.statusLabel}>{t('portal:portalPage.currentStatus')}</span>
-            <span className={styles.statusBadge}>{data.status_label}</span>
+            <span className={styles.statusBadge}>{resolvePortalStatus(t, data.status_key, data.status_label)}</span>
           </div>
         )}
 

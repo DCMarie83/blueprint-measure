@@ -1940,6 +1940,17 @@
       "creating": "Creating…",
       "addBlueprint": "Add Blueprint",
       "createSession": "Create Session"
+    },
+    "kanbanColumn": {
+      "measurements_estimates": "Measurements & Estimates",
+      "job_costing": "Job Costing",
+      "review": "Review",
+      "sent_to_client": "Sent to Client",
+      "accepted": "Accepted",
+      "deposit_received": "Deposit Received",
+      "scheduled": "Scheduled",
+      "in_progress": "In Progress",
+      "complete": "Complete"
     }
   },
   "estimates": {

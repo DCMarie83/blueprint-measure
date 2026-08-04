@@ -1940,6 +1940,17 @@
       "creating": "Creando…",
       "addBlueprint": "Agregar plano",
       "createSession": "Crear sesión"
+    },
+    "kanbanColumn": {
+      "measurements_estimates": "Mediciones y cotizaciones",
+      "job_costing": "Costeo del trabajo",
+      "review": "Revisión",
+      "sent_to_client": "Enviado al cliente",
+      "accepted": "Aceptado",
+      "deposit_received": "Depósito recibido",
+      "scheduled": "Programado",
+      "in_progress": "En progreso",
+      "complete": "Completado"
     }
   },
   "estimates": {

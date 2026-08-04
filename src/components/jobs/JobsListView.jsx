@@ -1,6 +1,7 @@
 import { ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useClients } from '../../hooks/useClients'
+import { resolveColumnLabel } from '../../lib/kanbanColumnLabel'
 import { timeAgo } from '../../utils/timeAgo'
 import styles from './JobsListView.module.css'
 
@@ -30,7 +31,7 @@ export default function JobsListView({ projects, columns, onClickProject }) {
     <div className={styles.list}>
       {sorted.map(project => {
         const col = colMap[project.kanban_column_id]
-        const colName = col?.name ?? '—'
+        const colName = col ? resolveColumnLabel(t, col) : '—'
         const colPos = col?.position ?? 0
         const dotColor = DOT_COLORS[(colPos - 1) % DOT_COLORS.length]
 

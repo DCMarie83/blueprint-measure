@@ -16,6 +16,7 @@ import JobsListView, { DOT_COLORS } from '../components/jobs/JobsListView'
 import JobsFilterBar from '../components/jobs/JobsFilterBar'
 import { useOpportunities } from '../hooks/useOpportunities'
 import { useProjects } from '../hooks/useProjects'
+import { resolveColumnLabel } from '../lib/kanbanColumnLabel'
 import { useEstimates } from '../hooks/useEstimates'
 import { useClients } from '../hooks/useClients'
 import { useAuth } from '../context/AuthContext'
@@ -68,7 +69,7 @@ function DroppableColumn({ column }) {
   return (
     <div ref={setNodeRef} className={`${styles.column} ${isOver ? styles.columnOver : ''}`}>
       <div className={styles.columnHeader}>
-        <span className={styles.columnName}>{column.name}</span>
+        <span className={styles.columnName}>{resolveColumnLabel(t, column)}</span>
         <span className={styles.columnCount}>{column.projects.length}</span>
       </div>
       <SortableContext items={column.projects.map(p => p.id)} strategy={verticalListSortingStrategy}>
@@ -141,7 +142,7 @@ export default function KanbanPage() {
   }, [effectiveCompanyId])
 
   // Filter options
-  const statusOptions = columns.map(c => ({ value: c.id, label: c.name }))
+  const statusOptions = columns.map(c => ({ value: c.id, label: resolveColumnLabel(t, c) }))
   const clientOptions = clients.map(c => ({ value: c.id, label: c.display_name })).sort((a, b) => a.label.localeCompare(b.label))
   const ownerOptions = teamMembers.map(m => ({ value: m.user_id, label: m.full_name || m.email }))
 
@@ -199,7 +200,7 @@ export default function KanbanPage() {
     if (toCol?.notify_status) {
       const linkedClient = project?.client_id ? clients.find(c => c.id === project.client_id) : null
       const hasEmail = linkedClient && (linkedClient.primary_email || linkedClient.client_contacts?.some(cc => cc.is_portal_recipient && cc.email))
-      setPendingMove({ projectId: active.id, fromColumnId, toColumnId, toColName: toCol.name, statusType: toCol.notify_status, project, hasEmail: !!hasEmail, clientName: linkedClient?.display_name })
+      setPendingMove({ projectId: active.id, fromColumnId, toColumnId, toColName: resolveColumnLabel(t, toCol), statusType: toCol.notify_status, project, hasEmail: !!hasEmail, clientName: linkedClient?.display_name })
       setNotifyClient(!!hasEmail)
       return
     }

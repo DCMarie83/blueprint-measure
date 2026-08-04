@@ -25,7 +25,7 @@ export function useDashboardData() {
         supabase.from('projects').select('id, name, address, status, created_at, updated_at, kanban_column_id, sessions(id, created_at)').eq('company_id', companyId).is('deleted_at', null).order('updated_at', { ascending: false }),
         supabase.from('sessions').select('id, project_name, project_id, created_at').eq(isImpersonating ? 'company_id' : 'user_id', isImpersonating ? companyId : user.id).order('created_at', { ascending: false }).limit(20),
         supabase.from('user_profiles').select('user_id').eq('company_id', companyId).is('deleted_at', null),
-        supabase.from('kanban_columns').select('id, name, position').eq('company_id', companyId).order('position', { ascending: true }),
+        supabase.from('kanban_columns').select('id, name, position, column_key').eq('company_id', companyId).order('position', { ascending: true }),
         supabase.from('clients').select('*', { count: 'exact', head: true }).eq('company_id', companyId),
       ])
 
@@ -65,6 +65,7 @@ export function useDashboardData() {
         return {
           id: col.id,
           name: col.name,
+          column_key: col.column_key,
           count: colProjects.length,
           projects: colProjects.slice(0, 2).map(p => ({
             id: p.id, name: p.name, address: p.address, session_count: p.session_count, updated_at: p.updated_at,

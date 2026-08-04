@@ -1,5 +1,6 @@
 import { useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { resolveColumnLabel } from '../../lib/kanbanColumnLabel'
 import styles from './PipelinePreview.module.css'
 
 export default function PipelinePreview({ pipeline, hasZeroJobs }) {
@@ -35,7 +36,7 @@ export default function PipelinePreview({ pipeline, hasZeroJobs }) {
           return (
             <div key={col.id} className={styles.col}>
               <div className={styles.colHeader}>
-                <span className={styles.colName}>{col.name}</span>
+                <span className={styles.colName}>{resolveColumnLabel(t, col)}</span>
                 <span className={styles.colCount}>{col.count}</span>
               </div>
 
