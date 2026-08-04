@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { MapPin, AlertTriangle, Copy, Check } from 'lucide-react'
-import AppHeader from '../components/AppHeader'
 import { getCrewMemberById, getCrewMemberPunches, updateCrewMember, sendRivetPayLinkEmail } from '../data/timeTracking'
 import styles from './CrewMemberPage.module.css'
 
@@ -119,14 +118,14 @@ export default function CrewMemberPage() {
     return <span className={styles.noLocBadge}><AlertTriangle size={10} /> No location</span>
   }
 
-  if (loading) return <div className={styles.page}><AppHeader /><main className={styles.main}><p className={styles.loading}>Loading…</p></main></div>
-  if (!cm) return <div className={styles.page}><AppHeader /><main className={styles.main}><p className={styles.loading}>Worker not found.</p></main></div>
+  if (loading) return <div className={styles.page}><main className={styles.main}><p className={styles.loading}>Loading…</p></main></div>
+  if (!cm) return <div className={styles.page}><main className={styles.main}><p className={styles.loading}>Worker not found.</p></main></div>
 
   const linkUrl = `${window.location.origin}/rivetpay/${cm.link_token}`
 
   return (
     <div className={styles.page}>
-      <AppHeader />
+      
       <main className={styles.main}>
         <Link to="/time" className={styles.backLink}>← Back to Time</Link>
 

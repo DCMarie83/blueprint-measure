@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
-import AppHeader from '../AppHeader'
 import BackLink from '../BackLink'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import { useInvoiceMutations } from '../../hooks/useInvoices'
@@ -133,7 +132,7 @@ export default function InvoiceForm({ existingInvoice, existingLineItems }) {
 
   return (
     <div className={styles.page}>
-      <AppHeader />
+      
       <main className={styles.main}>
         <BackLink to="/invoices" label="Invoices" />
         <h1 className={styles.title}>{isEdit ? 'Edit Invoice' : 'New Invoice'}</h1>

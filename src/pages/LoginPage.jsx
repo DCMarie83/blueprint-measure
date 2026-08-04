@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { formatAuthError } from '../lib/authErrors'
 import { BRAND } from '../lib/config'
 import Logo from '../components/brand/Logo'
+import LanguageToggle from '../components/LanguageToggle'
 import styles from './LoginPage.module.css'
 
 export default function LoginPage() {
@@ -102,6 +103,9 @@ export default function LoginPage() {
   return (
     <div className={styles.page}>
       <div className={styles.card}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <LanguageToggle />
+        </div>
         <div className={styles.logo}>
           <Logo variant="full" />
         </div>

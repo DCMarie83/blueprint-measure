@@ -50,28 +50,37 @@ export default function TryEndScreen() {
 
   const replay = REPLAY[flow] || REPLAY.estimate
 
+  // Substitute {name} placeholders in a tryStrings value with runtime values.
+  function fill(str, vars) {
+    let out = str || ''
+    for (const [k, v] of Object.entries(vars)) out = out.replaceAll(`{${k}}`, String(v))
+    return out
+  }
+
   function renderScarcity() {
-    if (!stateCode) return <p className={r.endScarcity}>Only 25 founder spots per state.</p>
-    if (scarcityLoading) return <p className={r.endScarcitySub}>Checking availability…</p>
+    if (!stateCode) return <p className={r.endScarcity}>{e.scarcityDefault}</p>
+    if (scarcityLoading) return <p className={r.endScarcitySub}>{e.scarcityChecking}</p>
     if (!scarcity) return null
     const cap = (
       <>
-        <p className={r.endScarcity}>Only {scarcity.spots_total} founder spots per state.</p>
-        <p className={r.endScarcitySub}>When {stateName} fills, the price goes up.</p>
+        <p className={r.endScarcity}>{fill(e.scarcityCap, { n: scarcity.spots_total })}</p>
+        <p className={r.endScarcitySub}>{fill(e.scarcityCapSub, { state: stateName })}</p>
       </>
     )
     if (scarcity.spots_remaining > FOUNDER_SPOTS_SCARCITY_THRESHOLD) return cap
     if (scarcity.spots_remaining > 0) {
+      // Singular and plural are separate keys so Will can supply both ES forms.
+      const tmpl = scarcity.spots_remaining === 1 ? e.scarcityLeftOne : e.scarcityLeftMany
       return (
         <p className={r.endScarcity}>
-          Only {scarcity.spots_remaining} founder {scarcity.spots_remaining === 1 ? 'spot' : 'spots'} left in {stateName}.
+          {fill(tmpl, { n: scarcity.spots_remaining, state: stateName })}
         </p>
       )
     }
     if (scarcity.next_tier_name == null || scarcity.next_tier_price == null) return cap
     return (
       <p className={r.endScarcity}>
-        {stateName} founder spots are gone — join at {scarcity.next_tier_name} for ${scarcity.next_tier_price}/mo.
+        {fill(e.scarcityGone, { state: stateName, tier: scarcity.next_tier_name, price: scarcity.next_tier_price })}
       </p>
     )
   }

@@ -1,7 +1,6 @@
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { Layers } from 'lucide-react'
-import AppHeader from '../components/AppHeader'
 import BackLink from '../components/BackLink'
 import { useAuth } from '../context/AuthContext'
 import { useMaterialOrderBuilder } from '../hooks/useMaterialOrderBuilder'
@@ -116,7 +115,7 @@ export default function MaterialOrderBuilderPage() {
   if (loading || view === null) {
     return (
       <div>
-        <AppHeader />
+        
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 20px' }}>
           <p style={{ color: 'var(--color-text-muted)' }}>Fetching your materials...</p>
         </div>
@@ -127,7 +126,7 @@ export default function MaterialOrderBuilderPage() {
   if (!order) {
     return (
       <div>
-        <AppHeader />
+        
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 20px' }}>
           <BackLink to="/dashboard" label="dashboard" />
           <p style={{ color: 'var(--color-text-muted)', marginTop: 16 }}>Materials order not found.</p>
@@ -295,7 +294,7 @@ export default function MaterialOrderBuilderPage() {
 
   return (
     <div>
-      <AppHeader />
+      
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 20px' }}>
         <BackLink to={`/project/${order.project_id}`} label="project" />
 

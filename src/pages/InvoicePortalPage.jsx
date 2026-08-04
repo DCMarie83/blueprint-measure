@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { generateInvoicePDF } from '../lib/generateInvoicePDF'
 import InvoiceStatusBadge from '../components/invoices/InvoiceStatusBadge'
 import PaymentInstructionsBlock from '../components/invoices/PaymentInstructionsBlock'
+import LanguageToggle from '../components/LanguageToggle'
 import styles from './PortalPage.module.css'
 
 const UNIT_LABELS = { sf: 'SF', lf: 'LF', each: 'Each', hour: 'Hour', lump_sum: 'Lump Sum' }
@@ -125,6 +126,9 @@ export default function InvoicePortalPage() {
   return (
     <div className={styles.page}>
       <div className={styles.card} style={tenantPrimary ? { '--color-primary': tenantPrimary } : undefined}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <LanguageToggle />
+        </div>
         <div className={styles.companyHeader}>
           {tenantLogoUrl && <img src={tenantLogoUrl} alt={`${tenantName} logo`} className={styles.companyLogo} />}
           <h2 className={styles.companyName}>{tenantName}</h2>

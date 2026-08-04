@@ -18,6 +18,12 @@ export function TryLangProvider({ children }) {
   const setLang = useCallback((next) => {
     setLangState(next)
     try { localStorage.setItem(LANG_KEY, next) } catch { /* no-op */ }
+    // Mirror the choice into the app-wide language key so a /try -> /signup
+    // handoff carries it (both use the same 'en' | 'es' values). This is the
+    // ONLY crossover between the self-contained /try lang and the app i18n.
+    try {
+      if (next === 'en' || next === 'es') localStorage.setItem('rivetdog_language', next)
+    } catch { /* no-op */ }
   }, [])
 
   const setTheme = useCallback((next) => {

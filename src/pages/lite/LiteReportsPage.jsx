@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Download, ChevronRight } from 'lucide-react'
-import AppHeader from '../../components/AppHeader'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
@@ -235,7 +234,7 @@ export default function LiteReportsPage() {
 
   return (
     <div className={styles.page}>
-      <AppHeader />
+      
       <main className={styles.main}>
         <div className={styles.header}>
           <div>

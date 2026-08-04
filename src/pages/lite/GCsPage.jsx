@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { HardHat, Plus, Mail, Phone, ChevronRight, Pencil } from 'lucide-react'
-import AppHeader from '../../components/AppHeader'
 import Modal from '../../components/ui/Modal'
 import GCForm from './GCForm'
 import { useClients } from '../../hooks/useClients'
@@ -62,7 +61,7 @@ export default function GCsPage() {
 
   return (
     <div className={styles.page}>
-      <AppHeader />
+      
       <main className={styles.main}>
         {toast && <div className={styles.card} style={{ background: 'var(--color-action-open)', color: '#fff', borderColor: 'transparent' }}>{toast}</div>}
         <div className={styles.header}>

@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Bookmark, BookmarkCheck, GraduationCap, Search, MessageCircleQuestion, Send } from 'lucide-react'
-import AppHeader from '../components/AppHeader'
 import { useAuth } from '../context/AuthContext'
 import { useEffectiveCompany } from '../hooks/useEffectiveCompany'
 import { useIsLite } from '../hooks/useIsLite'
@@ -245,7 +244,7 @@ export default function AcademyPage() {
 
   return (
     <div className={styles.page}>
-      <AppHeader />
+      
       <main className={styles.main}>
         <div className={styles.header}>
           <h1 className={styles.title}>RivetDog Academy</h1>

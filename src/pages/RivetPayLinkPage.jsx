@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import LanguageToggle from '../components/LanguageToggle'
 import styles from './RivetPayLinkPage.module.css'
 
 function getLocation() {
@@ -204,6 +205,9 @@ export default function RivetPayLinkPage() {
   return (
     <div className={styles.page}>
       <div className={styles.card}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <LanguageToggle />
+        </div>
         <h2 className={styles.companyName}>{data.company_name}</h2>
         <p className={styles.workerGreeting}>Hi, {data.worker_name}</p>
 

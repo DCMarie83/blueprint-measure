@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom'
 import { FileText, ChevronRight } from 'lucide-react'
-import AppHeader from '../../components/AppHeader'
 import InvoiceStatusBadge from '../../components/invoices/InvoiceStatusBadge'
 import { useInvoices, isOverdue } from '../../hooks/useInvoices'
 import { useClients } from '../../hooks/useClients'
@@ -36,7 +35,7 @@ export default function LiteInvoicesPage() {
 
   return (
     <div className={styles.page}>
-      <AppHeader />
+      
       <main className={styles.main}>
         <div className={styles.header}>
           <div>

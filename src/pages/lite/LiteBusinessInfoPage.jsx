@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
-import AppHeader from '../../components/AppHeader'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
@@ -91,7 +90,7 @@ export default function LiteBusinessInfoPage() {
 
   return (
     <div className={styles.page}>
-      <AppHeader />
+      
       <main className={styles.main}>
         <button className={styles.backLink} onClick={() => navigate(-1)}><ChevronLeft size={15} /> Back</button>
 

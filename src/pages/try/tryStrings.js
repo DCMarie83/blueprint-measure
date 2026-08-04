@@ -139,8 +139,31 @@ export const tryStrings = {
   },
 
   end: {
-    en: { eyebrow: 'Founding offer', trial: '14-day free trial. Cancel anytime.', primary: 'Start free trial', headline: 'First 25 trade pros in {state} lock $79.99/mo for life.' },
-    es: { eyebrow: 'Oferta de fundador', trial: 'Prueba gratis de 14 días. Cancela cuando quieras.', primary: 'Comienza tu prueba gratis', headline: 'Los primeros 25 del oficio en {state} aseguran $79.99/mes de por vida.' },
+    en: {
+      eyebrow: 'Founding offer', trial: '14-day free trial. Cancel anytime.', primary: 'Start free trial',
+      headline: 'First 25 trade pros in {state} lock $79.99/mo for life.',
+      // Scarcity box (was hardcoded English in TryEndScreen). {n}=count,
+      // {state}=state name, {tier}=next tier name, {price}=next tier price.
+      // One/Many keyed separately so both Spanish plural forms can be supplied.
+      scarcityDefault: 'Only 25 founder spots per state.',
+      scarcityChecking: 'Checking availability…',
+      scarcityCap: 'Only {n} founder spots per state.',
+      scarcityCapSub: 'When {state} fills, the price goes up.',
+      scarcityLeftOne: 'Only {n} founder spot left in {state}.',
+      scarcityLeftMany: 'Only {n} founder spots left in {state}.',
+      scarcityGone: '{state} founder spots are gone - join at {tier} for ${price}/mo.',
+    },
+    es: {
+      eyebrow: 'Oferta de fundador', trial: 'Prueba gratis de 14 días. Cancela cuando quieras.', primary: 'Comienza tu prueba gratis',
+      headline: 'Los primeros 25 del oficio en {state} aseguran $79.99/mes de por vida.',
+      scarcityDefault: 'Only 25 founder spots per state.',
+      scarcityChecking: 'Checking availability…',
+      scarcityCap: 'Only {n} founder spots per state.',
+      scarcityCapSub: 'When {state} fills, the price goes up.',
+      scarcityLeftOne: 'Only {n} founder spot left in {state}.',
+      scarcityLeftMany: 'Only {n} founder spots left in {state}.',
+      scarcityGone: '{state} founder spots are gone - join at {tier} for ${price}/mo.',
+    },
   },
 
   common: {

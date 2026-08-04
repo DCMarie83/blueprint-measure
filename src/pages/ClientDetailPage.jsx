@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Home, Building2, HardHat, Mail, Phone, FileText, Briefcase, Trash2, Edit, DollarSign, Clock, Tag, Globe } from 'lucide-react'
-import AppHeader from '../components/AppHeader'
 import BackLink from '../components/BackLink'
 import Modal from '../components/ui/Modal'
 import ClientForm from '../components/clients/ClientForm'
@@ -113,14 +112,14 @@ export default function ClientDetailPage() {
     }
   }
 
-  if (loading) return <div className={styles.page}><AppHeader /><main className={styles.main}><p className={styles.loading}>Loading…</p></main></div>
-  if (error || !client) return <div className={styles.page}><AppHeader /><main className={styles.main}><p className={styles.loading}>Client not found.</p></main></div>
+  if (loading) return <div className={styles.page}><main className={styles.main}><p className={styles.loading}>Loading…</p></main></div>
+  if (error || !client) return <div className={styles.page}><main className={styles.main}><p className={styles.loading}>Client not found.</p></main></div>
 
   const chip = statusMeta(client.status)
 
   return (
     <div className={styles.page}>
-      <AppHeader />
+      
       <main className={styles.main}>
         <BackLink to="/clients" label="Clients" />
 

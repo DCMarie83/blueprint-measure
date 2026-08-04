@@ -1,10 +1,9 @@
 import { Link } from 'react-router-dom'
-import AppHeader from '../components/AppHeader'
 
 export default function BillingCancelPage() {
   return (
     <>
-      <AppHeader />
+      
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', padding: 24 }}>
         <div style={{ maxWidth: 440, textAlign: 'center', background: 'var(--color-surface)', borderRadius: 12, padding: '48px 32px', boxShadow: 'var(--shadow-lg)' }}>
           <h1 style={{ fontFamily: 'var(--font-heading)', fontWeight: 800, fontSize: 24, color: 'var(--color-text)', marginBottom: 12 }}>

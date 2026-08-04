@@ -11,7 +11,6 @@ import { useEffectiveCompany } from '../hooks/useEffectiveCompany'
 import Modal from '../components/ui/Modal'
 import NewSessionForm from '../components/auth/NewSessionForm'
 import MultiFileUploader from '../components/canvas/MultiFileUploader'
-import AppHeader from '../components/AppHeader'
 import BackLink from '../components/BackLink'
 import PortalShareSection from '../components/portal/PortalShareSection'
 import ClientCard from '../components/clients/ClientCard'
@@ -158,7 +157,7 @@ export default function ProjectDetailPage() {
   if (error || !project) {
     return (
       <div className={styles.page}>
-        <AppHeader />
+        
         <main className={styles.main}>
           <BackLink to="/jobs" label="Jobs" />
           <p className={styles.empty}>Job not found.</p>
@@ -171,7 +170,7 @@ export default function ProjectDetailPage() {
 
   return (
     <div className={styles.page}>
-      <AppHeader />
+      
 
       <main className={styles.main}>
         <BackLink to="/jobs" label="Jobs" />

@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { Save, Trash2, Plus, Package, Download, Send, FileText, Check } from 'lucide-react'
-import AppHeader from '../components/AppHeader'
 import BackLink from '../components/BackLink'
 import ZoneAggregationPanel from '../components/estimates/ZoneAggregationPanel'
 import PricingItemPicker from '../components/estimates/PricingItemPicker'
@@ -257,7 +256,7 @@ export default function EstimateDetailPage() {
   if (builder.loading) {
     return (
       <div className={styles.page}>
-        <AppHeader />
+        
         <main className={styles.main}><div className={styles.empty}>Loading...</div></main>
       </div>
     )
@@ -266,7 +265,7 @@ export default function EstimateDetailPage() {
   if (builder.error || !estimate) {
     return (
       <div className={styles.page}>
-        <AppHeader />
+        
         <main className={styles.main}>
           <div className={styles.empty}>{builder.error || 'Estimate not found'}</div>
         </main>
@@ -500,7 +499,7 @@ export default function EstimateDetailPage() {
 
   return (
     <div className={styles.page}>
-      <AppHeader />
+      
       <main className={styles.main}>
         {showCreatedToast && (
           <div className="sb-fadein" style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 1000, display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)', border: '1px solid var(--color-border)', boxShadow: '0 6px 24px rgba(0,0,0,0.16)' }}>

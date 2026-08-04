@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { BRAND, FOUNDER_SPOTS_SCARCITY_THRESHOLD } from '../lib/config'
 import { formatAuthError } from '../lib/authErrors'
 import Logo from '../components/brand/Logo'
+import LanguageToggle from '../components/LanguageToggle'
 import { US_STATES } from '../data/usStates'
 import { TRADES, DEFAULT_TRADE } from '../constants/trades'
 import { Check, Shield, Lock, Ruler, FileText, Clock, DollarSign, Eye, EyeOff } from 'lucide-react'
@@ -223,8 +224,9 @@ export default function SignupPage() {
   return (
     <div className={s.page}>
       {/* ── 1. TOP BAR ──────────────────────────────────────────── */}
-      <div className={s.topBar}>
+      <div className={s.topBar} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <a href="https://rivetdog.com" style={{ textDecoration: 'none' }}><Logo variant="full" /></a>
+        <LanguageToggle />
       </div>
 
       {/* ── 2. HERO ─────────────────────────────────────────────── */}

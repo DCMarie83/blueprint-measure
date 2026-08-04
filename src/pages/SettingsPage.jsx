@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import AppHeader from '../components/AppHeader';
 import ProfileTab from '../components/settings/ProfileTab';
 import PreferencesTab from '../components/settings/PreferencesTab';
 import NotificationsTab from '../components/settings/NotificationsTab';
@@ -22,7 +21,7 @@ export default function SettingsPage() {
   if (!user) return null;
   return (
     <div className={styles.page}>
-      <AppHeader />
+      
       <div className={styles.content}>
         <div className={styles.settingsHeader}>
           <h1 className={styles.title}>Settings</h1>

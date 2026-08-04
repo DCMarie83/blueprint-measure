@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus, Trash2, Clock } from 'lucide-react'
-import AppHeader from '../../components/AppHeader'
 import Logo from '../../components/brand/Logo'
 import NewJobSheet from '../../components/lite/NewJobSheet'
 import WorkItemSearch from '../../components/lite/WorkItemSearch'
@@ -427,7 +426,7 @@ export default function LogPage() {
 
   return (
     <div className={styles.page}>
-      <AppHeader />
+      
       <main className={styles.main}>
         <div className={styles.header}>
           <h1 className={styles.title}>Daily Log</h1>

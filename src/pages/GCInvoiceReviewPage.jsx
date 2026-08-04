@@ -4,6 +4,7 @@ import { CheckCircle, MessageSquare } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import InvoiceStatusBadge from '../components/invoices/InvoiceStatusBadge'
 import PaymentInstructionsBlock from '../components/invoices/PaymentInstructionsBlock'
+import LanguageToggle from '../components/LanguageToggle'
 import styles from './PortalPage.module.css'
 
 // The GC response loop. A general contractor opens this from a phone email,
@@ -162,6 +163,9 @@ export default function GCInvoiceReviewPage() {
   return (
     <div className={styles.page}>
       <div className={styles.card} style={tenantPrimary ? { '--color-primary': tenantPrimary } : undefined}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <LanguageToggle />
+        </div>
         {/* Letterhead — the sub is the biller */}
         <div className={styles.companyHeader}>
           {data.company_logo_url && <img src={data.company_logo_url} alt={`${companyName} logo`} className={styles.companyLogo} />}

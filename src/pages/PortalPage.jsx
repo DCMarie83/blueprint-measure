@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import PortalEstimateSection from '../components/portal/PortalEstimateSection'
 import PaymentInstructionsBlock from '../components/invoices/PaymentInstructionsBlock'
+import LanguageToggle from '../components/LanguageToggle'
 import styles from './PortalPage.module.css'
 
 export default function PortalPage() {
@@ -89,6 +90,9 @@ export default function PortalPage() {
   return (
     <div className={styles.page}>
       <div className={styles.card} style={tenantPrimary ? { '--color-primary': tenantPrimary } : undefined}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <LanguageToggle />
+        </div>
         <div className={styles.companyHeader}>
           {tenantLogoUrl && <img src={tenantLogoUrl} alt={`${tenantName} logo`} className={styles.companyLogo} />}
           <h2 className={styles.companyName}>{tenantName}</h2>

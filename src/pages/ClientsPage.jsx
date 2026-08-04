@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PawPrint, Search, Plus, Upload, X } from 'lucide-react'
-import AppHeader from '../components/AppHeader'
 import Modal from '../components/ui/Modal'
 import ClientForm from '../components/clients/ClientForm'
 import ClientImportModal from '../components/clients/ClientImportModal'
@@ -134,7 +133,7 @@ export default function ClientsPage() {
 
   return (
     <div className={styles.page}>
-      <AppHeader />
+      
       <main className={styles.main}>
         <div className={styles.header}>
           <div>

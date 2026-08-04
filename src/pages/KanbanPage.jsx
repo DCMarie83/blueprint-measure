@@ -8,7 +8,6 @@ import {
 } from '@dnd-kit/core'
 import { useSortable, SortableContext, verticalListSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import AppHeader from '../components/AppHeader'
 import Modal from '../components/ui/Modal'
 import ViewToggle from '../components/ui/ViewToggle'
 import NewProjectForm from '../components/auth/NewProjectForm'
@@ -253,7 +252,7 @@ export default function KanbanPage() {
 
   return (
     <div className={styles.page}>
-      <AppHeader />
+      
       <main className={styles.main}>
         <div className={styles.pageHeader}>
           <h1 className={styles.pageTitle}>Jobs</h1>

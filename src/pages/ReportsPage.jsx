@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { BarChart3, Printer } from 'lucide-react'
-import AppHeader from '../components/AppHeader'
 import { useAuth } from '../context/AuthContext'
 import { useEffectiveCompany } from '../hooks/useEffectiveCompany'
 import { getPayReport, getPayStatementData } from '../data/timeTracking'
@@ -195,7 +194,7 @@ export default function ReportsPage() {
   if (!isAdmin) {
     return (
       <div className={styles.page}>
-        <AppHeader />
+        
         <main className={styles.main}>
           <div className={styles.placeholder}>
             <BarChart3 size={48} style={{ color: 'var(--color-primary)', marginBottom: 16 }} />
@@ -209,7 +208,7 @@ export default function ReportsPage() {
 
   return (
     <div className={styles.page}>
-      <AppHeader />
+      
       <main className={styles.main}>
         <div className={styles.screenHeader}>
           <h1 className={styles.title}><BarChart3 size={24} /> Reports</h1>

@@ -17,7 +17,6 @@ import { trackMaterials } from '../lib/analytics'
 import RegionChip from '../components/smartbid/RegionChip'
 import ItemVisual from '../components/materials/ItemVisual'
 import { PawPrint } from 'lucide-react'
-import AppHeader from '../components/AppHeader'
 import BackLink from '../components/BackLink'
 import '../components/smartbid/smartbid.css'
 
@@ -516,17 +515,15 @@ export default function SmartBidPage() {
 
   if (loading) {
     return (
-      <div><AppHeader /><div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 20px' }}>
+      <div><div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 20px' }}>
         <p style={{ color: 'var(--color-text-muted)' }}>Loading measurements…</p>
       </div></div>
     )
   }
 
   return (
-    <div>
-      <AppHeader />
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 20px' }}>
-        <BackLink to={`/project/${projectId}`} label="project" />
+    <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 20px' }}>
+      <BackLink to={`/project/${projectId}`} label="project" />
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', margin: '12px 0 16px' }}>
           <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>Smart Bid</h1>
           <RegionChip
@@ -774,6 +771,5 @@ export default function SmartBidPage() {
           </div>
         )}
       </div>
-    </div>
   )
 }

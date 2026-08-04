@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { Download, Send, CheckCircle, XCircle, Edit, Trash2, RotateCcw } from 'lucide-react'
-import AppHeader from '../components/AppHeader'
 import BackLink from '../components/BackLink'
 import { useInvoice, useInvoiceMutations, isOverdue } from '../hooks/useInvoices'
 import { generateInvoicePDF } from '../lib/generateInvoicePDF'
@@ -186,8 +185,8 @@ export default function InvoiceDetailPage() {
     catch (err) { alert('Failed: ' + err.message) }
   }
 
-  if (loading) return <div className={styles.page}><AppHeader /><main className={styles.main}><p className={styles.loading}>Loading…</p></main></div>
-  if (error || !invoice) return <div className={styles.page}><AppHeader /><main className={styles.main}><p className={styles.loading}>Invoice not found.</p></main></div>
+  if (loading) return <div className={styles.page}><main className={styles.main}><p className={styles.loading}>Loading…</p></main></div>
+  if (error || !invoice) return <div className={styles.page}><main className={styles.main}><p className={styles.loading}>Invoice not found.</p></main></div>
 
   const status = invoice.status
   const overdue = isOverdue(invoice)
@@ -199,7 +198,7 @@ export default function InvoiceDetailPage() {
 
   return (
     <div className={styles.page}>
-      <AppHeader />
+      
       <main className={styles.main}>
         <BackLink to="/invoices" label="Invoices" />
 

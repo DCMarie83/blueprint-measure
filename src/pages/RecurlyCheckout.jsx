@@ -6,6 +6,7 @@ import { useCompanyPlan } from '../lib/plans'
 import { supabase } from '../lib/supabase'
 import { RECURLY_PUBLIC_KEY } from '../lib/config'
 import Logo from '../components/brand/Logo'
+import LanguageToggle from '../components/LanguageToggle'
 
 // Minimal chrome for the checkout page: logo + a Sign out escape hatch,
 // nothing that competes with the card form. Deliberately NOT AppHeader
@@ -16,15 +17,18 @@ function CheckoutHeader() {
       <Link to="/" aria-label="RivetDog home">
         <Logo />
       </Link>
-      <button
-        onClick={() => supabase.auth.signOut()}
-        style={{
-          background: 'none', border: 'none', cursor: 'pointer',
-          color: 'var(--color-text-muted)', fontSize: 14, textDecoration: 'underline',
-        }}
-      >
-        Sign out
-      </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <LanguageToggle />
+        <button
+          onClick={() => supabase.auth.signOut()}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: 'var(--color-text-muted)', fontSize: 14, textDecoration: 'underline',
+          }}
+        >
+          Sign out
+        </button>
+      </div>
     </header>
   )
 }

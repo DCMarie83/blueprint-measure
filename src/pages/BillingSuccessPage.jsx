@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import AppHeader from '../components/AppHeader'
 
 const POLL_INTERVAL = 2000
 const MAX_POLLS = 15
@@ -37,7 +36,7 @@ export default function BillingSuccessPage() {
 
   return (
     <>
-      <AppHeader />
+      
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', padding: 24 }}>
         <div style={{ maxWidth: 440, textAlign: 'center', background: 'var(--color-surface)', borderRadius: 12, padding: '48px 32px', boxShadow: 'var(--shadow-lg)' }}>
           {activated ? (

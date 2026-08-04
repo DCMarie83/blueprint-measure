@@ -5,7 +5,6 @@ import { useAuth } from '../context/AuthContext'
 import { useImpersonation } from '../context/ImpersonationContext'
 import { usePlan } from '../lib/plans'
 import { resolveEntitlements } from '../lib/entitlements'
-import AppHeader from '../components/AppHeader'
 import Modal from '../components/ui/Modal'
 import { useDateFormat } from '../hooks/useDateFormat'
 import styles from './TeamPage.module.css'
@@ -172,9 +171,8 @@ export default function TeamPage() {
 
   return (
     <div className={styles.page}>
-      <AppHeader extras={<h1 className={styles.title}>Team {companyName && `- ${companyName}`}</h1>} />
-
       <main className={styles.main}>
+        <h1 className={styles.title}>Team {companyName && `- ${companyName}`}</h1>
         {/* Seat usage line */}
         {entitlements && !loading && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, fontSize: 13, color: 'var(--color-text-muted)' }}>

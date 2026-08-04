@@ -1,6 +1,9 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
+// i18n runtime — initialize before App renders so the first paint has the
+// resolved language and document.documentElement.lang is already stamped.
+import './lib/i18n'
 import { AuthProvider } from './context/AuthContext'
 import { ImpersonationProvider } from './context/ImpersonationContext'
 import { ThemeProvider } from './context/ThemeContext'

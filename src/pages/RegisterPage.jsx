@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { BRAND, ONBOARDING_CALENDAR_URL } from '../lib/config'
 import Logo from '../components/brand/Logo'
+import LanguageToggle from '../components/LanguageToggle'
 import styles from './RegisterPage.module.css'
 
 const PW_RULES = [
@@ -82,6 +83,9 @@ export default function RegisterPage() {
   return (
     <div className={styles.page}>
       <div className={styles.card}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <LanguageToggle />
+        </div>
         <div className={styles.logo}><Logo variant="full" /></div>
         <h1 className={styles.title}>Welcome to the pack! Let's get you set up.</h1>
 

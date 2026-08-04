@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom'
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { useAuth } from './context/AuthContext'
 import { useIsLite } from './hooks/useIsLite'
@@ -63,6 +63,7 @@ import SubscriptionGate from './components/auth/SubscriptionGate'
 import RecurlyCheckout from './pages/RecurlyCheckout'
 import BillingSuccessPage from './pages/BillingSuccessPage'
 import BillingCancelPage from './pages/BillingCancelPage'
+import AppLayout from './components/AppLayout'
 
 // Time & Pay Lite surfaces
 import LiteHomePage from './pages/lite/LiteHomePage'
@@ -134,8 +135,11 @@ function ProtectedRoute({ children, bypassSubscriptionGate = false, hideFeedback
     return <Navigate to="/subscribe" replace />
   }
 
-  if (bypassSubscriptionGate) return <>{children}{!hideFeedback && <FeedbackButton />}</>
-  return <SubscriptionGate>{children}{!hideFeedback && <FeedbackButton />}</SubscriptionGate>
+  // Outlet mode: when used as a parent layout route (no children), render the
+  // matched child route via <Outlet/>. Existing children call sites are unchanged.
+  const body = children ?? <Outlet />
+  if (bypassSubscriptionGate) return <>{body}{!hideFeedback && <FeedbackButton />}</>
+  return <SubscriptionGate>{body}{!hideFeedback && <FeedbackButton />}</SubscriptionGate>
 }
 
 // AdminRoute wraps /admin. Requires login AND super-admin status from the database.
@@ -153,7 +157,7 @@ function AdminRoute({ children }) {
   if (!user) return <Navigate to="/login" replace />
   if (setupComplete === false) return <Navigate to="/register" replace />
   if (!isSuperAdmin) return <Navigate to="/jobs" replace />
-  return children
+  return children ?? <Outlet />
 }
 
 // RegisterRoute — only accessible if setup is NOT complete.
@@ -170,7 +174,7 @@ function RegisterRoute({ children }) {
 
   if (!user) return <Navigate to="/login" replace />
   if (setupComplete === true) return <Navigate to="/jobs" replace />
-  return children
+  return children ?? <Outlet />
 }
 
 // ContractorAdminRoute — requires login + completed setup + contractor_admin or super_admin role.
@@ -200,7 +204,7 @@ function ContractorAdminRoute({ children }) {
   if (!user) return <Navigate to="/login" replace />
   if (setupComplete === false) return <Navigate to="/register" replace />
   if (!allowed) return <Navigate to="/jobs" replace />
-  return <>{children}<FeedbackButton /></>
+  return <>{children ?? <Outlet />}<FeedbackButton /></>
 }
 
 // FamilyGate — the ONE place plan-family routing lives. Sits INSIDE
@@ -223,7 +227,7 @@ function FamilyGate({ allow, redirectTo, children }) {
 
   if (allow === 'contractor' && isLite) return <Navigate to={redirectTo} replace />
   if (allow === 'lite' && !isLite) return <Navigate to={redirectTo} replace />
-  return children
+  return children ?? <Outlet />
 }
 
 // /jobs is shared by both families but renders different surfaces: the kanban
@@ -370,22 +374,18 @@ export default function App() {
         element={<RegisterRoute><RegisterPage /></RegisterRoute>}
       />
 
-      {/* Protected routes — require login + completed setup */}
-      <Route
-        path="/dashboard"
-        element={<ProtectedRoute><FamilyGate allow="contractor" redirectTo="/home"><DashboardPage /></FamilyGate></ProtectedRoute>}
-      />
-      <Route
-        path="/project/:projectId"
-        element={<ProtectedRoute><FamilyGate allow="contractor" redirectTo="/log"><ProjectDetailPage /></FamilyGate></ProtectedRoute>}
-      />
+      {/* Protected routes — require login + completed setup.
+
+          Header-bearing pages now nest under <AppLayout/> (renders AppHeader once
+          + <Outlet/>), grouped by EXACT guard signature so every route keeps its
+          original guard chain and props. The guards run as parent layout routes
+          (Outlet mode) so they resolve BEFORE the header paints. Routes that must
+          NOT show the app header stay flat with their original guard chain. */}
+
+      {/* Stay OUTSIDE the app layout (no AppHeader) — prior guard chains verbatim. */}
       <Route
         path="/session/:sessionId"
         element={<ProtectedRoute><FamilyGate allow="contractor" redirectTo="/log"><SessionPage /></FamilyGate></ProtectedRoute>}
-      />
-      <Route
-        path="/settings"
-        element={<ProtectedRoute bypassSubscriptionGate><SettingsPage /></ProtectedRoute>}
       />
       <Route
         path="/subscribe"
@@ -396,108 +396,8 @@ export default function App() {
         element={<Navigate to="/subscribe" replace />}
       />
       <Route
-        path="/billing/success"
-        element={<ProtectedRoute bypassSubscriptionGate><BillingSuccessPage /></ProtectedRoute>}
-      />
-      <Route
-        path="/billing/cancel"
-        element={<ProtectedRoute bypassSubscriptionGate><BillingCancelPage /></ProtectedRoute>}
-      />
-      <Route
-        path="/jobs"
-        element={<ProtectedRoute><JobsRouter /></ProtectedRoute>}
-      />
-      <Route
-        path="/clients"
-        element={<ProtectedRoute><FamilyGate allow="contractor" redirectTo="/log"><ClientsPage /></FamilyGate></ProtectedRoute>}
-      />
-      <Route
-        path="/clients/:id"
-        element={<ProtectedRoute><FamilyGate allow="contractor" redirectTo="/log"><ClientDetailPage /></FamilyGate></ProtectedRoute>}
-      />
-      <Route
-        path="/pricing"
-        element={<ContractorAdminRoute><FamilyGate allow="contractor" redirectTo="/log"><PricingPage /></FamilyGate></ContractorAdminRoute>}
-      />
-      <Route
-        path="/projects/:projectId/smart-bid"
-        element={<ProtectedRoute><FamilyGate allow="contractor" redirectTo="/log"><SmartBidPage /></FamilyGate></ProtectedRoute>}
-      />
-      <Route
-        path="/estimates/:id"
-        element={<ProtectedRoute><FamilyGate allow="contractor" redirectTo="/log"><EstimateDetailPage /></FamilyGate></ProtectedRoute>}
-      />
-      <Route
-        path="/materials/:orderId"
-        element={<ProtectedRoute><FamilyGate allow="contractor" redirectTo="/log"><MaterialOrderBuilderPage /></FamilyGate></ProtectedRoute>}
-      />
-
-      {/* Time & Pay Lite — sub-facing surfaces (contractor tenants redirected to /dashboard) */}
-      <Route
-        path="/home"
-        element={<ProtectedRoute><FamilyGate allow="lite" redirectTo="/dashboard"><LiteHomePage /></FamilyGate></ProtectedRoute>}
-      />
-      <Route
-        path="/log"
-        element={<ProtectedRoute><FamilyGate allow="lite" redirectTo="/dashboard"><LogPage /></FamilyGate></ProtectedRoute>}
-      />
-      <Route
-        path="/log/job/:id"
-        element={<ProtectedRoute><FamilyGate allow="lite" redirectTo="/dashboard"><LiteJobDetailPage /></FamilyGate></ProtectedRoute>}
-      />
-      <Route
-        path="/gcs"
-        element={<ProtectedRoute><FamilyGate allow="lite" redirectTo="/dashboard"><GCsPage /></FamilyGate></ProtectedRoute>}
-      />
-      <Route
-        path="/business"
-        element={<ProtectedRoute><FamilyGate allow="lite" redirectTo="/dashboard"><LiteBusinessInfoPage /></FamilyGate></ProtectedRoute>}
-      />
-      <Route
-        path="/gcs/:clientId/catalog"
-        element={<ProtectedRoute><FamilyGate allow="lite" redirectTo="/dashboard"><GCCatalogPage /></FamilyGate></ProtectedRoute>}
-      />
-      <Route
-        path="/invoices"
-        element={<ProtectedRoute><InvoicesRouter /></ProtectedRoute>}
-      />
-      <Route
-        path="/invoices/new"
-        element={<ProtectedRoute><FamilyGate allow="contractor" redirectTo="/invoices"><InvoiceForm /></FamilyGate></ProtectedRoute>}
-      />
-      <Route
-        path="/invoices/:id"
-        element={<ProtectedRoute><InvoiceDetailRouter /></ProtectedRoute>}
-      />
-      <Route
-        path="/time"
-        element={<ProtectedRoute><FamilyGate allow="contractor" redirectTo="/log"><TimePage /></FamilyGate></ProtectedRoute>}
-      />
-      <Route
-        path="/time/crew/:id"
-        element={<ContractorAdminRoute><CrewMemberPage /></ContractorAdminRoute>}
-      />
-      <Route
-        path="/academy"
-        element={<ProtectedRoute><AcademyPage /></ProtectedRoute>}
-      />
-      <Route
-        path="/resources"
-        element={<ProtectedRoute><ResourcesPage /></ProtectedRoute>}
-      />
-      <Route
-        path="/reports"
-        element={<ProtectedRoute><ReportsRouter /></ProtectedRoute>}
-      />
-      <Route
         path="/account"
         element={<Navigate to="/settings" replace />}
-      />
-
-      {/* Contractor admin team management */}
-      <Route
-        path="/dashboard/team"
-        element={<ContractorAdminRoute><FamilyGate allow="contractor" redirectTo="/log"><TeamPage /></FamilyGate></ContractorAdminRoute>}
       />
       <Route
         path="/dashboard/team/:userId"
@@ -507,6 +407,91 @@ export default function App() {
         path="/dashboard/errors"
         element={<ContractorAdminRoute><ErrorsSection /></ContractorAdminRoute>}
       />
+
+      {/* Group A — ProtectedRoute (plain) + AppLayout */}
+      <Route element={<ProtectedRoute />}>
+        <Route element={<AppLayout />}>
+          <Route path="/jobs" element={<JobsRouter />} />
+          <Route path="/invoices" element={<InvoicesRouter />} />
+          <Route path="/invoices/:id" element={<InvoiceDetailRouter />} />
+          <Route path="/reports" element={<ReportsRouter />} />
+          <Route path="/academy" element={<AcademyPage />} />
+          <Route path="/resources" element={<ResourcesPage />} />
+        </Route>
+      </Route>
+
+      {/* Group B — ProtectedRoute bypassSubscriptionGate + AppLayout */}
+      <Route element={<ProtectedRoute bypassSubscriptionGate />}>
+        <Route element={<AppLayout />}>
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/billing/success" element={<BillingSuccessPage />} />
+          <Route path="/billing/cancel" element={<BillingCancelPage />} />
+        </Route>
+      </Route>
+
+      {/* Group C — ProtectedRoute + FamilyGate allow=contractor redirectTo=/home + AppLayout */}
+      <Route element={<ProtectedRoute />}>
+        <Route element={<FamilyGate allow="contractor" redirectTo="/home" />}>
+          <Route element={<AppLayout />}>
+            <Route path="/dashboard" element={<DashboardPage />} />
+          </Route>
+        </Route>
+      </Route>
+
+      {/* Group D — ProtectedRoute + FamilyGate allow=contractor redirectTo=/log + AppLayout */}
+      <Route element={<ProtectedRoute />}>
+        <Route element={<FamilyGate allow="contractor" redirectTo="/log" />}>
+          <Route element={<AppLayout />}>
+            <Route path="/project/:projectId" element={<ProjectDetailPage />} />
+            <Route path="/clients" element={<ClientsPage />} />
+            <Route path="/clients/:id" element={<ClientDetailPage />} />
+            <Route path="/projects/:projectId/smart-bid" element={<SmartBidPage />} />
+            <Route path="/estimates/:id" element={<EstimateDetailPage />} />
+            <Route path="/materials/:orderId" element={<MaterialOrderBuilderPage />} />
+            <Route path="/time" element={<TimePage />} />
+          </Route>
+        </Route>
+      </Route>
+
+      {/* Group E — ProtectedRoute + FamilyGate allow=contractor redirectTo=/invoices + AppLayout */}
+      <Route element={<ProtectedRoute />}>
+        <Route element={<FamilyGate allow="contractor" redirectTo="/invoices" />}>
+          <Route element={<AppLayout />}>
+            <Route path="/invoices/new" element={<InvoiceForm />} />
+          </Route>
+        </Route>
+      </Route>
+
+      {/* Group F — ProtectedRoute + FamilyGate allow=lite redirectTo=/dashboard + AppLayout */}
+      <Route element={<ProtectedRoute />}>
+        <Route element={<FamilyGate allow="lite" redirectTo="/dashboard" />}>
+          <Route element={<AppLayout />}>
+            <Route path="/home" element={<LiteHomePage />} />
+            <Route path="/log" element={<LogPage />} />
+            <Route path="/log/job/:id" element={<LiteJobDetailPage />} />
+            <Route path="/gcs" element={<GCsPage />} />
+            <Route path="/business" element={<LiteBusinessInfoPage />} />
+            <Route path="/gcs/:clientId/catalog" element={<GCCatalogPage />} />
+          </Route>
+        </Route>
+      </Route>
+
+      {/* Group G — ContractorAdminRoute (plain) + AppLayout */}
+      <Route element={<ContractorAdminRoute />}>
+        <Route element={<AppLayout />}>
+          <Route path="/time/crew/:id" element={<CrewMemberPage />} />
+        </Route>
+      </Route>
+
+      {/* Group H — ContractorAdminRoute + FamilyGate allow=contractor redirectTo=/log + AppLayout */}
+      <Route element={<ContractorAdminRoute />}>
+        <Route element={<FamilyGate allow="contractor" redirectTo="/log" />}>
+          <Route element={<AppLayout />}>
+            <Route path="/pricing" element={<PricingPage />} />
+            <Route path="/dashboard/team" element={<TeamPage />} />
+          </Route>
+        </Route>
+      </Route>
 
       {/* Password change */}
       <Route path="/change-password" element={<ChangePasswordPage />} />

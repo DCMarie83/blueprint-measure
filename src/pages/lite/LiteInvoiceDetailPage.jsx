@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom'
 import { ChevronLeft, Download, Send, CheckCircle, FileSpreadsheet, BellRing } from 'lucide-react'
-import AppHeader from '../../components/AppHeader'
 import InvoiceStatusBadge from '../../components/invoices/InvoiceStatusBadge'
 import { useInvoice, useInvoiceMutations, isOverdue } from '../../hooks/useInvoices'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
@@ -238,8 +237,8 @@ export default function LiteInvoiceDetailPage() {
     finally { setBusy(false) }
   }
 
-  if (loading) return <div className={styles.page}><AppHeader /><main className={styles.main}><div className={styles.loading}>Loading…</div></main></div>
-  if (error || !invoice) return <div className={styles.page}><AppHeader /><main className={styles.main}><div className={styles.loading}>Invoice not found.</div></main></div>
+  if (loading) return <div className={styles.page}><main className={styles.main}><div className={styles.loading}>Loading…</div></main></div>
+  if (error || !invoice) return <div className={styles.page}><main className={styles.main}><div className={styles.loading}>Invoice not found.</div></main></div>
 
   const total = Number(invoice.total) || 0
   const paidAmount = Number(invoice.paid_amount) || 0
@@ -265,7 +264,7 @@ export default function LiteInvoiceDetailPage() {
 
   return (
     <div className={styles.page}>
-      <AppHeader />
+      
       <main className={styles.main}>
         <button className={styles.backLink} onClick={() => navigate(backTo || '/invoices')}><ChevronLeft size={15} /> {backTo ? 'Reports' : 'Invoices'}</button>
 

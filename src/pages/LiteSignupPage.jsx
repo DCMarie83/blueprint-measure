@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { BRAND, FOUNDER_SPOTS_SCARCITY_THRESHOLD } from '../lib/config'
 import { formatAuthError } from '../lib/authErrors'
 import Logo from '../components/brand/Logo'
+import LanguageToggle from '../components/LanguageToggle'
 import { US_STATES } from '../data/usStates'
 import { TRADES, DEFAULT_TRADE } from '../constants/trades'
 import { Check, Shield, Clock, FileText, DollarSign, Eye, EyeOff } from 'lucide-react'
@@ -222,6 +223,9 @@ export default function LiteSignupPage() {
 
   return (
     <div className={s.page}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 16px 0' }}>
+        <LanguageToggle />
+      </div>
       {/* ── Title block — long-form logo + product name + offer, centered
            on mobile and desktop. Name and offer are RPC-driven, never
            literals. ─────────────────────────────────────────────────── */}

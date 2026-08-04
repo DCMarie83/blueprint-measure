@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Briefcase, ChevronRight, Plus } from 'lucide-react'
-import AppHeader from '../../components/AppHeader'
 import NewJobSheet from '../../components/lite/NewJobSheet'
 import { useProjects } from '../../hooks/useProjects'
 import { useClients } from '../../hooks/useClients'
@@ -62,7 +61,7 @@ export default function LiteJobsPage() {
 
   return (
     <div className={styles.page}>
-      <AppHeader />
+      
       <main className={styles.main}>
         <div className={styles.header}>
           <div>

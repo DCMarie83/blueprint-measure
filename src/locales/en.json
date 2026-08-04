@@ -1,0 +1,13 @@
+{
+  "common": {
+    "languageName": {
+      "en": "English",
+      "es": "Español"
+    },
+    "languageToggle": {
+      "ariaLabel": "Language",
+      "en": "EN",
+      "es": "ES"
+    }
+  }
+}

@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useIsLite } from '../hooks/useIsLite'
-import AppHeader from '../components/AppHeader'
 import ResourceCard from '../components/resources/ResourceCard'
 import { getResourceCategories, getResources } from '../data/resources'
 import { UNCATEGORIZED_KEY, UNCATEGORIZED_LABEL, isVisible } from '../lib/academyVisibility'
@@ -121,7 +120,7 @@ export default function ResourcesPage() {
 
   return (
     <div className={styles.page}>
-      <AppHeader />
+      
       <main className={styles.main}>
         <div style={{ marginBottom: 32 }}>
           <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Resources</h1>

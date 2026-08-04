@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ChevronLeft, Trash2, Check, X, Pencil } from 'lucide-react'
-import AppHeader from '../../components/AppHeader'
 import { useProjects } from '../../hooks/useProjects'
 import { useClients } from '../../hooks/useClients'
 import { useWorkEntries } from '../../hooks/useWorkEntries'
@@ -208,7 +207,7 @@ export default function LiteJobDetailPage() {
 
   return (
     <div className={styles.page}>
-      <AppHeader />
+      
       <main className={styles.main}>
         <button className={styles.backLink} onClick={() => navigate('/jobs')}><ChevronLeft size={15} /> Jobs</button>
 

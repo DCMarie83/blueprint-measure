@@ -4,9 +4,11 @@ import { Menu, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useIsLite } from '../hooks/useIsLite'
 import { useLiteNavSections } from '../hooks/useLiteNavSections'
+import { supabase } from '../lib/supabase'
 import Logo from './brand/Logo'
 import UserMenu from './UserMenu'
 import TrialBanner from './TrialBanner'
+import LanguageToggle from './LanguageToggle'
 import styles from './AppHeader.module.css'
 
 const CONTRACTOR_NAV = [
@@ -44,7 +46,7 @@ function NavLink({ to, label, active, onClick }) {
 
 export default function AppHeader({ extras = null }) {
   const location = useLocation()
-  const { company } = useAuth()
+  const { company, user, refreshUserProfile } = useAuth()
   const { isLite, resolved } = useIsLite()
   const liteSections = useLiteNavSections(isLite && resolved)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -64,6 +66,20 @@ export default function AppHeader({ extras = null }) {
   }, [isLite, liteSections])
   const homeLink = isLite ? '/home' : '/dashboard'
   const hasTenantLogo = company?.logo_url && !logoError
+
+  // Persist the header's language choice onto the signed-in user's OWN profile
+  // row (user.id). LanguageToggle already applied the change locally; this only
+  // durably saves it. Impersonation targets the admin's own row (see AppLayout),
+  // so no guard is needed here.
+  async function persistLanguage(lang) {
+    if (!user?.id) return
+    try {
+      await supabase.from('user_profiles').update({ language: lang }).eq('user_id', user.id)
+      await refreshUserProfile()
+    } catch (err) {
+      console.error('Failed to persist language preference', err)
+    }
+  }
 
   return (
     <>
@@ -101,6 +117,7 @@ export default function AppHeader({ extras = null }) {
           >
             <Menu size={22} />
           </button>
+          <LanguageToggle onPersist={persistLanguage} />
           <UserMenu />
         </div>
       </header>

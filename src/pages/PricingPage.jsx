@@ -1,6 +1,5 @@
 import { useState, useRef, Fragment } from 'react'
 import { Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react'
-import AppHeader from '../components/AppHeader'
 import Modal from '../components/ui/Modal'
 import { useAuth } from '../context/AuthContext'
 import { usePricingCategories } from '../hooks/usePricingCategories'
@@ -116,7 +115,7 @@ export default function PricingPage() {
 
   return (
     <div className={styles.page}>
-      <AppHeader />
+      
       <main className={styles.main}>
         <div className={styles.pageHeader}>
           <h1 className={styles.title}>Pricing Library</h1>

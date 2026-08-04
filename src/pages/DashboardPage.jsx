@@ -1,4 +1,3 @@
-import AppHeader from '../components/AppHeader'
 import { useDashboardData } from '../hooks/useDashboardData'
 import GreetingStrip from '../components/dashboard/GreetingStrip'
 import QuickActionsRow from '../components/dashboard/QuickActionsRow'
@@ -21,7 +20,7 @@ export default function DashboardPage() {
 
   return (
     <div className={styles.page}>
-      <AppHeader />
+      
       <main className={styles.main}>
         {loading ? (
           <div className={styles.loading}>Sniffing around...</div>

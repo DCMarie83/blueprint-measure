@@ -1,5 +1,4 @@
 const DEFAULTS = Object.freeze({
-  theme: 'system',
   language: 'en',
   timezone: null,
   date_format: 'US',
@@ -19,7 +18,6 @@ export function detectBrowserTimezone() {
 export function resolveUserPrefs(userProfile) {
   const p = userProfile || {};
   return {
-    theme: p.theme || DEFAULTS.theme,
     language: p.language || DEFAULTS.language,
     timezone: p.timezone || detectBrowserTimezone(),
     date_format: p.date_format || DEFAULTS.date_format,
@@ -41,13 +39,9 @@ export async function updateUserPrefs(supabase, userId, partial) {
 }
 
 export const PREF_OPTIONS = Object.freeze({
-  theme: [
-    { value: 'light', label: 'Light' },
-    { value: 'dark', label: 'Dark' },
-    { value: 'system', label: 'System' },
-  ],
   language: [
     { value: 'en', label: 'English' },
+    { value: 'es', label: 'Español' },
   ],
   date_format: [
     { value: 'US', label: 'US (MM/DD/YYYY)' },

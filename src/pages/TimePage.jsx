@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Pencil, Trash2, Clock, Plus, Download, Printer, UserPlus, Users, Link2, Copy, Check, AlertTriangle, MapPin } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import AppHeader from '../components/AppHeader'
 import { useAuth } from '../context/AuthContext'
 import { useEffectiveCompany } from '../hooks/useEffectiveCompany'
 import {
@@ -463,7 +462,7 @@ export default function TimePage() {
 
   return (
     <div className={styles.page}>
-      <AppHeader />
+      
       <main className={styles.main}>
         <div className={styles.header}><h1 className={styles.title}><Clock size={24} /> Time</h1></div>
 

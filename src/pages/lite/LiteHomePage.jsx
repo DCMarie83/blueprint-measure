@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, FileText, HardHat, ChevronRight, Check } from 'lucide-react'
-import AppHeader from '../../components/AppHeader'
 import Logo from '../../components/brand/Logo'
 import OpenPunchBar from '../../components/lite/OpenPunchBar'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
@@ -43,7 +42,7 @@ export default function LiteHomePage() {
   if (!companyId || loading) {
     return (
       <div className={styles.page}>
-        <AppHeader />
+        
         <main className={styles.main}><div className={styles.loading}>Loading…</div></main>
       </div>
     )
@@ -65,7 +64,7 @@ export default function LiteHomePage() {
 
   return (
     <div className={styles.page}>
-      <AppHeader />
+      
       <main className={styles.main}>
         {/* Identity-first header: the long-form logo, centered and capped, then
             one section line above the money hero. */}

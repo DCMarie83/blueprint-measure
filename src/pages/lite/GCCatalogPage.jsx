@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ChevronLeft, Plus, Trash2, Library } from 'lucide-react'
-import AppHeader from '../../components/AppHeader'
 import Modal from '../../components/ui/Modal'
 import WorkItemLibraryPicker from './WorkItemLibraryPicker'
 import { useClient } from '../../hooks/useClient'
@@ -116,7 +115,7 @@ export default function GCCatalogPage() {
 
   return (
     <div className={styles.page}>
-      <AppHeader />
+      
       <main className={styles.main}>
         <button className={styles.backLink} onClick={() => navigate('/gcs')}><ChevronLeft size={15} /> GCs</button>
 
