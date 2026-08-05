@@ -1,11 +1,12 @@
 import { Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom'
-import { useState, useEffect, lazy, Suspense } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useAuth } from './context/AuthContext'
 import { useIsLite } from './hooks/useIsLite'
 import { supabase } from './lib/supabase'
 import { addBreadcrumb } from './lib/breadcrumbs'
 import { useConversionTracker } from './hooks/useConversionTracker'
 import { initAnalytics } from './lib/analytics'
+import lazyWithReload from './lib/lazyWithReload'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
 import LiteSignupPage from './pages/LiteSignupPage'
@@ -81,21 +82,21 @@ import LiteReportsPage from './pages/lite/LiteReportsPage'
 // out of the main bundle. This is the app's first React.lazy boundary; the
 // static TryLoading is the Suspense fallback and must be immediately available.
 import TryLoading from './pages/try/TryLoading'
-const TryLayout = lazy(() => import('./pages/try/TryLayout'))
-const TryHub = lazy(() => import('./pages/try/TryHub'))
-const TrySubFlow = lazy(() => import('./pages/try/TrySubFlow'))
-const TryGcMenu = lazy(() => import('./pages/try/TryGcMenu'))
-const TryEstimateFlow = lazy(() => import('./pages/try/TryEstimateFlow'))
-const TryCrewFlow = lazy(() => import('./pages/try/TryCrewFlow'))
-const TryInvoicingPeek = lazy(() => import('./pages/try/TryInvoicingPeek'))
-const TryReportingPeek = lazy(() => import('./pages/try/TryReportingPeek'))
-const TryBlueprintPeek = lazy(() => import('./pages/try/TryBlueprintPeek'))
-const TryClientsPeek = lazy(() => import('./pages/try/TryClientsPeek'))
-const TryJobsFlow = lazy(() => import('./pages/try/TryJobsFlow'))
-const TrySubInvoiceReveal = lazy(() => import('./pages/try/TrySubInvoiceReveal'))
-const TryEstimateReveal = lazy(() => import('./pages/try/TryEstimateReveal'))
-const TryPayStatementReveal = lazy(() => import('./pages/try/TryPayStatementReveal'))
-const TryEndScreen = lazy(() => import('./pages/try/TryEndScreen'))
+const TryLayout = lazyWithReload(() => import('./pages/try/TryLayout'))
+const TryHub = lazyWithReload(() => import('./pages/try/TryHub'))
+const TrySubFlow = lazyWithReload(() => import('./pages/try/TrySubFlow'))
+const TryGcMenu = lazyWithReload(() => import('./pages/try/TryGcMenu'))
+const TryEstimateFlow = lazyWithReload(() => import('./pages/try/TryEstimateFlow'))
+const TryCrewFlow = lazyWithReload(() => import('./pages/try/TryCrewFlow'))
+const TryInvoicingPeek = lazyWithReload(() => import('./pages/try/TryInvoicingPeek'))
+const TryReportingPeek = lazyWithReload(() => import('./pages/try/TryReportingPeek'))
+const TryBlueprintPeek = lazyWithReload(() => import('./pages/try/TryBlueprintPeek'))
+const TryClientsPeek = lazyWithReload(() => import('./pages/try/TryClientsPeek'))
+const TryJobsFlow = lazyWithReload(() => import('./pages/try/TryJobsFlow'))
+const TrySubInvoiceReveal = lazyWithReload(() => import('./pages/try/TrySubInvoiceReveal'))
+const TryEstimateReveal = lazyWithReload(() => import('./pages/try/TryEstimateReveal'))
+const TryPayStatementReveal = lazyWithReload(() => import('./pages/try/TryPayStatementReveal'))
+const TryEndScreen = lazyWithReload(() => import('./pages/try/TryEndScreen'))
 
 // ProtectedRoute wraps pages that require login + completed setup.
 // bypassSubscriptionGate: if true, skip the subscription check (for /settings, /account, /subscribe)
