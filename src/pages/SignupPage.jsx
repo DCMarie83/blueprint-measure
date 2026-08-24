@@ -155,8 +155,10 @@ export default function SignupPage() {
       // user waits forever for an email that never sends.
       setDuplicateEmail(true)
     } else if (data?.session) {
-      // Confirmations OFF: signed in immediately — straight to checkout.
-      navigate('/subscribe')
+      // Confirmations OFF: signed in immediately — straight into the app. No
+      // card at signup; the DB trigger already wrote trialing + trial_ends_at,
+      // so the trial is running the moment the dashboard paints.
+      navigate('/dashboard')
       return
     } else {
       // Confirmations ON, genuinely new account: keep the email screen.

@@ -581,6 +581,51 @@ a20 AS (
          CASE WHEN (SELECT count(*) FROM a20_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
          coalesce('LEAKS: ' || (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a20_bad),
                   'no direct client access; RPC-only')::text
+),
+
+-- ── A21 ────────────────────────────────────────────────────────────
+-- expire_and_release_trials() is the no-card trial janitor: it flips lapsed
+-- app-owned trials to trial_expired AND releases the founders spot back to
+-- the state pool (founders_released_at). It is CRON-ONLY. A client that
+-- could reach it could force-expire another tenant's trial, or churn the
+-- founder counts that /signup and the /try end screen quote as live
+-- scarcity. So no browser role gets EXECUTE: not PUBLIC, not anon, not
+-- authenticated.
+--
+-- This is the INVERSE of A19: submit_demo_lead is a deliberate anon RPC and
+-- its grant is the record of that intent. This one must never be callable
+-- from a browser at all. A1 would already flag anon exposure (the function
+-- is not in expected_anon_fns), but A1 is silent on authenticated and
+-- PUBLIC — this row pins all three by name.
+--
+-- to_regprocedure() (not ::regprocedure) so a missing function reports as a
+-- FAIL row instead of aborting the whole report with a cast error.
+a21_bad AS (
+  SELECT 'function-missing'::text AS problem
+  WHERE to_regprocedure('public.expire_and_release_trials()') IS NULL
+  UNION ALL
+  SELECT 'anon-has-execute'
+  WHERE to_regprocedure('public.expire_and_release_trials()') IS NOT NULL
+    AND has_function_privilege('anon',
+      to_regprocedure('public.expire_and_release_trials()')::oid, 'EXECUTE')
+  UNION ALL
+  SELECT 'authenticated-has-execute'
+  WHERE to_regprocedure('public.expire_and_release_trials()') IS NOT NULL
+    AND has_function_privilege('authenticated',
+      to_regprocedure('public.expire_and_release_trials()')::oid, 'EXECUTE')
+  UNION ALL
+  SELECT 'public-has-execute'
+  WHERE EXISTS (
+    SELECT 1 FROM information_schema.routine_privileges
+    WHERE routine_schema = 'public' AND routine_name = 'expire_and_release_trials'
+      AND grantee = 'PUBLIC' AND privilege_type = 'EXECUTE')
+),
+a21 AS (
+  SELECT 'A21'::text,
+         'expire_and_release_trials: no EXECUTE for PUBLIC, anon, or authenticated (cron-only)'::text,
+         CASE WHEN (SELECT count(*) FROM a21_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
+         coalesce('PROBLEMS: ' || (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a21_bad),
+                  'cron-only; no browser role can execute')::text
 )
 
 SELECT * FROM a1
@@ -603,4 +648,5 @@ UNION ALL SELECT * FROM a17
 UNION ALL SELECT * FROM a18
 UNION ALL SELECT * FROM a19
 UNION ALL SELECT * FROM a20
+UNION ALL SELECT * FROM a21
 ORDER BY id;

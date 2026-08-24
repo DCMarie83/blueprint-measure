@@ -46,6 +46,16 @@ export const GOOGLE_ADS_TIMEPAY_CONVERSION_VALUE = 24.99;
 // never contaminates the founders/Lite conversion actions.
 export const GOOGLE_ADS_DEMO_LEAD_CONVERSION_LABEL = null;
 
+// Founders-spot CLAIM Google Ads conversion label — the label fired when a
+// trialing company puts a card on file at /subscribe and claims its spot.
+// Distinct from signup_completed: under the no-card model signup fires at
+// account creation, and the claim is the separate, later, revenue-bearing
+// event. null until Dee supplies the real label; while null the claim fires
+// NO conversion (same dormant pattern as the Lite and demo-lead labels
+// above), so an unlabeled claim can never contaminate another conversion
+// action. Paste the label after the AW-.../ prefix here to activate it.
+export const GOOGLE_ADS_CLAIM_CONVERSION_LABEL = null;
+
 // Recurly public key (browser-safe, Recurly.js).
 export const RECURLY_PUBLIC_KEY = 'ewr1-5FyjbrwzjnEJiFBVHibzyZ';
 

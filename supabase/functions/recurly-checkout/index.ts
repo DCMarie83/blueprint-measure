@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
     // 4. Resolve company + locked price
     const { data: company, error: compErr } = await adminClient
       .from('companies')
-      .select('id, name, plan_key, locked_price_monthly, locked_price_annual, canceled_at, recurly_account_code')
+      .select('id, name, plan_key, locked_price_monthly, locked_price_annual, canceled_at, recurly_account_code, subscription_status, trial_ends_at')
       .eq('id', companyId)
       .single();
     if (compErr || !company) return json({ error: 'Company not found' }, 404);
@@ -190,19 +190,39 @@ Deno.serve(async (req) => {
 
     // 8. Create subscription with the effective price override
     const unitAmount = Number(effectivePrice);
-    const isReturning = company.canceled_at != null || company.recurly_account_code != null;
     const subBody: Record<string, unknown> = {
       plan_code: planCode,
       account: { code: companyId },
       currency: 'USD',
       unit_amount: unitAmount,
     };
-    // Skip trial for returning subscribers — billing starts immediately.
-    // Recurly v3 subscription create accepts trial_ends_at as an ISO 8601 timestamp;
-    // setting it to now effectively skips the plan's configured trial.
-    if (isReturning) {
-      subBody.trial_ends_at = new Date().toISOString();
-    }
+
+    // TRIAL END IS ALWAYS SET EXPLICITLY — never inherit the Recurly plan's
+    // configured trial. Under the no-card model the trial is APP-owned: the
+    // signup trigger writes companies.trial_ends_at and the clock is already
+    // running by the time a spot is claimed. Letting Recurly apply the plan
+    // trial here would stack a SECOND full trial on top of the app's, so a
+    // mid-trial claim would not bill for ~28 days instead of 14.
+    //
+    //   (a) Live app-owned trial  -> pin to the ORIGINAL trial_ends_at, so the
+    //       first charge lands on the original day 14, never earlier.
+    //   (b) Everything else       -> now(), i.e. charge immediately. Covers
+    //       trial_expired, canceled, a trial_ends_at already in the past, a
+    //       null trial_ends_at, and returning subscribers.
+    //
+    // Recurly v3 subscription create accepts trial_ends_at as an ISO 8601
+    // timestamp; setting it to now effectively skips any plan trial.
+    const trialEndsAtRaw = company.trial_ends_at
+      ? new Date(company.trial_ends_at as string)
+      : null;
+    const hasLiveTrial = company.subscription_status === 'trialing'
+      && trialEndsAtRaw !== null
+      && !Number.isNaN(trialEndsAtRaw.getTime())
+      && trialEndsAtRaw.getTime() > Date.now();
+
+    subBody.trial_ends_at = hasLiveTrial
+      ? trialEndsAtRaw!.toISOString()
+      : new Date().toISOString();
 
     const subRes = await recurlyFetch('/subscriptions', 'POST', subBody);
 

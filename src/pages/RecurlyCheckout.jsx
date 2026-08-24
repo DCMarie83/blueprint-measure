@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { useImpersonation } from '../context/ImpersonationContext'
 import { useCompanyPlan } from '../lib/plans'
 import { supabase } from '../lib/supabase'
-import { RECURLY_PUBLIC_KEY } from '../lib/config'
+import { RECURLY_PUBLIC_KEY, GOOGLE_ADS_TAG_ID, GOOGLE_ADS_CLAIM_CONVERSION_LABEL } from '../lib/config'
 import Logo from '../components/brand/Logo'
 import LanguageToggle from '../components/LanguageToggle'
 
@@ -62,7 +62,7 @@ const INPUT_STYLE = {
 }
 
 export default function RecurlyCheckout() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { company, refreshCompany } = useAuth()
   const { isImpersonating } = useImpersonation()
   const companyPlan = useCompanyPlan(company)
@@ -79,6 +79,55 @@ export default function RecurlyCheckout() {
   const [cardMounted, setCardMounted] = useState(false)
   const [mountTimeout, setMountTimeout] = useState(false)
   const [term, setTerm] = useState('monthly')
+
+  // ── Derived pricing ────────────────────────────────────────────────
+  // Declared ABOVE callCheckout so the claim conversion can report the real
+  // charged amount. useCompanyPlan already resolves locked_price_* ??
+  // plan.* — a NULL company lock falls back to the live plan price.
+  const monthlyPrice = companyPlan?.monthly_price ?? company?.locked_price_monthly
+  const annualPrice = companyPlan?.annual_price ?? company?.locked_price_annual
+  // No annual price -> hide the annual option so an unbuyable term can't be picked.
+  const annualAvailable = annualPrice != null
+  const price = term === 'yearly' ? annualPrice : monthlyPrice
+  const priceSuffix = term === 'yearly' ? t('checkout:form.suffixYearly') : t('checkout:form.suffixMonthly')
+  const annualSavings = (annualAvailable && monthlyPrice != null)
+    ? (Number(monthlyPrice) * 12 - Number(annualPrice))
+    : null
+  const planName = companyPlan?.display_name || t('checkout:form.planNameFallback')
+
+  // ── Claim framing ──────────────────────────────────────────────────
+  // The trial is APP-owned and already running by the time anyone reaches
+  // this page — the signup trigger wrote trialing + trial_ends_at, and no
+  // Recurly subscription exists until the spot is claimed here. A mid-trial
+  // claim puts the card on file now and lands the first charge on the
+  // ORIGINAL trial end date (recurly-checkout pins subBody.trial_ends_at to
+  // it). Once that date has passed — or the status is trial_expired —
+  // claiming charges today, so the copy has to say so.
+  const trialEndsAt = company?.trial_ends_at ? new Date(company.trial_ends_at) : null
+  const trialActive = company?.subscription_status === 'trialing'
+    && trialEndsAt !== null
+    && !Number.isNaN(trialEndsAt.getTime())
+    && trialEndsAt.getTime() > Date.now()
+  const firstChargeDate = trialActive
+    ? trialEndsAt.toLocaleDateString(i18n.language?.startsWith('es') ? 'es-US' : 'en-US',
+        { month: 'long', day: 'numeric', year: 'numeric' })
+    : null
+
+  // Dormant claim conversion. Fires only with a real label AND a live gtag —
+  // identical to the demo-lead pattern. Never throws, never blocks the
+  // redirect: a blocked or unconfigured tag must not cost the user their
+  // successful claim.
+  const fireClaimConversion = useCallback(() => {
+    try {
+      if (!GOOGLE_ADS_CLAIM_CONVERSION_LABEL) return
+      if (typeof window.gtag !== 'function') return
+      window.gtag('event', 'conversion', {
+        send_to: `${GOOGLE_ADS_TAG_ID}/${GOOGLE_ADS_CLAIM_CONVERSION_LABEL}`,
+        value: price != null ? Number(price) : undefined,
+        currency: 'USD',
+      })
+    } catch { /* analytics must never break checkout */ }
+  }, [price])
 
   // Configure Recurly + mount card element
   useEffect(() => {
@@ -132,6 +181,7 @@ export default function RecurlyCheckout() {
       if (data?.success) {
         setStatus('success')
         setMessage(t('checkout:success.message'))
+        fireClaimConversion()
         await refreshCompany()
         setTimeout(() => navigate('/dashboard'), 1500)
         return
@@ -142,7 +192,7 @@ export default function RecurlyCheckout() {
       setStatus('error')
       setMessage(err.message)
     }
-  }, [company?.id, navigate, refreshCompany, isImpersonating, term])
+  }, [company?.id, navigate, refreshCompany, isImpersonating, term, fireClaimConversion])
 
   function handle3DS(actionTokenId, billingToken) {
     setStatus('3ds')
@@ -256,18 +306,6 @@ export default function RecurlyCheckout() {
   }
 
   const blocked = recurlyFailed || mountTimeout
-  // Effective prices: useCompanyPlan already resolves locked_price_* ??
-  // plan.*_price — a NULL company lock falls back to the live plan price.
-  const monthlyPrice = companyPlan?.monthly_price ?? company.locked_price_monthly
-  const annualPrice = companyPlan?.annual_price ?? company.locked_price_annual
-  // No annual price -> hide the annual option so an unbuyable term can't be picked.
-  const annualAvailable = annualPrice != null
-  const price = term === 'yearly' ? annualPrice : monthlyPrice
-  const priceSuffix = term === 'yearly' ? t('checkout:form.suffixYearly') : t('checkout:form.suffixMonthly')
-  const annualSavings = (annualAvailable && monthlyPrice != null)
-    ? (Number(monthlyPrice) * 12 - Number(annualPrice))
-    : null
-  const planName = companyPlan?.display_name || t('checkout:form.planNameFallback')
 
   return (
     <>
@@ -296,18 +334,21 @@ export default function RecurlyCheckout() {
               </div>
             )}
             <p style={{ fontSize: 15, color: 'var(--color-text-muted)', margin: 0 }}>
-              {t('checkout:form.planPrice', { plan: planName, price: price != null ? Number(price).toFixed(2) : '—', suffix: priceSuffix })}
+              {t('checkout:form.planPrice', { plan: planName, price: price != null ? Number(price).toFixed(2) : '??', suffix: priceSuffix })}
             </p>
             {term === 'yearly' && annualSavings != null && annualSavings > 0 && (
               <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 4 }}>
                 {t('checkout:form.annualSavings', { amount: annualSavings.toFixed(2) })}
               </p>
             )}
-            {company.subscription_status === 'trialing' && company.trial_ends_at && (
-              <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 4 }}>
-                {t('checkout:form.trialNotice', { count: company.trial_duration_days ?? 14 })}
-              </p>
-            )}
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 10, lineHeight: 1.55 }}>
+              {t('checkout:form.claimExplainer')}
+            </p>
+            <p style={{ fontSize: 13, color: 'var(--color-text)', fontWeight: 600, marginTop: 6, lineHeight: 1.55 }}>
+              {trialActive
+                ? t('checkout:form.claimFirstCharge', { date: firstChargeDate })
+                : t('checkout:form.claimBillingToday')}
+            </p>
           </div>
 
           {blocked ? (

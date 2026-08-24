@@ -131,8 +131,17 @@ Deno.serve(async (req) => {
     // Guard: these events should NOT flip a trialing company to active.
     // new_subscription fires when the card-bearing sub is created (with trial) — trial must continue.
     // reactivated/updated fire on mid-trial reactivation — trial must be preserved.
-    // Only successful_payment (the real first charge ~14d later) converts trialing→active.
-    const TRIAL_SAFE_EVENTS = new Set(['new_subscription_notification', 'reactivated_account_notification', 'updated_subscription_notification']);
+    // renewed fires on a Recurly-side term roll that is not a charge — trial must be preserved.
+    // successful_payment (the real first charge at the end of the app-owned trial)
+    // is the ONLY event that converts trialing→active.
+    //
+    // Why renewed matters under the no-card model: the trial is app-owned and
+    // its expiry is enforced from companies.trial_ends_at. Any event that
+    // reaches the 'active' branch NULLs trial_ends_at (see below), which would
+    // leave a trialing company with no expiry at all — unbounded free access,
+    // not a lockout, because the gate treats a null trial_ends_at as "nothing
+    // to enforce".
+    const TRIAL_SAFE_EVENTS = new Set(['new_subscription_notification', 'reactivated_account_notification', 'updated_subscription_notification', 'renewed_subscription_notification']);
     if (newStatus === 'active' && TRIAL_SAFE_EVENTS.has(eventType)) {
       const { data: current } = await supabase
         .from('companies')

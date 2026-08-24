@@ -140,7 +140,7 @@ export const tryStrings = {
 
   end: {
     en: {
-      eyebrow: 'Founding offer', trial: '14-day free trial. Cancel anytime.', primary: 'Start free trial',
+      eyebrow: 'Founding offer', trial: '14-day free trial. No card required. Cancel anytime.', primary: 'Start free trial',
       headline: 'First 25 trade pros in {state} lock $79.99/mo for life.',
       // Scarcity box (was hardcoded English in TryEndScreen). {n}=count,
       // {state}=state name, {tier}=next tier name, {price}=next tier price.
@@ -154,7 +154,7 @@ export const tryStrings = {
       scarcityGone: '{state} founder spots are gone - join at {tier} for ${price}/mo.',
     },
     es: {
-      eyebrow: 'Oferta de fundador', trial: 'Prueba gratis de 14 días. Cancela cuando quieras.', primary: 'Comienza tu prueba gratis',
+      eyebrow: 'Oferta de fundador', trial: 'Prueba gratis de 14 días. Sin tarjeta. Cancela cuando quieras.', primary: 'Comienza tu prueba gratis',
       headline: 'Los primeros 25 del oficio en {state} aseguran $79.99/mes de por vida.',
       scarcityDefault: 'Solo 25 lugares de fundador por estado.',
       scarcityChecking: 'Verificando disponibilidad…',

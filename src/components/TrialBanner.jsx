@@ -26,7 +26,10 @@ export default function TrialBanner() {
     // Subscribed users in grace: payment is auto-processing, no CTA needed
     if (hasSubscription) return null
 
-    // Grandfathered no-card trial in grace: need to subscribe
+    // No subscription in grace. Under the no-card model this is the DEFAULT
+    // path, not a grandfathered exception: nobody has a Recurly subscription
+    // until they claim their founders spot at /subscribe. Last call before
+    // SubscriptionGate hard-stops them.
     const msUntilLock = graceCutoff - now
     const daysUntilLock = Math.ceil(msUntilLock / (1000 * 60 * 60 * 24))
     const urgency = daysUntilLock <= 1
@@ -46,7 +49,7 @@ export default function TrialBanner() {
             fontWeight: 700, fontSize: 13, textDecoration: 'none',
           }}
         >
-          {t('common:trialBanner.subscribe')}
+          {t('common:trialBanner.claimSpot')}
         </Link>
         {ONBOARDING_CALENDAR_URL && (
           <a
@@ -65,7 +68,9 @@ export default function TrialBanner() {
     )
   }
 
-  // Active trial
+  // Active trial. hasSubscription === false is the DEFAULT here — no card is
+  // taken at signup, so the claim CTA shows for everyone who hasn't claimed
+  // their founders spot yet.
   const daysLeft = Math.ceil(msLeftTrial / (1000 * 60 * 60 * 24))
   const label = daysLeft <= 1 ? t('common:trialBanner.trialLastDay') : t('common:trialBanner.trialDaysLeft', { count: daysLeft })
 
@@ -83,7 +88,7 @@ export default function TrialBanner() {
             fontWeight: 600, fontSize: 13, textDecoration: 'none',
           }}
         >
-          {t('common:trialBanner.subscribe')}
+          {t('common:trialBanner.claimSpot')}
         </Link>
       )}
       {ONBOARDING_CALENDAR_URL && (

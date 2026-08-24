@@ -4,6 +4,11 @@ import { supabase } from '../lib/supabase'
 import { ONBOARDING_CALENDAR_URL } from '../lib/config'
 
 // headline/body/cta hold i18n keys under billing:blocked.*; resolved with t().
+//
+// This page is the HARD STOP at the end of the app-owned trial. Every reason
+// routes to /subscribe, which is the founders-spot claim page. Claiming from
+// HERE charges immediately (the trial end is already in the past, so
+// recurly-checkout pins the Recurly trial to now) — the trialBody copy says so.
 const STATUS_MESSAGES = {
   trial_expired: {
     headline: 'billing:blocked.trialExpiredHeadline',
