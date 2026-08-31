@@ -73,6 +73,18 @@
   background: var(--color-primary-hover);
 }
 
+.importJobsBtn {
+  background: none;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.importJobsBtn:hover {
+  background: none;
+  border-color: var(--color-text-muted);
+  color: var(--color-text);
+}
+
 .filterCount {
   font-size: 13px;
   color: var(--color-text-muted);

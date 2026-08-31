@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Plus, Columns3, List } from 'lucide-react'
+import { Plus, Columns3, List, Upload } from 'lucide-react'
 import {
   DndContext, DragOverlay, useDroppable,
   useSensor, useSensors, PointerSensor, TouchSensor, KeyboardSensor,
@@ -12,6 +12,7 @@ import { CSS } from '@dnd-kit/utilities'
 import Modal from '../components/ui/Modal'
 import ViewToggle from '../components/ui/ViewToggle'
 import NewProjectForm from '../components/auth/NewProjectForm'
+import JobImportModal from '../components/jobs/JobImportModal'
 import JobsListView, { DOT_COLORS } from '../components/jobs/JobsListView'
 import JobsFilterBar from '../components/jobs/JobsFilterBar'
 import { useOpportunities } from '../hooks/useOpportunities'
@@ -111,6 +112,7 @@ export default function KanbanPage() {
   const [view, setView] = useViewPreference('jobs', 'kanban')
   const [activeId, setActiveId] = useState(null)
   const [showNewJob, setShowNewJob] = useState(false)
+  const [showImport, setShowImport] = useState(false)
 
   // Confirm-gated move state (In Progress / Complete)
   const [pendingMove, setPendingMove] = useState(null) // { projectId, fromColumnId, toColumnId, toColName, project }
@@ -264,6 +266,9 @@ export default function KanbanPage() {
           <h1 className={styles.pageTitle}>{t('jobs:page.title')}</h1>
           <div className={styles.headerActions}>
             <ViewToggle view={view} onChange={setView} options={VIEW_OPTIONS.map(o => ({ ...o, label: t(o.label) }))} />
+            <button className={`${styles.newJobBtn} ${styles.importJobsBtn}`} onClick={() => setShowImport(true)}>
+              <Upload size={16} /> {t('jobs:import.button')}
+            </button>
             <button className={styles.newJobBtn} onClick={() => setShowNewJob(true)}>
               <Plus size={16} /> {t('jobs:page.newJob')}
             </button>
@@ -322,6 +327,12 @@ export default function KanbanPage() {
       {showNewJob && (
         <Modal title={t('jobs:newJobModalTitle')} onClose={() => setShowNewJob(false)}>
           <NewProjectForm onCreate={handleCreateJob} onCancel={() => setShowNewJob(false)} />
+        </Modal>
+      )}
+
+      {showImport && (
+        <Modal title={t('jobs:import.title')} onClose={() => setShowImport(false)}>
+          <JobImportModal onClose={() => setShowImport(false)} onImported={refetch} />
         </Modal>
       )}
 

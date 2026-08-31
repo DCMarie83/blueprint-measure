@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { FileText, Search, Plus } from 'lucide-react'
+import { FileText, Search, Plus, Upload } from 'lucide-react'
+import Modal from '../components/ui/Modal'
 import InvoiceStatusBadge from '../components/invoices/InvoiceStatusBadge'
+import InvoiceImportModal from '../components/invoices/InvoiceImportModal'
 import { useInvoices, isOverdue } from '../hooks/useInvoices'
 import { timeAgo } from '../utils/timeAgo'
 import styles from './InvoiceListPage.module.css'
@@ -27,10 +29,11 @@ const SORT_OPTIONS = [
 export default function InvoiceListPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { invoices, loading, error } = useInvoices()
+  const { invoices, loading, error, refetch } = useInvoices()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [sortKey, setSortKey] = useState('recent')
+  const [showImport, setShowImport] = useState(false)
 
   let filtered = invoices
   if (statusFilter !== 'all') filtered = filtered.filter(inv => inv.status === statusFilter)
@@ -67,7 +70,10 @@ export default function InvoiceListPage() {
             <h1 className={styles.title}>{t('invoices:list.title')}</h1>
             <p className={styles.subtitle}>{t('invoices:list.subtitle')}</p>
           </div>
-          <button className={styles.newBtn} onClick={() => navigate('/invoices/new')}><Plus size={16} /> {t('invoices:list.newInvoice')}</button>
+          <div className={styles.headerActions}>
+            <button className={`${styles.newBtn} ${styles.importBtn}`} onClick={() => setShowImport(true)}><Upload size={16} /> {t('invoices:import.button')}</button>
+            <button className={styles.newBtn} onClick={() => navigate('/invoices/new')}><Plus size={16} /> {t('invoices:list.newInvoice')}</button>
+          </div>
         </div>
 
         <div className={styles.filterRow}>
@@ -126,6 +132,12 @@ export default function InvoiceListPage() {
           </div>
         )}
       </main>
+
+      {showImport && (
+        <Modal title={t('invoices:import.title')} onClose={() => setShowImport(false)}>
+          <InvoiceImportModal onClose={() => setShowImport(false)} onImported={refetch} />
+        </Modal>
+      )}
     </div>
   )
 }

@@ -6,11 +6,31 @@ const corsHeaders = {
 
 const ANTHROPIC_MODEL = 'claude-sonnet-4-6'
 
-const TARGET_FIELDS = [
+// Default target list (the original clients importer). Callers may override by
+// sending targetFields: string[] in the request body — the response contract
+// ({ mapping, ai_failed }, always 200) is unchanged either way.
+const DEFAULT_TARGET_FIELDS = [
   'display_name', 'business_name', 'primary_email', 'primary_phone',
   'client_type', 'property_type', 'billing_terms', 'company_website',
   'tax_id', 'notes', 'addr_street', 'addr_unit', 'addr_city', 'addr_state', 'addr_zip',
 ]
+
+const CLIENT_FIELD_DESCRIPTIONS = `Field descriptions:
+- display_name: client's full name (person or business display name)
+- business_name: company/business name (if separate from display name)
+- primary_email: email address
+- primary_phone: phone number
+- client_type: "residential" or "commercial"
+- property_type: type of property
+- billing_terms: payment terms
+- company_website: website URL
+- tax_id: tax ID / EIN
+- notes: any notes or comments
+- addr_street: street address
+- addr_unit: apartment/suite/unit number
+- addr_city: city
+- addr_state: state (2-letter code)
+- addr_zip: zip/postal code`
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -30,12 +50,20 @@ Deno.serve(async (req) => {
       return jsonResponse({ mapping: {}, ai_failed: true }, 200)
     }
 
-    const { headers, sampleRows } = await req.json()
+    const { headers, sampleRows, targetFields } = await req.json()
     if (!headers?.length) {
       return jsonResponse({ mapping: {}, ai_failed: true }, 200)
     }
 
-    const prompt = `You are a data-mapping assistant. Given these CSV/spreadsheet column headers and sample data, map each header to the most appropriate target field for a contractor's client database.
+    const usingDefaults = !Array.isArray(targetFields) || targetFields.length === 0
+    const fields: string[] = usingDefaults
+      ? DEFAULT_TARGET_FIELDS
+      : targetFields.filter((f: unknown) => typeof f === 'string' && f.length > 0)
+    if (fields.length === 0) {
+      return jsonResponse({ mapping: {}, ai_failed: true }, 200)
+    }
+
+    const prompt = `You are a data-mapping assistant. Given these CSV/spreadsheet column headers and sample data, map each header to the most appropriate target field for a contractor's business records.
 
 Source headers: ${JSON.stringify(headers)}
 
@@ -43,24 +71,9 @@ Sample rows (up to 5):
 ${JSON.stringify((sampleRows || []).slice(0, 5), null, 2)}
 
 Target fields (map each source header to exactly one, or null if no match):
-${JSON.stringify(TARGET_FIELDS)}
+${JSON.stringify(fields)}
 
-Field descriptions:
-- display_name: client's full name (person or business display name)
-- business_name: company/business name (if separate from display name)
-- primary_email: email address
-- primary_phone: phone number
-- client_type: "residential" or "commercial"
-- property_type: type of property
-- billing_terms: payment terms
-- company_website: website URL
-- tax_id: tax ID / EIN
-- notes: any notes or comments
-- addr_street: street address
-- addr_unit: apartment/suite/unit number
-- addr_city: city
-- addr_state: state (2-letter code)
-- addr_zip: zip/postal code
+${usingDefaults ? CLIENT_FIELD_DESCRIPTIONS : 'The target field names are self-describing (snake_case).'}
 
 Return ONLY a JSON object mapping each source header to a target field or null. No explanation, no markdown fences. Example:
 {"Customer Name":"display_name","Email":"primary_email","Phone":"primary_phone","Address":"addr_street","Unknown Col":null}`

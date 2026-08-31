@@ -139,8 +139,11 @@ export default function LiteSignupPage() {
     } else if (data?.session) {
       // Confirmations OFF: signed in immediately — straight into the app. No
       // card at signup; the DB trigger already wrote trialing + trial_ends_at,
-      // so the trial is running the moment the dashboard paints.
-      navigate('/dashboard')
+      // so the trial is running the moment the app paints.
+      // /home, not /dashboard: /home is Lite's landing page. /dashboard is
+      // contractor-only (FamilyGate allow="contractor" redirectTo="/home"),
+      // so sending a Lite tenant there just costs an extra redirect hop.
+      navigate('/home')
       return
     } else {
       // Confirmations ON, genuinely new account: keep the email screen.
