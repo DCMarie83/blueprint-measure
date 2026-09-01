@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { FileText, Search, Plus, Upload } from 'lucide-react'
+import { FileText, Search, Plus, Upload, FileScan } from 'lucide-react'
 import Modal from '../components/ui/Modal'
 import InvoiceStatusBadge from '../components/invoices/InvoiceStatusBadge'
 import InvoiceImportModal from '../components/invoices/InvoiceImportModal'
+import DocumentImportModal from '../components/import/DocumentImportModal'
 import { useInvoices, isOverdue } from '../hooks/useInvoices'
 import { timeAgo } from '../utils/timeAgo'
 import styles from './InvoiceListPage.module.css'
@@ -34,6 +35,7 @@ export default function InvoiceListPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [sortKey, setSortKey] = useState('recent')
   const [showImport, setShowImport] = useState(false)
+  const [showDocImport, setShowDocImport] = useState(false)
 
   let filtered = invoices
   if (statusFilter !== 'all') filtered = filtered.filter(inv => inv.status === statusFilter)
@@ -72,6 +74,7 @@ export default function InvoiceListPage() {
           </div>
           <div className={styles.headerActions}>
             <button className={`${styles.newBtn} ${styles.importBtn}`} onClick={() => setShowImport(true)}><Upload size={16} /> {t('invoices:import.button')}</button>
+            <button className={`${styles.newBtn} ${styles.importBtn}`} onClick={() => setShowDocImport(true)}><FileScan size={16} /> {t('import:docs.button')}</button>
             <button className={styles.newBtn} onClick={() => navigate('/invoices/new')}><Plus size={16} /> {t('invoices:list.newInvoice')}</button>
           </div>
         </div>
@@ -136,6 +139,12 @@ export default function InvoiceListPage() {
       {showImport && (
         <Modal title={t('invoices:import.title')} onClose={() => setShowImport(false)}>
           <InvoiceImportModal onClose={() => setShowImport(false)} onImported={refetch} />
+        </Modal>
+      )}
+
+      {showDocImport && (
+        <Modal title={t('import:docs.titleInvoices')} onClose={() => setShowDocImport(false)}>
+          <DocumentImportModal entity="invoices" onClose={() => setShowDocImport(false)} onImported={refetch} />
         </Modal>
       )}
     </div>

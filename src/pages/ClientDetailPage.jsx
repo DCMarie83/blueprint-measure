@@ -9,6 +9,10 @@ import ClientLogoUpload from '../components/clients/ClientLogoUpload'
 import ClientAddressEditor from '../components/clients/ClientAddressEditor'
 import ClientContactsSection from '../components/clients/ClientContactsSection'
 import ClientActivitySection from '../components/clients/ClientActivitySection'
+import DocumentsSection from '../components/documents/DocumentsSection'
+import InvoiceStatusBadge from '../components/invoices/InvoiceStatusBadge'
+import { getDisplayTotal } from '../lib/estimateDisplay'
+import { isOverdue } from '../hooks/useInvoices'
 import { useClient } from '../hooks/useClient'
 import { useClients } from '../hooks/useClients'
 import { useEffectiveCompany } from '../hooks/useEffectiveCompany'
@@ -54,7 +58,7 @@ export default function ClientDetailPage() {
   const { t } = useTranslation()
   const { id } = useParams()
   const navigate = useNavigate()
-  const { client, contacts, projects, loading, error, refetch, addContact, updateContact, deleteContact } = useClient(id)
+  const { client, contacts, projects, invoices, estimates, documents, loading, error, refetch, addContact, updateContact, deleteContact } = useClient(id)
   const { deleteClient } = useClients()
   const { companyId } = useEffectiveCompany()
   const [showEdit, setShowEdit] = useState(false)
@@ -218,6 +222,60 @@ export default function ClientDetailPage() {
             </div>
           )}
         </section>
+
+        {/* Invoices — FK union: invoices.client_id OR the client's projects */}
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>{t('clients:detail.invoicesCount', { count: invoices.length })}</h2>
+          {invoices.length === 0 ? (
+            <p className={styles.muted}>{t('clients:detail.noInvoices')}</p>
+          ) : (
+            <div className={styles.jobList}>
+              {invoices.map(inv => (
+                <div key={inv.id} className={styles.jobRow} onClick={() => navigate(`/invoices/${inv.id}`)}>
+                  <FileText size={14} />
+                  <span className={styles.jobName}>{inv.invoice_number}</span>
+                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+                    {inv.created_at ? new Date(inv.created_at).toLocaleDateString() : ''}
+                  </span>
+                  <InvoiceStatusBadge status={inv.status} isOverdue={isOverdue(inv)} />
+                  <span style={{ fontSize: 13, fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                    {fmtMoneyFlat(Number(inv.total) || 0)}
+                  </span>
+                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                    {t('clients:detail.paidAmount', { amount: fmtMoneyFlat(Number(inv.paid_amount) || 0) })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Estimates — via the client's projects (estimates carry no client_id) */}
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>{t('clients:detail.estimatesCount', { count: estimates.length })}</h2>
+          {estimates.length === 0 ? (
+            <p className={styles.muted}>{t('clients:detail.noEstimates')}</p>
+          ) : (
+            <div className={styles.jobList}>
+              {estimates.map(est => (
+                <div key={est.id} className={styles.jobRow} onClick={() => navigate(`/estimates/${est.id}`)}>
+                  <FileText size={14} />
+                  <span className={styles.jobName}>{est.title || est.estimate_number}</span>
+                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+                    {est.created_at ? new Date(est.created_at).toLocaleDateString() : ''}
+                  </span>
+                  <span className={styles.jobStatus}>{est.status}</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                    {fmtMoneyFlat(Number(getDisplayTotal(est)) || 0)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Documents */}
+        <DocumentsSection documents={documents} />
 
         {/* Recent activity (entries deep-link to the most specific real surface) */}
         <ClientActivitySection clientId={id} onChange={() => refetch()} />

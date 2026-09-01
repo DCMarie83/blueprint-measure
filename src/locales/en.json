@@ -160,7 +160,8 @@
     "impersonation": {
       "viewing": "Viewing {{name}} as super admin",
       "tenantFallback": "tenant",
-      "exit": "Exit"
+      "exit": "Exit",
+      "actingAs": "Acting as {{company}}"
     },
     "themeToggle": {
       "aria": "Switch theme. Current: {{theme}}",
@@ -857,7 +858,12 @@
       "editClient": "Edit Client",
       "deleteClientTitle": "Delete Client?",
       "deleteWarning": "This will permanently delete this client and all their contacts. Linked jobs will be unlinked but not deleted.",
-      "deleting": "Deleting…"
+      "deleting": "Deleting…",
+      "invoicesCount": "Invoices ({{count}})",
+      "noInvoices": "No invoices for this client yet.",
+      "estimatesCount": "Estimates ({{count}})",
+      "noEstimates": "No estimates for this client yet.",
+      "paidAmount": "paid {{amount}}"
     },
     "form": {
       "streetPlaceholder": "Street address",
@@ -1210,8 +1216,8 @@
     "import": {
       "button": "Import",
       "title": "Import Invoices",
-      "uploadPrompt": "Upload a CSV or Excel file with your invoice history. Payments are recorded from the Amount Paid column, and nothing is ever emailed to your clients.",
-      "mapHint": "Map columns to Invoice Number, Job Name, Invoice Date, and Total to continue.",
+      "uploadPrompt": "Upload a CSV or Excel file with your invoice history. Add a Line Items sheet for per-line detail. Payments are recorded from the Amount Paid column, and nothing is ever emailed to your clients.",
+      "mapHint": "Map columns to Job Name and Invoice Date to continue.",
       "fieldNumber": "Invoice Number",
       "fieldJobName": "Job Name",
       "fieldClient": "Client",
@@ -1229,11 +1235,11 @@
       "colTotal": "Total",
       "colPaid": "Paid",
       "colStatus": "Status",
-      "badgeNoNumber": "no number",
+      "badgeNoNumber": "no number — placeholder assigned",
       "badgeNoJob": "no job name",
       "badgeBadDate": "invalid date",
       "badgeBadPaidDate": "paid date ignored",
-      "badgeBadTotal": "total must be greater than 0",
+      "badgeBadTotal": "invalid total — imports as draft",
       "badgeBadPaid": "amount paid ignored",
       "badgeDupDb": "already exists",
       "badgeDupFile": "duplicate in file",
@@ -1242,11 +1248,12 @@
       "badgeUnknownStatus": "status derived",
       "badgeOtherMethod": "method saved as other",
       "reasonDuplicateNumber": "invoice number already exists",
-      "skipReason": "missing required fields, invalid total, or duplicate invoice number",
+      "skipReason": "missing job, invalid date, or duplicate",
       "importBtn_one": "Import {{count}} Invoice",
       "importBtn_other": "Import {{count}} Invoices",
       "importSuccess_one": "{{count}} invoice imported successfully.",
-      "importSuccess_other": "{{count}} invoices imported successfully."
+      "importSuccess_other": "{{count}} invoices imported successfully.",
+      "badgeNoTotal": "no total — imports as draft"
     }
   },
   "lite": {
@@ -2025,7 +2032,88 @@
       "importBtn_one": "Import {{count}} Job",
       "importBtn_other": "Import {{count}} Jobs",
       "importSuccess_one": "{{count}} job imported successfully.",
-      "importSuccess_other": "{{count}} jobs imported successfully."
+      "importSuccess_other": "{{count}} jobs imported successfully.",
+      "menuJobs": "Import Jobs",
+      "menuEstimates": "Import Estimates",
+      "menuEstimateDocs": "Estimates from Documents",
+      "menuChangeOrders": "Import Change Orders"
+    },
+    "changeOrders": {
+      "title": "Change Orders ({{count}})",
+      "approvedTotal": "approved: {{amount}}",
+      "add": "Add Change Order",
+      "importBtn": "Import",
+      "empty": "No change orders on this job yet.",
+      "addTitle": "New Change Order",
+      "editTitle": "Edit Change Order",
+      "deleteConfirm": "Delete this change order?",
+      "updateFailed": "Could not save: {{error}}",
+      "status": {
+        "proposed": "Proposed",
+        "approved": "Approved",
+        "declined": "Declined",
+        "void": "Void"
+      },
+      "form": {
+        "number": "CO Number",
+        "title": "Title",
+        "description": "Description",
+        "amount": "Amount",
+        "status": "Status"
+      },
+      "import": {
+        "title": "Import Change Orders",
+        "uploadPrompt": "Upload a CSV or Excel file with change orders (Buildertrend exports work). Imported change orders never email anyone.",
+        "mapHint": "Map a column to Title to continue.",
+        "fieldNumber": "CO Number",
+        "fieldJobName": "Job Name",
+        "fieldTitle": "Title",
+        "fieldDescription": "Description",
+        "fieldAmount": "Amount",
+        "fieldStatus": "Status",
+        "fieldApprovedDate": "Approved Date",
+        "fieldApprovedBy": "Approved By",
+        "fieldSource": "Source",
+        "fieldExternalRef": "External Ref",
+        "colNumber": "Number",
+        "colJob": "Job",
+        "colTitle": "Title",
+        "colAmount": "Amount",
+        "colStatus": "Status",
+        "badgeNoTitle": "no title",
+        "badgeNoJob": "no job name",
+        "badgeNewJob": "new job",
+        "badgeBadAmount": "amount ignored",
+        "badgeBadDate": "date ignored",
+        "badgeUnknownStatus": "status defaulted",
+        "badgeDupFile": "duplicate in file",
+        "reasonMissingTitle": "missing title",
+        "skipReason": "missing title or job name",
+        "importBtn_one": "Import {{count}} Change Order",
+        "importBtn_other": "Import {{count}} Change Orders",
+        "importSuccess_one": "{{count}} change order imported successfully.",
+        "importSuccess_other": "{{count}} change orders imported successfully."
+      }
+    },
+    "money": {
+      "currentValue": "Current Value",
+      "billed": "Billed",
+      "collected": "Collected",
+      "billedShort": "billed {{amount}}",
+      "collectedShort": "paid {{amount}}",
+      "openCos_one": "{{count}} open CO",
+      "openCos_other": "{{count}} open COs",
+      "withCOs": "{{base}} + {{cos}} in change orders"
+    },
+    "invoicesSection": {
+      "title": "Invoices ({{count}})",
+      "empty": "No invoices on this job yet."
+    },
+    "timeSection": {
+      "title": "Labor — {{hours}} h",
+      "empty": "No time logged on this job yet.",
+      "hours": "{{hours}} h",
+      "unknownCrew": "Unknown worker"
     }
   },
   "estimates": {
@@ -2157,6 +2245,38 @@
       "fromBlueprints_one": "from {{count}} blueprint",
       "fromBlueprints_other": "from {{count}} blueprints",
       "addLineItem": "Add Line Item"
+    },
+    "import": {
+      "title": "Import Estimates",
+      "uploadPrompt": "Upload a CSV or Excel file with your estimate history. Add a Line Items sheet for per-line detail. Imported estimates never email your clients.",
+      "mapHint": "Map columns to Estimate Number, Job Name, and Estimate Date to continue.",
+      "fieldNumber": "Estimate Number",
+      "fieldJobName": "Job Name",
+      "fieldClient": "Client",
+      "fieldDate": "Estimate Date",
+      "fieldTotal": "Total",
+      "fieldStatus": "Status",
+      "fieldNotes": "Notes",
+      "colNumber": "Number",
+      "colJob": "Job",
+      "colClient": "Client",
+      "colDate": "Date",
+      "colTotal": "Total",
+      "colStatus": "Status",
+      "badgeNoNumber": "no number",
+      "badgeNoJob": "no job name",
+      "badgeBadDate": "invalid date",
+      "badgeBadTotal": "total ignored",
+      "badgeDupFile": "duplicate in file",
+      "badgeNewJob": "new job",
+      "badgeNewClient": "new client",
+      "badgeUnknownStatus": "status defaulted",
+      "reasonDuplicateNumber": "estimate number already exists",
+      "skipReason": "missing number, job, or date — or duplicate",
+      "importBtn_one": "Import {{count}} Estimate",
+      "importBtn_other": "Import {{count}} Estimates",
+      "importSuccess_one": "{{count}} estimate imported successfully.",
+      "importSuccess_other": "{{count}} estimates imported successfully."
     }
   },
   "smartbid": {
@@ -2354,6 +2474,32 @@
       "copyResult": "Copy result",
       "costLabel": "Cost $",
       "markupLabel": "Markup %"
+    },
+    "import": {
+      "button": "Import",
+      "title": "Import Pricing",
+      "uploadPrompt": "Upload a CSV or Excel file with your rates. Rows matching an existing item by name and unit are skipped unless you choose an update mode.",
+      "mapHint": "Map columns to Name and Rate to continue.",
+      "fieldName": "Name",
+      "fieldUnit": "Unit",
+      "fieldRate": "Rate",
+      "fieldCategory": "Category",
+      "fieldDescription": "Description",
+      "colName": "Name",
+      "colUnit": "Unit",
+      "colRate": "Rate",
+      "colCategory": "Category",
+      "badgeNoName": "no name",
+      "badgeBadRate": "rate must be greater than 0",
+      "badgeUnknownUnit": "unit defaulted",
+      "badgeDupFile": "duplicate in file",
+      "reasonMissingFields": "missing name or rate",
+      "reasonExists": "already in your library",
+      "skipReason": "missing name, invalid rate, or duplicate",
+      "importBtn_one": "Import {{count}} Rate",
+      "importBtn_other": "Import {{count}} Rates",
+      "importSuccess_one": "{{count}} rate imported successfully.",
+      "importSuccess_other": "{{count}} rates imported successfully."
     }
   },
   "resources": {
@@ -2931,6 +3077,34 @@
       "empty": "No expenses logged yet.",
       "saveFailed": "Failed to save expense: {{error}}",
       "deleteFailed": "Failed to delete: {{error}}"
+    },
+    "import": {
+      "button": "Import",
+      "title": "Import Time Entries",
+      "uploadPrompt": "Upload a CSV or Excel file with logged hours. Workers that don't match your roster are created as inactive placeholders.",
+      "mapHint": "Map columns to Date, Crew, Job Name, and Hours to continue.",
+      "fieldDate": "Date",
+      "fieldCrew": "Crew",
+      "fieldJobName": "Job Name",
+      "fieldHours": "Hours",
+      "fieldNote": "Note",
+      "colDate": "Date",
+      "colCrew": "Crew",
+      "colJob": "Job",
+      "colHours": "Hours",
+      "badgeBadDate": "invalid date",
+      "badgeNoCrew": "no crew",
+      "badgeNewCrew": "new worker",
+      "badgeNoJob": "no job",
+      "badgeNoJobMatch": "job not found",
+      "badgeBadHours": "invalid hours",
+      "reasonMissingFields": "missing date, crew, or hours",
+      "reasonNoJobMatch": "job not found",
+      "skipReason": "missing or invalid date, crew, job, or hours",
+      "importBtn_one": "Import {{count}} Entry",
+      "importBtn_other": "Import {{count}} Entries",
+      "importSuccess_one": "{{count}} time entry imported successfully.",
+      "importSuccess_other": "{{count}} time entries imported successfully."
     }
   },
   "blueprint": {
@@ -3428,6 +3602,12 @@
       "tip26": "Ten minutes of play can tire a dog out more than a long walk — a good sniff-and-fetch session works the brain and the body.",
       "tip27": "Why did the painter bring a dog to the job site? For a second opinion on the coat.",
       "tip28": "What do you call a dog who can measure a whole house? A rule-triever."
+    },
+    "documents": {
+      "title": "Documents ({{count}})",
+      "empty": "No documents yet.",
+      "open": "Open",
+      "openFailed": "Could not open the document."
     }
   },
   "admin": {
@@ -4035,6 +4215,43 @@
     "skippedCount": "{{count}} skipped:",
     "failedCount": "{{count}} failed:",
     "andMore": "...and {{count}} more",
-    "done": "Done"
+    "done": "Done",
+    "modeLabel": "How to handle matching records",
+    "modeAdd": "Add new only",
+    "modeUpdate": "Update existing only",
+    "modeBoth": "Add and update",
+    "colDisposition": "Action",
+    "dispositionNew": "New",
+    "dispositionUpdate": "Update",
+    "dispositionSkip": "Skip",
+    "updatedCount": "{{count}} updated:",
+    "createdCrew": "New worker",
+    "badgeExists": "already exists",
+    "badgeNoMatch": "no match",
+    "badgeLowConfidence": "check this",
+    "docs": {
+      "button": "From documents",
+      "titleInvoices": "Import Invoices from Documents",
+      "titleEstimates": "Import Estimates from Documents",
+      "titlePricing": "Import Pricing from Documents",
+      "prompt": "Upload PDFs or photos of invoices, quotes, or price lists. Up to 20 files, 15 MB each. Nothing is ever emailed to your clients.",
+      "filesSelected_one": "{{count}} file selected.",
+      "filesSelected_other": "{{count}} files selected.",
+      "kindLabel": "Document type",
+      "kind": {
+        "auto": "Detect",
+        "invoice": "Invoice",
+        "quote": "Quote",
+        "price_list": "Price list"
+      },
+      "extractBtn_one": "Extract {{count}} Document",
+      "extractBtn_other": "Extract {{count}} Documents",
+      "extracting": "Extracting document {{current}} of {{total}}...",
+      "extractFailed": "extraction failed",
+      "nothingExtracted": "Nothing could be extracted from these files.",
+      "badType": "{{name}} — unsupported file type (PDF, JPG, or PNG only)",
+      "tooLarge": "{{name}} — over the 15 MB limit",
+      "tooMany": "Only the first {{max}} files were kept."
+    }
   }
 }

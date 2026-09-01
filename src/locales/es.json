@@ -160,7 +160,8 @@
     "impersonation": {
       "viewing": "Viendo {{name}} como súper admin",
       "tenantFallback": "empresa",
-      "exit": "Salir"
+      "exit": "Salir",
+      "actingAs": "Actuando como {{company}}"
     },
     "themeToggle": {
       "aria": "Cambiar tema. Actual: {{theme}}",
@@ -857,7 +858,12 @@
       "editClient": "Editar cliente",
       "deleteClientTitle": "¿Eliminar cliente?",
       "deleteWarning": "Esto eliminará permanentemente a este cliente y todos sus contactos. Los trabajos vinculados se desvincularán, pero no se eliminarán.",
-      "deleting": "Eliminando…"
+      "deleting": "Eliminando…",
+      "invoicesCount": "Facturas ({{count}})",
+      "noInvoices": "Este cliente aún no tiene facturas.",
+      "estimatesCount": "Cotizaciones ({{count}})",
+      "noEstimates": "Este cliente aún no tiene cotizaciones.",
+      "paidAmount": "cobrado {{amount}}"
     },
     "form": {
       "streetPlaceholder": "Dirección de la calle",
@@ -1210,8 +1216,8 @@
     "import": {
       "button": "Importar",
       "title": "Importar facturas",
-      "uploadPrompt": "Sube un archivo CSV o Excel con tu historial de facturas. Los pagos se registran desde la columna Monto pagado y nunca se envía nada por correo a tus clientes.",
-      "mapHint": "Asigna columnas a Número de factura, Nombre del trabajo, Fecha de factura y Total para continuar.",
+      "uploadPrompt": "Sube un archivo CSV o Excel con tu historial de facturas. Agrega una hoja de partidas para el detalle por línea. Los pagos se registran desde la columna Monto pagado y nunca se envía nada por correo a tus clientes.",
+      "mapHint": "Asigna columnas a Nombre del trabajo y Fecha de factura para continuar.",
       "fieldNumber": "Número de factura",
       "fieldJobName": "Nombre del trabajo",
       "fieldClient": "Cliente",
@@ -1229,11 +1235,11 @@
       "colTotal": "Total",
       "colPaid": "Pagado",
       "colStatus": "Estado",
-      "badgeNoNumber": "sin número",
+      "badgeNoNumber": "sin número — se asigna uno provisional",
       "badgeNoJob": "sin nombre de trabajo",
       "badgeBadDate": "fecha inválida",
       "badgeBadPaidDate": "fecha de pago ignorada",
-      "badgeBadTotal": "el total debe ser mayor que 0",
+      "badgeBadTotal": "total inválido — se importa como borrador",
       "badgeBadPaid": "monto pagado ignorado",
       "badgeDupDb": "ya existe",
       "badgeDupFile": "duplicada en el archivo",
@@ -1242,11 +1248,12 @@
       "badgeUnknownStatus": "estado derivado",
       "badgeOtherMethod": "método guardado como otro",
       "reasonDuplicateNumber": "el número de factura ya existe",
-      "skipReason": "faltan campos requeridos, total inválido o número de factura duplicado",
+      "skipReason": "falta el trabajo, fecha inválida o duplicada",
       "importBtn_one": "Importar {{count}} factura",
       "importBtn_other": "Importar {{count}} facturas",
       "importSuccess_one": "{{count}} factura importada correctamente.",
-      "importSuccess_other": "{{count}} facturas importadas correctamente."
+      "importSuccess_other": "{{count}} facturas importadas correctamente.",
+      "badgeNoTotal": "sin total — se importa como borrador"
     }
   },
   "lite": {
@@ -2025,7 +2032,88 @@
       "importBtn_one": "Importar {{count}} trabajo",
       "importBtn_other": "Importar {{count}} trabajos",
       "importSuccess_one": "{{count}} trabajo importado correctamente.",
-      "importSuccess_other": "{{count}} trabajos importados correctamente."
+      "importSuccess_other": "{{count}} trabajos importados correctamente.",
+      "menuJobs": "Importar trabajos",
+      "menuEstimates": "Importar cotizaciones",
+      "menuEstimateDocs": "Cotizaciones desde documentos",
+      "menuChangeOrders": "Importar órdenes de cambio"
+    },
+    "changeOrders": {
+      "title": "Órdenes de cambio ({{count}})",
+      "approvedTotal": "aprobadas: {{amount}}",
+      "add": "Agregar orden de cambio",
+      "importBtn": "Importar",
+      "empty": "Este trabajo aún no tiene órdenes de cambio.",
+      "addTitle": "Nueva orden de cambio",
+      "editTitle": "Editar orden de cambio",
+      "deleteConfirm": "¿Eliminar esta orden de cambio?",
+      "updateFailed": "No se pudo guardar: {{error}}",
+      "status": {
+        "proposed": "Propuesta",
+        "approved": "Aprobada",
+        "declined": "Rechazada",
+        "void": "Anulada"
+      },
+      "form": {
+        "number": "Número de OC",
+        "title": "Título",
+        "description": "Descripción",
+        "amount": "Monto",
+        "status": "Estado"
+      },
+      "import": {
+        "title": "Importar órdenes de cambio",
+        "uploadPrompt": "Sube un archivo CSV o Excel con órdenes de cambio (sirven las exportaciones de Buildertrend). Las órdenes importadas nunca envían correos a nadie.",
+        "mapHint": "Asigna una columna a Título para continuar.",
+        "fieldNumber": "Número de OC",
+        "fieldJobName": "Nombre del trabajo",
+        "fieldTitle": "Título",
+        "fieldDescription": "Descripción",
+        "fieldAmount": "Monto",
+        "fieldStatus": "Estado",
+        "fieldApprovedDate": "Fecha de aprobación",
+        "fieldApprovedBy": "Aprobada por",
+        "fieldSource": "Origen",
+        "fieldExternalRef": "Referencia externa",
+        "colNumber": "Número",
+        "colJob": "Trabajo",
+        "colTitle": "Título",
+        "colAmount": "Monto",
+        "colStatus": "Estado",
+        "badgeNoTitle": "sin título",
+        "badgeNoJob": "sin nombre de trabajo",
+        "badgeNewJob": "trabajo nuevo",
+        "badgeBadAmount": "monto ignorado",
+        "badgeBadDate": "fecha ignorada",
+        "badgeUnknownStatus": "estado predeterminado",
+        "badgeDupFile": "duplicada en el archivo",
+        "reasonMissingTitle": "falta el título",
+        "skipReason": "falta el título o el nombre del trabajo",
+        "importBtn_one": "Importar {{count}} orden de cambio",
+        "importBtn_other": "Importar {{count}} órdenes de cambio",
+        "importSuccess_one": "{{count}} orden de cambio importada correctamente.",
+        "importSuccess_other": "{{count}} órdenes de cambio importadas correctamente."
+      }
+    },
+    "money": {
+      "currentValue": "Valor actual",
+      "billed": "Facturado",
+      "collected": "Cobrado",
+      "billedShort": "facturado {{amount}}",
+      "collectedShort": "cobrado {{amount}}",
+      "openCos_one": "{{count}} OC abierta",
+      "openCos_other": "{{count}} OC abiertas",
+      "withCOs": "{{base}} + {{cos}} en órdenes de cambio"
+    },
+    "invoicesSection": {
+      "title": "Facturas ({{count}})",
+      "empty": "Este trabajo aún no tiene facturas."
+    },
+    "timeSection": {
+      "title": "Mano de obra — {{hours}} h",
+      "empty": "Este trabajo aún no tiene horas registradas.",
+      "hours": "{{hours}} h",
+      "unknownCrew": "Trabajador desconocido"
     }
   },
   "estimates": {
@@ -2157,6 +2245,38 @@
       "fromBlueprints_one": "de {{count}} plano",
       "fromBlueprints_other": "de {{count}} planos",
       "addLineItem": "Agregar partida"
+    },
+    "import": {
+      "title": "Importar cotizaciones",
+      "uploadPrompt": "Sube un archivo CSV o Excel con tu historial de cotizaciones. Agrega una hoja de partidas para el detalle por línea. Las cotizaciones importadas nunca envían correos a tus clientes.",
+      "mapHint": "Asigna columnas a Número de cotización, Nombre del trabajo y Fecha para continuar.",
+      "fieldNumber": "Número de cotización",
+      "fieldJobName": "Nombre del trabajo",
+      "fieldClient": "Cliente",
+      "fieldDate": "Fecha de cotización",
+      "fieldTotal": "Total",
+      "fieldStatus": "Estado",
+      "fieldNotes": "Notas",
+      "colNumber": "Número",
+      "colJob": "Trabajo",
+      "colClient": "Cliente",
+      "colDate": "Fecha",
+      "colTotal": "Total",
+      "colStatus": "Estado",
+      "badgeNoNumber": "sin número",
+      "badgeNoJob": "sin nombre de trabajo",
+      "badgeBadDate": "fecha inválida",
+      "badgeBadTotal": "total ignorado",
+      "badgeDupFile": "duplicada en el archivo",
+      "badgeNewJob": "trabajo nuevo",
+      "badgeNewClient": "cliente nuevo",
+      "badgeUnknownStatus": "estado predeterminado",
+      "reasonDuplicateNumber": "el número de cotización ya existe",
+      "skipReason": "falta el número, el trabajo o la fecha — o está duplicada",
+      "importBtn_one": "Importar {{count}} cotización",
+      "importBtn_other": "Importar {{count}} cotizaciones",
+      "importSuccess_one": "{{count}} cotización importada correctamente.",
+      "importSuccess_other": "{{count}} cotizaciones importadas correctamente."
     }
   },
   "smartbid": {
@@ -2354,6 +2474,32 @@
       "copyResult": "Copiar resultado",
       "costLabel": "Costo $",
       "markupLabel": "Margen %"
+    },
+    "import": {
+      "button": "Importar",
+      "title": "Importar precios",
+      "uploadPrompt": "Sube un archivo CSV o Excel con tus tarifas. Las filas que coincidan con un artículo existente por nombre y unidad se omiten, salvo que elijas un modo de actualización.",
+      "mapHint": "Asigna columnas a Nombre y Tarifa para continuar.",
+      "fieldName": "Nombre",
+      "fieldUnit": "Unidad",
+      "fieldRate": "Tarifa",
+      "fieldCategory": "Categoría",
+      "fieldDescription": "Descripción",
+      "colName": "Nombre",
+      "colUnit": "Unidad",
+      "colRate": "Tarifa",
+      "colCategory": "Categoría",
+      "badgeNoName": "sin nombre",
+      "badgeBadRate": "la tarifa debe ser mayor que 0",
+      "badgeUnknownUnit": "unidad predeterminada",
+      "badgeDupFile": "duplicada en el archivo",
+      "reasonMissingFields": "falta el nombre o la tarifa",
+      "reasonExists": "ya está en tu biblioteca",
+      "skipReason": "falta el nombre, tarifa inválida o duplicada",
+      "importBtn_one": "Importar {{count}} tarifa",
+      "importBtn_other": "Importar {{count}} tarifas",
+      "importSuccess_one": "{{count}} tarifa importada correctamente.",
+      "importSuccess_other": "{{count}} tarifas importadas correctamente."
     }
   },
   "resources": {
@@ -2931,6 +3077,34 @@
       "empty": "Aún no hay gastos registrados.",
       "saveFailed": "No se pudo guardar el gasto: {{error}}",
       "deleteFailed": "No se pudo eliminar: {{error}}"
+    },
+    "import": {
+      "button": "Importar",
+      "title": "Importar registros de horas",
+      "uploadPrompt": "Sube un archivo CSV o Excel con las horas registradas. Los trabajadores que no coincidan con tu equipo se crean como inactivos.",
+      "mapHint": "Asigna columnas a Fecha, Trabajador, Nombre del trabajo y Horas para continuar.",
+      "fieldDate": "Fecha",
+      "fieldCrew": "Trabajador",
+      "fieldJobName": "Nombre del trabajo",
+      "fieldHours": "Horas",
+      "fieldNote": "Nota",
+      "colDate": "Fecha",
+      "colCrew": "Trabajador",
+      "colJob": "Trabajo",
+      "colHours": "Horas",
+      "badgeBadDate": "fecha inválida",
+      "badgeNoCrew": "sin trabajador",
+      "badgeNewCrew": "trabajador nuevo",
+      "badgeNoJob": "sin trabajo",
+      "badgeNoJobMatch": "trabajo no encontrado",
+      "badgeBadHours": "horas inválidas",
+      "reasonMissingFields": "falta la fecha, el trabajador o las horas",
+      "reasonNoJobMatch": "trabajo no encontrado",
+      "skipReason": "fecha, trabajador, trabajo u horas faltantes o inválidos",
+      "importBtn_one": "Importar {{count}} registro",
+      "importBtn_other": "Importar {{count}} registros",
+      "importSuccess_one": "{{count}} registro de horas importado correctamente.",
+      "importSuccess_other": "{{count}} registros de horas importados correctamente."
     }
   },
   "blueprint": {
@@ -3428,6 +3602,12 @@
       "tip26": "Diez minutos de juego pueden cansar a un perro más que una caminata larga — una buena sesión de olfatear y buscar ejercita el cerebro y el cuerpo.",
       "tip27": "Un perro en la obra siempre le levanta el ánimo a la cuadrilla.",
       "tip28": "Los perros nos recuerdan tomar un descanso y disfrutar del momento, hasta en un día de trabajo largo."
+    },
+    "documents": {
+      "title": "Documentos ({{count}})",
+      "empty": "Aún no hay documentos.",
+      "open": "Abrir",
+      "openFailed": "No se pudo abrir el documento."
     }
   },
   "admin": {
@@ -4035,6 +4215,43 @@
     "skippedCount": "{{count}} omitidas:",
     "failedCount": "{{count}} fallaron:",
     "andMore": "...y {{count}} más",
-    "done": "Listo"
+    "done": "Listo",
+    "modeLabel": "Qué hacer con registros existentes",
+    "modeAdd": "Solo agregar nuevos",
+    "modeUpdate": "Solo actualizar existentes",
+    "modeBoth": "Agregar y actualizar",
+    "colDisposition": "Acción",
+    "dispositionNew": "Nuevo",
+    "dispositionUpdate": "Actualizar",
+    "dispositionSkip": "Omitir",
+    "updatedCount": "{{count}} actualizados:",
+    "createdCrew": "Trabajador nuevo",
+    "badgeExists": "ya existe",
+    "badgeNoMatch": "sin coincidencia",
+    "badgeLowConfidence": "revisa esto",
+    "docs": {
+      "button": "Desde documentos",
+      "titleInvoices": "Importar facturas desde documentos",
+      "titleEstimates": "Importar cotizaciones desde documentos",
+      "titlePricing": "Importar precios desde documentos",
+      "prompt": "Sube PDF o fotos de facturas, cotizaciones o listas de precios. Hasta 20 archivos de 15 MB cada uno. Nunca se envía nada por correo a tus clientes.",
+      "filesSelected_one": "{{count}} archivo seleccionado.",
+      "filesSelected_other": "{{count}} archivos seleccionados.",
+      "kindLabel": "Tipo de documento",
+      "kind": {
+        "auto": "Detectar",
+        "invoice": "Factura",
+        "quote": "Cotización",
+        "price_list": "Lista de precios"
+      },
+      "extractBtn_one": "Extraer {{count}} documento",
+      "extractBtn_other": "Extraer {{count}} documentos",
+      "extracting": "Extrayendo documento {{current}} de {{total}}...",
+      "extractFailed": "falló la extracción",
+      "nothingExtracted": "No se pudo extraer nada de estos archivos.",
+      "badType": "{{name}} — tipo de archivo no compatible (solo PDF, JPG o PNG)",
+      "tooLarge": "{{name}} — supera el límite de 15 MB",
+      "tooMany": "Solo se conservaron los primeros {{max}} archivos."
+    }
   }
 }

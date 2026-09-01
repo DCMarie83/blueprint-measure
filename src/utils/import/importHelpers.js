@@ -14,6 +14,52 @@ export function mintBatchId(now = new Date()) {
   return `import-${ymd}-${rand}`
 }
 
+// Appended to import_source when a batch updates an existing row, so a row's
+// history reads "import-...-abc123,import-...-def456".
+export function appendBatchId(existingSource, batchId) {
+  if (!existingSource) return batchId
+  if (existingSource.split(',').includes(batchId)) return existingSource
+  return `${existingSource},${batchId}`
+}
+
+export function isPlaceholderSource(importSource) {
+  return typeof importSource === 'string' && importSource.endsWith(':placeholder')
+}
+
+// Update semantics: only mapped non-empty values overwrite; blanks never clear.
+// `values` maps column → candidate value; entries that are '', null, or
+// undefined are dropped from the patch.
+export function buildUpdatePatch(values) {
+  const patch = {}
+  for (const [key, val] of Object.entries(values)) {
+    if (val === '' || val == null) continue
+    patch[key] = val
+  }
+  return patch
+}
+
+export function digitsOnly(value) {
+  return String(value ?? '').replace(/\D/g, '')
+}
+
+// Reads an optional extra worksheet (e.g. "Line Items") from the parser's
+// extraSheets map, returning rows with lowercased/trimmed header keys so
+// lookups are tolerant of header casing.
+export function extraSheetRows(extraSheets, ...names) {
+  if (!extraSheets) return []
+  for (const name of names) {
+    const sheet = extraSheets[name]
+    if (sheet?.rows?.length) {
+      return sheet.rows.map(row => {
+        const out = {}
+        for (const [k, v] of Object.entries(row)) out[String(k).trim().toLowerCase()] = v
+        return out
+      })
+    }
+  }
+  return []
+}
+
 // ── Value parsing ────────────────────────────────────────────────────────────
 
 // Money / numeric: strips $ , and whitespace. Returns a number or null.
@@ -122,6 +168,50 @@ export function deriveInvoiceStatus(total, paid) {
   return 'sent'
 }
 
+// estimates_status_check: draft | sent | accepted | declined | expired | changes_requested.
+export const ESTIMATE_STATUSES = new Set(['draft', 'sent', 'accepted', 'declined', 'expired', 'changes_requested'])
+
+export function normalizeEstimateStatus(value) {
+  const norm = String(value ?? '').trim().toLowerCase().replace(/\s+/g, '_')
+  return ESTIMATE_STATUSES.has(norm) ? norm : null
+}
+
+// change_orders.status: proposed | approved | declined | void.
+export const CHANGE_ORDER_STATUSES = new Set(['proposed', 'approved', 'declined', 'void'])
+
+export function normalizeChangeOrderStatus(value) {
+  const norm = String(value ?? '').trim().toLowerCase()
+  return CHANGE_ORDER_STATUSES.has(norm) ? norm : null
+}
+
+// pricing_items.unit CHECK: sf | lf | each | hour | lump_sum.
+export function normalizeUnit(value, fallback = 'each') {
+  const norm = String(value ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_')
+  if (!norm) return fallback
+  if (['sf', 'lf', 'each', 'hour', 'lump_sum'].includes(norm)) return norm
+  const map = {
+    sqft: 'sf', sq_ft: 'sf', square_feet: 'sf', square_foot: 'sf', ft2: 'sf',
+    lnft: 'lf', lin_ft: 'lf', linear_feet: 'lf', linear_foot: 'lf',
+    ea: 'each', unit: 'each', units: 'each', count: 'each', item: 'each',
+    hr: 'hour', hrs: 'hour', hours: 'hour',
+    ls: 'lump_sum', lump: 'lump_sum', lumpsum: 'lump_sum', flat: 'lump_sum', job: 'lump_sum',
+  }
+  return map[norm] ?? fallback
+}
+
+// Invoice due date from the matched client's billing terms: net_XX adds days,
+// due_on_receipt is the invoice date, anything else (custom, none, no client)
+// falls back to invoice date + 30. Dates are 'YYYY-MM-DD' strings.
+export function dueDateFromTerms(invoiceDate, billingTerms) {
+  if (!invoiceDate) return null
+  const NET_DAYS = { net_15: 15, net_30: 30, net_45: 45, net_60: 60 }
+  if (billingTerms === 'due_on_receipt') return invoiceDate
+  const days = NET_DAYS[billingTerms] ?? 30
+  const [y, m, d] = invoiceDate.split('-').map(Number)
+  const dt = new Date(Date.UTC(y, m - 1, d + days))
+  return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`
+}
+
 // projects_status_check (prod): new_lead | estimating | estimate_sent | approved
 // | in_progress | complete | archived | active.
 export const PROJECT_STATUSES = new Set([
@@ -225,6 +315,31 @@ export function matchClient(index, text) {
   const norm = String(text ?? '').trim().toLowerCase()
   if (!norm) return null
   return index.get(norm) ?? null
+}
+
+// Upsert matcher for the clients importer: email first, then phone digits
+// (last 10), then display_name — all case-insensitive.
+export function buildClientMatcher(clients) {
+  const byEmail = new Map()
+  const byPhone = new Map()
+  const byName = new Map()
+  for (const c of clients ?? []) {
+    const email = String(c.primary_email ?? '').trim().toLowerCase()
+    if (email && !byEmail.has(email)) byEmail.set(email, c)
+    const phone = digitsOnly(c.primary_phone).slice(-10)
+    if (phone.length >= 7 && !byPhone.has(phone)) byPhone.set(phone, c)
+    const name = String(c.display_name ?? '').trim().toLowerCase()
+    if (name && !byName.has(name)) byName.set(name, c)
+  }
+  return function matchClientRow({ primary_email, primary_phone, display_name }) {
+    const email = String(primary_email ?? '').trim().toLowerCase()
+    if (email && byEmail.has(email)) return byEmail.get(email)
+    const phone = digitsOnly(primary_phone).slice(-10)
+    if (phone.length >= 7 && byPhone.has(phone)) return byPhone.get(phone)
+    const name = String(display_name ?? '').trim().toLowerCase()
+    if (name && byName.has(name)) return byName.get(name)
+    return null
+  }
 }
 
 // Placeholder clients created for unmatched names: business-looking names

@@ -27,30 +27,41 @@ export async function parseImportFile(file) {
     const buffer = await file.arrayBuffer()
     await workbook.xlsx.load(buffer)
 
-    const ws = workbook.worksheets[0]
-    if (!ws || ws.rowCount < 2) throw new Error('File is empty or has no data rows')
-
-    const headerRow = ws.getRow(1)
-    const headers = []
-    headerRow.eachCell((cell, colNumber) => {
-      headers[colNumber - 1] = String(cell.value ?? '').trim()
-    })
-
-    const rows = []
-    for (let r = 2; r <= ws.rowCount; r++) {
-      const row = ws.getRow(r)
-      const obj = {}
-      let hasValue = false
-      headers.forEach((h, i) => {
-        const val = String(row.getCell(i + 1).value ?? '').trim()
-        obj[h] = val
-        if (val) hasValue = true
+    const parseSheet = (ws) => {
+      if (!ws || ws.rowCount < 2) return null
+      const headerRow = ws.getRow(1)
+      const headers = []
+      headerRow.eachCell((cell, colNumber) => {
+        headers[colNumber - 1] = String(cell.value ?? '').trim()
       })
-      if (hasValue) rows.push(obj)
+      const rows = []
+      for (let r = 2; r <= ws.rowCount; r++) {
+        const row = ws.getRow(r)
+        const obj = {}
+        let hasValue = false
+        headers.forEach((h, i) => {
+          const val = String(row.getCell(i + 1).value ?? '').trim()
+          obj[h] = val
+          if (val) hasValue = true
+        })
+        if (hasValue) rows.push(obj)
+      }
+      if (rows.length === 0) return null
+      return { headers: headers.filter(Boolean), rows }
     }
 
-    if (rows.length === 0) throw new Error('File has headers but no data rows')
-    return { headers: headers.filter(Boolean), rows }
+    const main = parseSheet(workbook.worksheets[0])
+    if (!main) throw new Error('File is empty or has no data rows')
+
+    // Any additional worksheets (e.g. a "Line Items" sheet) ride along keyed by
+    // lowercased sheet name; entity configs decide whether to use them.
+    const extraSheets = {}
+    for (const ws of workbook.worksheets.slice(1)) {
+      const parsed = parseSheet(ws)
+      if (parsed) extraSheets[String(ws.name ?? '').trim().toLowerCase()] = parsed
+    }
+
+    return { ...main, extraSheets }
   }
 
   throw new Error(`Unsupported file type ".${ext}". Please upload a .csv or .xlsx file.`)

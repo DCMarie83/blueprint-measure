@@ -10,6 +10,7 @@ import { writeJobRows } from '../../utils/import/writeJobs'
 import {
   buildClientIndex, matchClient, resolveKanbanColumn, lowestPositionColumn,
   normalizeProjectStatus, deriveProjectStatusFromColumn, parseMoney, parseDateFlexible,
+  isPlaceholderSource,
 } from '../../utils/import/importHelpers'
 
 const TARGET_FIELDS = [
@@ -41,16 +42,23 @@ export default function JobImportModal({ onClose, onImported }) {
     if (!companyId) return
     let cancelled = false
     ;(async () => {
-      const [{ data: clientRows }, { data: colRows }] = await Promise.all([
+      const [{ data: clientRows }, { data: colRows }, { data: projRows }] = await Promise.all([
         supabase.from('clients').select('id, display_name, business_name, primary_email').eq('company_id', companyId),
         supabase.from('kanban_columns').select('*').eq('company_id', companyId).order('position', { ascending: true }),
+        supabase.from('projects').select('id, name, client_id, import_source').eq('company_id', companyId).is('deleted_at', null),
       ])
       if (cancelled) return
       const columns = colRows ?? []
+      const projectIndex = new Map()
+      for (const p of projRows ?? []) {
+        const key = (p.name ?? '').trim().toLowerCase()
+        if (key && !projectIndex.has(key)) projectIndex.set(key, p)
+      }
       setDeps({
         clientIndex: buildClientIndex(clientRows ?? []),
         columns,
         defaultCol: lowestPositionColumn(columns),
+        projectIndex,
       })
     })()
     return () => { cancelled = true }
@@ -89,6 +97,7 @@ export default function JobImportModal({ onClose, onImported }) {
       name,
       client: clientText,
       address: mapped.address || '',
+      _raw: mapped,
       _clientId: clientMatch?.id ?? null,
       _kanbanColumnId: col?.id ?? null,
       _column: effectiveCol,
@@ -106,6 +115,12 @@ export default function JobImportModal({ onClose, onImported }) {
     targetFields: TARGET_FIELDS,
     requiredTargets: ['name'],
     skipFlags: ['missing_name'],
+    modes: true,
+    matchExisting: (row) => {
+      const match = deps?.projectIndex.get((row.name || '').trim().toLowerCase())
+      if (!match) return null
+      return { id: match.id, isPlaceholder: isPlaceholderSource(match.import_source), existing: match }
+    },
     buildRow,
     reviewColumns: [
       { key: 'job', labelKey: 'jobs:import.colJob', render: (row) => row.name || t('import:empty'), badges: ['missing_name'] },

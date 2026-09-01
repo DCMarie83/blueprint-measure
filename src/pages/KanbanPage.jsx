@@ -13,6 +13,10 @@ import Modal from '../components/ui/Modal'
 import ViewToggle from '../components/ui/ViewToggle'
 import NewProjectForm from '../components/auth/NewProjectForm'
 import JobImportModal from '../components/jobs/JobImportModal'
+import EstimateImportModal from '../components/estimates/EstimateImportModal'
+import ChangeOrderImportModal from '../components/jobs/ChangeOrderImportModal'
+import DocumentImportModal from '../components/import/DocumentImportModal'
+import { useJobMoneyMap } from '../hooks/useJobMoneyMap'
 import JobsListView, { DOT_COLORS } from '../components/jobs/JobsListView'
 import JobsFilterBar from '../components/jobs/JobsFilterBar'
 import { useOpportunities } from '../hooks/useOpportunities'
@@ -39,7 +43,32 @@ function timeAgo(dateStr, t) {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-function SortableJobCard({ project, columnId, accent }) {
+function fmtMoneyCompact(v) {
+  const n = Number(v) || 0
+  return `$${n.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+}
+
+// Compact money strip: current value (contract + approved COs), billed,
+// collected, and an open-CO count. Render-only — data comes from the single
+// company-scoped useJobMoneyMap fetch, never per-card queries.
+function CardMoneyStrip({ project, money }) {
+  const { t } = useTranslation()
+  const currentValue = (Number(project.contract_value) || 0) + (money?.approvedCO || 0)
+  const billed = money?.billed || 0
+  const collected = money?.collected || 0
+  const openCos = money?.openCoCount || 0
+  if (currentValue === 0 && billed === 0 && collected === 0 && openCos === 0) return null
+  return (
+    <div className={styles.cardMeta} style={{ marginTop: 4, gap: 8, flexWrap: 'wrap' }}>
+      {currentValue !== 0 && <span title={t('jobs:money.currentValue')}>{fmtMoneyCompact(currentValue)}</span>}
+      {billed !== 0 && <span>{t('jobs:money.billedShort', { amount: fmtMoneyCompact(billed) })}</span>}
+      {collected !== 0 && <span>{t('jobs:money.collectedShort', { amount: fmtMoneyCompact(collected) })}</span>}
+      {openCos > 0 && <span style={{ color: '#F27243', fontWeight: 600 }}>{t('jobs:money.openCos', { count: openCos })}</span>}
+    </div>
+  )
+}
+
+function SortableJobCard({ project, columnId, accent, money }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -57,11 +86,12 @@ function SortableJobCard({ project, columnId, accent }) {
         <span>{t('jobs:card.blueprintCount', { count: project.session_count })}</span>
         <span>{t('jobs:label.updated', { time: timeAgo(project.updated_at, t) })}</span>
       </div>
+      <CardMoneyStrip project={project} money={money} />
     </div>
   )
 }
 
-function DroppableColumn({ column }) {
+function DroppableColumn({ column, moneyMap }) {
   const { t } = useTranslation()
   const { setNodeRef, isOver } = useDroppable({ id: column.id, data: { columnId: column.id } })
   // Reuse the jobs list-view positional palette so the card top-accent matches
@@ -77,7 +107,7 @@ function DroppableColumn({ column }) {
         <div className={styles.cardList}>
           {column.projects.length === 0 ? (
             <div className={styles.emptyColumn}>{t('jobs:column.emptyDrop')}</div>
-          ) : column.projects.map(p => <SortableJobCard key={p.id} project={p} columnId={column.id} accent={accent} />)}
+          ) : column.projects.map(p => <SortableJobCard key={p.id} project={p} columnId={column.id} accent={accent} money={moneyMap?.get(p.id)} />)}
         </div>
       </SortableContext>
     </div>
@@ -112,7 +142,9 @@ export default function KanbanPage() {
   const [view, setView] = useViewPreference('jobs', 'kanban')
   const [activeId, setActiveId] = useState(null)
   const [showNewJob, setShowNewJob] = useState(false)
-  const [showImport, setShowImport] = useState(false)
+  const [showImport, setShowImport] = useState(null) // 'jobs' | 'estimates' | 'estimateDocs' | 'changeOrders' | null
+  const [importMenuOpen, setImportMenuOpen] = useState(false)
+  const { moneyMap } = useJobMoneyMap()
 
   // Confirm-gated move state (In Progress / Complete)
   const [pendingMove, setPendingMove] = useState(null) // { projectId, fromColumnId, toColumnId, toColName, project }
@@ -266,9 +298,32 @@ export default function KanbanPage() {
           <h1 className={styles.pageTitle}>{t('jobs:page.title')}</h1>
           <div className={styles.headerActions}>
             <ViewToggle view={view} onChange={setView} options={VIEW_OPTIONS.map(o => ({ ...o, label: t(o.label) }))} />
-            <button className={`${styles.newJobBtn} ${styles.importJobsBtn}`} onClick={() => setShowImport(true)}>
-              <Upload size={16} /> {t('jobs:import.button')}
-            </button>
+            <div style={{ position: 'relative' }}>
+              <button className={`${styles.newJobBtn} ${styles.importJobsBtn}`} onClick={() => setImportMenuOpen(o => !o)}>
+                <Upload size={16} /> {t('jobs:import.button')} ▾
+              </button>
+              {importMenuOpen && (
+                <>
+                  <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setImportMenuOpen(false)} />
+                  <div style={{ position: 'absolute', right: 0, top: '110%', zIndex: 41, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', minWidth: 220, overflow: 'hidden' }}>
+                    {[
+                      { key: 'jobs', label: t('jobs:import.menuJobs') },
+                      { key: 'estimates', label: t('jobs:import.menuEstimates') },
+                      { key: 'estimateDocs', label: t('jobs:import.menuEstimateDocs') },
+                      { key: 'changeOrders', label: t('jobs:import.menuChangeOrders') },
+                    ].map(item => (
+                      <button
+                        key={item.key}
+                        onClick={() => { setImportMenuOpen(false); setShowImport(item.key) }}
+                        style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', fontSize: 13, fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text, #1b2426)' }}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
             <button className={styles.newJobBtn} onClick={() => setShowNewJob(true)}>
               <Plus size={16} /> {t('jobs:page.newJob')}
             </button>
@@ -306,7 +361,7 @@ export default function KanbanPage() {
                   onDragCancel={() => setActiveId(null)}
                   onDragEnd={handleDragEnd}>
                   <div className={styles.board}>
-                    {filteredColumns.map(col => <DroppableColumn key={col.id} column={col} />)}
+                    {filteredColumns.map(col => <DroppableColumn key={col.id} column={col} moneyMap={moneyMap} />)}
                   </div>
                   <DragOverlay>
                     {activeProject ? <DragCardDisplay project={activeProject} /> : null}
@@ -317,6 +372,7 @@ export default function KanbanPage() {
               <JobsListView
                 projects={filteredProjects}
                 columns={columns}
+                moneyMap={moneyMap}
                 onClickProject={(id) => navigate(`/project/${id}`)}
               />
             )}
@@ -330,9 +386,27 @@ export default function KanbanPage() {
         </Modal>
       )}
 
-      {showImport && (
-        <Modal title={t('jobs:import.title')} onClose={() => setShowImport(false)}>
-          <JobImportModal onClose={() => setShowImport(false)} onImported={refetch} />
+      {showImport === 'jobs' && (
+        <Modal title={t('jobs:import.title')} onClose={() => setShowImport(null)}>
+          <JobImportModal onClose={() => setShowImport(null)} onImported={refetch} />
+        </Modal>
+      )}
+
+      {showImport === 'estimates' && (
+        <Modal title={t('estimates:import.title')} onClose={() => setShowImport(null)}>
+          <EstimateImportModal onClose={() => setShowImport(null)} onImported={refetch} />
+        </Modal>
+      )}
+
+      {showImport === 'estimateDocs' && (
+        <Modal title={t('import:docs.titleEstimates')} onClose={() => setShowImport(null)}>
+          <DocumentImportModal entity="estimates" onClose={() => setShowImport(null)} onImported={refetch} />
+        </Modal>
+      )}
+
+      {showImport === 'changeOrders' && (
+        <Modal title={t('jobs:changeOrders.import.title')} onClose={() => setShowImport(null)}>
+          <ChangeOrderImportModal onClose={() => setShowImport(null)} onImported={refetch} />
         </Modal>
       )}
 

@@ -17,7 +17,12 @@ export const DOT_COLORS = [
   '#6366f1',
 ]
 
-export default function JobsListView({ projects, columns, onClickProject }) {
+function fmtMoneyCompact(v) {
+  const n = Number(v) || 0
+  return `$${n.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+}
+
+export default function JobsListView({ projects, columns, onClickProject, moneyMap = null }) {
   const { t } = useTranslation()
   const { clients } = useClients()
 
@@ -38,6 +43,10 @@ export default function JobsListView({ projects, columns, onClickProject }) {
         const linkedClient = project.client_id ? clients.find(c => c.id === project.client_id) : null
         const clientLabel = linkedClient?.display_name || project.client_name || null
 
+        const money = moneyMap?.get(project.id)
+        const currentValue = (Number(project.contract_value) || 0) + (money?.approvedCO || 0)
+        const hasMoney = currentValue !== 0 || (money?.billed || 0) !== 0 || (money?.collected || 0) !== 0 || (money?.openCoCount || 0) > 0
+
         return (
           <div key={project.id} className={styles.row} onClick={() => onClickProject(project.id)}>
             <span className={styles.dot} style={{ background: dotColor }} />
@@ -48,6 +57,14 @@ export default function JobsListView({ projects, columns, onClickProject }) {
                 {project.address && <> · {project.address}</>}
               </span>
             </div>
+            {hasMoney && (
+              <span style={{ display: 'inline-flex', gap: 8, fontSize: 12, color: 'var(--color-text-muted)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                {currentValue !== 0 && <span title={t('jobs:money.currentValue')}>{fmtMoneyCompact(currentValue)}</span>}
+                {(money?.billed || 0) !== 0 && <span>{t('jobs:money.billedShort', { amount: fmtMoneyCompact(money.billed) })}</span>}
+                {(money?.collected || 0) !== 0 && <span>{t('jobs:money.collectedShort', { amount: fmtMoneyCompact(money.collected) })}</span>}
+                {(money?.openCoCount || 0) > 0 && <span style={{ color: '#F27243', fontWeight: 600 }}>{t('jobs:money.openCos', { count: money.openCoCount })}</span>}
+              </span>
+            )}
             <span className={styles.statusPill}>{colName}</span>
             <span className={styles.updated}>{t('jobs:label.updated', { time: timeAgo(project.updated_at) })}</span>
             <span className={styles.chevron}><ChevronRight size={16} /></span>

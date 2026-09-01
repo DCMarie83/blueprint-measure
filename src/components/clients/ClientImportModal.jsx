@@ -4,7 +4,7 @@ import { useClients } from '../../hooks/useClients'
 import ImportWizardModal from '../import/ImportWizardModal'
 import { downloadClientTemplate } from '../../utils/import/templates'
 import { writeClientRows } from '../../utils/import/writeClients'
-import { normalizeClientType, normalizeBillingTerms, isValidEmail } from '../../utils/import/importHelpers'
+import { normalizeClientType, normalizeBillingTerms, isValidEmail, buildClientMatcher, isPlaceholderSource } from '../../utils/import/importHelpers'
 import styles from '../import/ImportWizardModal.module.css'
 
 const TARGET_FIELDS = [
@@ -61,7 +61,7 @@ function buildRow(mapped, ctx) {
   row.billing_terms = normalizeBillingTerms(rawTerms)
   if (rawTerms && !row.billing_terms) warnings.push('unknown_terms')
 
-  return { ...row, _flags: flags, _warnings: warnings }
+  return { ...row, _raw: mapped, _flags: flags, _warnings: warnings }
 }
 
 function addressOf(row) {
@@ -73,11 +73,19 @@ export default function ClientImportModal({ onClose, onImported }) {
   const { companyId } = useEffectiveCompany()
   const { clients } = useClients()
 
+  const matchClientRow = buildClientMatcher(clients)
+
   const config = {
     ns: 'clients:import',
     targetFields: TARGET_FIELDS,
     requiredTargets: ['display_name'],
     skipFlags: ['missing_name', 'invalid_email'],
+    modes: true,
+    matchExisting: (row) => {
+      const match = matchClientRow(row)
+      if (!match) return null
+      return { id: match.id, isPlaceholder: isPlaceholderSource(match.import_source), existing: match }
+    },
     dedupeKey: (row) => (row.primary_email || '').trim().toLowerCase() || null,
     buildRow,
     reviewColumns: [

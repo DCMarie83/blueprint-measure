@@ -19,6 +19,7 @@ export function useClients() {
         .from('clients')
         .select('*, projects(id, name), client_addresses(city, state, is_primary)')
         .eq('company_id', companyId)
+        .is('projects.deleted_at', null)
         .order('display_name', { ascending: true })
       if (err) throw err
       const enriched = (data ?? []).map(c => {

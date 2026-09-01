@@ -1,27 +1,32 @@
 import { supabase } from '../../lib/supabase'
 import { makeClientCreator, makeProjectCreator } from './placeholders'
+import { appendBatchId, buildUpdatePatch, normalizeUnit } from './importHelpers'
+import { logImportActivity } from './activity'
 
 // Writer for the Invoices + Payments import. Rows arrive from the review step
-// with parsing, matching and status resolution already applied:
-//   invoice_number, job_name, client (raw text), notes
-//   _invoiceDate  'YYYY-MM-DD' (required)
-//   _total        number > 0 (required)
-//   _amountPaid   number >= 0
-//   _paidDate     'YYYY-MM-DD' or null
-//   _status       final status (explicit valid status wins, else derived)
-//   _method       normalized payment method or null
-//   _methodOriginal  original text when an unknown method was coerced to 'other'
-//   _projectId / _projectClientId  matched project, or null (placeholder created)
-//   _clientId     matched client id, or null
+// with parsing, matching, status resolution, and due-date derivation applied:
+//   invoice_number  may be '' — a placeholder IMPORT-<batch>-<rowN> is minted
+//   job_name, client, notes (notes land in payment_notes, never invoices.notes)
+//   _invoiceDate    'YYYY-MM-DD' (required) — becomes created_at/updated_at so
+//                   reports bucket imported history into the right period
+//   _total          number > 0, or null (_noTotal rows import as draft, total 0)
+//   _amountPaid / _paidDate / _status / _method / _methodOriginal
+//   _dueDate        derived from the matched client's billing terms
+//   _lines          optional [{ description, category, item_type, unit, quantity, unit_rate }]
+//   _projectId / _projectClientId / _clientId / _disposition / _existingId
+//
+// Line-item invariant enforced here: per-line total = quantity × unit_rate,
+// subtotal = Σ line totals, and any gap to the header total is written as
+// adjustment_amount so subtotal === total − adjustment always holds.
 //
 // Legacy invoice numbers are stored verbatim; generate_invoice_number is NEVER
-// called, and no send-* edge function is ever invoked. Status/paid_amount are
-// written directly — clients.lifetime_value updates via the existing DB
-// triggers on invoices/invoice_payments.
+// called, and no send-* edge function is ever invoked. clients.lifetime_value
+// updates via the existing DB triggers on invoice_payments.
 export async function writeInvoiceRows({
   rows, batchId, onProgress, companyId, userId, existingNumbers, placeholderColumnId,
 }) {
   const imported = []
+  const updated = []
   const skipped = []
   const failed = []
   const created = []
@@ -34,18 +39,54 @@ export async function writeInvoiceRows({
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i]
-    const number = (row.invoice_number || '').trim()
-    const label = number || `Row ${i + 2}`
-
-    const numberKey = number.toLowerCase()
-    if (seenNumbers.has(numberKey)) {
-      skipped.push({ name: label, reason: 'duplicate_number' })
-      onProgress?.(i + 1, rows.length)
-      continue
-    }
+    const raw = row._raw ?? row
+    const number = (row.invoice_number || '').trim() || `IMPORT-${batchId}-${i + 2}`
+    const label = number
 
     try {
       const clientText = (row.client || '').trim()
+      const noteText = (row.notes || '').trim()
+      const methodNote = row._methodOriginal ? `Original payment method: ${row._methodOriginal}` : ''
+      const paymentNotes = [noteText, methodNote].filter(Boolean).join(' · ') || null
+
+      // ── Update existing invoice ─────────────────────────────
+      if (row._disposition === 'update' && row._existingId) {
+        let clientId = row._clientId ?? null
+        if (!clientId && clientText) clientId = await createClient(clientText)
+
+        const hasDate = !!row._invoiceDate
+        const hasTotal = row._total != null
+        const patch = buildUpdatePatch({
+          status: (raw.status || '').trim() ? row._status : null,
+          total: hasTotal ? row._total : null,
+          subtotal: hasTotal ? row._total : null,
+          paid_amount: (raw.amount_paid || '').trim() && row._amountPaid > 0 ? row._amountPaid : null,
+          paid_at: row._status === 'paid' ? (row._paidDate || row._invoiceDate) : null,
+          due_date: hasDate ? row._dueDate : null,
+          payment_method: (raw.payment_method || '').trim() ? row._method : null,
+          payment_notes: paymentNotes,
+          client_id: clientText ? clientId : null,
+          created_at: hasDate ? row._invoiceDate : null,
+          updated_at: hasDate ? row._invoiceDate : null,
+        })
+        patch.import_source = appendBatchId(row._existing?.import_source, batchId)
+        if (!patch.updated_at) patch.updated_at = new Date().toISOString()
+
+        const { error: updErr } = await supabase.from('invoices').update(patch).eq('id', row._existingId)
+        if (updErr) throw new Error(updErr.message)
+        updated.push({ name: label })
+        onProgress?.(i + 1, rows.length)
+        continue
+      }
+
+      // ── Insert new invoice ──────────────────────────────────
+      const numberKey = number.toLowerCase()
+      if (seenNumbers.has(numberKey)) {
+        skipped.push({ name: label, reason: 'duplicate_number' })
+        onProgress?.(i + 1, rows.length)
+        continue
+      }
+
       let clientId = row._clientId ?? null
       if (!clientId && clientText) {
         clientId = await createClient(clientText)
@@ -59,7 +100,35 @@ export async function writeInvoiceRows({
         projectClientId = proj.client_id
       }
 
-      const status = row._status
+      const noTotal = row._total == null
+      const total = noTotal ? 0 : row._total
+      const status = noTotal ? 'draft' : row._status
+      const amountPaid = noTotal ? 0 : row._amountPaid
+
+      // Line items: per-line total = qty × rate; subtotal = line sum; the gap
+      // to the header total becomes adjustment_amount (subtotal === total − adjustment).
+      const lines = (row._lines ?? []).map((li, idx) => {
+        const qty = Number(li.quantity) || 0
+        const rate = Number(li.unit_rate) || 0
+        return {
+          description: (li.description || '').trim() || '—',
+          category_name: (li.category || li.category_name || '').trim() || null,
+          item_type: (li.item_type || '').trim().toLowerCase() || null,
+          unit: normalizeUnit(li.unit, 'each'),
+          quantity: qty,
+          unit_rate: rate,
+          total: Math.round(qty * rate * 100) / 100,
+          sort_order: idx,
+        }
+      })
+      const VALID_ITEM_TYPES = new Set(['labor', 'material', 'supply', 'equipment', 'subcontractor', 'other'])
+      for (const li of lines) {
+        if (li.item_type && !VALID_ITEM_TYPES.has(li.item_type)) li.item_type = 'other'
+      }
+      const lineSum = Math.round(lines.reduce((s, li) => s + li.total, 0) * 100) / 100
+      const subtotal = lines.length > 0 ? lineSum : total
+      const adjustment = lines.length > 0 ? Math.round((total - lineSum) * 100) / 100 : 0
+
       const paidAt = status === 'paid' ? (row._paidDate || row._invoiceDate) : null
 
       const { data: invoice, error: insErr } = await supabase
@@ -70,28 +139,47 @@ export async function writeInvoiceRows({
           client_id: clientText ? clientId : projectClientId,
           invoice_number: number,
           status,
-          subtotal: row._total,
-          total: row._total,
-          sent_at: row._invoiceDate,
-          paid_amount: row._amountPaid > 0 ? row._amountPaid : null,
+          subtotal,
+          adjustment_amount: adjustment,
+          adjustment_label: adjustment !== 0 ? 'Import adjustment' : null,
+          total,
+          sent_at: status === 'draft' ? null : row._invoiceDate,
+          due_date: row._dueDate,
+          paid_amount: amountPaid > 0 ? amountPaid : null,
           paid_at: paidAt,
           payment_method: row._method,
-          payment_notes: row._methodOriginal ? `Original payment method: ${row._methodOriginal}` : null,
-          notes: (row.notes || '').trim() || null,
+          payment_notes: paymentNotes,
           created_by: userId,
+          created_at: row._invoiceDate,
+          updated_at: row._invoiceDate,
           import_source: batchId,
         })
         .select('id')
         .single()
       if (insErr) throw new Error(insErr.message)
+      row._createdId = invoice.id
 
-      if (row._amountPaid > 0) {
+      if (lines.length > 0) {
+        const { error: liErr } = await supabase.from('invoice_line_items').insert(
+          lines.map(li => ({ ...li, invoice_id: invoice.id }))
+        )
+        if (liErr) {
+          seenNumbers.add(numberKey)
+          throw new Error(`Invoice created but line items failed: ${liErr.message}`)
+        }
+      }
+
+      const activityClientId = clientText ? clientId : projectClientId
+
+      if (amountPaid > 0) {
+        const paymentDate = row._paidDate || row._invoiceDate
         const { error: pmtErr } = await supabase.from('invoice_payments').insert({
           invoice_id: invoice.id,
           company_id: companyId,
-          amount: row._amountPaid,
+          amount: amountPaid,
           payment_method: row._method,
-          payment_date: row._paidDate || row._invoiceDate,
+          payment_date: paymentDate,
+          created_at: paymentDate,
           notes: `imported ${batchId}`,
           recorded_by: userId,
         })
@@ -99,9 +187,28 @@ export async function writeInvoiceRows({
           seenNumbers.add(numberKey)
           throw new Error(`Invoice created but payment failed: ${pmtErr.message}`)
         }
-        // No client-side ledger recompute here: the invoice row already carries
-        // the correct paid_amount/status, and the LTV triggers do the rest.
+        // No client-side ledger recompute: the invoice row already carries the
+        // correct paid_amount/status, and the LTV triggers do the rest.
+        await logImportActivity({
+          companyId,
+          userId,
+          clientId: activityClientId,
+          activityType: 'invoice_paid',
+          title: `Payment of $${amountPaid.toFixed(2)} received`,
+          createdAt: paymentDate,
+          metadata: { import_source: batchId, invoice_id: invoice.id, invoice_number: number },
+        })
       }
+
+      await logImportActivity({
+        companyId,
+        userId,
+        clientId: activityClientId,
+        activityType: 'invoice_created',
+        title: `Invoice ${number} imported`,
+        createdAt: row._invoiceDate,
+        metadata: { import_source: batchId, invoice_id: invoice.id, invoice_number: number },
+      })
 
       seenNumbers.add(numberKey)
       imported.push({ name: label })
@@ -112,5 +219,5 @@ export async function writeInvoiceRows({
     onProgress?.(i + 1, rows.length)
   }
 
-  return { imported, skipped, failed, created }
+  return { imported, updated, skipped, failed, created }
 }

@@ -626,6 +626,71 @@ a21 AS (
          CASE WHEN (SELECT count(*) FROM a21_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
          coalesce('PROBLEMS: ' || (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a21_bad),
                   'cron-only; no browser role can execute')::text
+),
+
+-- ── A22 ────────────────────────────────────────────────────────────
+-- documents and change_orders are the Document Import / change-order tables
+-- added live in the SQL Editor. Both hold tenant business records, so RLS
+-- must be enabled and every verb must be covered by at least one policy that
+-- scopes on company_id. A table with RLS off — or with a verb no policy
+-- covers — silently leaks or bricks the importers.
+a22_bad AS (
+  SELECT 'missing-table:' || t.tbl AS problem
+  FROM (VALUES ('documents'), ('change_orders')) AS t(tbl)
+  WHERE to_regclass('public.' || t.tbl) IS NULL
+  UNION ALL
+  SELECT 'rls-disabled:' || c.relname
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public' AND c.relname IN ('documents', 'change_orders')
+    AND NOT c.relrowsecurity
+  UNION ALL
+  SELECT 'missing-policy:' || t.tbl || ':' || v.verb
+  FROM (VALUES ('documents'), ('change_orders')) AS t(tbl)
+  CROSS JOIN (VALUES ('SELECT'), ('INSERT'), ('UPDATE'), ('DELETE')) AS v(verb)
+  WHERE to_regclass('public.' || t.tbl) IS NOT NULL
+    AND NOT EXISTS (
+      SELECT 1 FROM pg_policies p
+      WHERE p.schemaname = 'public' AND p.tablename = t.tbl
+        AND (p.cmd = v.verb OR p.cmd = 'ALL')
+        AND (coalesce(p.qual, '') ILIKE '%company_id%' OR coalesce(p.with_check, '') ILIKE '%company_id%'))
+),
+a22 AS (
+  SELECT 'A22'::text,
+         'documents + change_orders: RLS enabled with company-scoped policies for all four verbs'::text,
+         CASE WHEN (SELECT count(*) FROM a22_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
+         coalesce('PROBLEMS: ' || (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a22_bad),
+                  'both tables RLS-enabled and company-scoped on every verb')::text
+),
+
+-- ── A23 ────────────────────────────────────────────────────────────
+-- The import-documents bucket is PRIVATE and company-scoped by the first
+-- path segment. The bucket must exist, must not be public, and
+-- storage.objects must carry select/insert/delete policies that name the
+-- bucket (uploads and signed-URL reads break without them; a public bucket
+-- would expose every tenant's uploaded invoices).
+a23_bad AS (
+  SELECT 'bucket-missing'::text AS problem
+  WHERE NOT EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'import-documents')
+  UNION ALL
+  SELECT 'bucket-public'
+  WHERE EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'import-documents' AND public)
+  UNION ALL
+  SELECT 'missing-storage-policy:' || v.verb
+  FROM (VALUES ('SELECT'), ('INSERT'), ('DELETE')) AS v(verb)
+  WHERE EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'import-documents')
+    AND NOT EXISTS (
+      SELECT 1 FROM pg_policies p
+      WHERE p.schemaname = 'storage' AND p.tablename = 'objects'
+        AND (p.cmd = v.verb OR p.cmd = 'ALL')
+        AND (coalesce(p.qual, '') ILIKE '%import-documents%' OR coalesce(p.with_check, '') ILIKE '%import-documents%'))
+),
+a23 AS (
+  SELECT 'A23'::text,
+         'storage bucket import-documents: private, with select/insert/delete policies on storage.objects'::text,
+         CASE WHEN (SELECT count(*) FROM a23_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
+         coalesce('PROBLEMS: ' || (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a23_bad),
+                  'private bucket with all three verb policies present')::text
 )
 
 SELECT * FROM a1
@@ -649,4 +714,6 @@ UNION ALL SELECT * FROM a18
 UNION ALL SELECT * FROM a19
 UNION ALL SELECT * FROM a20
 UNION ALL SELECT * FROM a21
+UNION ALL SELECT * FROM a22
+UNION ALL SELECT * FROM a23
 ORDER BY id;

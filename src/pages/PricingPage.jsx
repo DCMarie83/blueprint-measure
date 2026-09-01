@@ -1,11 +1,13 @@
 import { useState, useRef, Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react'
+import { Plus, Trash2, ChevronDown, ChevronRight, Upload, FileScan } from 'lucide-react'
 import Modal from '../components/ui/Modal'
 import { useAuth } from '../context/AuthContext'
 import { usePricingCategories } from '../hooks/usePricingCategories'
 import { usePricingItems } from '../hooks/usePricingItems'
 import MaterialsPricingTab from '../components/materials/MaterialsPricingTab'
+import PricingImportModal from '../components/pricing/PricingImportModal'
+import DocumentImportModal from '../components/import/DocumentImportModal'
 import styles from './PricingPage.module.css'
 
 const tabBtn = (active) => ({
@@ -15,8 +17,8 @@ const tabBtn = (active) => ({
 })
 
 export default function PricingPage() {
-  const { categories, loading: catLoading, createCategory, deleteCategory } = usePricingCategories()
-  const { items, loading: itemLoading, createItem, updateItem, deleteItem } = usePricingItems()
+  const { categories, loading: catLoading, createCategory, deleteCategory, refetch: refetchCategories } = usePricingCategories()
+  const { items, loading: itemLoading, createItem, updateItem, deleteItem, refetch: refetchItems } = usePricingItems()
   const { userProfile, isSuperAdmin } = useAuth()
   const { t } = useTranslation()
   const isAdmin = userProfile?.role === 'contractor_admin' || isSuperAdmin
@@ -27,6 +29,8 @@ export default function PricingPage() {
   const [showAddItem, setShowAddItem] = useState(null) // category_id or null
   const [catForm, setCatForm] = useState({ name: '', trade_vertical: '' })
   const [itemForm, setItemForm] = useState({ name: '', unit: 'sf', default_rate: '', description: '' })
+  const [showImport, setShowImport] = useState(false)
+  const [showDocImport, setShowDocImport] = useState(false)
 
   // Inline rate editing.
   const [editingId, setEditingId] = useState(null)
@@ -122,11 +126,30 @@ export default function PricingPage() {
         <div className={styles.pageHeader}>
           <h1 className={styles.title}>{t('pricing:header.title')}</h1>
           {tab === 'estimate' && isAdmin && (
-            <button className={styles.newBtn} onClick={() => setShowAddCategory(true)}>
-              <Plus size={16} /> {t('pricing:actions.newCategory')}
-            </button>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button className={styles.newBtn} style={{ background: 'none', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }} onClick={() => setShowImport(true)}>
+                <Upload size={16} /> {t('pricing:import.button')}
+              </button>
+              <button className={styles.newBtn} style={{ background: 'none', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }} onClick={() => setShowDocImport(true)}>
+                <FileScan size={16} /> {t('import:docs.button')}
+              </button>
+              <button className={styles.newBtn} onClick={() => setShowAddCategory(true)}>
+                <Plus size={16} /> {t('pricing:actions.newCategory')}
+              </button>
+            </div>
           )}
         </div>
+
+        {showImport && (
+          <Modal title={t('pricing:import.title')} onClose={() => setShowImport(false)}>
+            <PricingImportModal onClose={() => setShowImport(false)} onImported={() => { refetchCategories(); refetchItems() }} />
+          </Modal>
+        )}
+        {showDocImport && (
+          <Modal title={t('import:docs.titlePricing')} onClose={() => setShowDocImport(false)}>
+            <DocumentImportModal entity="pricing" onClose={() => setShowDocImport(false)} onImported={() => { refetchCategories(); refetchItems() }} />
+          </Modal>
+        )}
 
         <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid var(--color-border)', marginBottom: 20 }}>
           <button style={tabBtn(tab === 'estimate')} onClick={() => setTab('estimate')}>{t('pricing:tabs.estimate')}</button>

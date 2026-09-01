@@ -25,7 +25,18 @@ import ExpensesSection from '../components/expenses/ExpensesSection'
 import { BRAND } from '../lib/config'
 import { trackMaterials } from '../lib/analytics'
 import SmartBadge from '../components/smartbid/SmartBadge'
+import InvoiceStatusBadge from '../components/invoices/InvoiceStatusBadge'
+import ChangeOrdersSection from '../components/jobs/ChangeOrdersSection'
+import JobTimeSection from '../components/jobs/JobTimeSection'
+import DocumentsSection from '../components/documents/DocumentsSection'
+import { useInvoices, isOverdue } from '../hooks/useInvoices'
+import { useChangeOrders } from '../hooks/useChangeOrders'
 import styles from './DashboardPage.module.css'
+
+function fmtMoneyShort(v) {
+  const n = Number(v) || 0
+  return `$${n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+}
 
 function timeAgo(dateStr, t) {
   if (!dateStr) return ''
@@ -80,6 +91,53 @@ export default function ProjectDetailPage() {
   // Client linking
   const { clients } = useClients()
   const { estimates, createEstimate } = useEstimates(projectId)
+  const { invoices, refetch: refetchInvoices } = useInvoices({ projectId })
+  const { changeOrders, approvedTotal, createChangeOrder, updateChangeOrder, deleteChangeOrder, refetch: refetchChangeOrders } = useChangeOrders(projectId)
+  const [collected, setCollected] = useState(0)
+  const [projectDocs, setProjectDocs] = useState([])
+
+  // Collected = the payments ledger for this job's invoices.
+  useEffect(() => {
+    const ids = invoices.map(inv => inv.id)
+    if (ids.length === 0) { setCollected(0); return }
+    let cancelled = false
+    ;(async () => {
+      const { data } = await supabase.from('invoice_payments').select('amount').in('invoice_id', ids)
+      if (!cancelled) setCollected((data ?? []).reduce((s, p) => s + (Number(p.amount) || 0), 0))
+    })()
+    return () => { cancelled = true }
+  }, [invoices])
+
+  // Documents linked to this job or to its invoices/estimates.
+  useEffect(() => {
+    if (!projectId || !company?.id) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const invoiceIds = invoices.map(i => i.id)
+        const estimateIds = estimates.map(e => e.id)
+        const orParts = [`and(linked_type.eq.project,linked_id.eq.${projectId})`]
+        if (invoiceIds.length > 0) orParts.push(`and(linked_type.eq.invoice,linked_id.in.(${invoiceIds.join(',')}))`)
+        if (estimateIds.length > 0) orParts.push(`and(linked_type.eq.estimate,linked_id.in.(${estimateIds.join(',')}))`)
+        const { data } = await supabase
+          .from('documents')
+          .select('id, linked_type, linked_id, bucket_path, doc_type, original_filename, created_at')
+          .eq('company_id', company.id)
+          .or(orParts.join(','))
+          .order('created_at', { ascending: false })
+        if (!cancelled) setProjectDocs(data ?? [])
+      } catch { if (!cancelled) setProjectDocs([]) }
+    })()
+    return () => { cancelled = true }
+  }, [projectId, company?.id, invoices, estimates])
+
+  // Money header: contract value + approved change orders = current value;
+  // billed excludes draft and void (matching Reports); collected is the ledger.
+  const billed = invoices
+    .filter(inv => inv.status !== 'draft' && inv.status !== 'void')
+    .reduce((s, inv) => s + (Number(inv.total) || 0), 0)
+  const contractValue = Number(project?.contract_value) || 0
+  const currentValue = contractValue + approvedTotal
   const { orders: materialOrders, createOrder: createMaterialOrder, updateOrder: updateMaterialOrder, deleteOrder: deleteMaterialOrder } = useMaterialOrders(projectId)
   const [editingOrderId, setEditingOrderId] = useState(null)
   const [editingTitle, setEditingTitle] = useState('')
@@ -260,6 +318,21 @@ export default function ProjectDetailPage() {
                 style={{ padding: '4px 8px', fontSize: 13, border: '1px solid var(--color-border)', borderRadius: 4, background: 'var(--color-bg)', color: 'var(--color-text)' }}
               />
             </div>
+          </div>
+
+          {/* Money header: contract + approved COs = current value · billed · collected */}
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 16 }}>
+            {[
+              { key: 'currentValue', value: currentValue, sub: approvedTotal !== 0 ? t('jobs:money.withCOs', { base: fmtMoneyShort(contractValue), cos: fmtMoneyShort(approvedTotal) }) : null },
+              { key: 'billed', value: billed },
+              { key: 'collected', value: collected },
+            ].map(stat => (
+              <div key={stat.key} style={{ flex: '1 1 140px', maxWidth: 220, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)', padding: '10px 14px' }}>
+                <div style={{ fontSize: 11, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>{t(`jobs:money.${stat.key}`)}</div>
+                <div style={{ fontSize: 18, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{fmtMoneyShort(stat.value)}</div>
+                {stat.sub && <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>{stat.sub}</div>}
+              </div>
+            ))}
           </div>
         </div>
 
@@ -553,6 +626,54 @@ export default function ProjectDetailPage() {
             </div>
           )}
         </section>
+
+        {/* Invoices */}
+        <section style={{ marginBottom: 24 }}>
+          <h3 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 'var(--tracking-caps)', color: 'var(--color-text-muted)', margin: '0 0 14px' }}>
+            {t('jobs:invoicesSection.title', { count: invoices.length })}
+          </h3>
+          {invoices.length === 0 ? (
+            <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>{t('jobs:invoicesSection.empty')}</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {invoices.map(inv => (
+                <div
+                  key={inv.id}
+                  onClick={() => navigate(`/invoices/${inv.id}`)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}
+                >
+                  <span style={{ fontWeight: 600, fontSize: 14, fontFamily: 'var(--font-mono)' }}>{inv.invoice_number}</span>
+                  <span style={{ flex: 1, fontSize: 12, color: 'var(--color-text-muted)' }}>
+                    {inv.created_at ? new Date(inv.created_at).toLocaleDateString() : ''}
+                  </span>
+                  <InvoiceStatusBadge status={inv.status} isOverdue={isOverdue(inv)} />
+                  <span style={{ fontSize: 13, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+                    ${Number(inv.total ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Change orders */}
+        <ChangeOrdersSection
+          projectId={projectId}
+          projectName={project.name}
+          isAdmin={isAdmin}
+          changeOrders={changeOrders}
+          approvedTotal={approvedTotal}
+          createChangeOrder={createChangeOrder}
+          updateChangeOrder={updateChangeOrder}
+          deleteChangeOrder={deleteChangeOrder}
+          refetch={() => { refetchChangeOrders(); refetchInvoices() }}
+        />
+
+        {/* Time entries */}
+        <JobTimeSection projectId={projectId} companyId={company?.id} />
+
+        {/* Documents */}
+        <DocumentsSection documents={projectDocs} />
       </main>
 
       {showAddBlueprint && (

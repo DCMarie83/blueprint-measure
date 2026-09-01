@@ -3,6 +3,7 @@ import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Menu, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useEffectiveCompany } from '../hooks/useEffectiveCompany'
 import { useIsLite } from '../hooks/useIsLite'
 import { useLiteNavSections } from '../hooks/useLiteNavSections'
 import { supabase } from '../lib/supabase'
@@ -49,7 +50,10 @@ function NavLink({ to, label, active, onClick }) {
 export default function AppHeader({ extras = null }) {
   const location = useLocation()
   const { t } = useTranslation()
-  const { company, user, refreshUserProfile } = useAuth()
+  const { user, refreshUserProfile } = useAuth()
+  // Impersonation-aware: while acting as a tenant, the header shows the ACTING
+  // company's identity everywhere — the home company name never renders.
+  const { company, isImpersonating } = useEffectiveCompany()
   const { isLite, resolved } = useIsLite()
   const liteSections = useLiteNavSections(isLite && resolved)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -100,10 +104,17 @@ export default function AppHeader({ extras = null }) {
                 />
                 <span className={styles.tenantName}>{company.name}</span>
               </>
+            ) : isImpersonating && company?.name ? (
+              <span className={styles.tenantName}>{company.name}</span>
             ) : (
               <Logo variant="mark" />
             )}
           </Link>
+          {isImpersonating && (
+            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 9999, background: 'rgba(242,114,67,0.14)', color: '#F27243', whiteSpace: 'nowrap' }}>
+              {t('common:impersonation.actingAs', { company: company?.name || t('common:impersonation.tenantFallback') })}
+            </span>
+          )}
           <nav className={styles.primaryNav}>
             {primaryNav.map(item => (
               <NavLink key={item.to} to={item.to} label={t(item.label)} active={isActive(item.to)} />

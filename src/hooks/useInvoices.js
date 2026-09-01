@@ -34,7 +34,9 @@ export function useInvoices({ projectId, clientId, status: statusFilter, dateFro
 
       let results = data ?? []
       if (clientId) {
-        results = results.filter(inv => inv.projects?.client_id === clientId)
+        // Match either FK: invoices.client_id (set by imports and, now, by
+        // createInvoice) OR the parent project's client.
+        results = results.filter(inv => inv.client_id === clientId || inv.projects?.client_id === clientId)
       }
       setInvoices(results)
     } catch (err) {
@@ -109,11 +111,16 @@ export function useInvoiceMutations() {
       const subtotal = lineItems.reduce((sum, li) => sum + (Number(li.quantity || 0) * Number(li.rate || 0)), 0)
       const total = subtotal + (Number(adjustment_amount) || 0)
 
+      // Stamp client_id from the project so client surfaces can read invoices
+      // by their own FK instead of joining through projects.
+      const { data: projRow } = await supabase.from('projects').select('client_id').eq('id', project_id).single()
+
       const { data: invoice, error: insErr } = await supabase
         .from('invoices')
         .insert({
           project_id,
           company_id: companyId,
+          client_id: projRow?.client_id ?? null,
           estimate_id: estimate_id || null,
           invoice_number: invNum,
           title: title || null,

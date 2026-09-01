@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Pencil, Trash2, Clock, Plus, Download, Printer, UserPlus, Users, Link2, Copy, Check, AlertTriangle, MapPin } from 'lucide-react'
+import { Pencil, Trash2, Clock, Plus, Download, Printer, UserPlus, Users, Link2, Copy, Check, AlertTriangle, MapPin, Upload } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useEffectiveCompany } from '../hooks/useEffectiveCompany'
@@ -14,6 +14,8 @@ import {
   sendRivetPayLinkEmail,
 } from '../data/timeTracking'
 import PayTable from '../components/PayTable'
+import Modal from '../components/ui/Modal'
+import TimeEntryImportModal from '../components/time/TimeEntryImportModal'
 import styles from './TimePage.module.css'
 
 const fmtUSD = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
@@ -64,6 +66,7 @@ export default function TimePage() {
   const isAdmin = isSuperAdmin || userProfile?.role === 'contractor_admin'
 
   const [tab, setTab] = useState('my')
+  const [showImport, setShowImport] = useState(false)
   const [projects, setProjects] = useState([])
   const [crew, setCrew] = useState([])
   const [allCrew, setAllCrew] = useState([])
@@ -472,7 +475,23 @@ export default function TimePage() {
     <div className={styles.page}>
       
       <main className={styles.main}>
-        <div className={styles.header}><h1 className={styles.title}><Clock size={24} /> {t('time:page.title')}</h1></div>
+        <div className={styles.header} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+          <h1 className={styles.title}><Clock size={24} /> {t('time:page.title')}</h1>
+          {isAdmin && (
+            <button
+              onClick={() => setShowImport(true)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', color: 'var(--color-text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+            >
+              <Upload size={15} /> {t('time:import.button')}
+            </button>
+          )}
+        </div>
+
+        {showImport && (
+          <Modal title={t('time:import.title')} onClose={() => setShowImport(false)}>
+            <TimeEntryImportModal onClose={() => setShowImport(false)} onImported={loadData} />
+          </Modal>
+        )}
 
         <div className={styles.tabRow}>
           <button className={`${styles.tab} ${tab === 'my' ? styles.tabActive : ''}`} onClick={() => setTab('my')}>{t('time:tabs.myTime')}</button>
