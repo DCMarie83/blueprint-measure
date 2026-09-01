@@ -139,6 +139,7 @@ export async function writeInvoiceRows({
 
         const { error: updErr } = await supabase.from('invoices').update(patch).eq('id', row._existingId)
         if (updErr) throw new Error(updErr.message)
+        row._createdId = row._existingId
         updated.push({ name: label })
         onProgress?.(i + 1, rows.length)
         continue
