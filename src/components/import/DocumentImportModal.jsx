@@ -51,6 +51,7 @@ function mapExtractionToRow(entity, extraction, docId) {
     unit: li.unit ?? '',
     quantity: li.quantity != null ? String(li.quantity) : '',
     unit_rate: li.unit_rate != null ? String(li.unit_rate) : '',
+    total: li.total != null ? String(li.total) : '',
   }))
   const low = lowConfidenceFields(extraction.confidence)
   const str = (v) => (v == null ? '' : String(v))

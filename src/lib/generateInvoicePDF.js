@@ -244,7 +244,7 @@ export function generateInvoicePDF({ invoice, lineItems, project, client, compan
     doc.text(invoice.adjustment_label || (adjNum < 0 ? 'Discount' : 'Adjustment'), pageWidth - margin - 80, y + 4)
     doc.setFontSize(12)
     doc.setFont('helvetica', 'bold')
-    doc.setTextColor(adjNum < 0 ? [220, 38, 38] : DARK)
+    doc.setTextColor(...(adjNum < 0 ? [220, 38, 38] : DARK))
     doc.text(fmtMoney(adjNum), pageWidth - margin, y + 4, { align: 'right' })
     y += 8
   }

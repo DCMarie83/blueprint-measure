@@ -3,6 +3,8 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Download, Send, CheckCircle, XCircle, Edit, Trash2, RotateCcw } from 'lucide-react'
 import BackLink from '../components/BackLink'
+import DocumentsSection from '../components/documents/DocumentsSection'
+import { useLinkedDocuments } from '../hooks/useLinkedDocuments'
 import { useInvoice, useInvoiceMutations, isOverdue } from '../hooks/useInvoices'
 import { generateInvoicePDF } from '../lib/generateInvoicePDF'
 import { useAuth } from '../context/AuthContext'
@@ -59,6 +61,7 @@ export default function InvoiceDetailPage() {
   const navigate = useNavigate()
   const { company } = useAuth()
   const { invoice, lineItems, payments, loading, error, refetch } = useInvoice(id)
+  const documents = useLinkedDocuments('invoice', id)
   const { markSent, markPaidInFull, markVoid, reopenInvoice, recordPayment, deletePayment, deleteInvoice } = useInvoiceMutations()
 
   const [showPayForm, setShowPayForm] = useState(false)
@@ -374,6 +377,9 @@ export default function InvoiceDetailPage() {
             <p style={{ fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', margin: '12px 0 0' }}>{t('invoices:detail.reopenToRecord')}</p>
           )}
         </div>
+
+        {/* Documents (source files from Document Import) */}
+        <DocumentsSection documents={documents} />
 
         {/* Void reason */}
         {invoice.void_reason && (

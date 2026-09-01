@@ -3,6 +3,8 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Save, Trash2, Plus, Package, Download, Send, FileText, Check } from 'lucide-react'
 import BackLink from '../components/BackLink'
+import DocumentsSection from '../components/documents/DocumentsSection'
+import { useLinkedDocuments } from '../hooks/useLinkedDocuments'
 import ZoneAggregationPanel from '../components/estimates/ZoneAggregationPanel'
 import PricingItemPicker from '../components/estimates/PricingItemPicker'
 import LineItemsTable from '../components/estimates/LineItemsTable'
@@ -81,6 +83,7 @@ function timeAgo(dateStr, t) {
 
 export default function EstimateDetailPage() {
   const { id } = useParams()
+  const documents = useLinkedDocuments('estimate', id)
   const navigate = useNavigate()
   const location = useLocation()
   const { user, userProfile, isSuperAdmin } = useAuth()
@@ -830,6 +833,9 @@ export default function EstimateDetailPage() {
             )}
           </div>
         </div>
+
+        {/* Documents (source files from Document Import) */}
+        <DocumentsSection documents={documents} />
       </main>
 
       {showPicker && (

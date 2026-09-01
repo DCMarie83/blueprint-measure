@@ -25,22 +25,37 @@ import { logImportActivity } from './activity'
 const VALID_ITEM_TYPES = new Set(['labor', 'material', 'supply', 'equipment', 'subcontractor', 'other'])
 
 // One normalization for both the create and update paths: item_type coerced to
-// the CHECK set (or 'other'/null), unit normalized, per-line total = qty × rate.
+// the CHECK set (or 'other'/null), unit normalized. Per-line money honors the
+// extracted printed total: qty×rate when both are present, else a printed-total
+// line becomes a lump_sum (qty 1, rate = total). Lines with no description AND
+// no money are dropped.
 function normalizeInvoiceLines(rawLines) {
-  const lines = (rawLines ?? []).map((li, idx) => {
-    const qty = Number(li.quantity) || 0
-    const rate = Number(li.unit_rate) || 0
+  const lines = (rawLines ?? []).map(li => {
+    let qty = Number(li.quantity) || 0
+    let rate = Number(li.unit_rate) || 0
+    const printed = Number(li.total) || 0
+    let unit = normalizeUnit(li.unit, 'each')
+    let total = 0
+    if (qty > 0 && rate > 0) {
+      total = Math.round(qty * rate * 100) / 100
+    } else if (printed > 0) {
+      qty = 1
+      unit = 'lump_sum'
+      rate = printed
+      total = printed
+    }
     return {
-      description: (li.description || '').trim() || '—',
+      description: (li.description || '').trim(),
       category_name: (li.category || li.category_name || '').trim() || null,
       item_type: (li.item_type || '').trim().toLowerCase() || null,
-      unit: normalizeUnit(li.unit, 'each'),
+      unit,
       quantity: qty,
       unit_rate: rate,
-      total: Math.round(qty * rate * 100) / 100,
-      sort_order: idx,
+      total,
     }
   })
+    .filter(li => li.description !== '' || li.total !== 0)
+    .map((li, idx) => ({ ...li, description: li.description || '—', sort_order: idx }))
   for (const li of lines) {
     if (li.item_type && !VALID_ITEM_TYPES.has(li.item_type)) li.item_type = 'other'
   }

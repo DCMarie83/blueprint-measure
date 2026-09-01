@@ -18,25 +18,40 @@ import { appendBatchId, buildUpdatePatch, normalizeUnit } from './importHelpers'
 // No send-* function is ever invoked; nothing emails anyone on create.
 // One normalization for both the create and update paths: single-price lines
 // on rate_good/total_good, priced_from NULL, category_name '' when absent.
+// Per-line money honors the extracted printed total: qty×rate when both are
+// present, else a printed-total line becomes a lump_sum (qty 1, rate = total).
+// Lines with no description AND no money are dropped.
 function normalizeEstimateLines(rawLines) {
-  return (rawLines ?? []).map((li, idx) => {
-    const qty = Number(li.quantity) || 0
-    const rate = Number(li.unit_rate) || 0
+  return (rawLines ?? []).map(li => {
+    let qty = Number(li.quantity) || 0
+    let rate = Number(li.unit_rate) || 0
+    const printed = Number(li.total) || 0
+    let unit = normalizeUnit(li.unit, 'sf')
+    let total = 0
+    if (qty > 0 && rate > 0) {
+      total = Math.round(qty * rate * 100) / 100
+    } else if (printed > 0) {
+      qty = 1
+      unit = 'lump_sum'
+      rate = printed
+      total = printed
+    }
     return {
-      description: (li.description || '').trim() || '—',
+      description: (li.description || '').trim(),
       category_name: (li.category || li.category_name || '').trim() || '',
-      unit: normalizeUnit(li.unit, 'sf'),
+      unit,
       quantity: qty,
       rate_good: rate,
       rate_better: 0,
       rate_best: 0,
-      total_good: Math.round(qty * rate * 100) / 100,
+      total_good: total,
       total_better: 0,
       total_best: 0,
       priced_from: null,
-      sort_order: idx,
     }
   })
+    .filter(li => li.description !== '' || li.total_good !== 0)
+    .map((li, idx) => ({ ...li, description: li.description || '—', sort_order: idx }))
 }
 
 export async function writeEstimateRows({
