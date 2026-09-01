@@ -43,7 +43,9 @@ export default function ImportWizardModal({ config, onClose, onImported, initial
   const [parsed, setParsed] = useState(null) // { headers, rows, extraSheets }
   const [parseError, setParseError] = useState(null)
   const fileRef = useRef(null)
-  const [mode, setMode] = useState('add') // 'add' | 'update' | 'both'
+  // Document mode enters at Review, past the Upload-step selector — default to
+  // 'both' there so matching rows update instead of all skipping as "exists".
+  const [mode, setMode] = useState(docMode ? 'both' : 'add') // 'add' | 'update' | 'both'
 
   // Step 2 state
   const { mapping, mappingLoading, requestMapping, setMappingFor } = useColumnMapping(config.targetFields)
@@ -342,6 +344,26 @@ export default function ImportWizardModal({ config, onClose, onImported, initial
               <strong>{willImport.length}</strong> {t('import:willImport')}, <strong>{willSkip.length}</strong> {t('import:skipped')}
               {willSkip.length > 0 && ` (${et(config.skipReasonKey)})`}
             </p>
+
+            {docMode && showModes && (
+              <div style={{ margin: '12px 0' }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  {t('import:modeLabel')}
+                </label>
+                <div className={styles.typeToggle}>
+                  {MODE_OPTIONS.map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      className={`${styles.typeBtn} ${mode === opt.value ? styles.typeBtnActive : ''}`}
+                      onClick={() => setMode(opt.value)}
+                    >
+                      {t(opt.labelKey)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {ReviewExtras && <ReviewExtras ctx={ctx} setCtx={setCtx} t={t} />}
 

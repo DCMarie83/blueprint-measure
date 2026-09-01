@@ -22,6 +22,31 @@ import { logImportActivity } from './activity'
 // Legacy invoice numbers are stored verbatim; generate_invoice_number is NEVER
 // called, and no send-* edge function is ever invoked. clients.lifetime_value
 // updates via the existing DB triggers on invoice_payments.
+const VALID_ITEM_TYPES = new Set(['labor', 'material', 'supply', 'equipment', 'subcontractor', 'other'])
+
+// One normalization for both the create and update paths: item_type coerced to
+// the CHECK set (or 'other'/null), unit normalized, per-line total = qty × rate.
+function normalizeInvoiceLines(rawLines) {
+  const lines = (rawLines ?? []).map((li, idx) => {
+    const qty = Number(li.quantity) || 0
+    const rate = Number(li.unit_rate) || 0
+    return {
+      description: (li.description || '').trim() || '—',
+      category_name: (li.category || li.category_name || '').trim() || null,
+      item_type: (li.item_type || '').trim().toLowerCase() || null,
+      unit: normalizeUnit(li.unit, 'each'),
+      quantity: qty,
+      unit_rate: rate,
+      total: Math.round(qty * rate * 100) / 100,
+      sort_order: idx,
+    }
+  })
+  for (const li of lines) {
+    if (li.item_type && !VALID_ITEM_TYPES.has(li.item_type)) li.item_type = 'other'
+  }
+  return lines
+}
+
 export async function writeInvoiceRows({
   rows, batchId, onProgress, companyId, userId, existingNumbers, placeholderColumnId,
 }) {
@@ -72,6 +97,31 @@ export async function writeInvoiceRows({
         patch.import_source = appendBatchId(row._existing?.import_source, batchId)
         if (!patch.updated_at) patch.updated_at = new Date().toISOString()
 
+        // Extracted / sheet lines fill in a header-only skeleton: insert them
+        // ONLY when the existing invoice has zero line items, and keep the
+        // subtotal === total − adjustment invariant in the same update.
+        if (row._lines?.length > 0) {
+          const { data: existingInv, error: exErr } = await supabase
+            .from('invoices')
+            .select('total, invoice_line_items(id)')
+            .eq('id', row._existingId)
+            .single()
+          if (exErr) throw new Error(exErr.message)
+          if ((existingInv.invoice_line_items?.length ?? 0) === 0) {
+            const lines = normalizeInvoiceLines(row._lines)
+            const { error: liErr } = await supabase.from('invoice_line_items').insert(
+              lines.map(li => ({ ...li, invoice_id: row._existingId }))
+            )
+            if (liErr) throw new Error(`Line items failed: ${liErr.message}`)
+            const lineSum = Math.round(lines.reduce((s, li) => s + li.total, 0) * 100) / 100
+            const headerTotal = patch.total ?? (Number(existingInv.total) || 0)
+            const adjustment = Math.round((headerTotal - lineSum) * 100) / 100
+            patch.subtotal = lineSum
+            patch.adjustment_amount = adjustment
+            patch.adjustment_label = adjustment !== 0 ? 'Import adjustment' : null
+          }
+        }
+
         const { error: updErr } = await supabase.from('invoices').update(patch).eq('id', row._existingId)
         if (updErr) throw new Error(updErr.message)
         updated.push({ name: label })
@@ -107,24 +157,7 @@ export async function writeInvoiceRows({
 
       // Line items: per-line total = qty × rate; subtotal = line sum; the gap
       // to the header total becomes adjustment_amount (subtotal === total − adjustment).
-      const lines = (row._lines ?? []).map((li, idx) => {
-        const qty = Number(li.quantity) || 0
-        const rate = Number(li.unit_rate) || 0
-        return {
-          description: (li.description || '').trim() || '—',
-          category_name: (li.category || li.category_name || '').trim() || null,
-          item_type: (li.item_type || '').trim().toLowerCase() || null,
-          unit: normalizeUnit(li.unit, 'each'),
-          quantity: qty,
-          unit_rate: rate,
-          total: Math.round(qty * rate * 100) / 100,
-          sort_order: idx,
-        }
-      })
-      const VALID_ITEM_TYPES = new Set(['labor', 'material', 'supply', 'equipment', 'subcontractor', 'other'])
-      for (const li of lines) {
-        if (li.item_type && !VALID_ITEM_TYPES.has(li.item_type)) li.item_type = 'other'
-      }
+      const lines = normalizeInvoiceLines(row._lines)
       const lineSum = Math.round(lines.reduce((s, li) => s + li.total, 0) * 100) / 100
       const subtotal = lines.length > 0 ? lineSum : total
       const adjustment = lines.length > 0 ? Math.round((total - lineSum) * 100) / 100 : 0

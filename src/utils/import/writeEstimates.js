@@ -16,6 +16,29 @@ import { appendBatchId, buildUpdatePatch, normalizeUnit } from './importHelpers'
 // Lines land in estimate_line_items with rate_good/total_good, priced_from
 // NULL (never renders the Smart layer), category_name '' when absent.
 // No send-* function is ever invoked; nothing emails anyone on create.
+// One normalization for both the create and update paths: single-price lines
+// on rate_good/total_good, priced_from NULL, category_name '' when absent.
+function normalizeEstimateLines(rawLines) {
+  return (rawLines ?? []).map((li, idx) => {
+    const qty = Number(li.quantity) || 0
+    const rate = Number(li.unit_rate) || 0
+    return {
+      description: (li.description || '').trim() || '—',
+      category_name: (li.category || li.category_name || '').trim() || '',
+      unit: normalizeUnit(li.unit, 'sf'),
+      quantity: qty,
+      rate_good: rate,
+      rate_better: 0,
+      rate_best: 0,
+      total_good: Math.round(qty * rate * 100) / 100,
+      total_better: 0,
+      total_best: 0,
+      priced_from: null,
+      sort_order: idx,
+    }
+  })
+}
+
 export async function writeEstimateRows({
   rows, batchId, onProgress, companyId, userId, existingNumbers, placeholderColumnId,
 }) {
@@ -51,6 +74,23 @@ export async function writeEstimateRows({
         })
         patch.import_source = appendBatchId(row._existing?.import_source, batchId)
         if (!patch.updated_at) patch.updated_at = new Date().toISOString()
+
+        // Extracted / sheet lines fill in a header-only skeleton: insert them
+        // ONLY when the existing estimate has zero line items.
+        if (row._lines?.length > 0) {
+          const { count, error: cntErr } = await supabase
+            .from('estimate_line_items')
+            .select('id', { count: 'exact', head: true })
+            .eq('estimate_id', row._existingId)
+          if (cntErr) throw new Error(cntErr.message)
+          if ((count ?? 0) === 0) {
+            const lines = normalizeEstimateLines(row._lines)
+            const { error: liErr } = await supabase.from('estimate_line_items').insert(
+              lines.map(li => ({ ...li, estimate_id: row._existingId }))
+            )
+            if (liErr) throw new Error(`Line items failed: ${liErr.message}`)
+          }
+        }
 
         const { error: updErr } = await supabase.from('estimates').update(patch).eq('id', row._existingId)
         if (updErr) throw new Error(updErr.message)
@@ -105,25 +145,7 @@ export async function writeEstimateRows({
       if (insErr) throw new Error(insErr.message)
       row._createdId = estimate.id
 
-      const lines = (row._lines ?? []).map((li, idx) => {
-        const qty = Number(li.quantity) || 0
-        const rate = Number(li.unit_rate) || 0
-        return {
-          estimate_id: estimate.id,
-          description: (li.description || '').trim() || '—',
-          category_name: (li.category || li.category_name || '').trim() || '',
-          unit: normalizeUnit(li.unit, 'sf'),
-          quantity: qty,
-          rate_good: rate,
-          rate_better: 0,
-          rate_best: 0,
-          total_good: Math.round(qty * rate * 100) / 100,
-          total_better: 0,
-          total_best: 0,
-          priced_from: null,
-          sort_order: idx,
-        }
-      })
+      const lines = normalizeEstimateLines(row._lines).map(li => ({ ...li, estimate_id: estimate.id }))
       if (lines.length > 0) {
         const { error: liErr } = await supabase.from('estimate_line_items').insert(lines)
         if (liErr) {
