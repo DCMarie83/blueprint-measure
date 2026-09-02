@@ -4,9 +4,16 @@ import { unitCostAtGrade } from '../lib/materialsView'
 
 function num(v) { return Number(v) || 0 }
 
+// Resolve an accepted estimate's quoted revenue. The locked single-price model
+// stores the price on good_total with no variant selected (imported estimates
+// included), while legacy variant estimates may point at better/best columns
+// that later single-price writes zeroed. Resolve the selected variant's total
+// first and fall back to good_total, so neither shape ever reads $0. One value
+// per estimate: no double counting.
 function getAcceptedTotal(est) {
-  const v = est.accepted_variant || est.selected_variant || 'good'
-  return num(est[`${v}_total`])
+  const v = est.accepted_variant || est.selected_variant
+  const variantTotal = v ? num(est[`${v}_total`]) : 0
+  return variantTotal > 0 ? variantTotal : num(est.good_total)
 }
 
 function computeMaterialsCost(orders, itemsByOrder) {

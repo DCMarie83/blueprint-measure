@@ -98,6 +98,38 @@
   padding-bottom: 16px;
 }
 
+/* Floating horizontal scroll affordance: fixed to the viewport bottom so it
+   stays reachable regardless of column height. Two-way synced with
+   .boardContainer's scrollLeft (see BoardScrollbar in KanbanPage). Fixed
+   positioning means zero layout shift; width already reserves fab clearance. */
+.floatScrollbar {
+  position: fixed;
+  bottom: var(--fab-bottom-offset, calc(10px + env(safe-area-inset-bottom)));
+  z-index: 30;
+  height: 14px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 9999px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-primary) transparent;
+}
+
+.floatScrollbar::-webkit-scrollbar {
+  height: 8px;
+}
+
+.floatScrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.floatScrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-primary);
+  border-radius: 9999px;
+}
+
 .board {
   display: flex;
   gap: 16px;

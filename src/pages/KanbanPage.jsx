@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Plus, Columns3, List, Upload } from 'lucide-react'
@@ -131,6 +131,65 @@ const VIEW_OPTIONS = [
   { value: 'list', icon: List, label: 'jobs:view.list' },
 ]
 
+// Slim horizontal scrollbar pinned to the bottom of the VIEWPORT (not the
+// content), so long columns never bury the only way to pan the board. Synced
+// two-way with the board container's scrollLeft. Renders nothing when the
+// board fits. Width reserves 76px on the right so it never sits under the
+// feedback fab; bottom honors --fab-bottom-offset like the fab does.
+function BoardScrollbar({ targetRef }) {
+  const barRef = useRef(null)
+  const [dims, setDims] = useState(null) // { left, width, scrollWidth }
+
+  useEffect(() => {
+    const el = targetRef.current
+    if (!el) return
+
+    const measure = () => {
+      const rect = el.getBoundingClientRect()
+      const overflows = el.scrollWidth > el.clientWidth + 4
+      setDims(overflows
+        ? { left: rect.left, width: Math.max(rect.width - 76, 120), scrollWidth: el.scrollWidth }
+        : null)
+    }
+    measure()
+
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    if (el.firstElementChild) ro.observe(el.firstElementChild) // board content growth
+    window.addEventListener('resize', measure)
+
+    const onBoardScroll = () => {
+      const bar = barRef.current
+      if (bar && bar.scrollLeft !== el.scrollLeft) bar.scrollLeft = el.scrollLeft
+    }
+    el.addEventListener('scroll', onBoardScroll, { passive: true })
+
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', measure)
+      el.removeEventListener('scroll', onBoardScroll)
+    }
+  }, [targetRef])
+
+  if (!dims) return null
+
+  return (
+    <div
+      ref={barRef}
+      className={styles.floatScrollbar}
+      style={{ left: dims.left, width: dims.width }}
+      aria-hidden="true"
+      onScroll={() => {
+        const el = targetRef.current
+        const bar = barRef.current
+        if (el && bar && el.scrollLeft !== bar.scrollLeft) el.scrollLeft = bar.scrollLeft
+      }}
+    >
+      <div style={{ width: dims.scrollWidth, height: 1 }} />
+    </div>
+  )
+}
+
 export default function KanbanPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -142,6 +201,7 @@ export default function KanbanPage() {
   const [view, setView] = useViewPreference('jobs', 'kanban')
   const [activeId, setActiveId] = useState(null)
   const [showNewJob, setShowNewJob] = useState(false)
+  const boardScrollRef = useRef(null)
   const [showImport, setShowImport] = useState(null) // 'jobs' | 'estimates' | 'estimateDocs' | 'changeOrders' | null
   const [importMenuOpen, setImportMenuOpen] = useState(false)
   const { moneyMap } = useJobMoneyMap()
@@ -355,19 +415,22 @@ export default function KanbanPage() {
               <div className={styles.filterCount}>{t('jobs:filterCount', { shown: filteredProjects.length, total: totalProjects })}</div>
             )}
             {view === 'kanban' ? (
-              <div className={styles.boardContainer}>
-                <DndContext sensors={sensors} collisionDetection={pointerWithin}
-                  onDragStart={(e) => setActiveId(e.active.id)}
-                  onDragCancel={() => setActiveId(null)}
-                  onDragEnd={handleDragEnd}>
-                  <div className={styles.board}>
-                    {filteredColumns.map(col => <DroppableColumn key={col.id} column={col} moneyMap={moneyMap} />)}
-                  </div>
-                  <DragOverlay>
-                    {activeProject ? <DragCardDisplay project={activeProject} /> : null}
-                  </DragOverlay>
-                </DndContext>
-              </div>
+              <>
+                <div className={styles.boardContainer} ref={boardScrollRef}>
+                  <DndContext sensors={sensors} collisionDetection={pointerWithin}
+                    onDragStart={(e) => setActiveId(e.active.id)}
+                    onDragCancel={() => setActiveId(null)}
+                    onDragEnd={handleDragEnd}>
+                    <div className={styles.board}>
+                      {filteredColumns.map(col => <DroppableColumn key={col.id} column={col} moneyMap={moneyMap} />)}
+                    </div>
+                    <DragOverlay>
+                      {activeProject ? <DragCardDisplay project={activeProject} /> : null}
+                    </DragOverlay>
+                  </DndContext>
+                </div>
+                <BoardScrollbar targetRef={boardScrollRef} />
+              </>
             ) : (
               <JobsListView
                 projects={filteredProjects}
