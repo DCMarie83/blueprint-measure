@@ -98,6 +98,24 @@
   padding-bottom: 16px;
 }
 
+/* Record chips on job cards: shown only when a count is nonzero. */
+.cardChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.cardChip {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: var(--color-surface-2, #eef0f0);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
 /* Floating horizontal scroll affordance: fixed to the viewport bottom so it
    stays reachable regardless of column height. Two-way synced with
    .boardContainer's scrollLeft (see BoardScrollbar in KanbanPage). Fixed

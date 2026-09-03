@@ -7,7 +7,7 @@ import { resolveEntitlements } from '../lib/entitlements'
 // Loads a single session plus all its zones from the database.
 export function useSession(sessionId) {
   const { user, isSuperAdmin } = useAuth()
-  const { companyId, isImpersonating } = useEffectiveCompany()
+  const { companyId } = useEffectiveCompany()
   const [session, setSession] = useState(null)
   const [zones, setZones] = useState([])
   const [enabledFeatures, setEnabledFeatures] = useState({})
@@ -16,22 +16,20 @@ export function useSession(sessionId) {
 
   const fetchSession = useCallback(async () => {
     if (!user || !sessionId) return
-    // While impersonating, hold until the effective company resolves so we
-    // never fire with an undefined company id.
-    if (isImpersonating && !companyId) return
+    // Hold until the effective company resolves (own profile or the
+    // impersonated tenant) so we never fire with an undefined company id.
+    if (!companyId) return
     setLoading(true)
 
-    // Scope by the acted-on tenant's company when impersonating (a super admin's
-    // auth id won't match the tenant's rows); otherwise keep the user_id filter.
-    let query = supabase
+    // Company-scoped like the project detail fetch: sessions belong to the
+    // company, and imported/teammate-created rows can carry a different
+    // member's user_id. RLS enforces membership.
+    const { data: sessionData, error: sessionError } = await supabase
       .from('sessions')
       .select('*')
       .eq('id', sessionId)
-    query = isImpersonating
-      ? query.eq('company_id', companyId)
-      : query.eq('user_id', user.id)
-
-    const { data: sessionData, error: sessionError } = await query.single()
+      .eq('company_id', companyId)
+      .single()
 
     if (sessionError) {
       setError('Session not found.')
@@ -92,7 +90,7 @@ export function useSession(sessionId) {
     }
 
     setLoading(false)
-  }, [user, sessionId, companyId, isImpersonating])
+  }, [user, sessionId, companyId])
 
   useEffect(() => {
     fetchSession()

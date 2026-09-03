@@ -1868,7 +1868,13 @@
     },
     "card": {
       "blueprintCount_one": "{{count}} blueprint",
-      "blueprintCount_other": "{{count}} blueprints"
+      "blueprintCount_other": "{{count}} blueprints",
+      "docsCount_one": "{{count}} document",
+      "docsCount_other": "{{count}} documents",
+      "estimatesCount_one": "{{count}} estimate",
+      "estimatesCount_other": "{{count}} estimates",
+      "invoicesCount_one": "{{count}} invoice",
+      "invoicesCount_other": "{{count}} invoices"
     },
     "label": {
       "updated": "Updated {{time}}"

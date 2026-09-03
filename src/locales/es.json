@@ -1868,7 +1868,13 @@
     },
     "card": {
       "blueprintCount_one": "{{count}} plano",
-      "blueprintCount_other": "{{count}} planos"
+      "blueprintCount_other": "{{count}} planos",
+      "docsCount_one": "{{count}} documento",
+      "docsCount_other": "{{count}} documentos",
+      "estimatesCount_one": "{{count}} cotización",
+      "estimatesCount_other": "{{count}} cotizaciones",
+      "invoicesCount_one": "{{count}} factura",
+      "invoicesCount_other": "{{count}} facturas"
     },
     "label": {
       "updated": "Actualizado {{time}}"

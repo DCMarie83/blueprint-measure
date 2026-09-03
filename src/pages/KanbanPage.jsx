@@ -48,6 +48,26 @@ function fmtMoneyCompact(v) {
   return `$${n.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
 }
 
+// Record chips: documents / estimates / invoices counts, rendered ONLY when
+// nonzero. Data rides the single company-scoped useJobMoneyMap fetch — never
+// per-card queries.
+function CardRecordChips({ money }) {
+  const { t } = useTranslation()
+  const chips = [
+    { key: 'docs', count: money?.documentCount || 0, labelKey: 'jobs:card.docsCount' },
+    { key: 'estimates', count: money?.estimateCount || 0, labelKey: 'jobs:card.estimatesCount' },
+    { key: 'invoices', count: money?.invoiceCount || 0, labelKey: 'jobs:card.invoicesCount' },
+  ].filter(c => c.count > 0)
+  if (chips.length === 0) return null
+  return (
+    <div className={styles.cardChips}>
+      {chips.map(c => (
+        <span key={c.key} className={styles.cardChip}>{t(c.labelKey, { count: c.count })}</span>
+      ))}
+    </div>
+  )
+}
+
 // Compact money strip: current value (contract + approved COs), billed,
 // collected, and an open-CO count. Render-only — data comes from the single
 // company-scoped useJobMoneyMap fetch, never per-card queries.
@@ -83,9 +103,9 @@ function SortableJobCard({ project, columnId, accent, money }) {
       <div className={styles.cardName}>{project.name}</div>
       {project.address && <div className={styles.cardAddress}>{project.address}</div>}
       <div className={styles.cardMeta}>
-        <span>{t('jobs:card.blueprintCount', { count: project.session_count })}</span>
         <span>{t('jobs:label.updated', { time: timeAgo(project.updated_at, t) })}</span>
       </div>
+      <CardRecordChips money={money} />
       <CardMoneyStrip project={project} money={money} />
     </div>
   )
@@ -120,7 +140,7 @@ function DragCardDisplay({ project }) {
     <div className={styles.dragOverlay}>
       <div className={styles.cardName}>{project.name}</div>
       <div className={styles.cardMeta}>
-        <span>{t('jobs:card.blueprintCount', { count: project.session_count })}</span>
+        <span>{t('jobs:label.updated', { time: timeAgo(project.updated_at, t) })}</span>
       </div>
     </div>
   )
