@@ -57,13 +57,16 @@ function mapExtractionToRow(entity, extraction, docId) {
   const str = (v) => (v == null ? '' : String(v))
 
   if (entity === 'invoices') {
+    // Money boundary: total is the document's full gross total ONLY.
+    // header.balance_due is never mapped into total; the printed payments
+    // figure backfills amount_paid when the doc lacks an explicit one.
     return [{
       invoice_number: str(h.number),
       job_name: str(h.job_name || h.job_address),
       client: str(h.bill_to_name),
       invoice_date: str(h.date),
       total: str(h.total),
-      amount_paid: str(h.amount_paid),
+      amount_paid: str(h.amount_paid ?? h.payments_printed),
       paid_date: str(h.paid_date),
       payment_method: str(h.payment_method),
       status: str(h.status_hint),

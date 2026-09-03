@@ -46,7 +46,7 @@ export default function InvoiceImportModal({ onClose, onImported, initialRows = 
     let cancelled = false
     ;(async () => {
       const [{ data: invRows }, { data: projRows }, { data: clientRows }, { data: colRows }] = await Promise.all([
-        supabase.from('invoices').select('id, invoice_number, import_source').eq('company_id', companyId),
+        supabase.from('invoices').select('id, invoice_number, import_source, status').eq('company_id', companyId),
         supabase.from('projects').select('id, name, client_id').eq('company_id', companyId).is('deleted_at', null),
         supabase.from('clients').select('id, display_name, business_name, primary_email, billing_terms').eq('company_id', companyId),
         supabase.from('kanban_columns').select('*').eq('company_id', companyId).order('position', { ascending: true }),
@@ -135,6 +135,7 @@ export default function InvoiceImportModal({ onClose, onImported, initialRows = 
       _amountPaid: amountPaid,
       _paidDate: paidDate,
       _status: status,
+      _explicitStatus: explicitStatus,
       _method: method,
       _methodOriginal: original,
       _dueDate: dueDate,
@@ -230,6 +231,7 @@ export default function InvoiceImportModal({ onClose, onImported, initialRows = 
         userId: user.id,
         existingNumbers: deps.existingNumbers,
         placeholderColumnId: deps.placeholderColumnId,
+        docMode: !!initialRows,
       })
     },
   }

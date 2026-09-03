@@ -122,8 +122,11 @@ Deno.serve(async (req) => {
 Rules:
 - Extraction only. Never invent, estimate, or compute values that are not printed. If a field is not on the document, use null.
 - Dates as YYYY-MM-DD. Money as plain numbers without currency symbols or thousands separators.
+- total: the document's FULL GROSS TOTAL (the invoiced/quoted amount after taxes and adjustments, BEFORE any payments are subtracted). NEVER put a "Balance due" / "Amount due" figure in total.
+- balance_due: the printed balance/amount due after payments, if shown; else null.
+- payments_printed: the printed payments-received/amount-paid figure, if shown; else null.
 - doc_type: "invoice", "quote", or "price_list" — your best classification of this document.
-- status_hint: only if the document literally shows a status (e.g. PAID stamp, "Balance due"), else null.
+- status_hint: only if the document literally shows a status word (e.g. a PAID stamp), else null.
 - lines: one entry per line item on the document, at most 40. For a price list, each priced item is a line (quantity null).
 - item_type: one of labor|material|supply|equipment|subcontractor|other, or null if not stated.
 - confidence: for each header field you filled, "high" if clearly printed, "low" if you had to interpret (poor scan, ambiguous label).
@@ -136,6 +139,7 @@ Return ONLY a JSON object, no explanation, no markdown fences:
     "bill_to_name": string|null, "bill_to_address": string|null,
     "job_name": string|null, "job_address": string|null,
     "total": number|null, "subtotal": number|null,
+    "balance_due": number|null, "payments_printed": number|null,
     "amount_paid": number|null, "paid_date": string|null,
     "payment_method": string|null, "status_hint": string|null
   },

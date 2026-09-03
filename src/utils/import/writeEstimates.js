@@ -54,8 +54,13 @@ function normalizeEstimateLines(rawLines) {
     .map((li, idx) => ({ ...li, description: li.description || '—', sort_order: idx }))
 }
 
+// docMode: the money boundary. File import is the money writer; document
+// import attaches documents and fills blanks. A doc-mode update may fill
+// good_total and notes only where blank/zero and may run the zero-line
+// skeleton fill; it NEVER overwrites a non-blank good_total, status,
+// created_at, or notes.
 export async function writeEstimateRows({
-  rows, batchId, onProgress, companyId, userId, existingNumbers, placeholderColumnId,
+  rows, batchId, onProgress, companyId, userId, existingNumbers, placeholderColumnId, docMode = false,
 }) {
   const imported = []
   const updated = []
@@ -80,13 +85,41 @@ export async function writeEstimateRows({
 
       if (row._disposition === 'update' && row._existingId) {
         const hasDate = !!row._estimateDate
-        const patch = buildUpdatePatch({
-          status: (raw.status || '').trim() ? row._status : null,
-          good_total: (raw.total || '').trim() ? row._total : null,
-          notes: (row.notes || '').trim(),
-          created_at: hasDate ? row._estimateDate : null,
-          updated_at: hasDate ? row._estimateDate : null,
-        })
+        const prevStatus = row._existing?.status ?? null
+
+        let patch
+        if (docMode) {
+          // Fill-only-when-blank; status and created_at are never written by
+          // doc-mode updates.
+          const { data: existingEst, error: exErr } = await supabase
+            .from('estimates')
+            .select('good_total, notes')
+            .eq('id', row._existingId)
+            .single()
+          if (exErr) throw new Error(exErr.message)
+          patch = buildUpdatePatch({
+            good_total: (raw.total || '').trim() && (existingEst.good_total == null || Number(existingEst.good_total) === 0) ? row._total : null,
+            notes: (row.notes || '').trim() && !(existingEst.notes || '').trim() ? (row.notes || '').trim() : null,
+          })
+        } else {
+          // File import: the money writer. Status moves only via an explicitly
+          // recognized value; unrecognized text skips the field entirely.
+          patch = buildUpdatePatch({
+            status: row._explicitStatus ?? null,
+            good_total: (raw.total || '').trim() ? row._total : null,
+            notes: (row.notes || '').trim(),
+            created_at: hasDate ? row._estimateDate : null,
+            updated_at: hasDate ? row._estimateDate : null,
+          })
+          // Lifecycle stamps on an explicit status flip, from the document
+          // date with a now() fallback.
+          if (patch.status && patch.status !== prevStatus) {
+            const stamp = row._estimateDate || new Date().toISOString()
+            if (patch.status === 'sent') patch.sent_at = stamp
+            if (patch.status === 'accepted') patch.accepted_at = stamp
+            if (patch.status === 'declined') patch.declined_at = stamp
+          }
+        }
         patch.import_source = appendBatchId(row._existing?.import_source, batchId)
         if (!patch.updated_at) patch.updated_at = new Date().toISOString()
 

@@ -62,8 +62,16 @@ function normalizeInvoiceLines(rawLines) {
   return lines
 }
 
+const isBlank = (v) => v == null || v === ''
+const isBlankMoney = (v) => v == null || Number(v) === 0
+
+// docMode: the money boundary. File import is the money writer; document
+// import attaches documents and fills blanks. A doc-mode update may fill
+// header fields only where the existing value is blank/null and may run the
+// zero-line skeleton fill; it NEVER overwrites a non-blank total, subtotal,
+// status, created_at, due_date, client_id, or notes.
 export async function writeInvoiceRows({
-  rows, batchId, onProgress, companyId, userId, existingNumbers, placeholderColumnId,
+  rows, batchId, onProgress, companyId, userId, existingNumbers, placeholderColumnId, docMode = false,
 }) {
   const imported = []
   const updated = []
@@ -96,19 +104,58 @@ export async function writeInvoiceRows({
 
         const hasDate = !!row._invoiceDate
         const hasTotal = row._total != null
-        const patch = buildUpdatePatch({
-          status: (raw.status || '').trim() ? row._status : null,
-          total: hasTotal ? row._total : null,
-          subtotal: hasTotal ? row._total : null,
-          paid_amount: (raw.amount_paid || '').trim() && row._amountPaid > 0 ? row._amountPaid : null,
-          paid_at: row._status === 'paid' ? (row._paidDate || row._invoiceDate) : null,
-          due_date: hasDate ? row._dueDate : null,
-          payment_method: (raw.payment_method || '').trim() ? row._method : null,
-          payment_notes: paymentNotes,
-          client_id: clientText ? clientId : null,
-          created_at: hasDate ? row._invoiceDate : null,
-          updated_at: hasDate ? row._invoiceDate : null,
-        })
+        const prevStatus = row._existing?.status ?? null
+
+        // The current record is needed for doc-mode blank checks and for the
+        // zero-line skeleton fill.
+        let existingInv = null
+        if (docMode || row._lines?.length > 0) {
+          const { data, error: exErr } = await supabase
+            .from('invoices')
+            .select('total, status, due_date, client_id, payment_method, payment_notes, paid_amount, invoice_line_items(id)')
+            .eq('id', row._existingId)
+            .single()
+          if (exErr) throw new Error(exErr.message)
+          existingInv = data
+        }
+
+        let patch
+        if (docMode) {
+          // Fill-only-when-blank. Status and created_at are never written by
+          // doc-mode updates (a D4 draft skeleton keeps its status until a
+          // file import moves it with an explicit value).
+          patch = buildUpdatePatch({
+            total: hasTotal && isBlankMoney(existingInv.total) ? row._total : null,
+            subtotal: hasTotal && isBlankMoney(existingInv.total) ? row._total : null,
+            due_date: hasDate && isBlank(existingInv.due_date) ? row._dueDate : null,
+            client_id: clientText && isBlank(existingInv.client_id) ? clientId : null,
+            payment_method: (raw.payment_method || '').trim() && isBlank(existingInv.payment_method) ? row._method : null,
+            payment_notes: isBlank(existingInv.payment_notes) ? paymentNotes : null,
+            paid_amount: (raw.amount_paid || '').trim() && row._amountPaid > 0 && isBlankMoney(existingInv.paid_amount) ? row._amountPaid : null,
+          })
+        } else {
+          // File import: the money writer. Status moves only via an explicitly
+          // recognized value; unrecognized text skips the field entirely.
+          patch = buildUpdatePatch({
+            status: row._explicitStatus ?? null,
+            total: hasTotal ? row._total : null,
+            subtotal: hasTotal ? row._total : null,
+            paid_amount: (raw.amount_paid || '').trim() && row._amountPaid > 0 ? row._amountPaid : null,
+            due_date: hasDate ? row._dueDate : null,
+            payment_method: (raw.payment_method || '').trim() ? row._method : null,
+            payment_notes: paymentNotes,
+            client_id: clientText ? clientId : null,
+            created_at: hasDate ? row._invoiceDate : null,
+            updated_at: hasDate ? row._invoiceDate : null,
+          })
+          // Lifecycle stamps on an explicit status flip, from the document
+          // date with a now() fallback.
+          if (patch.status && patch.status !== prevStatus) {
+            const stamp = row._invoiceDate || new Date().toISOString()
+            if (patch.status === 'sent') patch.sent_at = stamp
+            if (patch.status === 'paid') patch.paid_at = row._paidDate || row._invoiceDate || new Date().toISOString()
+          }
+        }
         patch.import_source = appendBatchId(row._existing?.import_source, batchId)
         if (!patch.updated_at) patch.updated_at = new Date().toISOString()
 
@@ -116,12 +163,6 @@ export async function writeInvoiceRows({
         // ONLY when the existing invoice has zero line items, and keep the
         // subtotal === total − adjustment invariant in the same update.
         if (row._lines?.length > 0) {
-          const { data: existingInv, error: exErr } = await supabase
-            .from('invoices')
-            .select('total, invoice_line_items(id)')
-            .eq('id', row._existingId)
-            .single()
-          if (exErr) throw new Error(exErr.message)
           if ((existingInv.invoice_line_items?.length ?? 0) === 0) {
             const lines = normalizeInvoiceLines(row._lines)
             const { error: liErr } = await supabase.from('invoice_line_items').insert(

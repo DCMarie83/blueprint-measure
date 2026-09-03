@@ -38,7 +38,7 @@ export default function EstimateImportModal({ onClose, onImported, initialRows =
     let cancelled = false
     ;(async () => {
       const [{ data: estRows }, { data: projRows }, { data: clientRows }, { data: colRows }] = await Promise.all([
-        supabase.from('estimates').select('id, estimate_number, import_source').eq('company_id', companyId),
+        supabase.from('estimates').select('id, estimate_number, import_source, status').eq('company_id', companyId),
         supabase.from('projects').select('id, name, client_id').eq('company_id', companyId).is('deleted_at', null),
         supabase.from('clients').select('id, display_name, business_name, primary_email').eq('company_id', companyId),
         supabase.from('kanban_columns').select('*').eq('company_id', companyId).order('position', { ascending: true }),
@@ -104,6 +104,7 @@ export default function EstimateImportModal({ onClose, onImported, initialRows =
       _estimateDate: estimateDate,
       _total: total,
       _status: status,
+      _explicitStatus: explicitStatus,
       _projectId: projMatch?.id ?? null,
       _projectClientId: projMatch?.client_id ?? null,
       _clientId: clientMatch?.id ?? null,
@@ -189,6 +190,7 @@ export default function EstimateImportModal({ onClose, onImported, initialRows =
         userId: user.id,
         existingNumbers: deps.existingNumbers,
         placeholderColumnId: deps.placeholderColumnId,
+        docMode: !!initialRows,
       })
     },
   }
