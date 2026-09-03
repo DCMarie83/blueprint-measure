@@ -18,7 +18,7 @@ function firstOfMonth() {
 }
 
 function fmtPct(val) {
-  if (val == null) return '—'
+  if (val == null) return '–'
   return `${val >= 0 ? '+' : ''}${val.toFixed(1)}%`
 }
 
@@ -325,7 +325,12 @@ function CostingPortfolio({ rows, loading, sortCol, sortAsc, onSort, onSelectPro
     collected: t.collected + r.collected,
     totalCost: t.totalCost + r.totalCost,
   }), { quoted: 0, billed: 0, collected: 0, totalCost: 0 })
-  const blendedMarginPct = totals.collected > 0 ? ((totals.collected - totals.totalCost) / totals.collected) * 100 : null
+  // Locked spec: actual margin percent over BILLED; cash position is a value
+  // with no percentage; guards withhold both when a side is empty.
+  const anyCostData = rows.some(r => r.hasCostData)
+  const actualBlocked = totals.billed <= 0 || !anyCostData
+  const blendedActualPct = actualBlocked ? null : ((totals.billed - totals.totalCost) / totals.billed) * 100
+  const cashBlocked = totals.collected <= 0 || !anyCostData
 
   const cols = [
     { key: 'project_name', label: t('reports:th.job') },
@@ -335,6 +340,7 @@ function CostingPortfolio({ rows, loading, sortCol, sortAsc, onSort, onSelectPro
     { key: 'totalCost', label: t('reports:th.cost') },
     { key: 'estimatedMargin', label: t('reports:th.estMargin') },
     { key: 'actualMargin', label: t('reports:th.actualMargin') },
+    { key: 'cashPosition', label: t('reports:th.cashPosition') },
   ]
 
   function SortTh({ col }) {
@@ -359,7 +365,8 @@ function CostingPortfolio({ rows, loading, sortCol, sortAsc, onSort, onSelectPro
           { label: t('reports:kpi.billed'), value: fmtMoney(totals.billed), accent: '#26464C' },
           { label: t('reports:kpi.collected'), value: fmtMoney(totals.collected), accent: '#26464C' },
           { label: t('reports:kpi.totalCost'), value: fmtMoney(totals.totalCost), accent: 'var(--color-text-muted)' },
-          { label: t('reports:kpi.actualMargin'), value: blendedMarginPct != null ? fmtPct(blendedMarginPct) : '—', accent: '#F27243', isMargin: true, positive: (blendedMarginPct ?? 0) >= 0 },
+          { label: t('reports:kpi.actualMargin'), value: actualBlocked ? '–' : fmtPct(blendedActualPct), sub: actualBlocked ? t('reports:margin.noCostData') : t('reports:summary.billedMinusCost'), accent: '#F27243', isMargin: true, positive: (blendedActualPct ?? 0) >= 0 },
+          { label: t('reports:kpi.cashPosition'), value: cashBlocked ? '–' : fmtMoney(totals.collected - totals.totalCost), sub: cashBlocked ? t('reports:margin.noCostData') : t('reports:summary.collectedMinusCost'), accent: '#26464C', isMargin: !cashBlocked, positive: (totals.collected - totals.totalCost) >= 0 },
         ].map(s => (
           <div key={s.label} style={{
             background: s.isMargin ? 'rgba(242,114,67,0.06)' : 'var(--color-surface)',
@@ -368,6 +375,7 @@ function CostingPortfolio({ rows, loading, sortCol, sortAsc, onSort, onSelectPro
           }}>
             <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 'var(--tracking-caps)', color: 'var(--color-text-muted)' }}>{s.label}</div>
             <div style={{ fontSize: 'var(--text-xl)', fontWeight: 800, fontVariantNumeric: 'tabular-nums', color: s.isMargin ? (s.positive ? 'var(--color-success, #22c55e)' : 'var(--color-danger, #dc2626)') : undefined }}>{s.value}</div>
+            {s.sub && <div style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>{s.sub}</div>}
           </div>
         ))}
       </div>
@@ -397,10 +405,13 @@ function CostingPortfolio({ rows, loading, sortCol, sortAsc, onSort, onSelectPro
                   )}
                 </td>
                 <td className={styles.td} style={{ textAlign: 'right' }}>
-                  <MarginCell amount={r.estimatedMargin} pct={r.estimatedMarginPct} />
+                  <MarginCell amount={r.estimatedMargin} pct={r.estimatedMarginPct} blocked={r.quoted <= 0 || !r.hasCostData} />
                 </td>
                 <td className={styles.td} style={{ textAlign: 'right' }}>
-                  <MarginCell amount={r.actualMargin} pct={r.actualMarginPct} />
+                  <MarginCell amount={r.actualMargin} pct={r.actualMarginPct} blocked={r.billed <= 0 || !r.hasCostData} />
+                </td>
+                <td className={styles.td} style={{ textAlign: 'right' }}>
+                  <MarginCell amount={r.cashPosition} showPct={false} blocked={r.collected <= 0 || !r.hasCostData} />
                 </td>
               </tr>
             ))}
@@ -414,7 +425,10 @@ function CostingPortfolio({ rows, loading, sortCol, sortAsc, onSort, onSelectPro
               <td className={styles.td} style={{ textAlign: 'right', fontWeight: 700 }}>{fmtMoney(totals.totalCost)}</td>
               <td className={styles.td}></td>
               <td className={styles.td} style={{ textAlign: 'right', fontWeight: 700 }}>
-                <MarginCell amount={totals.collected - totals.totalCost} pct={blendedMarginPct} />
+                <MarginCell amount={totals.billed - totals.totalCost} pct={blendedActualPct} blocked={actualBlocked} />
+              </td>
+              <td className={styles.td} style={{ textAlign: 'right', fontWeight: 700 }}>
+                <MarginCell amount={totals.collected - totals.totalCost} showPct={false} blocked={cashBlocked} />
               </td>
             </tr>
           </tfoot>
@@ -431,11 +445,17 @@ function PeriodSummary({ summary, loading }) {
   if (loading || !summary) return <div className={styles.empty}>{t('reports:common.loading')}</div>
   if (summary.jobCount === 0) return <div className={styles.empty}>{t('reports:costing.emptyJobs')}</div>
 
-  const { quoted, billed, collected, laborCost, materialsCost, expensesCost, totalCost, jobCount, hasIncomplete } = summary
+  const { quoted, billed, collected, laborCost, materialsCost, expensesCost, totalCost, jobCount, hasIncomplete, hasCostData } = summary
+  // Locked spec: estimated over quoted, actual over billed, cash position
+  // value-only; guards withhold empty sides.
+  const estBlocked = quoted <= 0 || !hasCostData
   const estMargin = quoted - totalCost
-  const estPct = quoted > 0 ? (estMargin / quoted) * 100 : null
-  const actMargin = collected - totalCost
-  const actPct = collected > 0 ? (actMargin / collected) * 100 : null
+  const estPct = estBlocked ? null : (estMargin / quoted) * 100
+  const actBlocked = billed <= 0 || !hasCostData
+  const actMargin = billed - totalCost
+  const actPct = actBlocked ? null : (actMargin / billed) * 100
+  const cashBlocked = collected <= 0 || !hasCostData
+  const cashPosition = collected - totalCost
 
   return (
     <div style={{ maxWidth: 560 }}>
@@ -470,12 +490,17 @@ function PeriodSummary({ summary, loading }) {
         <div style={{ flex: 1, minWidth: 200, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg, 8px)', padding: '16px 20px' }}>
           <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)', marginBottom: 6 }}>{t('reports:summary.estimatedProfit')}</div>
           <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 2 }}>{t('reports:summary.quotedMinusCost')}</div>
-          <MarginCell amount={estMargin} pct={estPct} large />
+          <MarginCell amount={estMargin} pct={estPct} large blocked={estBlocked} />
         </div>
         <div style={{ flex: 1, minWidth: 200, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg, 8px)', padding: '16px 20px' }}>
           <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)', marginBottom: 6 }}>{t('reports:summary.actualProfit')}</div>
+          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 2 }}>{t('reports:summary.billedMinusCost')}</div>
+          <MarginCell amount={actMargin} pct={actPct} large blocked={actBlocked} />
+        </div>
+        <div style={{ flex: 1, minWidth: 200, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg, 8px)', padding: '16px 20px' }}>
+          <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)', marginBottom: 6 }}>{t('reports:summary.cashPosition')}</div>
           <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 2 }}>{t('reports:summary.collectedMinusCost')}</div>
-          <MarginCell amount={actMargin} pct={actPct} large />
+          <MarginCell amount={cashPosition} showPct={false} large blocked={cashBlocked} />
         </div>
       </div>
 
@@ -625,12 +650,17 @@ function CostingDetail({ detail, loading, onBack }) {
         <div style={{ flex: 1, minWidth: 200, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg, 8px)', padding: '16px 20px' }}>
           <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)', marginBottom: 6 }}>{t('reports:detail.estimatedMargin')}</div>
           <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 2 }}>{t('reports:summary.quotedMinusCost')}</div>
-          <MarginCell amount={d.estimatedMargin} pct={d.estimatedMarginPct} large />
+          <MarginCell amount={d.estimatedMargin} pct={d.estimatedMarginPct} large blocked={d.quoted <= 0 || !d.hasCostData} />
         </div>
         <div style={{ flex: 1, minWidth: 200, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg, 8px)', padding: '16px 20px' }}>
           <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)', marginBottom: 6 }}>{t('reports:detail.actualMargin')}</div>
+          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 2 }}>{t('reports:summary.billedMinusCost')}</div>
+          <MarginCell amount={d.actualMargin} pct={d.actualMarginPct} large blocked={d.billed <= 0 || !d.hasCostData} />
+        </div>
+        <div style={{ flex: 1, minWidth: 200, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg, 8px)', padding: '16px 20px' }}>
+          <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)', marginBottom: 6 }}>{t('reports:detail.cashPosition')}</div>
           <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 2 }}>{t('reports:summary.collectedMinusCost')}</div>
-          <MarginCell amount={d.actualMargin} pct={d.actualMarginPct} large />
+          <MarginCell amount={d.cashPosition} showPct={false} large blocked={d.collected <= 0 || !d.hasCostData} />
         </div>
       </div>
     </div>
@@ -639,12 +669,24 @@ function CostingDetail({ detail, loading, onBack }) {
 
 // ── Shared helpers ──────────────────────────────────────────────────────
 
-function MarginCell({ amount, pct, large }) {
+// blocked: the guard from the locked margin spec — when the relevant revenue
+// term is 0, or cost is 0 with no cost records in range, render a dash with a
+// muted hint instead of a number or percentage (never +100.0% from an empty
+// side). showPct=false renders a value-only metric (cash position).
+function MarginCell({ amount, pct, large, blocked = false, showPct = true }) {
+  const { t } = useTranslation()
+  if (blocked) {
+    return (
+      <span style={{ color: 'var(--color-text-muted)', fontWeight: 600, fontSize: large ? 20 : 13 }}>
+        {'–'} <span style={{ fontWeight: 400, fontSize: large ? 13 : 10 }}>{t('reports:margin.noCostData')}</span>
+      </span>
+    )
+  }
   const positive = amount >= 0
   const color = positive ? 'var(--color-success, #22c55e)' : 'var(--color-danger, #dc2626)'
   return (
     <span style={{ color, fontWeight: 600, fontSize: large ? 20 : 13 }}>
-      {fmtMoney(amount)} {pct != null && <span style={{ fontWeight: 400, fontSize: large ? 14 : 11 }}>({fmtPct(pct)})</span>}
+      {fmtMoney(amount)} {showPct && pct != null && <span style={{ fontWeight: 400, fontSize: large ? 14 : 11 }}>({fmtPct(pct)})</span>}
     </span>
   )
 }

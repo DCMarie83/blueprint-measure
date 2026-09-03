@@ -2850,14 +2850,16 @@
       "category": "Categoría",
       "description": "Descripción",
       "vendor": "Proveedor",
-      "amount": "Monto"
+      "amount": "Monto",
+      "cashPosition": "Posición de caja"
     },
     "kpi": {
       "quoted": "Cotizado",
       "billed": "Facturado",
       "collected": "Cobrado",
       "totalCost": "Costo total",
-      "actualMargin": "Margen real"
+      "actualMargin": "Margen real",
+      "cashPosition": "Posición de caja"
     },
     "section": {
       "revenue": "Ingresos",
@@ -2874,7 +2876,9 @@
       "quotedMinusCost": "Cotizado menos costo",
       "collectedMinusCost": "Cobrado menos costo",
       "acrossJobs_one": "En {{count}} trabajo con actividad en este periodo.",
-      "acrossJobs_other": "En {{count}} trabajos con actividad en este periodo."
+      "acrossJobs_other": "En {{count}} trabajos con actividad en este periodo.",
+      "billedMinusCost": "Facturado menos costo",
+      "cashPosition": "Posición de caja"
     },
     "detail": {
       "backToJobs": "← Volver a todos los trabajos",
@@ -2887,7 +2891,8 @@
       "notSet": "Sin definir",
       "noExpenses": "No hay gastos registrados.",
       "estimatedMargin": "Margen estimado",
-      "actualMargin": "Margen real"
+      "actualMargin": "Margen real",
+      "cashPosition": "Posición de caja"
     },
     "expenseCategory": {
       "material": "Material",
@@ -2902,6 +2907,9 @@
       "payStatementFailed": "No se pudo generar el recibo de pago",
       "pdfFailed": "No se pudo generar el PDF",
       "excelFailed": "No se pudo generar el archivo de Excel"
+    },
+    "margin": {
+      "noCostData": "sin datos de costos"
     }
   },
   "time": {

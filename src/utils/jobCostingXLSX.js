@@ -30,7 +30,7 @@ export async function exportJobCostingXLSX({ rows, totals, period, company }) {
   const headers = [
     'Job', 'Client', 'Quoted', 'Billed', 'Collected',
     'Labor', 'Materials', 'Expenses', 'Total Cost',
-    'Est. Margin', 'Est. Margin %', 'Actual Margin', 'Actual Margin %',
+    'Est. Margin', 'Est. Margin %', 'Actual Margin', 'Actual Margin %', 'Cash Position',
   ]
 
   const headerRowNum = currentRow
@@ -48,22 +48,29 @@ export async function exportJobCostingXLSX({ rows, totals, period, company }) {
   ws.views = [{ state: 'frozen', ySplit: headerRowNum, xSplit: 0 }]
 
   // Column widths
-  const widths = [28, 20, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14]
+  const widths = [28, 20, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14]
   widths.forEach((w, i) => { ws.getColumn(i + 1).width = w })
 
-  // Money column indices (0-based): 2-12
-  const moneyCols = new Set([2, 3, 4, 5, 6, 7, 8, 9, 11])
+  // Money column indices (0-based)
+  const moneyCols = new Set([2, 3, 4, 5, 6, 7, 8, 9, 11, 13])
   const pctCols = new Set([10, 12])
 
   // ── Data rows ────────────────────────────────────────────
+  // Locked spec: actual margin percent over billed; cash position value only;
+  // blocked sides (revenue 0, or no cost records) export as blank cells so the
+  // sheet never shows +100.0% from an empty side.
   for (const r of rows) {
+    const estBlocked = r.quoted <= 0 || !r.hasCostData
+    const actBlocked = r.billed <= 0 || !r.hasCostData
+    const cashBlocked = r.collected <= 0 || !r.hasCostData
     const exRow = ws.getRow(currentRow)
     const vals = [
       r.project_name, r.client_name,
       r.quoted, r.billed, r.collected,
       r.laborCost, r.materialsCost, r.expensesCost, r.totalCost,
-      r.estimatedMargin, r.estimatedMarginPct != null ? r.estimatedMarginPct / 100 : null,
-      r.actualMargin, r.actualMarginPct != null ? r.actualMarginPct / 100 : null,
+      estBlocked ? null : r.estimatedMargin, estBlocked || r.estimatedMarginPct == null ? null : r.estimatedMarginPct / 100,
+      actBlocked ? null : r.actualMargin, actBlocked || r.actualMarginPct == null ? null : r.actualMarginPct / 100,
+      cashBlocked ? null : r.cashPosition,
     ]
     vals.forEach((v, i) => {
       const cell = exRow.getCell(i + 1)
@@ -76,9 +83,14 @@ export async function exportJobCostingXLSX({ rows, totals, period, company }) {
   }
 
   // ── Totals row ───────────────────────────────────────────
-  const blendedPct = totals.collected > 0 ? (totals.collected - totals.totalCost) / totals.collected : null
+  const anyCostData = rows.some(r => r.hasCostData)
+  const estTotalBlocked = totals.quoted <= 0 || !anyCostData
+  const actTotalBlocked = totals.billed <= 0 || !anyCostData
+  const cashTotalBlocked = totals.collected <= 0 || !anyCostData
   const estTotalMargin = totals.quoted - totals.totalCost
-  const estTotalPct = totals.quoted > 0 ? estTotalMargin / totals.quoted : null
+  const estTotalPct = estTotalBlocked ? null : estTotalMargin / totals.quoted
+  const actTotalMargin = totals.billed - totals.totalCost
+  const actTotalPct = actTotalBlocked ? null : actTotalMargin / totals.billed
   const totLabor = rows.reduce((s, r) => s + r.laborCost, 0)
   const totMaterials = rows.reduce((s, r) => s + r.materialsCost, 0)
   const totExpenses = rows.reduce((s, r) => s + r.expensesCost, 0)
@@ -88,8 +100,9 @@ export async function exportJobCostingXLSX({ rows, totals, period, company }) {
     `Total (${rows.length} jobs)`, '',
     totals.quoted, totals.billed, totals.collected,
     totLabor, totMaterials, totExpenses, totals.totalCost,
-    estTotalMargin, estTotalPct,
-    totals.collected - totals.totalCost, blendedPct,
+    estTotalBlocked ? null : estTotalMargin, estTotalPct,
+    actTotalBlocked ? null : actTotalMargin, actTotalPct,
+    cashTotalBlocked ? null : totals.collected - totals.totalCost,
   ]
   totVals.forEach((v, i) => {
     const cell = totRow.getCell(i + 1)

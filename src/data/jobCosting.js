@@ -163,10 +163,17 @@ export async function getJobCostingRows(companyId, { from, to } = {}) {
     const expensesCost = projExpenses.reduce((s, x) => s + num(x.amount), 0)
 
     const totalCost = laborCost + materialsCost + expensesCost
+    // Locked margin spec: estimated = quoted − cost (pct over quoted);
+    // actual = billed − cost (pct over billed); cash position = collected −
+    // cost, value only, no percentage. Percentages are withheld (null) when
+    // the revenue term is 0 or when no cost records exist in range, so an
+    // empty side never renders +100.0%.
+    const hasCostData = projTimeEntries.length > 0 || projOrders.length > 0 || projExpenses.length > 0
     const estimatedMargin = quoted - totalCost
-    const estimatedMarginPct = quoted > 0 ? (estimatedMargin / quoted) * 100 : null
-    const actualMargin = collected - totalCost
-    const actualMarginPct = collected > 0 ? (actualMargin / collected) * 100 : null
+    const estimatedMarginPct = quoted > 0 && hasCostData ? (estimatedMargin / quoted) * 100 : null
+    const actualMargin = billed - totalCost
+    const actualMarginPct = billed > 0 && hasCostData ? (actualMargin / billed) * 100 : null
+    const cashPosition = collected - totalCost
     const hasIncompleteData = flag_no_accepted_estimate || flag_labor_incomplete || flag_materials_incomplete
 
     rows.push({
@@ -178,6 +185,7 @@ export async function getJobCostingRows(companyId, { from, to } = {}) {
       laborCost, materialsCost, expensesCost, totalCost,
       estimatedMargin, estimatedMarginPct,
       actualMargin, actualMarginPct,
+      cashPosition, hasCostData,
       hasIncompleteData,
       flag_no_accepted_estimate,
       flag_labor_incomplete,
@@ -276,10 +284,13 @@ export async function getJobCostingDetail(companyId, projectId) {
 
   const expensesCost = (expenseRows ?? []).reduce((s, x) => s + num(x.amount), 0)
   const totalCost = laborCost + materialsCost + expensesCost
+  // Same locked margin spec as the portfolio rows (see getJobCostingRows).
+  const hasCostData = (timeEntries ?? []).length > 0 || projOrders.length > 0 || (expenseRows ?? []).length > 0
   const estimatedMargin = quoted - totalCost
-  const estimatedMarginPct = quoted > 0 ? (estimatedMargin / quoted) * 100 : null
-  const actualMargin = collected - totalCost
-  const actualMarginPct = collected > 0 ? (actualMargin / collected) * 100 : null
+  const estimatedMarginPct = quoted > 0 && hasCostData ? (estimatedMargin / quoted) * 100 : null
+  const actualMargin = billed - totalCost
+  const actualMarginPct = billed > 0 && hasCostData ? (actualMargin / billed) * 100 : null
+  const cashPosition = collected - totalCost
   const hasIncompleteData = flag_no_accepted_estimate || flag_labor_incomplete || flag_materials_incomplete
 
   return {
@@ -291,6 +302,7 @@ export async function getJobCostingDetail(companyId, projectId) {
     laborCost, materialsCost, expensesCost, totalCost,
     estimatedMargin, estimatedMarginPct,
     actualMargin, actualMarginPct,
+    cashPosition, hasCostData,
     hasIncompleteData,
     flag_no_accepted_estimate, flag_labor_incomplete, flag_materials_incomplete,
     laborBreakdown,
@@ -306,7 +318,7 @@ export async function getJobCostingDetail(companyId, projectId) {
 // collected=invoice_payments.payment_date, labor=time_entries.work_date,
 // expenses=expenses.expense_date.
 export async function getPeriodSummary(companyId, { from, to } = {}) {
-  const empty = { quoted: 0, billed: 0, collected: 0, laborCost: 0, materialsCost: 0, expensesCost: 0, totalCost: 0, jobCount: 0, hasIncomplete: false }
+  const empty = { quoted: 0, billed: 0, collected: 0, laborCost: 0, materialsCost: 0, expensesCost: 0, totalCost: 0, jobCount: 0, hasIncomplete: false, hasCostData: false }
   if (!companyId) return empty
 
   const clip = (q, col) => {
@@ -391,5 +403,6 @@ export async function getPeriodSummary(companyId, { from, to } = {}) {
     totalCost: laborCost + materialsCost + expensesCost,
     jobCount: projectSet.size,
     hasIncomplete,
+    hasCostData: (timeEntries ?? []).length > 0 || inRangeOrders.length > 0 || (expenses ?? []).length > 0,
   }
 }

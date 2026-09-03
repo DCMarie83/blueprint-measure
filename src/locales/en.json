@@ -2850,14 +2850,16 @@
       "category": "Category",
       "description": "Description",
       "vendor": "Vendor",
-      "amount": "Amount"
+      "amount": "Amount",
+      "cashPosition": "Cash Position"
     },
     "kpi": {
       "quoted": "Quoted",
       "billed": "Billed",
       "collected": "Collected",
       "totalCost": "Total Cost",
-      "actualMargin": "Actual Margin"
+      "actualMargin": "Actual Margin",
+      "cashPosition": "Cash position"
     },
     "section": {
       "revenue": "Revenue",
@@ -2874,7 +2876,9 @@
       "quotedMinusCost": "Quoted minus cost",
       "collectedMinusCost": "Collected minus cost",
       "acrossJobs_one": "Across {{count}} job with activity in this period.",
-      "acrossJobs_other": "Across {{count}} jobs with activity in this period."
+      "acrossJobs_other": "Across {{count}} jobs with activity in this period.",
+      "billedMinusCost": "Billed minus cost",
+      "cashPosition": "Cash position"
     },
     "detail": {
       "backToJobs": "← Back to all jobs",
@@ -2887,7 +2891,8 @@
       "notSet": "Not set",
       "noExpenses": "No expenses logged.",
       "estimatedMargin": "Estimated Margin",
-      "actualMargin": "Actual Margin"
+      "actualMargin": "Actual Margin",
+      "cashPosition": "Cash position"
     },
     "expenseCategory": {
       "material": "Material",
@@ -2902,6 +2907,9 @@
       "payStatementFailed": "Failed to generate pay statement",
       "pdfFailed": "Failed to generate PDF",
       "excelFailed": "Failed to generate Excel file"
+    },
+    "margin": {
+      "noCostData": "no cost data"
     }
   },
   "time": {
