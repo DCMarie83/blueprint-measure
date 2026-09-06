@@ -1207,7 +1207,8 @@
       "confirmVoidStatus": "Void this invoice? It will be excluded from billed totals.",
       "editNumber": "Edit invoice number",
       "errorNumberEmpty": "Invoice number is required.",
-      "numberConflict": "Invoice number {{number}} already exists."
+      "numberConflict": "Invoice number {{number}} already exists.",
+      "editPayment": "Edit payment"
     },
     "payment": {
       "methodsHeading": "Payment Methods",

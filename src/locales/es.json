@@ -1207,7 +1207,8 @@
       "confirmVoidStatus": "¿Anular esta factura? Quedará fuera de los totales facturados.",
       "editNumber": "Editar número de factura",
       "errorNumberEmpty": "El número de factura es obligatorio.",
-      "numberConflict": "El número de factura {{number}} ya existe."
+      "numberConflict": "El número de factura {{number}} ya existe.",
+      "editPayment": "Editar pago"
     },
     "payment": {
       "methodsHeading": "Métodos de pago",

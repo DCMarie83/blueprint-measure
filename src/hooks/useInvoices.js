@@ -300,6 +300,53 @@ export function useInvoiceMutations() {
     logInvoiceActivity(invoiceId, 'payment_recorded', `Payment of $${Number(amount).toFixed(2)} recorded`, { amount: Number(amount), payment_method })
   }
 
+  // G77: edit an existing payment in place. UPDATE on the same
+  // invoice_payments row (id preserved, invoice_id never changes); status
+  // re-derives through computeStatusFromPayments — the SAME function
+  // recordPayment and deletePayment use. Pure data: no send-* call, no
+  // client-facing notification. clients.lifetime_value follows via the DB
+  // trigger on invoice_payments UPDATE.
+  async function updatePayment(paymentId, invoiceId, { amount, payment_method, payment_date, reference_number, notes }) {
+    const { data: inv, error: fetchErr } = await supabase.from('invoices').select('company_id, total, paid_at, sent_at, status').eq('id', invoiceId).single()
+    if (fetchErr) throw new Error(fetchErr.message)
+    if (inv.status === 'void') throw new Error('Cannot edit a payment on a voided invoice')
+
+    const { data: oldPmt, error: oldErr } = await supabase.from('invoice_payments').select('amount, payment_date').eq('id', paymentId).single()
+    if (oldErr) throw new Error(oldErr.message)
+
+    const { error: updPmtErr } = await supabase.from('invoice_payments').update({
+      amount: Number(amount) || 0,
+      payment_method: payment_method || null,
+      payment_date: payment_date || new Date().toISOString().slice(0, 10),
+      reference_number: reference_number || null,
+      notes: notes || null,
+    }).eq('id', paymentId)
+    if (updPmtErr) throw new Error(updPmtErr.message)
+
+    // Recompute cached sum — identical to recordPayment/deletePayment.
+    const { data: pmts } = await supabase.from('invoice_payments').select('amount').eq('invoice_id', invoiceId)
+    const newPaidAmount = (pmts ?? []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+    const { status, paid_at } = computeStatusFromPayments(newPaidAmount, inv)
+
+    const { error: updErr } = await supabase.from('invoices').update({
+      paid_amount: newPaidAmount,
+      status,
+      paid_at,
+      payment_method: null,
+      payment_notes: null,
+      updated_at: new Date().toISOString(),
+    }).eq('id', invoiceId)
+    if (updErr) throw new Error(updErr.message)
+
+    const fmt = (v) => `$${(Number(v) || 0).toFixed(2)}`
+    logInvoiceActivity(
+      invoiceId,
+      'payment_edited',
+      `Payment edited: ${fmt(oldPmt.amount)} on ${oldPmt.payment_date} changed to ${fmt(amount)} on ${payment_date || oldPmt.payment_date}`,
+      { old_amount: Number(oldPmt.amount) || 0, new_amount: Number(amount) || 0, old_date: oldPmt.payment_date, new_date: payment_date || oldPmt.payment_date },
+    )
+  }
+
   async function deletePayment(paymentId, invoiceId) {
     const { error: delErr } = await supabase.from('invoice_payments').delete().eq('id', paymentId)
     if (delErr) throw new Error(delErr.message)
@@ -351,6 +398,9 @@ export function useInvoiceMutations() {
     if (nextStatus === 'paid' && !inv.paid_at) patch.paid_at = now
     const { error: updErr } = await supabase.from('invoices').update(patch).eq('id', id)
     if (updErr) throw new Error(updErr.message)
+
+    // G76: activity trail, same channel markVoid/reopenInvoice use.
+    logInvoiceActivity(id, 'invoice_status_changed', `Status changed from ${inv.status} to ${nextStatus}`, { from: inv.status, to: nextStatus })
   }
 
   // G60: manual invoice number edit. Trimmed, non-empty; a unique-index
@@ -363,6 +413,7 @@ export function useInvoiceMutations() {
       err.code = 'EMPTY'
       throw err
     }
+    const { data: before } = await supabase.from('invoices').select('invoice_number').eq('id', id).single()
     const { error: updErr } = await supabase
       .from('invoices')
       .update({ invoice_number: trimmed, updated_at: new Date().toISOString() })
@@ -371,6 +422,11 @@ export function useInvoiceMutations() {
       const err = new Error(updErr.message)
       err.code = updErr.code
       throw err
+    }
+
+    // G76: activity trail, same channel markVoid/reopenInvoice use.
+    if (before?.invoice_number && before.invoice_number !== trimmed) {
+      logInvoiceActivity(id, 'invoice_number_changed', `Invoice number changed from ${before.invoice_number} to ${trimmed}`, { from: before.invoice_number, to: trimmed })
     }
     return trimmed
   }
@@ -403,5 +459,5 @@ export function useInvoiceMutations() {
     logInvoiceActivity(id, 'invoice_reopened', 'Invoice reopened')
   }
 
-  return { createInvoice, updateInvoice, deleteInvoice, markSent, markPaidInFull, markVoid, reopenInvoice, recordPayment, deletePayment, setStatus, updateInvoiceNumber, saving, error }
+  return { createInvoice, updateInvoice, deleteInvoice, markSent, markPaidInFull, markVoid, reopenInvoice, recordPayment, updatePayment, deletePayment, setStatus, updateInvoiceNumber, saving, error }
 }

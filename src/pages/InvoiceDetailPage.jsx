@@ -62,7 +62,11 @@ export default function InvoiceDetailPage() {
   const { company } = useAuth()
   const { invoice, lineItems, payments, loading, error, refetch } = useInvoice(id)
   const { documents, refetch: refetchDocuments } = useLinkedDocuments('invoice', id)
-  const { markSent, markPaidInFull, markVoid, reopenInvoice, recordPayment, deletePayment, deleteInvoice, setStatus, updateInvoiceNumber } = useInvoiceMutations()
+  const { markSent, markPaidInFull, markVoid, reopenInvoice, recordPayment, updatePayment, deletePayment, deleteInvoice, setStatus, updateInvoiceNumber } = useInvoiceMutations()
+
+  // G77: inline payment edit state
+  const [editingPaymentId, setEditingPaymentId] = useState(null)
+  const [editPay, setEditPay] = useState({ amount: '', method: 'check', date: '', ref: '', notes: '' })
 
   // G60: number edit state
   const [editingNumber, setEditingNumber] = useState(false)
@@ -165,6 +169,43 @@ export default function InvoiceDetailPage() {
     try { await markPaidInFull(id); await refetch() }
     catch (err) { setActionError(err.message) }
     finally { setActionSaving(false) }
+  }
+
+  function startEditPayment(pmt) {
+    setActionError(null)
+    setEditingPaymentId(pmt.id)
+    setEditPay({
+      amount: String(pmt.amount ?? ''),
+      method: pmt.payment_method || 'check',
+      date: pmt.payment_date || new Date().toISOString().slice(0, 10),
+      ref: pmt.reference_number || '',
+      notes: pmt.notes || '',
+    })
+  }
+
+  // G77: validation mirrors recordPayment exactly (amount greater than zero;
+  // recordPayment has no remaining-balance cap, so neither does the edit).
+  async function handleSavePaymentEdit() {
+    const amt = Number(editPay.amount)
+    if (!amt || amt <= 0) { setActionError(t('invoices:detail.errorNoAmount')); return }
+    setActionSaving(true); setActionError(null)
+    try {
+      await updatePayment(editingPaymentId, id, {
+        amount: amt,
+        payment_method: editPay.method,
+        payment_date: editPay.date,
+        reference_number: editPay.ref,
+        notes: editPay.notes,
+      })
+      setEditingPaymentId(null)
+      await refetch()
+    } catch (err) { setActionError(err.message) }
+    finally { setActionSaving(false) }
+  }
+
+  function editPayKeys(e) {
+    if (e.key === 'Enter') { e.preventDefault(); handleSavePaymentEdit() }
+    if (e.key === 'Escape') setEditingPaymentId(null)
   }
 
   async function handleDeletePayment(paymentId) {
@@ -417,6 +458,40 @@ export default function InvoiceDetailPage() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {payments.map(pmt => (
+                editingPaymentId === pmt.id ? (
+                  // G77: inline edit, same fields as the record form. Enter
+                  // saves, Escape cancels. Pure data: no send-* call.
+                  <div key={pmt.id} style={{ padding: '10px 12px', background: 'var(--color-surface)', borderLeft: '3px solid var(--color-primary)', borderRadius: 'var(--radius-md)' }}>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                      <label className={styles.formField} style={{ width: 110 }}>
+                        <span>{t('invoices:detail.amountLabel')}</span>
+                        <input type="number" step="0.01" min="0.01" className={styles.formInput} value={editPay.amount} onChange={e => setEditPay(p => ({ ...p, amount: e.target.value }))} onKeyDown={editPayKeys} autoFocus />
+                      </label>
+                      <label className={styles.formField} style={{ width: 120 }}>
+                        <span>{t('invoices:detail.methodLabel')}</span>
+                        <select className={styles.formSelect} value={editPay.method} onChange={e => setEditPay(p => ({ ...p, method: e.target.value }))} onKeyDown={editPayKeys}>
+                          {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{t(m.label)}</option>)}
+                        </select>
+                      </label>
+                      <label className={styles.formField} style={{ width: 150 }}>
+                        <span>{t('invoices:detail.dateLabel')}</span>
+                        <input type="date" className={styles.formInput} value={editPay.date} onChange={e => setEditPay(p => ({ ...p, date: e.target.value }))} onKeyDown={editPayKeys} />
+                      </label>
+                      <label className={styles.formField} style={{ width: 130 }}>
+                        <span>{t('invoices:detail.referenceOptional')}</span>
+                        <input type="text" className={styles.formInput} value={editPay.ref} onChange={e => setEditPay(p => ({ ...p, ref: e.target.value }))} onKeyDown={editPayKeys} />
+                      </label>
+                      <label className={styles.formField} style={{ flex: 1, minWidth: 140 }}>
+                        <span>{t('invoices:detail.notesOptional')}</span>
+                        <input type="text" className={styles.formInput} value={editPay.notes} onChange={e => setEditPay(p => ({ ...p, notes: e.target.value }))} onKeyDown={editPayKeys} />
+                      </label>
+                      <span style={{ display: 'inline-flex', gap: 8, paddingBottom: 2 }}>
+                        <button className={styles.cancelBtn} onClick={() => setEditingPaymentId(null)}>{t('common:action.cancel')}</button>
+                        <button className={styles.confirmBtn} onClick={handleSavePaymentEdit} disabled={actionSaving}>{actionSaving ? t('invoices:detail.saving') : t('common:action.save')}</button>
+                      </span>
+                    </div>
+                  </div>
+                ) : (
                 <div key={pmt.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: 'var(--color-surface)', borderLeft: '3px solid var(--color-success)', borderRadius: 'var(--radius-md)', fontSize: 14 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -433,16 +508,25 @@ export default function InvoiceDetailPage() {
                     )}
                   </div>
                   {!isVoid && (
-                    <button
-                      onClick={() => handleDeletePayment(pmt.id)}
-                      disabled={actionSaving}
-                      style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: 16, padding: '4px 8px', opacity: 0.6, transition: 'opacity 0.15s' }}
-                      onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = 'var(--color-danger)' }}
-                      onMouseLeave={e => { e.currentTarget.style.opacity = '0.6'; e.currentTarget.style.color = 'var(--color-text-muted)' }}
-                      title={t('invoices:detail.removePayment')}
-                    >×</button>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                      <button
+                        onClick={() => startEditPayment(pmt)}
+                        disabled={actionSaving}
+                        style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '4px 6px', opacity: 0.7 }}
+                        title={t('invoices:detail.editPayment')}
+                      ><Pencil size={13} /></button>
+                      <button
+                        onClick={() => handleDeletePayment(pmt.id)}
+                        disabled={actionSaving}
+                        style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: 16, padding: '4px 8px', opacity: 0.6, transition: 'opacity 0.15s' }}
+                        onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = 'var(--color-danger)' }}
+                        onMouseLeave={e => { e.currentTarget.style.opacity = '0.6'; e.currentTarget.style.color = 'var(--color-text-muted)' }}
+                        title={t('invoices:detail.removePayment')}
+                      >×</button>
+                    </span>
                   )}
                 </div>
+                )
               ))}
             </div>
           )}
