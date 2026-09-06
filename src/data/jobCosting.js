@@ -213,7 +213,9 @@ export async function getJobCostingDetail(companyId, projectId) {
   ] = await Promise.all([
     supabase.from('projects').select('id, name, status, client_id, clients(display_name)').eq('id', projectId).single(),
     supabase.from('estimates').select('id, project_id, status, accepted_at, accepted_variant, selected_variant, good_total, better_total, best_total').eq('project_id', projectId).eq('company_id', companyId).eq('status', 'accepted'),
-    supabase.from('invoices').select('id, project_id, total, status, created_at').eq('project_id', projectId).eq('company_id', companyId).not('status', 'in', '(void,draft)'),
+    // ALL invoices for the breakdown list; the report math below still counts
+    // only non-draft, non-void rows exactly as before.
+    supabase.from('invoices').select('id, project_id, invoice_number, total, status, created_at').eq('project_id', projectId).eq('company_id', companyId),
     supabase.from('time_entries').select('project_id, hours, cost_rate, crew_member_id, crew_members(name)').eq('project_id', projectId).eq('company_id', companyId),
     supabase.from('material_orders').select('id, project_id, title, selected_variant, stores(name)').eq('project_id', projectId).eq('company_id', companyId),
     supabase.from('material_order_items').select('material_order_id, quantity, coats, unit, overage_pct, cost_premium, cost_standard, cost_commercial').eq('company_id', companyId),
@@ -222,13 +224,34 @@ export async function getJobCostingDetail(companyId, projectId) {
 
   if (!project) return null
 
-  // Payments for this project's invoices
-  const invoiceIds = (invoices ?? []).map(i => i.id)
+  // Countable set: draft and void invoices are EXCLUDED from every total,
+  // exactly as before — they appear only in the breakdown list, labeled.
+  const countableInvoices = (invoices ?? []).filter(i => i.status !== 'draft' && i.status !== 'void')
+
+  // Payments for this project's countable invoices
+  const invoiceIds = countableInvoices.map(i => i.id)
   let allPayments = []
   if (invoiceIds.length > 0) {
     const { data: pmts } = await supabase.from('invoice_payments').select('invoice_id, amount, payment_date').in('invoice_id', invoiceIds)
     allPayments = pmts ?? []
   }
+
+  // Per-invoice collected + breakdown rows (G61), math untouched.
+  const collectedByInvoice = {}
+  for (const p of allPayments) {
+    collectedByInvoice[p.invoice_id] = (collectedByInvoice[p.invoice_id] ?? 0) + num(p.amount)
+  }
+  const invoicesBreakdown = [...(invoices ?? [])]
+    .sort((a, b) => (a.created_at ?? '').localeCompare(b.created_at ?? ''))
+    .map(inv => ({
+      id: inv.id,
+      invoice_number: inv.invoice_number,
+      status: inv.status,
+      total: num(inv.total),
+      created_at: inv.created_at,
+      collected: collectedByInvoice[inv.id] ?? 0,
+      excluded: inv.status === 'draft' || inv.status === 'void',
+    }))
 
   // Quoted
   const projEstimates = estimates ?? []
@@ -241,7 +264,7 @@ export async function getJobCostingDetail(companyId, projectId) {
     flag_no_accepted_estimate = true
   }
 
-  const billed = (invoices ?? []).reduce((s, i) => s + num(i.total), 0)
+  const billed = countableInvoices.reduce((s, i) => s + num(i.total), 0)
   const collected = allPayments.reduce((s, p) => s + num(p.amount), 0)
 
   // Labor breakdown per crew member
@@ -308,6 +331,7 @@ export async function getJobCostingDetail(companyId, projectId) {
     laborBreakdown,
     materialsBreakdown,
     expensesBreakdown: expenseRows ?? [],
+    invoicesBreakdown,
   }
 }
 

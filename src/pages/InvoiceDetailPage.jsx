@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Download, Send, CheckCircle, XCircle, Edit, Trash2, RotateCcw } from 'lucide-react'
+import { Download, Send, CheckCircle, XCircle, Edit, Trash2, RotateCcw, Pencil } from 'lucide-react'
 import BackLink from '../components/BackLink'
 import DocumentsSection from '../components/documents/DocumentsSection'
 import { useLinkedDocuments } from '../hooks/useLinkedDocuments'
@@ -61,8 +61,14 @@ export default function InvoiceDetailPage() {
   const navigate = useNavigate()
   const { company } = useAuth()
   const { invoice, lineItems, payments, loading, error, refetch } = useInvoice(id)
-  const documents = useLinkedDocuments('invoice', id)
-  const { markSent, markPaidInFull, markVoid, reopenInvoice, recordPayment, deletePayment, deleteInvoice } = useInvoiceMutations()
+  const { documents, refetch: refetchDocuments } = useLinkedDocuments('invoice', id)
+  const { markSent, markPaidInFull, markVoid, reopenInvoice, recordPayment, deletePayment, deleteInvoice, setStatus, updateInvoiceNumber } = useInvoiceMutations()
+
+  // G60: number edit state
+  const [editingNumber, setEditingNumber] = useState(false)
+  const [numberValue, setNumberValue] = useState('')
+  const [numberError, setNumberError] = useState(null)
+  const [numberSaving, setNumberSaving] = useState(false)
 
   const [showPayForm, setShowPayForm] = useState(false)
   const [payAmount, setPayAmount] = useState('')
@@ -190,6 +196,37 @@ export default function InvoiceDetailPage() {
     catch (err) { alert(t('invoices:detail.deleteFailed', { message: err.message })) }
   }
 
+  // G55: direct status change. Pure data; the only gate is a confirm on void.
+  async function handleStatusChange(next) {
+    if (!next || next === invoice.status) return
+    if (next === 'void' && !window.confirm(t('invoices:detail.confirmVoidStatus'))) return
+    setActionSaving(true); setActionError(null)
+    try {
+      if (next === 'void') await markVoid(id, null)
+      else await setStatus(id, next)
+      await refetch()
+    } catch (err) { setActionError(err.message) }
+    finally { setActionSaving(false) }
+  }
+
+  // G60: save the edited number; a 23505 collision surfaces inline.
+  async function handleSaveNumber() {
+    const trimmed = numberValue.trim()
+    if (!trimmed) { setNumberError(t('invoices:detail.errorNumberEmpty')); return }
+    if (trimmed === invoice.invoice_number) { setEditingNumber(false); setNumberError(null); return }
+    setNumberSaving(true); setNumberError(null)
+    try {
+      await updateInvoiceNumber(id, trimmed)
+      setEditingNumber(false)
+      await refetch()
+    } catch (err) {
+      if (err.code === '23505') setNumberError(t('invoices:detail.numberConflict', { number: trimmed }))
+      else setNumberError(err.message)
+    } finally {
+      setNumberSaving(false)
+    }
+  }
+
   if (loading) return <div className={styles.page}><main className={styles.main}><p className={styles.loading}>{t('common:misc.loading')}</p></main></div>
   if (error || !invoice) return <div className={styles.page}><main className={styles.main}><p className={styles.loading}>{t('invoices:detail.notFound')}</p></main></div>
 
@@ -210,14 +247,61 @@ export default function InvoiceDetailPage() {
         <div className={styles.topRow}>
           <div>
             <div className={styles.numberRow}>
-              <h1 className={styles.number}>{invoice.invoice_number}</h1>
+              {editingNumber ? (
+                <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                  <input
+                    autoFocus
+                    value={numberValue}
+                    onChange={e => setNumberValue(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') handleSaveNumber()
+                      if (e.key === 'Escape') { setEditingNumber(false); setNumberError(null) }
+                    }}
+                    style={{ fontSize: 20, fontWeight: 700, fontFamily: 'var(--font-mono)', padding: '4px 10px', border: '1px solid var(--color-primary)', borderRadius: 'var(--radius-md)', background: 'var(--color-bg)', color: 'var(--color-text)', minWidth: 160 }}
+                  />
+                  <button onClick={handleSaveNumber} disabled={numberSaving} style={{ fontSize: 12, fontWeight: 600, padding: '6px 12px', background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}>
+                    {numberSaving ? '…' : t('common:action.save')}
+                  </button>
+                  <button onClick={() => { setEditingNumber(false); setNumberError(null) }} style={{ fontSize: 12, padding: '6px 10px', background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}>
+                    {t('common:action.cancel')}
+                  </button>
+                </span>
+              ) : (
+                <>
+                  <h1 className={styles.number}>{invoice.invoice_number}</h1>
+                  <button
+                    onClick={() => { setNumberValue(invoice.invoice_number); setNumberError(null); setEditingNumber(true) }}
+                    title={t('invoices:detail.editNumber')}
+                    style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: 2, opacity: 0.7 }}
+                  >
+                    <Pencil size={15} />
+                  </button>
+                </>
+              )}
               {(() => {
                 const p = statusPillProps(status, overdue)
                 return (
                   <span style={{ padding: '4px 12px', borderRadius: 9999, background: p.bg, color: p.color, fontWeight: 700, fontSize: 'var(--text-xs)', whiteSpace: 'nowrap', textDecoration: p.strike ? 'line-through' : undefined }}>{t(p.label)}</span>
                 )
               })()}
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 4 }}>
+                <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)' }}>{t('invoices:detail.statusLabel')}</span>
+                <select
+                  value={status}
+                  disabled={actionSaving}
+                  onChange={e => handleStatusChange(e.target.value)}
+                  style={{ padding: '4px 8px', fontSize: 12, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
+                >
+                  {['draft', 'sent', 'partial', 'paid', 'void'].map(s => (
+                    <option key={s} value={s}>{t(`common:invoiceStatus.${s}`)}</option>
+                  ))}
+                  {status === 'viewed' && <option value="viewed">{t('common:invoiceStatus.viewed')}</option>}
+                </select>
+              </label>
             </div>
+            {numberError && (
+              <div style={{ fontSize: 13, color: 'var(--color-danger, #dc2626)', margin: '4px 0' }}>{numberError}</div>
+            )}
             {invoice.title && <div className={styles.invTitle}>{invoice.title}</div>}
             <div className={styles.dates}>
               <span>{t('invoices:detail.issued', { date: fmtDate(invoice.created_at) })}</span>
@@ -378,8 +462,8 @@ export default function InvoiceDetailPage() {
           )}
         </div>
 
-        {/* Documents (source files from Document Import) */}
-        <DocumentsSection documents={documents} />
+        {/* Documents: source files from Document Import + direct attach (G54) */}
+        <DocumentsSection documents={documents} uploadTarget={{ type: 'invoice', id }} onUploaded={refetchDocuments} />
 
         {/* Void reason */}
         {invoice.void_reason && (

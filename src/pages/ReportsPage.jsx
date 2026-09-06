@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { BarChart3, Printer } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -533,7 +534,9 @@ function CostingDetail({ detail, loading, onBack }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary)', fontWeight: 600, fontSize: 13 }}>{t('reports:detail.backToJobs')}</button>
       </div>
-      <h2 style={{ fontSize: 20, fontWeight: 700, margin: '0 0 4px' }}>{d.project_name}</h2>
+      <h2 style={{ fontSize: 20, fontWeight: 700, margin: '0 0 4px' }}>
+        <Link to={`/project/${d.project_id}`} style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px dotted var(--color-text-muted)' }}>{d.project_name}</Link>
+      </h2>
       <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 20px' }}>{d.client_name}</p>
 
       {/* Incomplete data warnings */}
@@ -552,6 +555,38 @@ function CostingDetail({ detail, loading, onBack }) {
           <Stat label={t('reports:th.billed')} value={fmtMoney(d.billed)} />
           <Stat label={t('reports:th.collected')} value={fmtMoney(d.collected)} />
         </div>
+
+        {/* G61: the job's invoices, linked. Draft/void rows are greyed and
+            labeled — they are excluded from the totals above (math unchanged). */}
+        {(d.invoicesBreakdown?.length ?? 0) > 0 && (
+          <table className={styles.table} style={{ marginTop: 14 }}>
+            <thead>
+              <tr>
+                <th className={styles.th}>{t('reports:th.invoice')}</th>
+                <th className={styles.th}>{t('reports:th.date')}</th>
+                <th className={styles.th}>{t('reports:th.status')}</th>
+                <th className={styles.th} style={{ textAlign: 'right' }}>{t('reports:th.total')}</th>
+                <th className={styles.th} style={{ textAlign: 'right' }}>{t('reports:th.collected')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {d.invoicesBreakdown.map(inv => (
+                <tr key={inv.id} className={styles.tr} style={inv.excluded ? { opacity: 0.55 } : undefined}>
+                  <td className={styles.td}>
+                    <Link to={`/invoices/${inv.id}`} style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}>{inv.invoice_number}</Link>
+                    {inv.excluded && (
+                      <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--color-text-muted)' }}>{t('reports:detail.excludedFromTotals')}</span>
+                    )}
+                  </td>
+                  <td className={styles.td} style={{ whiteSpace: 'nowrap' }}>{inv.created_at ? new Date(inv.created_at).toLocaleDateString() : '–'}</td>
+                  <td className={styles.td} style={{ textTransform: 'capitalize' }}>{t(`common:invoiceStatus.${inv.status}`, { defaultValue: inv.status })}</td>
+                  <td className={styles.td} style={{ textAlign: 'right', fontWeight: 600 }}>{fmtMoney(inv.total)}</td>
+                  <td className={styles.td} style={{ textAlign: 'right' }}>{fmtMoney(inv.collected)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </SectionCard>
 
       {/* Labor */}

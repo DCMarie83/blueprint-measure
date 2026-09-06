@@ -1102,7 +1102,13 @@
       "sort": {
         "recent": "Recientes",
         "dueDate": "Fecha de vencimiento",
-        "total": "Total"
+        "total": "Total",
+        "number": "Número de factura",
+        "client": "Cliente A-Z",
+        "job": "Trabajo A-Z",
+        "date": "Fecha de emisión",
+        "amount": "Monto",
+        "status": "Estado"
       },
       "emptyTitle": "Aún no hay facturas",
       "emptyBody": "Crea una desde una cotización aceptada, o haz clic en \"+ Nueva factura\" para empezar de cero.",
@@ -1196,7 +1202,12 @@
         "card": "Tarjeta",
         "venmo": "Venmo",
         "other": "Otro"
-      }
+      },
+      "statusLabel": "Estado",
+      "confirmVoidStatus": "¿Anular esta factura? Quedará fuera de los totales facturados.",
+      "editNumber": "Editar número de factura",
+      "errorNumberEmpty": "El número de factura es obligatorio.",
+      "numberConflict": "El número de factura {{number}} ya existe."
     },
     "payment": {
       "methodsHeading": "Métodos de pago",
@@ -2851,7 +2862,10 @@
       "description": "Descripción",
       "vendor": "Proveedor",
       "amount": "Monto",
-      "cashPosition": "Posición de caja"
+      "cashPosition": "Posición de caja",
+      "invoice": "Factura",
+      "status": "Estado",
+      "total": "Total"
     },
     "kpi": {
       "quoted": "Cotizado",
@@ -2892,7 +2906,8 @@
       "noExpenses": "No hay gastos registrados.",
       "estimatedMargin": "Margen estimado",
       "actualMargin": "Margen real",
-      "cashPosition": "Posición de caja"
+      "cashPosition": "Posición de caja",
+      "excludedFromTotals": "excluido de los totales"
     },
     "expenseCategory": {
       "material": "Material",
@@ -3621,7 +3636,24 @@
       "title": "Documentos ({{count}})",
       "empty": "Aún no hay documentos.",
       "open": "Abrir",
-      "openFailed": "No se pudo abrir el documento."
+      "openFailed": "No se pudo abrir el documento.",
+      "upload": "Subir",
+      "uploading": "Subiendo...",
+      "badType": "{{name}}: tipo de archivo no compatible",
+      "tooLarge": "{{name}}: supera el límite de 25 MB",
+      "type": {
+        "blueprint": "Plano",
+        "plan": "Plan",
+        "receipt": "Recibo",
+        "payment_proof": "Comprobante de pago",
+        "photo": "Foto",
+        "spreadsheet": "Hoja de cálculo",
+        "contract": "Contrato",
+        "other": "Otro",
+        "invoice": "Factura",
+        "quote": "Cotización",
+        "price_list": "Lista de precios"
+      }
     }
   },
   "admin": {
@@ -4265,7 +4297,31 @@
       "nothingExtracted": "No se pudo extraer nada de estos archivos.",
       "badType": "{{name}} — tipo de archivo no compatible (solo PDF, JPG o PNG)",
       "tooLarge": "{{name}} — supera el límite de 15 MB",
-      "tooMany": "Solo se conservaron los primeros {{max}} archivos."
+      "tooMany": "Solo se conservaron los primeros {{max}} archivos.",
+      "mode": {
+        "extract": "Extraer datos",
+        "attach": "Adjuntar documentos"
+      },
+      "attachPrompt": "Sube archivos y vincula cada uno a un trabajo, cliente, factura o cotización. No se extraen datos y ningún campo del registro cambia.",
+      "assignPrompt": "Revisa cada archivo, su registro y su tipo antes de adjuntar.",
+      "colFile": "Archivo",
+      "colRecord": "Registro",
+      "colType": "Tipo",
+      "recordType": {
+        "project": "Trabajo",
+        "client": "Cliente",
+        "invoice": "Factura",
+        "estimate": "Cotización"
+      },
+      "searchPlaceholder": "Buscar...",
+      "pickRecord": "Elegir...",
+      "attachBtn_one": "Adjuntar {{count}} archivo",
+      "attachBtn_other": "Adjuntar {{count}} archivos",
+      "attaching": "Adjuntando archivo {{current}} de {{total}}...",
+      "attachSuccess_one": "{{count}} archivo adjuntado.",
+      "attachSuccess_other": "{{count}} archivos adjuntados.",
+      "reusedCount_one": "{{count}} ya almacenado (reutilizado):",
+      "reusedCount_other": "{{count}} ya almacenados (reutilizados):"
     }
   }
 }

@@ -23,9 +23,34 @@ function fmtDate(d) {
 const STATUS_FILTERS = ['all', 'draft', 'sent', 'partial', 'paid', 'void']
 const SORT_OPTIONS = [
   { value: 'recent', label: 'invoices:list.sort.recent' },
+  { value: 'number', label: 'invoices:list.sort.number' },
+  { value: 'client', label: 'invoices:list.sort.client' },
+  { value: 'job', label: 'invoices:list.sort.job' },
+  { value: 'date', label: 'invoices:list.sort.date' },
   { value: 'due_date', label: 'invoices:list.sort.dueDate' },
-  { value: 'total', label: 'invoices:list.sort.total' },
+  { value: 'total', label: 'invoices:list.sort.amount' },
+  { value: 'status', label: 'invoices:list.sort.status' },
 ]
+
+// Numeric invoice numbers order numerically; other text (INV-…) follows
+// alphabetically; IMPORT-* placeholder numbers group after everything.
+function invoiceNumberKey(num) {
+  const s = String(num ?? '').trim()
+  if (/^import-/i.test(s)) return { group: 2, num: 0, text: s.toLowerCase() }
+  if (/^\d+$/.test(s)) return { group: 0, num: Number(s), text: s }
+  return { group: 1, num: 0, text: s.toLowerCase() }
+}
+
+function compareNumbers(a, b) {
+  const ka = invoiceNumberKey(a.invoice_number)
+  const kb = invoiceNumberKey(b.invoice_number)
+  if (ka.group !== kb.group) return ka.group - kb.group
+  if (ka.group === 0) return ka.num - kb.num
+  return ka.text.localeCompare(kb.text)
+}
+
+const STATUS_RANK = { draft: 0, sent: 1, viewed: 2, partial: 3, paid: 4, void: 5 }
+const SORT_STORAGE_KEY = 'rivetdog_invoice_sort'
 
 export default function InvoiceListPage() {
   const { t } = useTranslation()
@@ -33,7 +58,18 @@ export default function InvoiceListPage() {
   const { invoices, loading, error, refetch } = useInvoices()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
-  const [sortKey, setSortKey] = useState('recent')
+  // Sort choice survives back-navigation within the session.
+  const [sortKey, setSortKeyState] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem(SORT_STORAGE_KEY)
+      if (saved && SORT_OPTIONS.some(o => o.value === saved)) return saved
+    } catch { /* storage unavailable */ }
+    return 'recent'
+  })
+  function setSortKey(next) {
+    setSortKeyState(next)
+    try { sessionStorage.setItem(SORT_STORAGE_KEY, next) } catch { /* ignore */ }
+  }
   const [showImport, setShowImport] = useState(false)
   const [showDocImport, setShowDocImport] = useState(false)
 
@@ -49,13 +85,20 @@ export default function InvoiceListPage() {
   }
 
   const sorted = [...filtered].sort((a, b) => {
-    if (sortKey === 'due_date') {
-      const ad = a.due_date ? new Date(a.due_date).getTime() : Infinity
-      const bd = b.due_date ? new Date(b.due_date).getTime() : Infinity
-      return ad - bd
+    switch (sortKey) {
+      case 'number': return compareNumbers(a, b)
+      case 'client': return (a.projects?.clients?.display_name ?? '').localeCompare(b.projects?.clients?.display_name ?? '')
+      case 'job': return (a.projects?.name ?? '').localeCompare(b.projects?.name ?? '')
+      case 'date': return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      case 'due_date': {
+        const ad = a.due_date ? new Date(a.due_date).getTime() : Infinity
+        const bd = b.due_date ? new Date(b.due_date).getTime() : Infinity
+        return ad - bd
+      }
+      case 'total': return (Number(b.total) || 0) - (Number(a.total) || 0)
+      case 'status': return (STATUS_RANK[a.status] ?? 9) - (STATUS_RANK[b.status] ?? 9)
+      default: return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     }
-    if (sortKey === 'total') return (Number(b.total) || 0) - (Number(a.total) || 0)
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   })
 
   const counts = {}

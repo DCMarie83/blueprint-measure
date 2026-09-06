@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Home, Building2, HardHat, Mail, Phone, FileText, Briefcase, Trash2, Edit, DollarSign, Clock, Tag, Globe } from 'lucide-react'
+import { Home, Building2, HardHat, Mail, Phone, FileText, Briefcase, Trash2, Edit, DollarSign, Clock, Tag, Globe, ChevronDown, ChevronRight } from 'lucide-react'
 import BackLink from '../components/BackLink'
 import Modal from '../components/ui/Modal'
 import ClientForm from '../components/clients/ClientForm'
@@ -15,6 +15,7 @@ import { getDisplayTotal } from '../lib/estimateDisplay'
 import { isOverdue } from '../hooks/useInvoices'
 import { useClient } from '../hooks/useClient'
 import { useClients } from '../hooks/useClients'
+import { useSessionCollapse } from '../hooks/useSessionCollapse'
 import { useEffectiveCompany } from '../hooks/useEffectiveCompany'
 import { supabase } from '../lib/supabase'
 import { trackMaterials } from '../lib/analytics'
@@ -47,6 +48,25 @@ function useCountUp(value, duration = 500) {
     return () => { if (raf.current) cancelAnimationFrame(raf.current) }
   }, [value, duration])
   return n
+}
+
+// G57: collapsible section shell — count in the header, collapsed by default
+// past 8 rows, state remembered for the session.
+function CollapsibleSection({ collapseKey, title, rowCount, className, titleClassName, children }) {
+  const [collapsed, setCollapsed] = useSessionCollapse(collapseKey, rowCount > 8)
+  return (
+    <section className={className}>
+      <button
+        onClick={() => setCollapsed(!collapsed)}
+        aria-expanded={!collapsed}
+        style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', padding: 0, width: '100%', textAlign: 'left' }}
+      >
+        {collapsed ? <ChevronRight size={15} style={{ color: 'var(--color-text-muted)' }} /> : <ChevronDown size={15} style={{ color: 'var(--color-text-muted)' }} />}
+        <h2 className={titleClassName} style={{ margin: 0 }}>{title}</h2>
+      </button>
+      {!collapsed && <div style={{ marginTop: 10 }}>{children}</div>}
+    </section>
+  )
 }
 
 const statCard = { flex: '1 1 160px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)', padding: '14px 16px' }
@@ -224,8 +244,13 @@ export default function ClientDetailPage() {
         </section>
 
         {/* Invoices — FK union: invoices.client_id OR the client's projects */}
-        <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>{t('clients:detail.invoicesCount', { count: invoices.length })}</h2>
+        <CollapsibleSection
+          collapseKey={`client_${id}_invoices`}
+          rowCount={invoices.length}
+          title={t('clients:detail.invoicesCount', { count: invoices.length })}
+          className={styles.section}
+          titleClassName={styles.sectionTitle}
+        >
           {invoices.length === 0 ? (
             <p className={styles.muted}>{t('clients:detail.noInvoices')}</p>
           ) : (
@@ -248,11 +273,16 @@ export default function ClientDetailPage() {
               ))}
             </div>
           )}
-        </section>
+        </CollapsibleSection>
 
         {/* Estimates — via the client's projects (estimates carry no client_id) */}
-        <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>{t('clients:detail.estimatesCount', { count: estimates.length })}</h2>
+        <CollapsibleSection
+          collapseKey={`client_${id}_estimates`}
+          rowCount={estimates.length}
+          title={t('clients:detail.estimatesCount', { count: estimates.length })}
+          className={styles.section}
+          titleClassName={styles.sectionTitle}
+        >
           {estimates.length === 0 ? (
             <p className={styles.muted}>{t('clients:detail.noEstimates')}</p>
           ) : (
@@ -272,10 +302,10 @@ export default function ClientDetailPage() {
               ))}
             </div>
           )}
-        </section>
+        </CollapsibleSection>
 
-        {/* Documents */}
-        <DocumentsSection documents={documents} />
+        {/* Documents: linked to this client or its records + direct attach (G54) */}
+        <DocumentsSection documents={documents} collapsible collapseKey={`client_${id}_documents`} uploadTarget={{ type: 'client', id }} onUploaded={refetch} />
 
         {/* Recent activity (entries deep-link to the most specific real surface) */}
         <ClientActivitySection clientId={id} onChange={() => refetch()} />

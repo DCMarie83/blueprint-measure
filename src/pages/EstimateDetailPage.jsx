@@ -83,7 +83,7 @@ function timeAgo(dateStr, t) {
 
 export default function EstimateDetailPage() {
   const { id } = useParams()
-  const documents = useLinkedDocuments('estimate', id)
+  const { documents, refetch: refetchDocuments } = useLinkedDocuments('estimate', id)
   const navigate = useNavigate()
   const location = useLocation()
   const { user, userProfile, isSuperAdmin } = useAuth()
@@ -834,8 +834,8 @@ export default function EstimateDetailPage() {
           </div>
         </div>
 
-        {/* Documents (source files from Document Import) */}
-        <DocumentsSection documents={documents} />
+        {/* Documents: source files from Document Import + direct attach (G54) */}
+        <DocumentsSection documents={documents} uploadTarget={{ type: 'estimate', id }} onUploaded={refetchDocuments} />
       </main>
 
       {showPicker && (

@@ -338,6 +338,43 @@ export function useInvoiceMutations() {
     await recordPayment(invoiceId, { amount: remaining, payment_method: null, payment_date: null, reference_number: null, notes: 'Marked paid in full' })
   }
 
+  // G55: direct status set. Pure data operation: never invokes any send-*
+  // function or client-facing notification. Fills lifecycle stamps only when
+  // blank (sent_at on leaving draft, paid_at on paid).
+  async function setStatus(id, nextStatus) {
+    const { data: inv, error: fetchErr } = await supabase.from('invoices').select('status, sent_at, paid_at').eq('id', id).single()
+    if (fetchErr) throw new Error(fetchErr.message)
+    if (inv.status === nextStatus) return
+    const now = new Date().toISOString()
+    const patch = { status: nextStatus, updated_at: now }
+    if (nextStatus !== 'draft' && nextStatus !== 'void' && !inv.sent_at) patch.sent_at = now
+    if (nextStatus === 'paid' && !inv.paid_at) patch.paid_at = now
+    const { error: updErr } = await supabase.from('invoices').update(patch).eq('id', id)
+    if (updErr) throw new Error(updErr.message)
+  }
+
+  // G60: manual invoice number edit. Trimmed, non-empty; a unique-index
+  // collision on (company_id, invoice_number) surfaces as code 23505 so the
+  // caller can show an inline conflict error. Never renumbers, never suffixes.
+  async function updateInvoiceNumber(id, number) {
+    const trimmed = String(number ?? '').trim()
+    if (!trimmed) {
+      const err = new Error('empty')
+      err.code = 'EMPTY'
+      throw err
+    }
+    const { error: updErr } = await supabase
+      .from('invoices')
+      .update({ invoice_number: trimmed, updated_at: new Date().toISOString() })
+      .eq('id', id)
+    if (updErr) {
+      const err = new Error(updErr.message)
+      err.code = updErr.code
+      throw err
+    }
+    return trimmed
+  }
+
   async function markVoid(id, reason) {
     const { error: err } = await supabase.from('invoices').update({
       status: 'void', void_reason: reason || null, updated_at: new Date().toISOString(),
@@ -366,5 +403,5 @@ export function useInvoiceMutations() {
     logInvoiceActivity(id, 'invoice_reopened', 'Invoice reopened')
   }
 
-  return { createInvoice, updateInvoice, deleteInvoice, markSent, markPaidInFull, markVoid, reopenInvoice, recordPayment, deletePayment, saving, error }
+  return { createInvoice, updateInvoice, deleteInvoice, markSent, markPaidInFull, markVoid, reopenInvoice, recordPayment, deletePayment, setStatus, updateInvoiceNumber, saving, error }
 }

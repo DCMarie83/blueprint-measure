@@ -1102,7 +1102,13 @@
       "sort": {
         "recent": "Recent",
         "dueDate": "Due date",
-        "total": "Total"
+        "total": "Total",
+        "number": "Invoice number",
+        "client": "Client A-Z",
+        "job": "Job A-Z",
+        "date": "Issue date",
+        "amount": "Amount",
+        "status": "Status"
       },
       "emptyTitle": "No invoices yet",
       "emptyBody": "Create one from an accepted estimate, or click \"+ New Invoice\" to start fresh.",
@@ -1196,7 +1202,12 @@
         "card": "Card",
         "venmo": "Venmo",
         "other": "Other"
-      }
+      },
+      "statusLabel": "Status",
+      "confirmVoidStatus": "Void this invoice? It will be excluded from billed totals.",
+      "editNumber": "Edit invoice number",
+      "errorNumberEmpty": "Invoice number is required.",
+      "numberConflict": "Invoice number {{number}} already exists."
     },
     "payment": {
       "methodsHeading": "Payment Methods",
@@ -2851,7 +2862,10 @@
       "description": "Description",
       "vendor": "Vendor",
       "amount": "Amount",
-      "cashPosition": "Cash Position"
+      "cashPosition": "Cash Position",
+      "invoice": "Invoice",
+      "status": "Status",
+      "total": "Total"
     },
     "kpi": {
       "quoted": "Quoted",
@@ -2892,7 +2906,8 @@
       "noExpenses": "No expenses logged.",
       "estimatedMargin": "Estimated Margin",
       "actualMargin": "Actual Margin",
-      "cashPosition": "Cash position"
+      "cashPosition": "Cash position",
+      "excludedFromTotals": "excluded from totals"
     },
     "expenseCategory": {
       "material": "Material",
@@ -3621,7 +3636,24 @@
       "title": "Documents ({{count}})",
       "empty": "No documents yet.",
       "open": "Open",
-      "openFailed": "Could not open the document."
+      "openFailed": "Could not open the document.",
+      "upload": "Upload",
+      "uploading": "Uploading...",
+      "badType": "{{name}}: unsupported file type",
+      "tooLarge": "{{name}}: over the 25 MB limit",
+      "type": {
+        "blueprint": "Blueprint",
+        "plan": "Plan",
+        "receipt": "Receipt",
+        "payment_proof": "Payment proof",
+        "photo": "Photo",
+        "spreadsheet": "Spreadsheet",
+        "contract": "Contract",
+        "other": "Other",
+        "invoice": "Invoice",
+        "quote": "Quote",
+        "price_list": "Price list"
+      }
     }
   },
   "admin": {
@@ -4265,7 +4297,31 @@
       "nothingExtracted": "Nothing could be extracted from these files.",
       "badType": "{{name}} — unsupported file type (PDF, JPG, or PNG only)",
       "tooLarge": "{{name}} — over the 15 MB limit",
-      "tooMany": "Only the first {{max}} files were kept."
+      "tooMany": "Only the first {{max}} files were kept.",
+      "mode": {
+        "extract": "Extract data",
+        "attach": "Attach documents"
+      },
+      "attachPrompt": "Upload files and link each one to a job, client, invoice, or estimate. No data is extracted and no record fields change.",
+      "assignPrompt": "Review each file, its record, and its type before attaching.",
+      "colFile": "File",
+      "colRecord": "Record",
+      "colType": "Type",
+      "recordType": {
+        "project": "Job",
+        "client": "Client",
+        "invoice": "Invoice",
+        "estimate": "Estimate"
+      },
+      "searchPlaceholder": "Search...",
+      "pickRecord": "Choose...",
+      "attachBtn_one": "Attach {{count}} File",
+      "attachBtn_other": "Attach {{count}} Files",
+      "attaching": "Attaching file {{current}} of {{total}}...",
+      "attachSuccess_one": "{{count}} file attached.",
+      "attachSuccess_other": "{{count}} files attached.",
+      "reusedCount_one": "{{count}} already stored (reused):",
+      "reusedCount_other": "{{count}} already stored (reused):"
     }
   }
 }

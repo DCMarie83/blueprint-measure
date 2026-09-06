@@ -95,6 +95,7 @@ export default function ProjectDetailPage() {
   const { changeOrders, approvedTotal, createChangeOrder, updateChangeOrder, deleteChangeOrder, refetch: refetchChangeOrders } = useChangeOrders(projectId)
   const [collected, setCollected] = useState(0)
   const [projectDocs, setProjectDocs] = useState([])
+  const [docsVersion, setDocsVersion] = useState(0)
 
   // Collected = the payments ledger for this job's invoices.
   useEffect(() => {
@@ -129,7 +130,7 @@ export default function ProjectDetailPage() {
       } catch { if (!cancelled) setProjectDocs([]) }
     })()
     return () => { cancelled = true }
-  }, [projectId, company?.id, invoices, estimates])
+  }, [projectId, company?.id, invoices, estimates, docsVersion])
 
   // Money header: contract value + approved change orders = current value;
   // billed excludes draft and void (matching Reports); collected is the ledger.
@@ -618,8 +619,13 @@ export default function ProjectDetailPage() {
                       <span style={{ fontSize: 11, color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>{est.estimate_number}</span>
                     )}
                   </div>
-                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)', fontVariantNumeric: 'tabular-nums' }}>
-                    ${Number(getDisplayTotal(est)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{ fontSize: 12, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+                      {est.created_at ? new Date(est.created_at).toLocaleDateString() : ''}
+                    </span>
+                    <span style={{ fontSize: 12, color: 'var(--color-text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                      ${Number(getDisplayTotal(est)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </span>
                   </span>
                 </div>
               ))}
@@ -672,8 +678,8 @@ export default function ProjectDetailPage() {
         {/* Time entries */}
         <JobTimeSection projectId={projectId} companyId={company?.id} />
 
-        {/* Documents */}
-        <DocumentsSection documents={projectDocs} />
+        {/* Documents: linked to this job or its invoices/estimates + direct attach (G54) */}
+        <DocumentsSection documents={projectDocs} uploadTarget={{ type: 'project', id: projectId }} onUploaded={() => setDocsVersion(v => v + 1)} />
       </main>
 
       {showAddBlueprint && (
