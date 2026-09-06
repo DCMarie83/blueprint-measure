@@ -559,7 +559,8 @@ function CostingDetail({ detail, loading, onBack }) {
         {/* G61: the job's invoices, linked. Draft/void rows are greyed and
             labeled — they are excluded from the totals above (math unchanged). */}
         {(d.invoicesBreakdown?.length ?? 0) > 0 && (
-          <table className={styles.table} style={{ marginTop: 14 }}>
+          <div className={styles.tableWrap} style={{ marginTop: 14 }}><ScrollbarInside />
+          <table className={styles.table}>
             <thead>
               <tr>
                 <th className={styles.th}>{t('reports:th.invoice')}</th>
@@ -586,6 +587,7 @@ function CostingDetail({ detail, loading, onBack }) {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </SectionCard>
 
@@ -594,6 +596,7 @@ function CostingDetail({ detail, loading, onBack }) {
         {d.laborBreakdown.length === 0 ? (
           <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>{t('reports:detail.noLabor')}</p>
         ) : (
+          <div className={styles.tableWrap}><ScrollbarInside />
           <table className={styles.table}>
             <thead>
               <tr>
@@ -614,6 +617,7 @@ function CostingDetail({ detail, loading, onBack }) {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </SectionCard>
 
@@ -622,6 +626,7 @@ function CostingDetail({ detail, loading, onBack }) {
         {d.materialsBreakdown.length === 0 ? (
           <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>{t('reports:detail.noMaterials')}</p>
         ) : (
+          <div className={styles.tableWrap}><ScrollbarInside />
           <table className={styles.table}>
             <thead>
               <tr>
@@ -642,6 +647,7 @@ function CostingDetail({ detail, loading, onBack }) {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </SectionCard>
 
@@ -650,6 +656,7 @@ function CostingDetail({ detail, loading, onBack }) {
         {d.expensesBreakdown.length === 0 ? (
           <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>{t('reports:detail.noExpenses')}</p>
         ) : (
+          <div className={styles.tableWrap}><ScrollbarInside />
           <table className={styles.table}>
             <thead>
               <tr>
@@ -672,6 +679,7 @@ function CostingDetail({ detail, loading, onBack }) {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </SectionCard>
 

@@ -53,7 +53,18 @@ export default function FloatingScrollbar({ targetRef }) {
     measure()
 
     const instance = {
-      eligible: () => stateRef.current.overflows && stateRef.current.intersecting,
+      // Meaningful visibility is computed from the LIVE rect at election time
+      // (the election already re-runs on every scroll): at least 80px of the
+      // target on screen. A ratio threshold would starve very tall targets —
+      // a table 7x the viewport height never reaches 15% intersection even
+      // when it fills the whole screen.
+      eligible: () => {
+        if (!stateRef.current.overflows || !stateRef.current.intersecting) return false
+        const rect = targetRef.current?.getBoundingClientRect()
+        if (!rect) return false
+        const visible = Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0)
+        return visible >= 80
+      },
       rect: () => targetRef.current?.getBoundingClientRect() ?? null,
       setActive: (next) => setActive(prev => (prev === next ? prev : next)),
     }
@@ -64,11 +75,12 @@ export default function FloatingScrollbar({ targetRef }) {
     for (const child of el.children) ro.observe(child) // content growth
     window.addEventListener('resize', measure)
 
-    // Meaningfully in view: a slice of the target must actually be on screen.
+    // Cheap on/off signal only (any pixel visible); the 80px meaningful-
+    // visibility check lives in eligible() where it stays fresh mid-scroll.
     const io = new IntersectionObserver((entries) => {
       stateRef.current.intersecting = entries[0]?.isIntersecting ?? false
       requestElection()
-    }, { threshold: 0.15 })
+    }, { threshold: 0 })
     io.observe(el)
 
     // Vertical page scroll changes which visible target is nearest center.
