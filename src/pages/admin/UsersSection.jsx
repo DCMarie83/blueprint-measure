@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { useAdminData } from '../../context/AdminDataContext'
 import styles from './sections.module.css'
+import { ScrollbarInside } from '../../components/common/FloatingScrollbar'
 
 const PAGE_SIZE = 50
 
@@ -246,7 +247,7 @@ export default function UsersSection() {
         </form>
       )}
 
-      <div className={styles.tableWrap}>
+      <div className={styles.tableWrap}><ScrollbarInside />
         <table className={styles.table}>
           <thead>
             <tr>
@@ -340,7 +341,7 @@ export default function UsersSection() {
             orphans.length === 0 ? (
               <p style={{ color: 'var(--color-success)', fontSize: 13 }}>{t('admin:users.noOrphans')}</p>
             ) : (
-              <div className={styles.tableWrap}>
+              <div className={styles.tableWrap}><ScrollbarInside />
                 <table className={styles.table}>
                   <thead>
                     <tr>

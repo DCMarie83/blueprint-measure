@@ -13,6 +13,7 @@ import { supabase } from '../../lib/supabase'
 import { unitLabel, fmtMoney } from '../../lib/lite'
 import { getEffectiveTimeZone } from '../../lib/effectiveTime'
 import styles from './lite.module.css'
+import { ScrollbarInside } from '../../components/common/FloatingScrollbar'
 
 // Lite payment methods map onto the invoices.payment_method CHECK
 // (cash/check/card/bank_transfer/other) — a deliberately shorter list than the
@@ -331,7 +332,7 @@ export default function LiteInvoiceDetailPage() {
 
         {/* Line items */}
         <div className={styles.card}>
-          <div className={styles.tableWrap}>
+          <div className={styles.tableWrap}><ScrollbarInside />
             <table className={styles.table}>
               <thead>
                 <tr>

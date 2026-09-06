@@ -20,6 +20,7 @@ import ItemVisual from '../components/materials/ItemVisual'
 import { PawPrint } from 'lucide-react'
 import BackLink from '../components/BackLink'
 import '../components/smartbid/smartbid.css'
+import { ScrollbarInside } from '../components/common/FloatingScrollbar'
 
 const GRADES = ['premium', 'standard', 'commercial']
 
@@ -594,7 +595,7 @@ export default function SmartBidPage() {
             {/* Use my list — the saved order, read-only. */}
             {materialsMode === 'use_existing' && chosenOrder && (
               <div style={{ ...card, marginBottom: 16 }}>
-                <div style={{ overflowX: 'auto' }}>
+                <div style={{ overflowX: 'auto' }}><ScrollbarInside />
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                     <thead><tr style={{ textAlign: 'left', color: 'var(--color-text-muted)', fontSize: 12 }}>
                       <th style={{ padding: '6px 8px' }}>{t('smartbid:steps.col.item')}</th><th style={{ padding: '6px 8px' }}>{t('smartbid:steps.col.unit')}</th>
@@ -644,7 +645,7 @@ export default function SmartBidPage() {
                     <>
                       <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 4px' }}>{t('smartbid:steps.checkIncluded')}</p>
                       <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 10px' }}>{t('smartbid:steps.pricingDisclaimer')}</p>
-                      <div style={{ overflowX: 'auto' }}>
+                      <div style={{ overflowX: 'auto' }}><ScrollbarInside />
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                           <thead><tr style={{ textAlign: 'left', color: 'var(--color-text-muted)', fontSize: 12 }}>
                             <th style={{ padding: '6px 8px', width: 28 }}></th><th style={{ padding: '6px 8px' }}>{t('smartbid:steps.col.item')}</th>
@@ -695,7 +696,7 @@ export default function SmartBidPage() {
         {/* ── Step 3: Smart Bid draft ── */}
         {step === 3 && (
           <div className="sb-fadein" key="step3">
-            <div style={{ ...card, marginBottom: 16, overflowX: 'auto' }}>
+            <div style={{ ...card, marginBottom: 16, overflowX: 'auto' }}><ScrollbarInside />
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead><tr style={{ textAlign: 'left', color: 'var(--color-text-muted)', fontSize: 12 }}>
                   <th style={{ padding: '6px 8px' }}>{t('smartbid:steps.col.scope')}</th><th style={{ padding: '6px 8px' }}>{t('smartbid:steps.col.unit')}</th>

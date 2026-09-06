@@ -12,6 +12,7 @@ import { resolveEntitlements } from '../../lib/entitlements'
 import CompanyDrawer from '../../components/admin/CompanyDrawer'
 import { US_STATES } from '../../data/usStates'
 import styles from './sections.module.css'
+import { ScrollbarInside } from '../../components/common/FloatingScrollbar'
 
 const FEATURES = FEATURE_KEYS
 
@@ -307,7 +308,7 @@ export default function CompaniesSection() {
       {paged.length === 0 ? (
         <p className={styles.empty}>{search || planFilter !== 'all' ? t('admin:companies.emptyFiltered') : t('admin:companies.emptyNone')}</p>
       ) : (
-        <div className={styles.tableWrap}>
+        <div className={styles.tableWrap}><ScrollbarInside />
           <table className={styles.table}>
             <thead>
               <tr>

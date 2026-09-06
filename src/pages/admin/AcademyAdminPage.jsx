@@ -9,6 +9,7 @@ import { supabase } from '../../lib/supabase'
 import { AudienceCheckboxes, AudienceBadges } from '../../components/admin/AudienceControls'
 import { visibilitySummary } from '../../lib/academyVisibility'
 import styles from './sections.module.css'
+import { ScrollbarInside } from '../../components/common/FloatingScrollbar'
 
 // Reachability indicator, computed by the SAME shared rule the tenant pages use — so
 // the badge can never claim a visibility the viewer doesn't actually get.
@@ -216,7 +217,7 @@ export default function AcademyAdminPage() {
             {modules.length === 0 ? (
               <div className={styles.empty}>{t('admin:academy.noModules')}</div>
             ) : (
-              <div className={styles.tableWrap}>
+              <div className={styles.tableWrap}><ScrollbarInside />
                 <table className={styles.table}>
                   <thead>
                     <tr>
@@ -263,7 +264,7 @@ export default function AcademyAdminPage() {
             {videos.length === 0 ? (
               <div className={styles.empty}>{t('admin:academy.noVideos')}</div>
             ) : (
-              <div className={styles.tableWrap}>
+              <div className={styles.tableWrap}><ScrollbarInside />
                 <table className={styles.table}>
                   <thead>
                     <tr>

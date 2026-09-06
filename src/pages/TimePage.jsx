@@ -17,6 +17,7 @@ import PayTable from '../components/PayTable'
 import Modal from '../components/ui/Modal'
 import TimeEntryImportModal from '../components/time/TimeEntryImportModal'
 import styles from './TimePage.module.css'
+import { ScrollbarInside } from '../components/common/FloatingScrollbar'
 
 const fmtUSD = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
 
@@ -525,7 +526,7 @@ export default function TimePage() {
                     <span className={styles.totalBadge}>{t('time:units.hrs', { value: myTotal.toFixed(2) })}</span>
                   </div>
                   {myEntries.length === 0 ? <p className={styles.empty}>{t('time:myTime.empty')}</p> : (
-                    <div className={styles.tableWrap}><table className={styles.table}>
+                    <div className={styles.tableWrap}><ScrollbarInside /><table className={styles.table}>
                       <thead><tr><th className={styles.th}>{t('time:table.date')}</th><th className={styles.th}>{t('time:table.job')}</th><th className={styles.th} style={{ textAlign: 'right' }}>{t('time:table.hours')}</th><th className={styles.th}>{t('time:table.notes')}</th><th className={styles.th}></th></tr></thead>
                       <tbody>{myEntries.map(e => renderEntry(e, false))}</tbody>
                     </table></div>
@@ -546,7 +547,7 @@ export default function TimePage() {
                     </h2>
 
                     {submittedPunches.length > 0 && (
-                      <div className={styles.tableWrap}><table className={styles.table}>
+                      <div className={styles.tableWrap}><ScrollbarInside /><table className={styles.table}>
                         <thead><tr>
                           <th className={styles.th}>{t('time:table.worker')}</th><th className={styles.th}>{t('time:table.job')}</th><th className={styles.th}>{t('time:table.date')}</th>
                           <th className={styles.th}>{t('time:table.time')}</th><th className={styles.th}>{t('time:table.hours')}</th><th className={styles.th}>{t('time:table.loc')}</th>
@@ -585,7 +586,7 @@ export default function TimePage() {
                     {openPunches.length > 0 && (
                       <>
                         <h3 style={{ fontSize: 14, fontWeight: 600, margin: '16px 0 8px', color: 'var(--color-text-muted)' }}>{t('time:approvals.inProgress')}</h3>
-                        <div className={styles.tableWrap}><table className={styles.table}>
+                        <div className={styles.tableWrap}><ScrollbarInside /><table className={styles.table}>
                           <thead><tr>
                             <th className={styles.th}>{t('time:table.worker')}</th><th className={styles.th}>{t('time:table.job')}</th><th className={styles.th}>{t('time:table.since')}</th>
                             <th className={styles.th}>{t('time:table.loc')}</th><th className={styles.th}>{t('time:table.elapsed')}</th><th className={styles.th}></th>
@@ -689,7 +690,7 @@ export default function TimePage() {
                   </div>
                   {timesheetOpen && (
                     visibleEntries.length === 0 ? <p className={styles.empty}>{workerFilter !== 'all' ? t('time:timesheet.emptyPeriodWorker') : t('time:timesheet.emptyPeriod')}</p> : (
-                      <div className={styles.tableWrap}><table className={styles.table}>
+                      <div className={styles.tableWrap}><ScrollbarInside /><table className={styles.table}>
                         <thead><tr><th className={styles.th}>{t('time:table.worker')}</th><th className={styles.th}>{t('time:table.date')}</th><th className={styles.th}>{t('time:table.job')}</th><th className={styles.th} style={{ textAlign: 'right' }}>{t('time:table.hours')}</th><th className={styles.th}>{t('time:table.notes')}</th><th className={styles.th}></th></tr></thead>
                         <tbody>{visibleEntries.map(e => renderEntry(e, true))}</tbody>
                       </table></div>
@@ -727,7 +728,7 @@ export default function TimePage() {
                         <input type="text" className={styles.formInput} style={{ flex: 1 }} placeholder={t('time:roster.newWorkerPlaceholder')} value={newWorkerName} onChange={e => setNewWorkerName(e.target.value)} required />
                         <button type="submit" className={styles.addBtn} disabled={rosterSaving === 'add'}><Plus size={14} /> {t('common:action.add')}</button>
                       </form>
-                      <div className={styles.tableWrap}><table className={styles.table}>
+                      <div className={styles.tableWrap}><ScrollbarInside /><table className={styles.table}>
                         <thead><tr>
                           <th className={styles.th}>{t('time:roster.name')}</th><th className={styles.th}>{t('time:table.rate')}</th><th className={styles.th}>{t('time:roster.type')}</th>
                           <th className={styles.th}>{t('time:roster.link')}</th><th className={styles.th}>{t('time:roster.status')}</th><th className={styles.th}></th>

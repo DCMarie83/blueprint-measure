@@ -8,6 +8,7 @@ import { logError } from '../../lib/logError'
 import { useDateFormat } from '../../hooks/useDateFormat'
 import Chip from '../../components/ui/Chip'
 import styles from './sections.module.css'
+import { ScrollbarInside } from '../../components/common/FloatingScrollbar'
 
 function statusVariant(value) {
   switch (value) {
@@ -178,7 +179,7 @@ export default function FeedbackSection() {
       {filtered.length === 0 ? (
         <p className={styles.empty}>{t('admin:feedback.empty')}</p>
       ) : (
-        <div className={styles.tableWrap}>
+        <div className={styles.tableWrap}><ScrollbarInside />
           <table className={styles.table}>
             <thead>
               <tr>

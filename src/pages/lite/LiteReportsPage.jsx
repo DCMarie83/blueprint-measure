@@ -9,6 +9,7 @@ import { GC_CLIENT_TYPE, fmtMoney, isOpenPunch } from '../../lib/lite'
 import { getEffectiveTimeZone, presetRange } from '../../lib/effectiveTime'
 import { generateLiteReportXLSX } from '../../lib/generateLiteReportXLSX'
 import styles from './lite.module.css'
+import { ScrollbarInside } from '../../components/common/FloatingScrollbar'
 
 // The Lite Reports surface — the bookkeeper handoff. Three read-only money
 // sections (Payments Received, Invoices Issued, Unbilled Work) over a chosen
@@ -289,7 +290,7 @@ export default function LiteReportsPage() {
               {report.paymentRows.length === 0 ? (
                 <p className={styles.muted} style={{ marginTop: 8 }}>{t('lite:reports.noPayments')}</p>
               ) : (
-                <div className={styles.tableWrap}>
+                <div className={styles.tableWrap}><ScrollbarInside />
                   <table className={styles.table}>
                     <thead>
                       <tr><th>{t('lite:reports.colDate')}</th><th>{t('lite:reports.colInvoice')}</th><th>{t('lite:reports.colGc')}</th><th>{t('lite:reports.colMethod')}</th><th style={{ textAlign: 'right' }}>{t('lite:reports.colAmount')}</th><th aria-hidden="true"></th></tr>
@@ -325,7 +326,7 @@ export default function LiteReportsPage() {
                 <p className={styles.muted} style={{ marginTop: 8 }}>{t('lite:reports.noInvoices')}</p>
               ) : (
                 <>
-                  <div className={styles.tableWrap}>
+                  <div className={styles.tableWrap}><ScrollbarInside />
                     <table className={styles.table}>
                       <thead>
                         <tr><th>{t('lite:reports.colInvoice')}</th><th>{t('lite:reports.colGc')}</th><th>{t('lite:reports.colIssued')}</th><th style={{ textAlign: 'right' }}>{t('lite:reports.colTotal')}</th><th>{t('lite:reports.colStatus')}</th><th style={{ textAlign: 'right' }}>{t('lite:reports.colBalance')}</th><th aria-hidden="true"></th></tr>
@@ -367,7 +368,7 @@ export default function LiteReportsPage() {
               {report.unbilledRows.length === 0 ? (
                 <p className={styles.muted} style={{ marginTop: 8 }}>{t('lite:reports.noUnbilled')}</p>
               ) : (
-                <div className={styles.tableWrap}>
+                <div className={styles.tableWrap}><ScrollbarInside />
                   <table className={styles.table}>
                     <thead>
                       <tr><th>{t('lite:reports.colJob')}</th><th>{t('lite:reports.colGc')}</th><th style={{ textAlign: 'right' }}>{t('lite:reports.colEntries')}</th><th style={{ textAlign: 'right' }}>{t('lite:reports.colAmount')}</th><th aria-hidden="true"></th></tr>

@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useAdminData } from '../../context/AdminDataContext'
 import { useDateFormat } from '../../hooks/useDateFormat'
 import styles from './sections.module.css'
+import { ScrollbarInside } from '../../components/common/FloatingScrollbar'
 
 export default function TestLogsSection() {
   const { t } = useTranslation()
@@ -53,7 +54,7 @@ export default function TestLogsSection() {
       {filtered.length === 0 ? (
         <p className={styles.empty}>{t('admin:testLogs.empty')}</p>
       ) : (
-        <div className={styles.tableWrap}>
+        <div className={styles.tableWrap}><ScrollbarInside />
           <table className={styles.table}>
             <thead>
               <tr>

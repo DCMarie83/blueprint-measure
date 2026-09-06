@@ -9,6 +9,7 @@ import { US_STATES } from '../../data/usStates'
 import { AudienceCheckboxes, AudienceBadges } from '../../components/admin/AudienceControls'
 import { visibilitySummary } from '../../lib/academyVisibility'
 import styles from './sections.module.css'
+import { ScrollbarInside } from '../../components/common/FloatingScrollbar'
 
 // Reachability indicator via the shared rule (same one the tenant pages use).
 function VisibleTo({ row }) {
@@ -117,7 +118,7 @@ export default function ResourcesAdminPage() {
           <button className={styles.addBtn} onClick={() => setCatModal({ ...EMPTY_CAT })}>{t('admin:resources.addCategory')}</button>
         </div>
         {categories.length === 0 ? <div className={styles.empty}>{t('admin:resources.noCategories')}</div> : (
-          <div className={styles.tableWrap}><table className={styles.table}>
+          <div className={styles.tableWrap}><ScrollbarInside /><table className={styles.table}>
             <thead><tr>
               <th className={styles.th}>{t('admin:resources.colOrder')}</th><th className={styles.th}>{t('admin:resources.colKey')}</th><th className={styles.th}>{t('admin:resources.colLabel')}</th>
               <th className={styles.th}>{t('admin:resources.colStatus')}</th><th className={styles.th}>{t('admin:resources.colResources')}</th><th className={styles.th}></th>
@@ -146,7 +147,7 @@ export default function ResourcesAdminPage() {
           <button className={styles.addBtn} onClick={() => setResModal({ ...EMPTY_RES })}>{t('admin:resources.addResource')}</button>
         </div>
         {resources.length === 0 ? <div className={styles.empty}>{t('admin:resources.noResources')}</div> : (
-          <div className={styles.tableWrap}><table className={styles.table}>
+          <div className={styles.tableWrap}><ScrollbarInside /><table className={styles.table}>
             <thead><tr>
               <th className={styles.th}>{t('admin:resources.colName')}</th><th className={styles.th}>{t('admin:resources.colCategory')}</th><th className={styles.th}>{t('admin:resources.colAudience')}</th><th className={styles.th}>{t('admin:resources.colVisibleTo')}</th><th className={styles.th}>{t('admin:resources.colStates')}</th>
               <th className={styles.th}>{t('admin:resources.colFeatured')}</th><th className={styles.th}>{t('admin:resources.colStatus')}</th><th className={styles.th}></th>

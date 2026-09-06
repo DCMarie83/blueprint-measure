@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getStateQuotas, updateStateQuotaCap } from '../../data/stateQuotas'
 import styles from './sections.module.css'
+import { ScrollbarInside } from '../../components/common/FloatingScrollbar'
 
 export default function FoundersSection() {
   const { t } = useTranslation()
@@ -110,7 +111,7 @@ export default function FoundersSection() {
         </label>
       </div>
 
-      <div className={styles.tableWrap}>
+      <div className={styles.tableWrap}><ScrollbarInside />
         <table className={styles.table}>
           <thead>
             <tr>

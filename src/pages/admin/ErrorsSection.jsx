@@ -6,6 +6,7 @@ import { AdminDataContext } from '../../context/AdminDataContext'
 import { logError } from '../../lib/logError'
 import { useDateFormat } from '../../hooks/useDateFormat'
 import styles from './sections.module.css'
+import { ScrollbarInside } from '../../components/common/FloatingScrollbar'
 
 const SEVERITY_COLORS = {
   info: { bg: 'rgba(59,130,246,0.1)', color: '#3b82f6' },
@@ -328,7 +329,7 @@ export default function ErrorsSection() {
       {displayRows.length === 0 ? (
         <p className={styles.empty}>{t('admin:errors.empty')}</p>
       ) : (
-        <div className={styles.tableWrap}>
+        <div className={styles.tableWrap}><ScrollbarInside />
           <table className={styles.table}>
             <thead>
               <tr>

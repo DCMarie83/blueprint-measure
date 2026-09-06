@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
 import ItemVisual from '../../components/materials/ItemVisual'
+import { ScrollbarInside } from '../../components/common/FloatingScrollbar'
 
 // Super-admin catalog manager for materials_catalog. Route lives under
 // /admin (AdminRoute already gates super-admin); RLS enforces is_super_admin on
@@ -275,7 +276,7 @@ export default function MaterialsCatalogSection() {
       {loading ? (
         <div style={{ color: 'var(--color-text-muted)', padding: 20 }}>{t('admin:materialsCatalog.loading')}</div>
       ) : (
-        <div style={{ overflowX: 'auto', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)' }}>
+        <div style={{ overflowX: 'auto', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)' }}><ScrollbarInside />
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--color-border)' }}>

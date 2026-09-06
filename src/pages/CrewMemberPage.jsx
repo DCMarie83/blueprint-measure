@@ -4,6 +4,7 @@ import { useParams, Link } from 'react-router-dom'
 import { MapPin, AlertTriangle, Copy, Check } from 'lucide-react'
 import { getCrewMemberById, getCrewMemberPunches, updateCrewMember, sendRivetPayLinkEmail } from '../data/timeTracking'
 import styles from './CrewMemberPage.module.css'
+import { ScrollbarInside } from '../components/common/FloatingScrollbar'
 
 function fmtTime(iso) {
   if (!iso) return ''
@@ -214,7 +215,7 @@ export default function CrewMemberPage() {
           {punches.length === 0 ? (
             <p className={styles.muted}>{t('time:crewMember.noSubmissions')}</p>
           ) : (
-            <div className={styles.tableWrap}>
+            <div className={styles.tableWrap}><ScrollbarInside />
               <table className={styles.table}>
                 <thead><tr>
                   <th className={styles.th}>{t('time:table.date')}</th>

@@ -2,6 +2,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { resolveColumnLabel } from '../../lib/kanbanColumnLabel'
 import styles from './PipelinePreview.module.css'
+import { ScrollbarInside } from '../common/FloatingScrollbar'
 
 export default function PipelinePreview({ pipeline, hasZeroJobs }) {
   const { t } = useTranslation()
@@ -28,7 +29,7 @@ export default function PipelinePreview({ pipeline, hasZeroJobs }) {
         <Link to="/jobs" className={styles.boardLink}>{t('dashboard:pipeline.seeBoard')}</Link>
       </div>
 
-      <div className={styles.columns}>
+      <div className={styles.columns}><ScrollbarInside />
         {(pipeline ?? []).map(col => {
           const visible = col.projects.slice(0, 2)
           const remaining = col.count - visible.length

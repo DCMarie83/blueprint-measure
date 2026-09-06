@@ -3,6 +3,7 @@ import { ChevronUp, ChevronDown, Phone, Mail, FileText, Briefcase } from 'lucide
 import { timeAgo } from '../../utils/timeAgo'
 import { statusMeta, initials, fmtMoneyFlat, clientLocation, AVATAR_GRADIENT } from '../../lib/clientsView'
 import './clientsView.css'
+import { ScrollbarInside } from '../common/FloatingScrollbar'
 
 const th = { position: 'sticky', top: 0, zIndex: 1, background: 'var(--color-surface, #fff)', borderBottom: '1px solid var(--color-border)', padding: '10px 12px', fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', textAlign: 'left', whiteSpace: 'nowrap' }
 const td = { padding: '10px 12px', fontSize: 13, borderBottom: '1px solid var(--color-border)', verticalAlign: 'middle' }
@@ -35,7 +36,7 @@ function StatusChip({ status }) {
 export default function ClientListView({ clients, sortKey, sortDir, onSort, onRowClick, onNewEstimate, onNewJob, onQuickTrack }) {
   const { t } = useTranslation()
   return (
-    <div style={{ overflowX: 'auto', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)' }}>
+    <div style={{ overflowX: 'auto', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)' }}><ScrollbarInside />
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr>

@@ -9,6 +9,7 @@ import { resolveEntitlements } from '../lib/entitlements'
 import Modal from '../components/ui/Modal'
 import { useDateFormat } from '../hooks/useDateFormat'
 import styles from './TeamPage.module.css'
+import { ScrollbarInside } from '../components/common/FloatingScrollbar'
 
 export default function TeamPage() {
   const { t } = useTranslation()
@@ -244,7 +245,7 @@ export default function TeamPage() {
         ) : displayed.length === 0 ? (
           <p className={styles.empty}>{t('team:empty')}</p>
         ) : (
-          <div className={styles.tableWrap}>
+          <div className={styles.tableWrap}><ScrollbarInside />
             <table className={styles.table}>
               <thead>
                 <tr>

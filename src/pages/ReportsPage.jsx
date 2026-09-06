@@ -11,6 +11,7 @@ import { exportJobCostingXLSX } from '../utils/jobCostingXLSX'
 import { fmtMoney } from '../utils/formatMoney'
 import PayTable from '../components/PayTable'
 import styles from './ReportsPage.module.css'
+import { ScrollbarInside } from '../components/common/FloatingScrollbar'
 
 function firstOfMonth() {
   const d = new Date()
@@ -383,7 +384,7 @@ function CostingPortfolio({ rows, loading, sortCol, sortAsc, onSort, onSelectPro
         {t('reports:costing.portfolioNote')}
       </p>
 
-      <div className={styles.tableWrap}>
+      <div className={styles.tableWrap}><ScrollbarInside />
         <table className={styles.table}>
           <thead>
             <tr>{cols.map(c => <SortTh key={c.key} col={c} />)}</tr>

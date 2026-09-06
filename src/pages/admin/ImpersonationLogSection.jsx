@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
 import { useAdminData } from '../../context/AdminDataContext'
 import styles from './sections.module.css'
+import { ScrollbarInside } from '../../components/common/FloatingScrollbar'
 
 export default function ImpersonationLogSection() {
   const { t } = useTranslation()
@@ -39,7 +40,7 @@ export default function ImpersonationLogSection() {
       {sessions.length === 0 ? (
         <div className={styles.empty}>{t('admin:impersonation.noSessions')}</div>
       ) : (
-        <div className={styles.tableWrap}>
+        <div className={styles.tableWrap}><ScrollbarInside />
           <table className={styles.table}>
             <thead>
               <tr>

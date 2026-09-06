@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import { trackMaterials } from '../../lib/analytics'
+import { ScrollbarInside } from '../common/FloatingScrollbar'
 
 const GRADE_ORDER = { premium: 0, standard: 1, commercial: 2 }
 
@@ -129,7 +130,7 @@ export default function MaterialsPricingTab() {
           <div style={{ padding: '10px 14px', background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)', fontWeight: 700, fontSize: 14 }}>
             {humanizeSlug(group.slug)}
           </div>
-          <div style={{ overflowX: 'auto' }}>
+          <div style={{ overflowX: 'auto' }}><ScrollbarInside />
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>

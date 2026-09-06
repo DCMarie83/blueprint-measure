@@ -17,6 +17,7 @@ import EstimateImportModal from '../components/estimates/EstimateImportModal'
 import ChangeOrderImportModal from '../components/jobs/ChangeOrderImportModal'
 import DocumentImportModal from '../components/import/DocumentImportModal'
 import { useJobMoneyMap } from '../hooks/useJobMoneyMap'
+import FloatingScrollbar from '../components/common/FloatingScrollbar'
 import JobsListView, { DOT_COLORS } from '../components/jobs/JobsListView'
 import JobsFilterBar from '../components/jobs/JobsFilterBar'
 import { useOpportunities } from '../hooks/useOpportunities'
@@ -150,65 +151,6 @@ const VIEW_OPTIONS = [
   { value: 'kanban', icon: Columns3, label: 'jobs:view.kanban' },
   { value: 'list', icon: List, label: 'jobs:view.list' },
 ]
-
-// Slim horizontal scrollbar pinned to the bottom of the VIEWPORT (not the
-// content), so long columns never bury the only way to pan the board. Synced
-// two-way with the board container's scrollLeft. Renders nothing when the
-// board fits. Width reserves 76px on the right so it never sits under the
-// feedback fab; bottom honors --fab-bottom-offset like the fab does.
-function BoardScrollbar({ targetRef }) {
-  const barRef = useRef(null)
-  const [dims, setDims] = useState(null) // { left, width, scrollWidth }
-
-  useEffect(() => {
-    const el = targetRef.current
-    if (!el) return
-
-    const measure = () => {
-      const rect = el.getBoundingClientRect()
-      const overflows = el.scrollWidth > el.clientWidth + 4
-      setDims(overflows
-        ? { left: rect.left, width: Math.max(rect.width - 76, 120), scrollWidth: el.scrollWidth }
-        : null)
-    }
-    measure()
-
-    const ro = new ResizeObserver(measure)
-    ro.observe(el)
-    if (el.firstElementChild) ro.observe(el.firstElementChild) // board content growth
-    window.addEventListener('resize', measure)
-
-    const onBoardScroll = () => {
-      const bar = barRef.current
-      if (bar && bar.scrollLeft !== el.scrollLeft) bar.scrollLeft = el.scrollLeft
-    }
-    el.addEventListener('scroll', onBoardScroll, { passive: true })
-
-    return () => {
-      ro.disconnect()
-      window.removeEventListener('resize', measure)
-      el.removeEventListener('scroll', onBoardScroll)
-    }
-  }, [targetRef])
-
-  if (!dims) return null
-
-  return (
-    <div
-      ref={barRef}
-      className={styles.floatScrollbar}
-      style={{ left: dims.left, width: dims.width }}
-      aria-hidden="true"
-      onScroll={() => {
-        const el = targetRef.current
-        const bar = barRef.current
-        if (el && bar && el.scrollLeft !== bar.scrollLeft) el.scrollLeft = bar.scrollLeft
-      }}
-    >
-      <div style={{ width: dims.scrollWidth, height: 1 }} />
-    </div>
-  )
-}
 
 export default function KanbanPage() {
   const { t } = useTranslation()
@@ -449,7 +391,7 @@ export default function KanbanPage() {
                     </DragOverlay>
                   </DndContext>
                 </div>
-                <BoardScrollbar targetRef={boardScrollRef} />
+                <FloatingScrollbar targetRef={boardScrollRef} />
               </>
             ) : (
               <JobsListView

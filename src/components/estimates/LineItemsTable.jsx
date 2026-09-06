@@ -2,6 +2,7 @@ import { Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import MarketBand from '../smartbid/MarketBand'
 import styles from './LineItemsTable.module.css'
+import { ScrollbarInside } from '../common/FloatingScrollbar'
 
 const UNIT_KEYS = { sf: 'common:units.sf', lf: 'common:units.lf', each: 'common:units.each', hour: 'common:units.hour', lump_sum: 'common:units.lumpSum' }
 
@@ -47,7 +48,7 @@ export default function LineItemsTable({ lineItems, onUpdate, onRemove, readOnly
   }
 
   return (
-    <div className={styles.tableWrap}>
+    <div className={styles.tableWrap}><ScrollbarInside />
       <table className={styles.table}>
         <thead>
           <tr>

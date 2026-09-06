@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import styles from './PayTable.module.css'
+import { ScrollbarInside } from './common/FloatingScrollbar'
 
 const fmtUSD = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
 
@@ -14,7 +15,7 @@ export default function PayTable({ rows, className, onDownloadStatement, downloa
   const anyMissingRate = rows.some(r => r.hasMissingRate)
 
   return (
-    <div className={`${styles.wrap} ${className || ''}`}>
+    <div className={`${styles.wrap} ${className || ''}`}><ScrollbarInside />
       <table className={styles.table}>
         <thead>
           <tr>
