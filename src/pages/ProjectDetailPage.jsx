@@ -60,7 +60,7 @@ export default function ProjectDetailPage() {
   const { company } = useEffectiveCompany()
   const { project, sessions, loading, error, refetch } = useProject(projectId)
   const isAdmin = userProfile?.role === 'contractor_admin' || isSuperAdmin
-  const { updateProject } = useProjects()
+  const { updateProject, createProject } = useProjects()
   const { createSession, updateSession, deleteSession } = useSessions()
   const { formatDate, formatDateTime } = useDateFormat()
 
@@ -101,6 +101,53 @@ export default function ProjectDetailPage() {
   // Completion notice (labeled send) + mark lost
   const [completionSending, setCompletionSending] = useState(false)
   const [completionMsg, setCompletionMsg] = useState(null)
+
+  // Lane T: second quote on a job that already has an accepted estimate.
+  // Newest accepted estimate and its resolved total (variant falling back to
+  // good_total, the same coalesce every money surface uses).
+  const acceptedEstimate = (() => {
+    const accepted = (estimates ?? []).filter(e => e.status === 'accepted')
+    if (accepted.length === 0) return null
+    return [...accepted].sort((a, b) => (b.accepted_at || '').localeCompare(a.accepted_at || ''))[0]
+  })()
+  const acceptedAmount = (() => {
+    if (!acceptedEstimate) return 0
+    const v = acceptedEstimate.accepted_variant || acceptedEstimate.selected_variant
+    return (v ? Number(acceptedEstimate[`${v}_total`]) : 0) || Number(acceptedEstimate.good_total) || 0
+  })()
+  const [showSecondQuote, setShowSecondQuote] = useState(false)
+  const [secondJobName, setSecondJobName] = useState('')
+  const [secondBusy, setSecondBusy] = useState(false)
+
+  function handleGenerateEstimate() {
+    if (acceptedEstimate) {
+      setSecondJobName(`${project?.address || project?.name || ''} (2)`.trim())
+      setShowSecondQuote(true)
+      return
+    }
+    setShowEstimateFork(true)
+  }
+
+  // Door 1: a sibling job for the same client and address; the builder opens
+  // on the new job. Nothing is created until this click.
+  async function handleNewJobForQuote() {
+    if (!secondJobName.trim()) return
+    setSecondBusy(true)
+    try {
+      const newProject = await createProject({
+        name: secondJobName.trim(),
+        address: project?.address || null,
+        clientId: project?.client_id || null,
+      })
+      const est = await createEstimate(newProject.id)
+      setShowSecondQuote(false)
+      navigate(`/estimates/${est.id}`)
+    } catch (err) {
+      alert(t('jobs:estimates.createFailed', { error: err.message }))
+    } finally {
+      setSecondBusy(false)
+    }
+  }
 
   async function handleSendCompletionNotice() {
     setCompletionSending(true)
@@ -658,13 +705,50 @@ export default function ProjectDetailPage() {
             <h3 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 'var(--tracking-caps)', color: 'var(--color-text-muted)', margin: 0 }}>{t('jobs:estimates.title', { count: estimates.length })}</h3>
             {isAdmin && (
               <button
-                onClick={() => setShowEstimateFork(true)}
+                onClick={handleGenerateEstimate}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'var(--color-primary)', color: 'var(--color-on-primary, #fff)', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
               >
                 {t('jobs:estimates.generate')}
               </button>
             )}
           </div>
+
+          {showSecondQuote && (
+            <Modal title={t('jobs:secondQuote.title')} onClose={() => setShowSecondQuote(false)}>
+              <p style={{ fontSize: 14, color: 'var(--color-text-muted)', lineHeight: 1.5, margin: '0 0 16px' }}>
+                {t('jobs:secondQuote.body', {
+                  number: acceptedEstimate?.estimate_number || '',
+                  amount: `$${acceptedAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                })}
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ padding: 16, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)' }}>
+                  <div style={{ fontWeight: 700, marginBottom: 6 }}>{t('jobs:secondQuote.newJobTitle')}</div>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.4, marginBottom: 10 }}>{t('jobs:secondQuote.newJobDesc')}</div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <input
+                      value={secondJobName}
+                      onChange={e => setSecondJobName(e.target.value)}
+                      placeholder={t('jobs:secondQuote.namePlaceholder')}
+                      style={{ flex: 1, minWidth: 180, padding: '7px 10px', fontSize: 14, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-bg)', color: 'var(--color-text)' }}
+                    />
+                    <button
+                      onClick={handleNewJobForQuote}
+                      disabled={secondBusy || !secondJobName.trim()}
+                      style={{ padding: '7px 16px', background: 'var(--color-primary)', color: 'var(--color-on-primary, #fff)', border: 'none', borderRadius: 'var(--radius-md)', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: (secondBusy || !secondJobName.trim()) ? 0.6 : 1 }}
+                    >{secondBusy ? '…' : t('jobs:secondQuote.createJob')}</button>
+                  </div>
+                </div>
+                <button
+                  onClick={() => { setShowSecondQuote(false); setShowEstimateFork(true) }}
+                  style={{ textAlign: 'left', padding: 16, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)', cursor: 'pointer' }}
+                >
+                  <div style={{ fontWeight: 700, marginBottom: 6, color: 'var(--color-text)' }}>{t('jobs:secondQuote.continueTitle')}</div>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>{t('jobs:secondQuote.continueDesc')}</div>
+                </button>
+              </div>
+            </Modal>
+          )}
 
           {showEstimateFork && (
             <Modal title={t('jobs:estimates.newModalTitle')} onClose={() => setShowEstimateFork(false)}>
@@ -720,6 +804,12 @@ export default function ProjectDetailPage() {
                         {est.status === 'changes_requested' ? t('jobs:estimates.statusChangesRequested') : est.status}
                       </span>
                       {est.smart_created && <SmartBadge size="sm" />}
+                      {acceptedEstimate && est.id === acceptedEstimate.id && (
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 9999, background: 'var(--color-primary)', color: 'var(--color-on-primary, #fff)' }}>{t('jobs:estimates.contract')}</span>
+                      )}
+                      {acceptedEstimate && est.status === 'sent' && ((est.sent_at || est.created_at || '') > (acceptedEstimate.accepted_at || '')) && (
+                        <span style={{ fontSize: 11, fontWeight: 600, color: '#F27243' }}>{t('jobs:estimates.sentAwaiting')}</span>
+                      )}
                     </div>
                     {est.title && (
                       <span style={{ fontSize: 11, color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>{est.estimate_number}</span>

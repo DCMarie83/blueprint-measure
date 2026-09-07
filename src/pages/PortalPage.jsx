@@ -151,6 +151,7 @@ export default function PortalPage() {
           <PortalEstimateSection
             estimate={estimateData.estimate}
             lineItems={estimateData.line_items || []}
+            estimates={estimateData.estimates || null}
             portalToken={token}
             companyName={data.company_name}
           />

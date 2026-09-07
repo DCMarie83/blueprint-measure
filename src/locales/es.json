@@ -581,7 +581,12 @@
       "changesPlaceholder": "Describe los cambios que te gustaría...",
       "sendRequest": "Enviar solicitud",
       "changesRequestedRevising": "Cambios solicitados el {{date}}. {{company}} está revisando esta cotización.",
-      "yourContractor": "tu contratista"
+      "yourContractor": "tu contratista",
+      "acceptedBy": "Aceptada por {{name}}.",
+      "pillAccepted": "Tu cotización aceptada",
+      "pillSent": "En espera de tu respuesta",
+      "pillDeclined": "Rechazada",
+      "pillChanges": "Cambios solicitados"
     },
     "gcReview": {
       "errors": {
@@ -1976,7 +1981,8 @@
       "invoicesCount_one": "{{count}} factura",
       "invoicesCount_other": "{{count}} facturas",
       "changesRequested": "Cambios solicitados",
-      "followUp": "Seguimiento {{date}}"
+      "followUp": "Seguimiento {{date}}",
+      "estimateSent": "Cotización enviada"
     },
     "label": {
       "updated": "Actualizado {{time}}"
@@ -2077,7 +2083,9 @@
       },
       "createFailed": "No se pudo crear la cotización: {{error}}",
       "empty": "Aún no hay cotizaciones. Haz clic en Generar para crear una.",
-      "statusChangesRequested": "Cambios solicitados"
+      "statusChangesRequested": "Cambios solicitados",
+      "contract": "Contrato",
+      "sentAwaiting": "Enviada, en espera de respuesta"
     },
     "linkClient": {
       "modalTitle": "Vincular cliente al trabajo",
@@ -2281,6 +2289,16 @@
       "pending": "Aviso de finalización pendiente",
       "sent": "Aviso de finalización enviado",
       "sendFailed": "El aviso de finalización no se envió: {{error}}"
+    },
+    "secondQuote": {
+      "title": "Nueva cotización en un trabajo aceptado",
+      "body": "Este trabajo ya tiene una cotización aceptada ({{number}}, {{amount}}). ¿Para qué es esta nueva cotización?",
+      "newJobTitle": "Trabajo nuevo para esta cotización",
+      "newJobDesc": "Crea un trabajo separado para el mismo cliente y la misma dirección. La nueva cotización vive ahí.",
+      "namePlaceholder": "Nombre del trabajo nuevo",
+      "createJob": "Crear trabajo",
+      "continueTitle": "Continuar en este trabajo",
+      "continueDesc": "El cliente verá ambas cotizaciones en su portal. Úsalo para fases o adicionales cotizados por separado."
     }
   },
   "estimates": {
@@ -2380,7 +2398,8 @@
           "title": "¿Qué cambios pidió el cliente?",
           "placeholder": "Comentario"
         }
-      }
+      },
+      "lostJobNoSend": "Este trabajo está marcado como perdido. Reábrelo antes de enviar una cotización."
     },
     "send": {
       "sendFailed": "No se pudo enviar la cotización",

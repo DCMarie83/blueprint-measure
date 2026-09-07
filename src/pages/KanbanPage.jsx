@@ -113,6 +113,12 @@ function SortableJobCard({ project, columnId, columnKey, accent, money, onMarkLo
       <div className={styles.cardMeta}>
         <span>{t('jobs:label.updated', { time: timeAgo(project.updated_at, t) })}</span>
       </div>
+      {/* Follow-up quote out with the client after acceptance */}
+      {money?.sentAfterAccepted && (
+        <div style={{ marginTop: 4, fontSize: 11, fontWeight: 600, color: 'var(--color-info, #2563eb)' }}>
+          {t('jobs:card.estimateSent')}
+        </div>
+      )}
       {/* Client response chips: changes requested (any column) / declined info */}
       {response?.type === 'changes_requested' && (
         <div style={{ marginTop: 4, fontSize: 11, fontWeight: 600, color: '#F27243' }}>

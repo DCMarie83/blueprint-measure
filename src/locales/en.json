@@ -581,7 +581,12 @@
       "changesPlaceholder": "Describe the changes you'd like...",
       "sendRequest": "Send Request",
       "changesRequestedRevising": "Changes requested on {{date}}. {{company}} is revising this estimate.",
-      "yourContractor": "your contractor"
+      "yourContractor": "your contractor",
+      "acceptedBy": "Accepted by {{name}}.",
+      "pillAccepted": "Your accepted quote",
+      "pillSent": "Awaiting your response",
+      "pillDeclined": "Declined",
+      "pillChanges": "Changes requested"
     },
     "gcReview": {
       "errors": {
@@ -1976,7 +1981,8 @@
       "invoicesCount_one": "{{count}} invoice",
       "invoicesCount_other": "{{count}} invoices",
       "changesRequested": "Changes requested",
-      "followUp": "Follow up {{date}}"
+      "followUp": "Follow up {{date}}",
+      "estimateSent": "Estimate sent"
     },
     "label": {
       "updated": "Updated {{time}}"
@@ -2077,7 +2083,9 @@
       },
       "createFailed": "Failed to create estimate: {{error}}",
       "empty": "No estimates yet. Click Generate to fetch one.",
-      "statusChangesRequested": "Changes requested"
+      "statusChangesRequested": "Changes requested",
+      "contract": "Contract",
+      "sentAwaiting": "Sent, awaiting response"
     },
     "linkClient": {
       "modalTitle": "Link Client to Job",
@@ -2281,6 +2289,16 @@
       "pending": "Completion notice pending",
       "sent": "Completion notice sent",
       "sendFailed": "The completion notice did not send: {{error}}"
+    },
+    "secondQuote": {
+      "title": "New quote on an accepted job",
+      "body": "This job already has an accepted quote ({{number}}, {{amount}}). What is this new quote for?",
+      "newJobTitle": "New job for this work",
+      "newJobDesc": "Creates a separate job for the same client and address. The new quote lives there.",
+      "namePlaceholder": "New job name",
+      "createJob": "Create job",
+      "continueTitle": "Continue on this job",
+      "continueDesc": "The client will see both quotes on their portal. Use this for phases or add-ons quoted separately."
     }
   },
   "estimates": {
@@ -2380,7 +2398,8 @@
           "title": "What changes did the client request?",
           "placeholder": "Comment"
         }
-      }
+      },
+      "lostJobNoSend": "This job is marked lost. Reopen it before sending a quote."
     },
     "send": {
       "sendFailed": "Failed to send estimate",

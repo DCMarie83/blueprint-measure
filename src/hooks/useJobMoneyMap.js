@@ -28,7 +28,7 @@ export function useJobMoneyMap() {
           supabase.from('invoices').select('id, project_id, total, status').eq('company_id', companyId),
           supabase.from('invoice_payments').select('invoice_id, amount').eq('company_id', companyId),
           supabase.from('change_orders').select('project_id, amount, status').eq('company_id', companyId),
-          supabase.from('estimates').select('id, project_id, status, decline_reason, declined_at, change_request_comment, changes_requested_at, accepted_at, accepted_variant, selected_variant, good_total, better_total, best_total').eq('company_id', companyId),
+          supabase.from('estimates').select('id, project_id, status, decline_reason, declined_at, change_request_comment, changes_requested_at, accepted_at, accepted_variant, selected_variant, good_total, better_total, best_total, sent_at, created_at').eq('company_id', companyId),
           supabase.from('documents').select('linked_type, linked_id').eq('company_id', companyId).in('linked_type', ['project', 'invoice', 'estimate']),
         ])
         if (cancelled) return
@@ -41,7 +41,8 @@ export function useJobMoneyMap() {
             map.set(projectId, {
               billed: 0, collected: 0, approvedCO: 0, openCoCount: 0,
               invoiceCount: 0, estimateCount: 0, documentCount: 0,
-              latestResponse: null, quoted: 0, _quotedAt: null,
+              latestResponse: null, quoted: 0, _quotedAt: null, _latestSentAt: null,
+              sentAfterAccepted: false,
             })
           }
           return map.get(projectId)
@@ -95,6 +96,10 @@ export function useJobMoneyMap() {
           for (const r of responses) {
             if (!e.latestResponse || r.at > e.latestResponse.at) e.latestResponse = r
           }
+          if (est.status === 'sent') {
+            const sentAt = est.sent_at || est.created_at || ''
+            if (!e._latestSentAt || sentAt > e._latestSentAt) e._latestSentAt = sentAt
+          }
         }
         for (const doc of documents ?? []) {
           const projectId = doc.linked_type === 'project'
@@ -104,6 +109,12 @@ export function useJobMoneyMap() {
               : estimateProject.get(doc.linked_id)
           if (!projectId) continue
           entry(projectId).documentCount += 1
+        }
+
+        // A sent estimate newer than the accepted one: the follow-up quote is
+        // out with the client (drives the board card's "Estimate sent" chip).
+        for (const e of map.values()) {
+          e.sentAfterAccepted = !!(e._quotedAt && e._latestSentAt && e._latestSentAt > e._quotedAt)
         }
 
         setMoneyMap(map)

@@ -178,7 +178,7 @@ export default function EstimateDetailPage() {
     if (!estimate?.project_id) return
     const { data: proj } = await supabase
       .from('projects')
-      .select('id, name, address, client_id, company_id, portal_token, follow_up_at, follow_up_note')
+      .select('id, name, address, client_id, company_id, portal_token, follow_up_at, follow_up_note, status')
       .eq('id', estimate.project_id)
       .single()
     if (!proj) return
@@ -886,9 +886,19 @@ export default function EstimateDetailPage() {
 
             {/* Send to Client CTA */}
             {canSend && (
-              <button className={styles.sendBtn} onClick={async () => { await fetchProjectClientCompany(); setShowSendModal(true) }}>
-                <Send size={16} /> {sendLabel}
-              </button>
+              <>
+                <button
+                  className={styles.sendBtn}
+                  disabled={projectData?.status === 'lost'}
+                  style={projectData?.status === 'lost' ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
+                  onClick={async () => { await fetchProjectClientCompany(); setShowSendModal(true) }}
+                >
+                  <Send size={16} /> {sendLabel}
+                </button>
+                {projectData?.status === 'lost' && (
+                  <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '6px 0 0' }}>{t('estimates:detail.lostJobNoSend')}</p>
+                )}
+              </>
             )}
 
             <div className={styles.editSection}>

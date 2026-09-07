@@ -15,7 +15,10 @@ function fmtDate(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
-export default function PortalEstimateSection({ estimate, lineItems, portalToken, companyName }) {
+// One estimate, rendered exactly as the single-estimate section always has:
+// banners, lines, deposit, notes, and its own Accept / Decline / Request
+// changes when its status is sent.
+function EstimateEntry({ estimate, lineItems, portalToken, companyName }) {
   const { t } = useTranslation()
   const unitLabels = { sf: t('common:units.sf'), lf: t('common:units.lf'), each: t('common:units.each'), hour: t('common:units.hour'), lump_sum: t('common:units.lumpSum') }
   const [showAccept, setShowAccept] = useState(false)
@@ -139,7 +142,11 @@ export default function PortalEstimateSection({ estimate, lineItems, portalToken
       {/* Status banners */}
       {responseStatus === 'accepted' && (
         <div className={styles.acceptedBanner}>
-          <Check size={18} /> {t('portal:estimate.acceptedOn', { date: fmtDate(estimate.accepted_at || new Date().toISOString()) })}
+          <Check size={18} />
+          <span>
+            {t('portal:estimate.acceptedOn', { date: fmtDate(estimate.accepted_at || new Date().toISOString()) })}
+            {estimate.accepted_by_name && <> {t('portal:estimate.acceptedBy', { name: estimate.accepted_by_name })}</>}
+          </span>
         </div>
       )}
       {responseStatus === 'declined' && (
@@ -318,6 +325,65 @@ export default function PortalEstimateSection({ estimate, lineItems, portalToken
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+
+// The portal lists every estimate on the job (newest first, from
+// get_portal_estimate's `estimates` array). The newest renders expanded; the
+// rest collapse to number, date, amount, and a status pill. A job with one
+// estimate looks exactly as it always has.
+export default function PortalEstimateSection({ estimate, lineItems, estimates, portalToken, companyName }) {
+  const { t } = useTranslation()
+  const list = (estimates?.length ? estimates : (estimate ? [{ ...estimate, line_items: lineItems }] : []))
+  const [openId, setOpenId] = useState(list[0]?.id ?? null)
+  if (list.length === 0) return null
+  if (list.length === 1) {
+    return <EstimateEntry estimate={list[0]} lineItems={list[0].line_items || lineItems || []} portalToken={portalToken} companyName={companyName} />
+  }
+
+  const pill = (est) => {
+    if (est.status === 'accepted') return { text: t('portal:estimate.pillAccepted'), bg: 'rgba(22,163,74,0.12)', color: '#16a34a' }
+    if (est.status === 'declined') return { text: t('portal:estimate.pillDeclined'), bg: 'rgba(220,38,38,0.1)', color: '#dc2626' }
+    if (est.status === 'changes_requested') return { text: t('portal:estimate.pillChanges'), bg: 'rgba(242,114,67,0.14)', color: '#f27243' }
+    return { text: t('portal:estimate.pillSent'), bg: 'rgba(0,0,0,0.06)', color: '#555' }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {list.map(est => {
+        if (openId === est.id) {
+          return (
+            <EstimateEntry
+              key={est.id}
+              estimate={est}
+              lineItems={est.line_items || []}
+              portalToken={portalToken}
+              companyName={companyName}
+            />
+          )
+        }
+        const p = pill(est)
+        return (
+          <button
+            key={est.id}
+            onClick={() => setOpenId(est.id)}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, width: '100%', textAlign: 'left', padding: '14px 18px', background: 'var(--color-surface, #fff)', border: '1px solid var(--color-border, #e5e5e5)', borderRadius: 12, cursor: 'pointer' }}
+          >
+            <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+              <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text, #1b2426)' }}>{est.title || est.estimate_number}</span>
+              <span style={{ fontSize: 12, color: 'var(--color-text-muted, #777)' }}>
+                {est.estimate_number}{(est.sent_at || est.created_at) ? ` · ${fmtDate(est.sent_at || est.created_at)}` : ''}
+              </span>
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, whiteSpace: 'nowrap' }}>
+              <span style={{ fontWeight: 700, fontSize: 14, fontVariantNumeric: 'tabular-nums', color: 'var(--color-text, #1b2426)' }}>{fmtMoney(getDisplayTotal(est))}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 9999, background: p.bg, color: p.color }}>{p.text}</span>
+            </span>
+          </button>
+        )
+      })}
     </div>
   )
 }
