@@ -691,6 +691,44 @@ a23 AS (
          CASE WHEN (SELECT count(*) FROM a23_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
          coalesce('PROBLEMS: ' || (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a23_bad),
                   'private bucket with all three verb policies present')::text
+),
+
+-- ── A24 / A25 ──────────────────────────────────────────────────────
+-- The time_entries policies were repaired by hand in prod so the
+-- super-admin escape leads the expression (the shipped migration had the
+-- insert policy's company-membership conjunct OUTSIDE the escape, locking
+-- impersonating super admins out of writes). These assert the deployed
+-- expressions still lead with is_super_admin() — a re-run of the old
+-- migration would silently revert the repair.
+a24 AS (
+  SELECT 'A24'::text,
+         'time_entries_insert WITH CHECK leads with the super-admin escape'::text,
+         CASE WHEN EXISTS (
+           SELECT 1 FROM pg_policy
+           WHERE polrelid = 'public.time_entries'::regclass
+             AND polname = 'time_entries_insert'
+             AND pg_get_expr(polwithcheck, polrelid) LIKE '(is_super_admin() OR%'
+         ) THEN 'PASS' ELSE 'FAIL' END::text,
+         coalesce((SELECT 'WITH CHECK: ' || pg_get_expr(polwithcheck, polrelid)
+                     FROM pg_policy
+                    WHERE polrelid = 'public.time_entries'::regclass
+                      AND polname = 'time_entries_insert'),
+                  'POLICY MISSING')::text
+),
+a25 AS (
+  SELECT 'A25'::text,
+         'time_entries_select USING leads with the super-admin escape'::text,
+         CASE WHEN EXISTS (
+           SELECT 1 FROM pg_policy
+           WHERE polrelid = 'public.time_entries'::regclass
+             AND polname = 'time_entries_select'
+             AND pg_get_expr(polqual, polrelid) LIKE '(is_super_admin() OR%'
+         ) THEN 'PASS' ELSE 'FAIL' END::text,
+         coalesce((SELECT 'USING: ' || pg_get_expr(polqual, polrelid)
+                     FROM pg_policy
+                    WHERE polrelid = 'public.time_entries'::regclass
+                      AND polname = 'time_entries_select'),
+                  'POLICY MISSING')::text
 )
 
 SELECT * FROM a1
@@ -716,4 +754,6 @@ UNION ALL SELECT * FROM a20
 UNION ALL SELECT * FROM a21
 UNION ALL SELECT * FROM a22
 UNION ALL SELECT * FROM a23
+UNION ALL SELECT * FROM a24
+UNION ALL SELECT * FROM a25
 ORDER BY id;

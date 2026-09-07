@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
 import { MapPin, AlertTriangle, Copy, Check } from 'lucide-react'
 import { getCrewMemberById, getCrewMemberPunches, updateCrewMember, sendRivetPayLinkEmail } from '../data/timeTracking'
 import styles from './CrewMemberPage.module.css'
@@ -19,6 +19,8 @@ function fmtDate(iso) {
 export default function CrewMemberPage() {
   const { t } = useTranslation()
   const { id } = useParams()
+  const navigate = useNavigate()
+  const location = useLocation()
   const [cm, setCm] = useState(null)
   const [punches, setPunches] = useState([])
   const [loading, setLoading] = useState(true)
@@ -134,7 +136,18 @@ export default function CrewMemberPage() {
     <div className={styles.page}>
       
       <main className={styles.main}>
-        <Link to="/time" className={styles.backLink}>{t('time:crewMember.backToTime')}</Link>
+        {/* History-based back: return to the page (and tab) the user came
+            from; /time is the fallback for direct loads. */}
+        <Link
+          to="/time"
+          className={styles.backLink}
+          onClick={(e) => {
+            if (location.key !== 'default') {
+              e.preventDefault()
+              navigate(-1)
+            }
+          }}
+        >{t('time:crewMember.backToTime')}</Link>
 
         {/* Profile header */}
         <div className={styles.profileHeader}>

@@ -2,14 +2,16 @@ import { supabase } from '../../lib/supabase'
 
 // Writer for the Time Entries import. Insert shape mirrors the app's own
 // createTimeEntry (src/data/timeTracking.js): { company_id, crew_member_id,
-// project_id, work_date, hours, notes } — cost_rate snapshotting stays with
-// the existing DB-side mechanics, exactly as manual entry does.
+// project_id, work_date, hours, notes } plus import_source stamped with the
+// batch id, matching the invoice and estimate writers — cost_rate
+// snapshotting stays with the existing DB-side mechanics, exactly as manual
+// entry does.
 //
 // Crew is matched by name case-insensitively; unmatched names create an
-// INACTIVE crew_members row (is_active: false) as a placeholder so imported
-// hours never surface a phantom active worker. Jobs must match by name —
-// there is no placeholder-job creation for time entries.
-export async function writeTimeEntryRows({ rows, onProgress, companyId, crewIndex, projectIndex }) {
+// ACTIVE crew_members row so imported workers appear in the crew-day list
+// (which filters is_active). Jobs must match by name — there is no
+// placeholder-job creation for time entries.
+export async function writeTimeEntryRows({ rows, onProgress, companyId, batchId, crewIndex, projectIndex }) {
   const imported = []
   const skipped = []
   const failed = []
@@ -41,7 +43,7 @@ export async function writeTimeEntryRows({ rows, onProgress, companyId, crewInde
       if (!crew) {
         const { data, error } = await supabase
           .from('crew_members')
-          .insert({ company_id: companyId, name: crewName, is_active: false })
+          .insert({ company_id: companyId, name: crewName, is_active: true })
           .select('id, name')
           .single()
         if (error) throw new Error(`Crew "${crewName}": ${error.message}`)
@@ -57,6 +59,7 @@ export async function writeTimeEntryRows({ rows, onProgress, companyId, crewInde
         work_date: row._date,
         hours: row._hours,
         notes: (row.note || '').trim() || null,
+        import_source: batchId,
       })
       if (insErr) throw new Error(insErr.message)
 

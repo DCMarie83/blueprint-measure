@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useImpersonation } from '../context/ImpersonationContext'
+import { useEffectiveCompany } from '../hooks/useEffectiveCompany'
 import { usePlan } from '../lib/plans'
 import { resolveEntitlements } from '../lib/entitlements'
 import Modal from '../components/ui/Modal'
@@ -15,6 +16,7 @@ export default function TeamPage() {
   const { t } = useTranslation()
   const { user, company } = useAuth()
   const { isImpersonating } = useImpersonation()
+  const { companyId: effectiveCompanyId } = useEffectiveCompany()
   const navigate = useNavigate()
   const [teamMembers, setTeamMembers] = useState([])
   const [companyName, setCompanyName] = useState('')
@@ -48,14 +50,9 @@ export default function TeamPage() {
 
   useEffect(() => {
     async function load() {
-      // Get current user's company
-      const { data: myProfile } = await supabase
-        .from('user_profiles')
-        .select('company_id')
-        .eq('user_id', user.id)
-        .maybeSingle()
-
-      if (!myProfile?.company_id) {
+      // Effective company: acting-as company while impersonating, the
+      // caller's own otherwise — never resolved from the caller's profile.
+      if (!effectiveCompanyId) {
         setLoading(false)
         return
       }
@@ -64,7 +61,7 @@ export default function TeamPage() {
       const { data: companyData } = await supabase
         .from('companies')
         .select('name')
-        .eq('id', myProfile.company_id)
+        .eq('id', effectiveCompanyId)
         .maybeSingle()
       setCompanyName(companyData?.name || '')
 
@@ -72,14 +69,14 @@ export default function TeamPage() {
       const { data: members } = await supabase
         .from('user_profiles')
         .select('*')
-        .eq('company_id', myProfile.company_id)
+        .eq('company_id', effectiveCompanyId)
         .order('created_at', { ascending: true })
 
       setTeamMembers(members ?? [])
       setLoading(false)
     }
     load()
-  }, [user])
+  }, [user, effectiveCompanyId])
 
   async function handleInvite(e) {
     e.preventDefault()
@@ -88,16 +85,9 @@ export default function TeamPage() {
     setInviteError('')
 
     try {
-      // Get current user's company_id to pre-fill
-      const { data: myProfile } = await supabase
-        .from('user_profiles')
-        .select('company_id')
-        .eq('user_id', user.id)
-        .maybeSingle()
-
       const body = inviteMethod === 'invite'
-        ? { action: 'invite', email: inviteEmail.trim(), company_id: myProfile?.company_id || null }
-        : { action: 'create', email: inviteEmail.trim(), password: invitePassword, company_id: myProfile?.company_id || null }
+        ? { action: 'invite', email: inviteEmail.trim(), company_id: effectiveCompanyId || null }
+        : { action: 'create', email: inviteEmail.trim(), password: invitePassword, company_id: effectiveCompanyId || null }
 
       const { data, error } = await supabase.functions.invoke('admin-users', { body })
 
@@ -113,7 +103,7 @@ export default function TeamPage() {
       const { data: members } = await supabase
         .from('user_profiles')
         .select('*')
-        .eq('company_id', myProfile?.company_id)
+        .eq('company_id', effectiveCompanyId)
         .order('created_at', { ascending: true })
       setTeamMembers(members ?? [])
 

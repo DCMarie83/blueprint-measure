@@ -97,13 +97,15 @@ export async function deleteCrewMember(id) {
 
 // ── Projects (job picker) ────────────────────────────────────────────────
 
+// Every non-deleted job on the company, with status so the pickers can group
+// working jobs ahead of closed ones. The old status = 'active' filter matched
+// only the legacy default value, hiding every job carrying a kanban status.
 export async function getActiveProjects(companyId) {
   if (!companyId) return []
   const { data, error } = await supabase
     .from('projects')
-    .select('id, name, client_name')
+    .select('id, name, client_name, status')
     .eq('company_id', companyId)
-    .eq('status', 'active')
     .is('deleted_at', null)
     .order('name', { ascending: true })
   if (error) throw error

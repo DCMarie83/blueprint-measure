@@ -2927,7 +2927,8 @@
       "loadPayData": "Could not load pay data",
       "payStatementFailed": "Failed to generate pay statement",
       "pdfFailed": "Failed to generate PDF",
-      "excelFailed": "Failed to generate Excel file"
+      "excelFailed": "Failed to generate Excel file",
+      "costingLoad": "Job costing failed to load: {{error}}"
     },
     "margin": {
       "noCostData": "no cost data",
@@ -2947,7 +2948,8 @@
     },
     "myTime": {
       "title": "My Time",
-      "empty": "No entries for this period."
+      "empty": "No entries for this period.",
+      "impersonationNotice": "Personal time logging is unavailable while acting as a tenant company."
     },
     "common": {
       "saving": "Saving…",
@@ -2976,7 +2978,8 @@
       "notesOptional": "Notes (optional)",
       "notesShort": "Notes",
       "hrsPlaceholder": "Hrs",
-      "logTime": "+ Log Time"
+      "logTime": "+ Log Time",
+      "closedJobs": "Closed jobs"
     },
     "table": {
       "date": "Date",
@@ -3074,7 +3077,8 @@
       "generic": "Error: {{error}}",
       "copyFailed": "Copy failed — select and copy manually.",
       "copyFailedShort": "Copy failed.",
-      "enterHours": "Enter hours first."
+      "enterHours": "Enter hours first.",
+      "sectionLoad": "This section failed to load: {{error}}"
     },
     "crewMember": {
       "notFound": "Worker not found.",

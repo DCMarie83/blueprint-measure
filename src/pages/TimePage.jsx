@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pencil, Trash2, Clock, Plus, Download, Printer, UserPlus, Users, Link2, Copy, Check, AlertTriangle, MapPin, Upload } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useEffectiveCompany } from '../hooks/useEffectiveCompany'
 import {
@@ -43,6 +43,25 @@ function periodLabel(period) {
   return r.from ? `${r.from} to ${r.to}` : 'All time'
 }
 
+// Job picker options: working jobs first, then complete and archived jobs in
+// a "Closed jobs" group. Nothing is excluded.
+function JobPickerOptions({ projects, withClient = true }) {
+  const { t } = useTranslation()
+  const label = (p) => (withClient && p.client_name ? `${p.name} — ${p.client_name}` : p.name)
+  const working = projects.filter(p => p.status !== 'complete' && p.status !== 'archived')
+  const closed = projects.filter(p => p.status === 'complete' || p.status === 'archived')
+  return (
+    <>
+      {working.map(p => <option key={p.id} value={p.id}>{label(p)}</option>)}
+      {closed.length > 0 && (
+        <optgroup label={t('time:form.closedJobs')}>
+          {closed.map(p => <option key={p.id} value={p.id}>{label(p)}</option>)}
+        </optgroup>
+      )}
+    </>
+  )
+}
+
 function fmtLocalTime(iso) {
   if (!iso) return ''
   return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
@@ -62,11 +81,15 @@ export default function TimePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { user, userProfile, company, isSuperAdmin } = useAuth()
-  const { companyId: effectiveCompanyId } = useEffectiveCompany()
+  const { companyId: effectiveCompanyId, isImpersonating } = useEffectiveCompany()
   const companyId = effectiveCompanyId
   const isAdmin = isSuperAdmin || userProfile?.role === 'contractor_admin'
 
-  const [tab, setTab] = useState('my')
+  // The active tab lives in the URL (?tab=my | team) so history-based back
+  // navigation returns to the tab the user left.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tab = searchParams.get('tab') === 'team' ? 'team' : 'my'
+  const switchTab = (next) => setSearchParams(next === 'team' ? { tab: 'team' } : { tab: 'my' }, { replace: true })
   const [showImport, setShowImport] = useState(false)
   const [projects, setProjects] = useState([])
   const [crew, setCrew] = useState([])
@@ -75,6 +98,9 @@ export default function TimePage() {
   const [myEntries, setMyEntries] = useState([])
   const [teamEntries, setTeamEntries] = useState([])
   const [loading, setLoading] = useState(true)
+  // Per-section load errors: 'pickers' (jobs + crew), 'my', 'team'. A failure
+  // in one loader surfaces inline for that section and never blanks the page.
+  const [loadErrors, setLoadErrors] = useState({})
   const [period, setPeriod] = useState('week')
   const [from, setFrom] = useState(() => periodRange('week').from || '')
   const [to, setTo] = useState(() => periodRange('week').to || '')
@@ -132,26 +158,55 @@ export default function TimePage() {
   const loadData = useCallback(async () => {
     if (!user || !companyId) return
     setLoading(true)
-    try {
-      const myCm = await ensureMyCrewMember(companyId, user.id, userProfile?.full_name)
-      setMyCrewId(myCm?.id || null)
+    const errors = {}
+    const range = {}
+    if (from) range.from = from
+    if (to) range.to = to
 
-      const range = {}
-      if (from) range.from = from
-      if (to) range.to = to
-      const [projs, crewList] = await Promise.all([
+    // Personal crew row: never resolved (and never created) while acting as
+    // a tenant — impersonation must not insert the acting user into the
+    // tenant's roster. The My Time tab shows a notice instead.
+    let myCm = null
+    if (!isImpersonating) {
+      try {
+        myCm = await ensureMyCrewMember(companyId, user.id, userProfile?.full_name)
+      } catch (err) {
+        console.error('Time load (my crew):', err)
+        errors.my = err.message || String(err)
+      }
+    }
+    setMyCrewId(myCm?.id || null)
+
+    // Pickers: jobs + active crew (both tabs depend on these)
+    let crewList = []
+    try {
+      const [projs, crewRes] = await Promise.all([
         getActiveProjects(companyId),
         getCrewMembers(companyId),
       ])
+      crewList = crewRes
       setProjects(projs)
       setCrew(crewList)
+    } catch (err) {
+      console.error('Time load (pickers):', err)
+      errors.pickers = err.message || String(err)
+    }
 
-      if (myCm?.id) {
-        const mine = await getMyTimeEntries(myCm.id, range)
-        setMyEntries(mine)
+    // My entries
+    if (myCm?.id) {
+      try {
+        setMyEntries(await getMyTimeEntries(myCm.id, range))
+      } catch (err) {
+        console.error('Time load (my entries):', err)
+        errors.my = err.message || String(err)
       }
+    } else {
+      setMyEntries([])
+    }
 
-      if (isAdmin) {
+    // Team section
+    if (isAdmin) {
+      try {
         const [team, all, pending] = await Promise.all([
           getCompanyTimeEntries(companyId, range),
           getAllCrewMembers(companyId),
@@ -161,13 +216,15 @@ export default function TimePage() {
         setAllCrew(all)
         setPunches(pending)
         setCdRows(crewList.map(c => ({ crewMemberId: c.id, name: c.name, hours: '', notes: '' })))
+      } catch (err) {
+        console.error('Time load (team):', err)
+        errors.team = err.message || String(err)
       }
-    } catch (err) {
-      console.error('Time load:', err)
-    } finally {
-      setLoading(false)
     }
-  }, [user, companyId, userProfile?.full_name, from, to, isAdmin])
+
+    setLoadErrors(errors)
+    setLoading(false)
+  }, [user, companyId, userProfile?.full_name, from, to, isAdmin, isImpersonating])
 
   useEffect(() => { loadData() }, [loadData])
 
@@ -412,7 +469,7 @@ export default function TimePage() {
         <tr key={entry.id} className={styles.tr}>
           {showName && <td className={styles.td}><select className={styles.inlineInput} value={editCrew} onChange={e => setEditCrew(e.target.value)}>{crew.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></td>}
           <td className={styles.td}><input type="date" className={styles.inlineInput} value={editDate} onChange={e => setEditDate(e.target.value)} /></td>
-          <td className={styles.td}><select className={styles.inlineInput} value={editProject} onChange={e => setEditProject(e.target.value)}><option value="">—</option>{projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></td>
+          <td className={styles.td}><select className={styles.inlineInput} value={editProject} onChange={e => setEditProject(e.target.value)}><option value="">—</option><JobPickerOptions projects={projects} withClient={false} /></select></td>
           <td className={styles.td}><input type="number" className={styles.inlineInput} style={{ width: 70 }} step="0.25" min="0.25" max="24" value={editHours} onChange={e => setEditHours(e.target.value)} /></td>
           <td className={styles.td}><input type="text" className={styles.inlineInput} value={editNotes} onChange={e => setEditNotes(e.target.value)} /></td>
           <td className={styles.td}><button className={styles.saveBtn} onClick={() => handleEditSave(entry.id)} disabled={editSaving}>{editSaving ? '…' : t('common:action.save')}</button><button className={styles.cancelBtn} onClick={() => setEditId(null)}>{t('common:action.cancel')}</button></td>
@@ -495,24 +552,34 @@ export default function TimePage() {
         )}
 
         <div className={styles.tabRow}>
-          <button className={`${styles.tab} ${tab === 'my' ? styles.tabActive : ''}`} onClick={() => setTab('my')}>{t('time:tabs.myTime')}</button>
+          <button className={`${styles.tab} ${tab === 'my' ? styles.tabActive : ''}`} onClick={() => switchTab('my')}>{t('time:tabs.myTime')}</button>
           {isAdmin && (
-            <button className={`${styles.tab} ${tab === 'team' ? styles.tabActive : ''}`} onClick={() => setTab('team')}>
+            <button className={`${styles.tab} ${tab === 'team' ? styles.tabActive : ''}`} onClick={() => switchTab('team')}>
               <Users size={14} /> {t('time:tabs.team')}
               {submittedPunches.length > 0 && <span className={styles.punchBadge}>{submittedPunches.length}</span>}
             </button>
           )}
         </div>
 
+        {loadErrors.pickers && (
+          <p className={styles.empty} role="alert">{t('time:errors.sectionLoad', { error: loadErrors.pickers })}</p>
+        )}
+
         {loading ? <div className={styles.empty}>{t('common:misc.loading')}</div> : (
           <>
             {/* ══ My Time ═══════════════════════════════════════════════ */}
-            {tab === 'my' && (
+            {tab === 'my' && isImpersonating && (
+              <p className={styles.empty}>{t('time:myTime.impersonationNotice')}</p>
+            )}
+            {tab === 'my' && !isImpersonating && loadErrors.my && (
+              <p className={styles.empty} role="alert">{t('time:errors.sectionLoad', { error: loadErrors.my })}</p>
+            )}
+            {tab === 'my' && !isImpersonating && (
               <>
                 <form className={styles.addForm} onSubmit={handleAdd}>
                   <select className={styles.formInput} value={formProject} onChange={e => setFormProject(e.target.value)} required>
                     <option value="">{t('time:form.selectJob')}</option>
-                    {projects.map(p => <option key={p.id} value={p.id}>{p.name}{p.client_name ? ` — ${p.client_name}` : ''}</option>)}
+                    <JobPickerOptions projects={projects} />
                   </select>
                   <input type="date" className={styles.formInput} value={formDate} onChange={e => setFormDate(e.target.value)} required />
                   <input type="number" className={styles.formInput} style={{ width: 90 }} placeholder={t('time:form.hoursPlaceholder')} step="0.25" min="0.25" max="24" value={formHours} onChange={e => setFormHours(e.target.value)} required />
@@ -538,6 +605,9 @@ export default function TimePage() {
             {/* ══ Team ══════════════════════════════════════════════════ */}
             {tab === 'team' && isAdmin && (
               <>
+                {loadErrors.team && (
+                  <p className={styles.empty} role="alert">{t('time:errors.sectionLoad', { error: loadErrors.team })}</p>
+                )}
                 {/* ── Pending Approvals ────────────────────────────────── */}
                 {(submittedPunches.length > 0 || openPunches.length > 0) && (
                   <section className={styles.approvalSection}>
@@ -631,7 +701,7 @@ export default function TimePage() {
                   <div className={styles.crewDayHeader}>
                     <select className={styles.formInput} value={cdProject} onChange={e => setCdProject(e.target.value)} required>
                       <option value="">{t('time:form.selectJob')}</option>
-                      {projects.map(p => <option key={p.id} value={p.id}>{p.name}{p.client_name ? ` — ${p.client_name}` : ''}</option>)}
+                      <JobPickerOptions projects={projects} />
                     </select>
                     <input type="date" className={styles.formInput} value={cdDate} onChange={e => setCdDate(e.target.value)} required />
                   </div>

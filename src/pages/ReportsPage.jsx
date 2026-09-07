@@ -120,6 +120,8 @@ export default function ReportsPage() {
   const [costingRows, setCostingRows] = useState([])
   const [periodSummary, setPeriodSummary] = useState(null)
   const [costingLoading, setCostingLoading] = useState(false)
+  const [costingError, setCostingError] = useState(null)
+  const [detailError, setDetailError] = useState(null)
   const [sortCol, setSortCol] = useState(() => {
     try {
       const [col] = (sessionStorage.getItem(COSTING_SORT_KEY) || '').split(':')
@@ -159,11 +161,13 @@ export default function ReportsPage() {
     return () => { cancelled = true }
   }, [companyId, isAdmin, from, to, view])
 
-  // Job costing fetch
+  // Job costing fetch. A failed query throws out of the data layer and lands
+  // here as an inline error — never a silent $0 render.
   useEffect(() => {
     if (!companyId || !isAdmin || view !== 'costing') return
     let cancelled = false
     setCostingLoading(true)
+    setCostingError(null)
     ;(async () => {
       try {
         const [rows, summary] = await Promise.all([
@@ -171,7 +175,10 @@ export default function ReportsPage() {
           getPeriodSummary(companyId, { from, to }),
         ])
         if (!cancelled) { setCostingRows(rows); setPeriodSummary(summary) }
-      } catch (err) { console.error('Job costing:', err) }
+      } catch (err) {
+        console.error('Job costing:', err)
+        if (!cancelled) setCostingError(err.message || String(err))
+      }
       finally { if (!cancelled) setCostingLoading(false) }
     })()
     return () => { cancelled = true }
@@ -182,11 +189,15 @@ export default function ReportsPage() {
     if (!companyId || !detailProjectId) return
     let cancelled = false
     setDetailLoading(true)
+    setDetailError(null)
     ;(async () => {
       try {
         const data = await getJobCostingDetail(companyId, detailProjectId)
         if (!cancelled) setDetail(data)
-      } catch (err) { console.error('Job detail:', err) }
+      } catch (err) {
+        console.error('Job detail:', err)
+        if (!cancelled) setDetailError(err.message || String(err))
+      }
       finally { if (!cancelled) setDetailLoading(false) }
     })()
     return () => { cancelled = true }
@@ -354,7 +365,9 @@ export default function ReportsPage() {
               <button onClick={() => setCostingSubView('summary')} style={pill(costingSubView === 'summary')}>{t('reports:costing.periodSummary')}</button>
             </div>
 
-            {costingSubView === 'portfolio' ? (
+            {costingError ? (
+              <div className={styles.empty} role="alert">{t('reports:errors.costingLoad', { error: costingError })}</div>
+            ) : costingSubView === 'portfolio' ? (
               <CostingPortfolio
                 rows={sortedCostingRows}
                 totalCount={costingRows.length}
@@ -374,11 +387,15 @@ export default function ReportsPage() {
         )}
 
         {view === 'costing' && detailProjectId && (
-          <CostingDetail
-            detail={detail}
-            loading={detailLoading}
-            onBack={() => { setDetailProjectId(null); setDetail(null) }}
-          />
+          detailError ? (
+            <div className={styles.empty} role="alert">{t('reports:errors.costingLoad', { error: detailError })}</div>
+          ) : (
+            <CostingDetail
+              detail={detail}
+              loading={detailLoading}
+              onBack={() => { setDetailProjectId(null); setDetail(null) }}
+            />
+          )
         )}
 
         <p className={styles.generatedLine}>{t('reports:print.generated', { date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) })}</p>

@@ -4,6 +4,13 @@ import { unitCostAtGrade } from '../lib/materialsView'
 
 function num(v) { return Number(v) || 0 }
 
+// Every query result passes through here: a failed query throws instead of
+// silently reading as an empty set (which rendered as $0 cost upstream).
+function must({ data, error }) {
+  if (error) throw error
+  return data
+}
+
 // Resolve an accepted estimate's quoted revenue. The locked single-price model
 // stores the price on good_total with no variant selected (imported estimates
 // included), while legacy variant estimates may point at better/best columns
@@ -39,23 +46,23 @@ export async function getJobCostingRows(companyId, { from, to } = {}) {
 
   // Fetch all data sources in parallel, scoped by company_id
   const [
-    { data: projects },
-    { data: estimates },
-    { data: invoices },
-    { data: payments },
-    { data: timeEntries },
-    { data: materialOrders },
-    { data: materialItems },
-    { data: expenses },
+    projects,
+    estimates,
+    invoices,
+    payments,
+    timeEntries,
+    materialOrders,
+    materialItems,
+    expenses,
   ] = await Promise.all([
-    supabase.from('projects').select('id, name, status, client_id, clients(display_name)').eq('company_id', companyId).is('deleted_at', null),
-    supabase.from('estimates').select('id, project_id, status, accepted_at, accepted_variant, selected_variant, good_total, better_total, best_total').eq('company_id', companyId).eq('status', 'accepted'),
-    supabase.from('invoices').select('id, project_id, total, status, created_at').eq('company_id', companyId).not('status', 'in', '(void,draft)'),
-    supabase.from('invoice_payments').select('id, invoice_id, amount, payment_date').eq('company_id', companyId),
-    supabase.from('time_entries').select('project_id, hours, cost_rate, work_date').eq('company_id', companyId),
-    supabase.from('material_orders').select('id, project_id, selected_variant, created_at').eq('company_id', companyId),
-    supabase.from('material_order_items').select('material_order_id, quantity, coats, unit, overage_pct, cost_premium, cost_standard, cost_commercial').eq('company_id', companyId),
-    supabase.from('expenses').select('project_id, amount, expense_date').eq('company_id', companyId),
+    supabase.from('projects').select('id, name, status, client_id, clients(display_name)').eq('company_id', companyId).is('deleted_at', null).then(must),
+    supabase.from('estimates').select('id, project_id, status, accepted_at, accepted_variant, selected_variant, good_total, better_total, best_total').eq('company_id', companyId).eq('status', 'accepted').then(must),
+    supabase.from('invoices').select('id, project_id, total, status, created_at').eq('company_id', companyId).not('status', 'in', '(void,draft)').then(must),
+    supabase.from('invoice_payments').select('id, invoice_id, amount, payment_date').eq('company_id', companyId).then(must),
+    supabase.from('time_entries').select('project_id, hours, cost_rate, work_date').eq('company_id', companyId).then(must),
+    supabase.from('material_orders').select('id, project_id, selected_variant, created_at').eq('company_id', companyId).then(must),
+    supabase.from('material_order_items').select('material_order_id, quantity, coats, unit, overage_pct, cost_premium, cost_standard, cost_commercial').eq('company_id', companyId).then(must),
+    supabase.from('expenses').select('project_id, amount, expense_date').eq('company_id', companyId).then(must),
   ])
 
   // Index by project
@@ -203,23 +210,24 @@ export async function getJobCostingDetail(companyId, projectId) {
   if (!companyId || !projectId) return null
 
   const [
-    { data: project },
-    { data: estimates },
-    { data: invoices },
-    { data: timeEntries },
-    { data: materialOrders },
-    { data: materialItems },
-    { data: expenseRows },
+    project,
+    estimates,
+    invoices,
+    timeEntries,
+    materialOrders,
+    materialItems,
+    expenseRows,
   ] = await Promise.all([
-    supabase.from('projects').select('id, name, status, client_id, clients(display_name)').eq('id', projectId).single(),
-    supabase.from('estimates').select('id, project_id, status, accepted_at, accepted_variant, selected_variant, good_total, better_total, best_total').eq('project_id', projectId).eq('company_id', companyId).eq('status', 'accepted'),
+    // maybeSingle: a missing project stays a null return below, not a throw.
+    supabase.from('projects').select('id, name, status, client_id, clients(display_name)').eq('id', projectId).maybeSingle().then(must),
+    supabase.from('estimates').select('id, project_id, status, accepted_at, accepted_variant, selected_variant, good_total, better_total, best_total').eq('project_id', projectId).eq('company_id', companyId).eq('status', 'accepted').then(must),
     // ALL invoices for the breakdown list; the report math below still counts
     // only non-draft, non-void rows exactly as before.
-    supabase.from('invoices').select('id, project_id, invoice_number, total, status, created_at').eq('project_id', projectId).eq('company_id', companyId),
-    supabase.from('time_entries').select('project_id, hours, cost_rate, crew_member_id, crew_members(name)').eq('project_id', projectId).eq('company_id', companyId),
-    supabase.from('material_orders').select('id, project_id, title, selected_variant, stores(name)').eq('project_id', projectId).eq('company_id', companyId),
-    supabase.from('material_order_items').select('material_order_id, quantity, coats, unit, overage_pct, cost_premium, cost_standard, cost_commercial').eq('company_id', companyId),
-    supabase.from('expenses').select('id, expense_date, category, description, vendor, amount').eq('project_id', projectId).eq('company_id', companyId).order('expense_date', { ascending: false }),
+    supabase.from('invoices').select('id, project_id, invoice_number, total, status, created_at').eq('project_id', projectId).eq('company_id', companyId).then(must),
+    supabase.from('time_entries').select('project_id, hours, cost_rate, crew_member_id, crew_members(name)').eq('project_id', projectId).eq('company_id', companyId).then(must),
+    supabase.from('material_orders').select('id, project_id, title, selected_variant, stores(name)').eq('project_id', projectId).eq('company_id', companyId).then(must),
+    supabase.from('material_order_items').select('material_order_id, quantity, coats, unit, overage_pct, cost_premium, cost_standard, cost_commercial').eq('company_id', companyId).then(must),
+    supabase.from('expenses').select('id, expense_date, category, description, vendor, amount').eq('project_id', projectId).eq('company_id', companyId).order('expense_date', { ascending: false }).then(must),
   ])
 
   if (!project) return null
@@ -232,7 +240,7 @@ export async function getJobCostingDetail(companyId, projectId) {
   const invoiceIds = countableInvoices.map(i => i.id)
   let allPayments = []
   if (invoiceIds.length > 0) {
-    const { data: pmts } = await supabase.from('invoice_payments').select('invoice_id, amount, payment_date').in('invoice_id', invoiceIds)
+    const pmts = must(await supabase.from('invoice_payments').select('invoice_id, amount, payment_date').in('invoice_id', invoiceIds))
     allPayments = pmts ?? []
   }
 
@@ -352,23 +360,23 @@ export async function getPeriodSummary(companyId, { from, to } = {}) {
   }
 
   const [
-    { data: estimates },
-    { data: invoicesInRange },
-    { data: invoiceMeta },
-    { data: payments },
-    { data: timeEntries },
-    { data: materialOrders },
-    { data: materialItems },
-    { data: expenses },
+    estimates,
+    invoicesInRange,
+    invoiceMeta,
+    payments,
+    timeEntries,
+    materialOrders,
+    materialItems,
+    expenses,
   ] = await Promise.all([
-    clip(supabase.from('estimates').select('project_id, accepted_at, accepted_variant, selected_variant, good_total, better_total, best_total').eq('company_id', companyId).eq('status', 'accepted'), 'accepted_at'),
-    clip(supabase.from('invoices').select('project_id, total, status, created_at').eq('company_id', companyId).not('status', 'in', '(void,draft)'), 'created_at'),
-    supabase.from('invoices').select('id, status, project_id').eq('company_id', companyId),
-    clip(supabase.from('invoice_payments').select('invoice_id, amount, payment_date').eq('company_id', companyId), 'payment_date'),
-    clip(supabase.from('time_entries').select('project_id, hours, cost_rate, work_date').eq('company_id', companyId), 'work_date'),
-    clip(supabase.from('material_orders').select('id, project_id, selected_variant, created_at').eq('company_id', companyId), 'created_at'),
-    supabase.from('material_order_items').select('material_order_id, quantity, coats, unit, overage_pct, cost_premium, cost_standard, cost_commercial').eq('company_id', companyId),
-    clip(supabase.from('expenses').select('project_id, amount, expense_date').eq('company_id', companyId), 'expense_date'),
+    clip(supabase.from('estimates').select('project_id, accepted_at, accepted_variant, selected_variant, good_total, better_total, best_total').eq('company_id', companyId).eq('status', 'accepted'), 'accepted_at').then(must),
+    clip(supabase.from('invoices').select('project_id, total, status, created_at').eq('company_id', companyId).not('status', 'in', '(void,draft)'), 'created_at').then(must),
+    supabase.from('invoices').select('id, status, project_id').eq('company_id', companyId).then(must),
+    clip(supabase.from('invoice_payments').select('invoice_id, amount, payment_date').eq('company_id', companyId), 'payment_date').then(must),
+    clip(supabase.from('time_entries').select('project_id, hours, cost_rate, work_date').eq('company_id', companyId), 'work_date').then(must),
+    clip(supabase.from('material_orders').select('id, project_id, selected_variant, created_at').eq('company_id', companyId), 'created_at').then(must),
+    supabase.from('material_order_items').select('material_order_id, quantity, coats, unit, overage_pct, cost_premium, cost_standard, cost_commercial').eq('company_id', companyId).then(must),
+    clip(supabase.from('expenses').select('project_id, amount, expense_date').eq('company_id', companyId), 'expense_date').then(must),
   ])
 
   const projectSet = new Set()

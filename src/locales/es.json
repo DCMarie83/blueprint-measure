@@ -2927,7 +2927,8 @@
       "loadPayData": "No se pudieron cargar los datos de pago",
       "payStatementFailed": "No se pudo generar el recibo de pago",
       "pdfFailed": "No se pudo generar el PDF",
-      "excelFailed": "No se pudo generar el archivo de Excel"
+      "excelFailed": "No se pudo generar el archivo de Excel",
+      "costingLoad": "El costeo de trabajos no se pudo cargar: {{error}}"
     },
     "margin": {
       "noCostData": "sin datos de costos",
@@ -2947,7 +2948,8 @@
     },
     "myTime": {
       "title": "Mi tiempo",
-      "empty": "No hay registros en este periodo."
+      "empty": "No hay registros en este periodo.",
+      "impersonationNotice": "El registro de tiempo personal no está disponible mientras actúas en nombre de otra empresa."
     },
     "common": {
       "saving": "Guardando…",
@@ -2976,7 +2978,8 @@
       "notesOptional": "Notas (opcional)",
       "notesShort": "Notas",
       "hrsPlaceholder": "Hrs",
-      "logTime": "+ Registrar tiempo"
+      "logTime": "+ Registrar tiempo",
+      "closedJobs": "Trabajos cerrados"
     },
     "table": {
       "date": "Fecha",
@@ -3074,7 +3077,8 @@
       "generic": "Error: {{error}}",
       "copyFailed": "No se pudo copiar — selecciona y copia manualmente.",
       "copyFailedShort": "No se pudo copiar.",
-      "enterHours": "Ingresa las horas primero."
+      "enterHours": "Ingresa las horas primero.",
+      "sectionLoad": "Esta sección no se pudo cargar: {{error}}"
     },
     "crewMember": {
       "notFound": "Trabajador no encontrado.",

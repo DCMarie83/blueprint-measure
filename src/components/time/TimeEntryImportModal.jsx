@@ -106,8 +106,9 @@ export default function TimeEntryImportModal({ onClose, onImported }) {
     skipReasonKey: 'skipReason',
     templateBuilder: downloadTimeEntryTemplate,
     ready: !!deps,
-    writeRows: ({ rows, onProgress }) => writeTimeEntryRows({
+    writeRows: ({ rows, batchId, onProgress }) => writeTimeEntryRows({
       rows,
+      batchId,
       onProgress,
       companyId,
       crewIndex: deps.crewIndex,
