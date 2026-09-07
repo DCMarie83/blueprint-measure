@@ -74,7 +74,8 @@
   :global(.TrialBanner),
   .screenHeader,
   .controls,
-  .printBtn {
+  .printBtn,
+  .screenOnly {
     display: none !important;
   }
 

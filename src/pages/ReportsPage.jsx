@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { BarChart3, Printer } from 'lucide-react'
@@ -25,6 +25,44 @@ function fmtPct(val) {
 }
 
 const CAT_LABEL_KEYS = { material: 'reports:expenseCategory.material', labor: 'reports:expenseCategory.labor', subcontractor: 'reports:expenseCategory.subcontractor', equipment: 'reports:expenseCategory.equipment', permit: 'reports:expenseCategory.permit', other: 'reports:expenseCategory.other' }
+
+// Portfolio search and sort survive back-navigation within the session, same
+// sessionStorage pattern as the invoice list sort.
+const COSTING_SORT_KEY = 'rivetdog_costing_sort'
+const COSTING_SEARCH_KEY = 'rivetdog_costing_search'
+const COSTING_SORT_COLS = ['project_name', 'quoted', 'billed', 'collected', 'totalCost', 'estimatedMargin', 'actualMargin', 'cashPosition']
+
+// A row is blank for the active column when its cell renders the blocked dash
+// (the margin columns' guard) or holds no value. Blank rows sort after every
+// row with data in both directions, ordered by job name among themselves.
+function costingRowBlank(row, col) {
+  switch (col) {
+    case 'estimatedMargin': return row.quoted <= 0 || !row.hasCostData
+    case 'actualMargin': return row.billed <= 0 || !row.hasCostData
+    case 'cashPosition': return row.collected <= 0 || !row.hasCostData
+    default: return row[col] == null
+  }
+}
+
+function sortCostingRows(rows, sortCol, sortAsc) {
+  return [...rows].sort((a, b) => {
+    const aBlank = costingRowBlank(a, sortCol)
+    const bBlank = costingRowBlank(b, sortCol)
+    if (aBlank !== bBlank) return aBlank ? 1 : -1
+    if (aBlank) return (a.project_name || '').localeCompare(b.project_name || '')
+    const av = a[sortCol], bv = b[sortCol]
+    if (typeof av === 'string') return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av)
+    return sortAsc ? (av ?? 0) - (bv ?? 0) : (bv ?? 0) - (av ?? 0)
+  })
+}
+
+// Blocked margin cells name the missing side. Labels only; the blocked
+// predicates and the math are untouched.
+function blockedMarginLabel(t, revenue, hasCost, missingRevenueKey) {
+  if (revenue <= 0 && !hasCost) return t('reports:margin.noData')
+  if (revenue <= 0) return t(missingRevenueKey)
+  return t('reports:margin.noCostData')
+}
 
 // Segmented pill toggle — active fills the brand primary.
 const pill = (active) => ({
@@ -82,8 +120,24 @@ export default function ReportsPage() {
   const [costingRows, setCostingRows] = useState([])
   const [periodSummary, setPeriodSummary] = useState(null)
   const [costingLoading, setCostingLoading] = useState(false)
-  const [sortCol, setSortCol] = useState('actualMargin')
-  const [sortAsc, setSortAsc] = useState(true)
+  const [sortCol, setSortCol] = useState(() => {
+    try {
+      const [col] = (sessionStorage.getItem(COSTING_SORT_KEY) || '').split(':')
+      if (COSTING_SORT_COLS.includes(col)) return col
+    } catch { /* ignore */ }
+    return 'actualMargin'
+  })
+  const [sortAsc, setSortAsc] = useState(() => {
+    try {
+      const [col, dir] = (sessionStorage.getItem(COSTING_SORT_KEY) || '').split(':')
+      if (COSTING_SORT_COLS.includes(col)) return dir === 'asc'
+    } catch { /* ignore */ }
+    return true
+  })
+  const [costingSearch, setCostingSearch] = useState(() => {
+    try { return sessionStorage.getItem(COSTING_SEARCH_KEY) || '' } catch { return '' }
+  })
+  const [costingQuery, setCostingQuery] = useState(costingSearch)
   const [detailProjectId, setDetailProjectId] = useState(null)
   const [detail, setDetail] = useState(null)
   const [detailLoading, setDetailLoading] = useState(false)
@@ -156,10 +210,44 @@ export default function ReportsPage() {
     }
   }
 
+  // ── Job costing search + sort (client-side, on the loaded rows) ────────
+
+  // The filter runs 150ms after the last keystroke.
+  useEffect(() => {
+    const id = setTimeout(() => setCostingQuery(costingSearch), 150)
+    return () => clearTimeout(id)
+  }, [costingSearch])
+
+  function handleCostingSearch(value) {
+    setCostingSearch(value)
+    try { sessionStorage.setItem(COSTING_SEARCH_KEY, value) } catch { /* ignore */ }
+  }
+
+  function handleCostingSort(col) {
+    const nextAsc = col === sortCol ? !sortAsc : col === 'project_name'
+    setSortCol(col)
+    setSortAsc(nextAsc)
+    try { sessionStorage.setItem(COSTING_SORT_KEY, `${col}:${nextAsc ? 'asc' : 'desc'}`) } catch { /* ignore */ }
+  }
+
+  const searchActive = costingQuery.trim() !== ''
+  const visibleCostingRows = useMemo(() => {
+    const q = costingQuery.trim().toLowerCase()
+    if (!q) return costingRows
+    return costingRows.filter(r =>
+      (r.project_name || '').toLowerCase().includes(q) ||
+      (r.client_name || '').toLowerCase().includes(q))
+  }, [costingRows, costingQuery])
+  const sortedCostingRows = useMemo(
+    () => sortCostingRows(visibleCostingRows, sortCol, sortAsc),
+    [visibleCostingRows, sortCol, sortAsc]
+  )
+
   // ── Job costing exports ───────────────────────────────────
 
+  // Print and both exports take the on-screen set: filtered and sorted.
   function computeTotals() {
-    return costingRows.reduce((t, r) => ({
+    return sortedCostingRows.reduce((t, r) => ({
       quoted: t.quoted + r.quoted,
       billed: t.billed + r.billed,
       collected: t.collected + r.collected,
@@ -172,7 +260,7 @@ export default function ReportsPage() {
     try {
       const companyData = await fetchCompanyWithLogo(company)
       const totals = computeTotals()
-      const pdf = generateJobCostingPDF({ rows: costingRows, totals, period: { from, to }, company: companyData, returnAs: 'blob' })
+      const pdf = generateJobCostingPDF({ rows: sortedCostingRows, totals, period: { from, to }, company: companyData, returnAs: 'blob' })
       triggerBlobDownload(pdf, `JobCosting_${from}_to_${to}.pdf`)
     } catch (err) {
       console.error('Job costing PDF:', err)
@@ -186,7 +274,7 @@ export default function ReportsPage() {
     setExporting('xlsx')
     try {
       const totals = computeTotals()
-      await exportJobCostingXLSX({ rows: costingRows, totals, period: { from, to }, company })
+      await exportJobCostingXLSX({ rows: sortedCostingRows, totals, period: { from, to }, company })
     } catch (err) {
       console.error('Job costing XLSX:', err)
       alert(t('reports:errors.excelFailed'))
@@ -268,11 +356,15 @@ export default function ReportsPage() {
 
             {costingSubView === 'portfolio' ? (
               <CostingPortfolio
-                rows={costingRows}
+                rows={sortedCostingRows}
+                totalCount={costingRows.length}
                 loading={costingLoading}
+                search={costingSearch}
+                searchActive={searchActive}
+                onSearchChange={handleCostingSearch}
                 sortCol={sortCol}
                 sortAsc={sortAsc}
-                onSort={(col) => { if (col === sortCol) setSortAsc(!sortAsc); else { setSortCol(col); setSortAsc(col === 'project_name') } }}
+                onSort={handleCostingSort}
                 onSelectProject={setDetailProjectId}
               />
             ) : (
@@ -310,17 +402,13 @@ function triggerBlobDownload(blob, filename) {
 
 // ── Portfolio table ─────────────────────────────────────────────────────
 
-function CostingPortfolio({ rows, loading, sortCol, sortAsc, onSort, onSelectProject }) {
+function CostingPortfolio({ rows, totalCount, loading, search, searchActive, onSearchChange, sortCol, sortAsc, onSort, onSelectProject }) {
   const { t } = useTranslation()
   if (loading) return <div className={styles.empty}>{t('reports:common.loading')}</div>
-  if (rows.length === 0) return <div className={styles.empty}>{t('reports:costing.emptyJobs')}</div>
+  if (totalCount === 0) return <div className={styles.empty}>{t('reports:costing.emptyJobs')}</div>
 
-  const sorted = [...rows].sort((a, b) => {
-    const av = a[sortCol], bv = b[sortCol]
-    if (typeof av === 'string') return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av)
-    return sortAsc ? (av ?? 0) - (bv ?? 0) : (bv ?? 0) - (av ?? 0)
-  })
-
+  // rows arrive filtered and sorted from the parent; the cards and footer
+  // total the on-screen set so they follow the search.
   const totals = rows.reduce((t, r) => ({
     quoted: t.quoted + r.quoted,
     billed: t.billed + r.billed,
@@ -360,6 +448,35 @@ function CostingPortfolio({ rows, loading, sortCol, sortAsc, onSort, onSelectPro
 
   return (
     <>
+      {/* Search (client-side, job or client name; hidden in print) */}
+      <div className={styles.screenOnly} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
+        <div style={{ position: 'relative', width: 260, maxWidth: '100%' }}>
+          <input
+            type="text"
+            value={search}
+            onChange={e => onSearchChange(e.target.value)}
+            placeholder={t('reports:costing.searchPlaceholder')}
+            style={{ width: '100%', padding: '7px 30px 7px 12px', fontSize: 'var(--text-sm)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md, 8px)', background: 'var(--color-surface)', color: 'inherit' }}
+          />
+          {search !== '' && (
+            <button
+              onClick={() => onSearchChange('')}
+              aria-label={t('reports:costing.searchClear')}
+              style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', fontSize: 16, lineHeight: 1, padding: 2 }}
+            >×</button>
+          )}
+        </div>
+        {search !== '' && (
+          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
+            {t('reports:costing.searchCount', { shown: rows.length, total: totalCount })}
+          </span>
+        )}
+      </div>
+
+      {rows.length === 0 ? (
+        <div className={styles.empty}>{t('reports:costing.searchNoMatches')}</div>
+      ) : (
+      <>
       {/* KPI cards */}
       <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 16 }}>
         {[
@@ -367,8 +484,8 @@ function CostingPortfolio({ rows, loading, sortCol, sortAsc, onSort, onSelectPro
           { label: t('reports:kpi.billed'), value: fmtMoney(totals.billed), accent: '#26464C' },
           { label: t('reports:kpi.collected'), value: fmtMoney(totals.collected), accent: '#26464C' },
           { label: t('reports:kpi.totalCost'), value: fmtMoney(totals.totalCost), accent: 'var(--color-text-muted)' },
-          { label: t('reports:kpi.actualMargin'), value: actualBlocked ? '–' : fmtPct(blendedActualPct), sub: actualBlocked ? t('reports:margin.noCostData') : t('reports:summary.billedMinusCost'), accent: '#F27243', isMargin: true, positive: (blendedActualPct ?? 0) >= 0 },
-          { label: t('reports:kpi.cashPosition'), value: cashBlocked ? '–' : fmtMoney(totals.collected - totals.totalCost), sub: cashBlocked ? t('reports:margin.noCostData') : t('reports:summary.collectedMinusCost'), accent: '#26464C', isMargin: !cashBlocked, positive: (totals.collected - totals.totalCost) >= 0 },
+          { label: t('reports:kpi.actualMargin'), value: actualBlocked ? '–' : fmtPct(blendedActualPct), sub: actualBlocked ? blockedMarginLabel(t, totals.billed, anyCostData, 'reports:margin.noBilling') : t('reports:summary.billedMinusCost'), accent: '#F27243', isMargin: true, positive: (blendedActualPct ?? 0) >= 0 },
+          { label: t('reports:kpi.cashPosition'), value: cashBlocked ? '–' : fmtMoney(totals.collected - totals.totalCost), sub: cashBlocked ? blockedMarginLabel(t, totals.collected, anyCostData, 'reports:margin.noCollections') : t('reports:summary.collectedMinusCost'), accent: '#26464C', isMargin: !cashBlocked, positive: (totals.collected - totals.totalCost) >= 0 },
         ].map(s => (
           <div key={s.label} style={{
             background: s.isMargin ? 'rgba(242,114,67,0.06)' : 'var(--color-surface)',
@@ -381,6 +498,11 @@ function CostingPortfolio({ rows, loading, sortCol, sortAsc, onSort, onSelectPro
           </div>
         ))}
       </div>
+      {searchActive && (
+        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: '0 0 8px' }}>
+          {t('reports:costing.filteredNote')}
+        </p>
+      )}
       <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: '0 0 16px' }}>
         {t('reports:costing.portfolioNote')}
       </p>
@@ -391,7 +513,7 @@ function CostingPortfolio({ rows, loading, sortCol, sortAsc, onSort, onSelectPro
             <tr>{cols.map(c => <SortTh key={c.key} col={c} />)}</tr>
           </thead>
           <tbody>
-            {sorted.map(r => (
+            {rows.map(r => (
               <tr key={r.project_id} className={styles.tr} style={{ cursor: 'pointer' }} onClick={() => onSelectProject(r.project_id)}>
                 <td className={styles.td}>
                   <div style={{ fontSize: 'var(--text-base)', fontWeight: 600 }}>{r.project_name}</div>
@@ -407,13 +529,13 @@ function CostingPortfolio({ rows, loading, sortCol, sortAsc, onSort, onSelectPro
                   )}
                 </td>
                 <td className={styles.td} style={{ textAlign: 'right' }}>
-                  <MarginCell amount={r.estimatedMargin} pct={r.estimatedMarginPct} blocked={r.quoted <= 0 || !r.hasCostData} />
+                  <MarginCell amount={r.estimatedMargin} pct={r.estimatedMarginPct} blocked={r.quoted <= 0 || !r.hasCostData} blockedLabel={blockedMarginLabel(t, r.quoted, r.hasCostData, 'reports:margin.noQuote')} />
                 </td>
                 <td className={styles.td} style={{ textAlign: 'right' }}>
-                  <MarginCell amount={r.actualMargin} pct={r.actualMarginPct} blocked={r.billed <= 0 || !r.hasCostData} />
+                  <MarginCell amount={r.actualMargin} pct={r.actualMarginPct} blocked={r.billed <= 0 || !r.hasCostData} blockedLabel={blockedMarginLabel(t, r.billed, r.hasCostData, 'reports:margin.noBilling')} />
                 </td>
                 <td className={styles.td} style={{ textAlign: 'right' }}>
-                  <MarginCell amount={r.cashPosition} showPct={false} blocked={r.collected <= 0 || !r.hasCostData} />
+                  <MarginCell amount={r.cashPosition} showPct={false} blocked={r.collected <= 0 || !r.hasCostData} blockedLabel={blockedMarginLabel(t, r.collected, r.hasCostData, 'reports:margin.noCollections')} />
                 </td>
               </tr>
             ))}
@@ -427,15 +549,17 @@ function CostingPortfolio({ rows, loading, sortCol, sortAsc, onSort, onSelectPro
               <td className={styles.td} style={{ textAlign: 'right', fontWeight: 700 }}>{fmtMoney(totals.totalCost)}</td>
               <td className={styles.td}></td>
               <td className={styles.td} style={{ textAlign: 'right', fontWeight: 700 }}>
-                <MarginCell amount={totals.billed - totals.totalCost} pct={blendedActualPct} blocked={actualBlocked} />
+                <MarginCell amount={totals.billed - totals.totalCost} pct={blendedActualPct} blocked={actualBlocked} blockedLabel={blockedMarginLabel(t, totals.billed, anyCostData, 'reports:margin.noBilling')} />
               </td>
               <td className={styles.td} style={{ textAlign: 'right', fontWeight: 700 }}>
-                <MarginCell amount={totals.collected - totals.totalCost} showPct={false} blocked={cashBlocked} />
+                <MarginCell amount={totals.collected - totals.totalCost} showPct={false} blocked={cashBlocked} blockedLabel={blockedMarginLabel(t, totals.collected, anyCostData, 'reports:margin.noCollections')} />
               </td>
             </tr>
           </tfoot>
         </table>
       </div>
+      </>
+      )}
     </>
   )
 }
@@ -492,17 +616,17 @@ function PeriodSummary({ summary, loading }) {
         <div style={{ flex: 1, minWidth: 200, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg, 8px)', padding: '16px 20px' }}>
           <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)', marginBottom: 6 }}>{t('reports:summary.estimatedProfit')}</div>
           <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 2 }}>{t('reports:summary.quotedMinusCost')}</div>
-          <MarginCell amount={estMargin} pct={estPct} large blocked={estBlocked} />
+          <MarginCell amount={estMargin} pct={estPct} large blocked={estBlocked} blockedLabel={blockedMarginLabel(t, quoted, hasCostData, 'reports:margin.noQuote')} />
         </div>
         <div style={{ flex: 1, minWidth: 200, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg, 8px)', padding: '16px 20px' }}>
           <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)', marginBottom: 6 }}>{t('reports:summary.actualProfit')}</div>
           <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 2 }}>{t('reports:summary.billedMinusCost')}</div>
-          <MarginCell amount={actMargin} pct={actPct} large blocked={actBlocked} />
+          <MarginCell amount={actMargin} pct={actPct} large blocked={actBlocked} blockedLabel={blockedMarginLabel(t, billed, hasCostData, 'reports:margin.noBilling')} />
         </div>
         <div style={{ flex: 1, minWidth: 200, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg, 8px)', padding: '16px 20px' }}>
           <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)', marginBottom: 6 }}>{t('reports:summary.cashPosition')}</div>
           <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 2 }}>{t('reports:summary.collectedMinusCost')}</div>
-          <MarginCell amount={cashPosition} showPct={false} large blocked={cashBlocked} />
+          <MarginCell amount={cashPosition} showPct={false} large blocked={cashBlocked} blockedLabel={blockedMarginLabel(t, collected, hasCostData, 'reports:margin.noCollections')} />
         </div>
       </div>
 
@@ -694,17 +818,17 @@ function CostingDetail({ detail, loading, onBack }) {
         <div style={{ flex: 1, minWidth: 200, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg, 8px)', padding: '16px 20px' }}>
           <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)', marginBottom: 6 }}>{t('reports:detail.estimatedMargin')}</div>
           <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 2 }}>{t('reports:summary.quotedMinusCost')}</div>
-          <MarginCell amount={d.estimatedMargin} pct={d.estimatedMarginPct} large blocked={d.quoted <= 0 || !d.hasCostData} />
+          <MarginCell amount={d.estimatedMargin} pct={d.estimatedMarginPct} large blocked={d.quoted <= 0 || !d.hasCostData} blockedLabel={blockedMarginLabel(t, d.quoted, d.hasCostData, 'reports:margin.noQuote')} />
         </div>
         <div style={{ flex: 1, minWidth: 200, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg, 8px)', padding: '16px 20px' }}>
           <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)', marginBottom: 6 }}>{t('reports:detail.actualMargin')}</div>
           <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 2 }}>{t('reports:summary.billedMinusCost')}</div>
-          <MarginCell amount={d.actualMargin} pct={d.actualMarginPct} large blocked={d.billed <= 0 || !d.hasCostData} />
+          <MarginCell amount={d.actualMargin} pct={d.actualMarginPct} large blocked={d.billed <= 0 || !d.hasCostData} blockedLabel={blockedMarginLabel(t, d.billed, d.hasCostData, 'reports:margin.noBilling')} />
         </div>
         <div style={{ flex: 1, minWidth: 200, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg, 8px)', padding: '16px 20px' }}>
           <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)', marginBottom: 6 }}>{t('reports:detail.cashPosition')}</div>
           <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 2 }}>{t('reports:summary.collectedMinusCost')}</div>
-          <MarginCell amount={d.cashPosition} showPct={false} large blocked={d.collected <= 0 || !d.hasCostData} />
+          <MarginCell amount={d.cashPosition} showPct={false} large blocked={d.collected <= 0 || !d.hasCostData} blockedLabel={blockedMarginLabel(t, d.collected, d.hasCostData, 'reports:margin.noCollections')} />
         </div>
       </div>
     </div>
@@ -717,12 +841,12 @@ function CostingDetail({ detail, loading, onBack }) {
 // term is 0, or cost is 0 with no cost records in range, render a dash with a
 // muted hint instead of a number or percentage (never +100.0% from an empty
 // side). showPct=false renders a value-only metric (cash position).
-function MarginCell({ amount, pct, large, blocked = false, showPct = true }) {
+function MarginCell({ amount, pct, large, blocked = false, blockedLabel, showPct = true }) {
   const { t } = useTranslation()
   if (blocked) {
     return (
       <span style={{ color: 'var(--color-text-muted)', fontWeight: 600, fontSize: large ? 20 : 13 }}>
-        {'–'} <span style={{ fontWeight: 400, fontSize: large ? 13 : 10 }}>{t('reports:margin.noCostData')}</span>
+        {'–'} <span style={{ fontWeight: 400, fontSize: large ? 13 : 10 }}>{blockedLabel || t('reports:margin.noCostData')}</span>
       </span>
     )
   }

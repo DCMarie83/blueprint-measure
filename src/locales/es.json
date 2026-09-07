@@ -2842,7 +2842,12 @@
       "emptyJobs": "No hay trabajos con actividad financiera en este periodo.",
       "portfolioNote": "Cifras acumuladas de los trabajos con actividad en el rango seleccionado.",
       "incompleteTooltip": "El costo puede estar subestimado: falta la tarifa de mano de obra, la variante del material o una cotización aceptada.",
-      "totalJobs": "Total ({{count}} trabajos)"
+      "totalJobs": "Total ({{count}} trabajos)",
+      "searchPlaceholder": "Buscar trabajos o clientes",
+      "searchClear": "Borrar búsqueda",
+      "searchCount": "{{shown}} de {{total}} trabajos",
+      "filteredNote": "Los totales reflejan la búsqueda actual.",
+      "searchNoMatches": "Ningún trabajo coincide con tu búsqueda."
     },
     "th": {
       "job": "Trabajo",
@@ -2925,7 +2930,11 @@
       "excelFailed": "No se pudo generar el archivo de Excel"
     },
     "margin": {
-      "noCostData": "sin datos de costos"
+      "noCostData": "sin datos de costos",
+      "noData": "sin datos",
+      "noBilling": "sin facturación",
+      "noQuote": "sin cotización",
+      "noCollections": "sin pagos"
     }
   },
   "time": {

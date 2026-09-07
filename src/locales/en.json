@@ -2842,7 +2842,12 @@
       "emptyJobs": "No jobs with financial activity in this period.",
       "portfolioNote": "Job-to-date figures for jobs with activity in the selected range.",
       "incompleteTooltip": "Cost may be understated: missing labor rate, material variant, or accepted estimate.",
-      "totalJobs": "Total ({{count}} jobs)"
+      "totalJobs": "Total ({{count}} jobs)",
+      "searchPlaceholder": "Search jobs or clients",
+      "searchClear": "Clear search",
+      "searchCount": "{{shown}} of {{total}} jobs",
+      "filteredNote": "Totals reflect the current search.",
+      "searchNoMatches": "No jobs match your search."
     },
     "th": {
       "job": "Job",
@@ -2925,7 +2930,11 @@
       "excelFailed": "Failed to generate Excel file"
     },
     "margin": {
-      "noCostData": "no cost data"
+      "noCostData": "no cost data",
+      "noData": "no data",
+      "noBilling": "no billing",
+      "noQuote": "no quote",
+      "noCollections": "no payments"
     }
   },
   "time": {
