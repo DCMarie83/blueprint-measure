@@ -7,6 +7,7 @@ import DocumentsSection from '../components/documents/DocumentsSection'
 import { useLinkedDocuments } from '../hooks/useLinkedDocuments'
 import { useInvoice, useInvoiceMutations, isOverdue } from '../hooks/useInvoices'
 import { generateInvoicePDF } from '../lib/generateInvoicePDF'
+import { generateReceiptPDF } from '../lib/generateReceiptPDF'
 import { useAuth } from '../context/AuthContext'
 import { useEffectiveCompany } from '../hooks/useEffectiveCompany'
 import { mergeInstructionDefaults } from '../hooks/usePaymentInstructions'
@@ -102,6 +103,104 @@ export default function InvoiceDetailPage() {
   const [actionSaving, setActionSaving] = useState(false)
   const [actionError, setActionError] = useState(null)
 
+  // Lane F: reminders and receipts
+  const [reminderModal, setReminderModal] = useState(null) // 'reminder' | 'receipt' | null
+  const [reminderRecipients, setReminderRecipients] = useState(null) // null = loading
+  const [attachPdf, setAttachPdf] = useState(true)
+  const [reminderSending, setReminderSending] = useState(false)
+  const [reminderNotice, setReminderNotice] = useState(null)
+  const [reminderHistory, setReminderHistory] = useState([])
+  const [verifySaving, setVerifySaving] = useState(false)
+
+  useEffect(() => {
+    if (!id) return
+    let cancelled = false
+    supabase.from('invoice_reminders')
+      .select('id, kind, step, status, created_at, sent_at')
+      .eq('invoice_id', id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => { if (!cancelled) setReminderHistory(data ?? []) })
+    return () => { cancelled = true }
+  }, [id, reminderNotice])
+
+  async function openReminderModal(kind) {
+    setReminderModal(kind)
+    setAttachPdf(true)
+    setReminderRecipients(null)
+    setReminderNotice(null)
+    let clientId = invoice.client_id ?? null
+    if (!clientId && invoice.project_id) {
+      const { data: proj } = await supabase.from('projects').select('client_id').eq('id', invoice.project_id).maybeSingle()
+      clientId = proj?.client_id ?? null
+    }
+    if (!clientId) { setReminderRecipients([]); return }
+    const { data: cli } = await supabase.from('clients')
+      .select('primary_email, client_contacts(email, is_portal_recipient)')
+      .eq('id', clientId).maybeSingle()
+    const flagged = (cli?.client_contacts ?? []).filter(c => c.is_portal_recipient && c.email).map(c => c.email)
+    setReminderRecipients(Array.from(new Set([...flagged, ...(cli?.primary_email ? [cli.primary_email] : [])])))
+  }
+
+  async function handleSendReminderOrReceipt() {
+    if (!reminderModal) return
+    setReminderSending(true)
+    setActionError(null)
+    try {
+      let pdfBase64 = null
+      if (attachPdf) {
+        const data = await fetchPdfData()
+        if (reminderModal === 'receipt') {
+          pdfBase64 = generateReceiptPDF({ invoice, payments, project: data?.project, client: data?.client, company: data?.company, returnAs: 'base64' })
+        } else {
+          pdfBase64 = generateInvoicePDF({ invoice, lineItems, payments, project: data?.project, client: data?.client, company: data?.company, qrImages: data?.qrImages, returnAs: 'base64' })
+        }
+      }
+      const { data: result, error: fnErr } = await supabase.functions.invoke('send-invoice-reminder', {
+        body: { invoice_id: id, kind: reminderModal, pdf_base64: pdfBase64 },
+      })
+      if (fnErr) {
+        let msg = fnErr.message
+        try { const b = await fnErr.context?.json(); if (b?.error) msg = b.error } catch { /* generic */ }
+        throw new Error(msg)
+      }
+      if (result?.error) throw new Error(result.error)
+      setReminderModal(null)
+      setReminderNotice(reminderModal === 'receipt' ? t('invoices:reminders.receiptSent') : t('invoices:reminders.reminderSent'))
+      await refetch()
+    } catch (err) {
+      setActionError(err.message)
+    } finally {
+      setReminderSending(false)
+    }
+  }
+
+  async function handleReceiptDownload() {
+    setPdfLoading(true)
+    try {
+      const data = await fetchPdfData()
+      const pdf = generateReceiptPDF({ invoice, payments, project: data?.project, client: data?.client, company: data?.company, returnAs: 'blob' })
+      const url = URL.createObjectURL(pdf)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `receipt-${invoice.invoice_number}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } finally { setPdfLoading(false) }
+  }
+
+  async function handleMarkVerified() {
+    setVerifySaving(true)
+    try {
+      const { error: err } = await supabase.from('invoices')
+        .update({ reminders_verified_at: new Date().toISOString() }).eq('id', id)
+      if (err) throw new Error(err.message)
+      await refetch()
+    } catch (err) { setActionError(err.message) }
+    finally { setVerifySaving(false) }
+  }
+
   // I5: mark-sent modal (manual delivery; email goes through the send button)
   const [showMarkSent, setShowMarkSent] = useState(false)
   const [deliveryMethod, setDeliveryMethod] = useState('handed_over')
@@ -169,7 +268,7 @@ export default function InvoiceDetailPage() {
     try {
       const data = await fetchPdfData()
       if (!data) return
-      const pdf = generateInvoicePDF({ invoice, lineItems, project: data.project, client: data.client, company: data.company, qrImages: data.qrImages, returnAs: 'blob' })
+      const pdf = generateInvoicePDF({ invoice, lineItems, payments, project: data.project, client: data.client, company: data.company, qrImages: data.qrImages, returnAs: 'blob' })
       const url = URL.createObjectURL(pdf)
       const a = document.createElement('a')
       a.href = url
@@ -190,7 +289,7 @@ export default function InvoiceDetailPage() {
     try {
       const pdfData = await fetchPdfData()
       if (!pdfData) throw new Error(t('invoices:detail.errorPdfData'))
-      const pdfBase64 = generateInvoicePDF({ invoice, lineItems, project: pdfData.project, client: pdfData.client, company: pdfData.company, qrImages: pdfData.qrImages, returnAs: 'base64' })
+      const pdfBase64 = generateInvoicePDF({ invoice, lineItems, payments, project: pdfData.project, client: pdfData.client, company: pdfData.company, qrImages: pdfData.qrImages, returnAs: 'base64' })
       const { error: fnErr } = await supabase.functions.invoke('send-invoice-email', {
         body: { invoice_id: id, pdf_base64: pdfBase64 },
       })
@@ -472,8 +571,21 @@ export default function InvoiceDetailPage() {
                     <CheckCircle size={15} /> {t('invoices:detail.markPaidInFull')}
                   </button>
                 )}
+                <button className={styles.toolBtn} onClick={() => openReminderModal('reminder')} disabled={reminderSending}>
+                  {t('invoices:reminders.sendReminder')}
+                </button>
                 <button className={styles.dangerBtn} onClick={() => setShowVoidForm(true)}>
                   <XCircle size={15} /> {t('invoices:detail.void')}
+                </button>
+              </>
+            )}
+            {status === 'paid' && (
+              <>
+                <button className={styles.toolBtn} onClick={() => openReminderModal('receipt')} disabled={reminderSending}>
+                  {t('invoices:reminders.sendReceipt')}
+                </button>
+                <button className={styles.toolBtn} onClick={handleReceiptDownload} disabled={pdfLoading}>
+                  <Download size={15} /> {t('invoices:reminders.receiptPdf')}
                 </button>
               </>
             )}
@@ -485,6 +597,27 @@ export default function InvoiceDetailPage() {
           </div>
         </div>
 
+        {invoice.import_source && !invoice.reminders_verified_at && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '8px 0', padding: '8px 12px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 'var(--radius-md)', fontSize: 13 }}>
+            <span>{t('invoices:reminders.needsVerification')}</span>
+            <button onClick={handleMarkVerified} disabled={verifySaving}
+              style={{ padding: '4px 12px', fontSize: 12, fontWeight: 600, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)', color: 'var(--color-text)', cursor: 'pointer' }}>
+              {verifySaving ? '…' : t('invoices:reminders.markVerified')}
+            </button>
+          </div>
+        )}
+        {reminderNotice && (
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-success)', margin: '6px 0' }}>{reminderNotice}</div>
+        )}
+        {reminderHistory.length > 0 && (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '6px 0' }}>
+            {reminderHistory.map(r => (
+              <span key={r.id} style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 'var(--radius-pill, 9999px)', border: '1px solid var(--color-border)', color: r.status === 'sent' ? 'var(--color-success)' : r.status === 'failed' ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
+                {t(`invoices:reminders.kind.${r.kind}`)} · {t(`invoices:reminders.step.${r.step}`, { defaultValue: r.step })} · {new Date(r.sent_at || r.created_at).toLocaleDateString()} · {t(`invoices:reminders.status.${r.status}`, { defaultValue: r.status })}
+              </span>
+            ))}
+          </div>
+        )}
         {actionError && <div className={styles.errorBanner}>{actionError}</div>}
 
         {/* Line items */}
@@ -722,6 +855,33 @@ export default function InvoiceDetailPage() {
             <div className={styles.formActions}>
               <button className={styles.cancelBtn} onClick={() => setShowPayForm(false)}>{t('common:action.cancel')}</button>
               <button className={styles.confirmBtn} onClick={handleRecordPayment} disabled={actionSaving}>{actionSaving ? t('invoices:detail.saving') : t('invoices:detail.savePayment')}</button>
+            </div>
+          </div>
+        )}
+
+        {/* Lane F: reminder / receipt preview */}
+        {reminderModal && (
+          <div className={styles.inlineForm}>
+            <h3 className={styles.formTitle}>{reminderModal === 'receipt' ? t('invoices:reminders.sendReceipt') : t('invoices:reminders.sendReminder')}</h3>
+            <div style={{ fontSize: 13, display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 }}>
+              <div>{t('invoices:reminders.previewTo')}: <strong>{reminderRecipients === null ? t('common:misc.loading') : reminderRecipients.length > 0 ? reminderRecipients.join(', ') : t('invoices:reminders.noRecipients')}</strong></div>
+              <div>{t('invoices:reminders.previewSubject')}: <strong>{reminderModal === 'receipt'
+                ? t('invoices:reminders.subjectReceipt', { number: invoice.invoice_number })
+                : t('invoices:reminders.subjectReminder', { amount: fmtMoney(balanceDue), number: invoice.invoice_number })}</strong></div>
+              {reminderModal === 'reminder' && invoice.due_date && (() => {
+                const days = Math.floor((Date.now() - new Date(invoice.due_date + 'T00:00:00').getTime()) / 86400000)
+                return days > 0 ? <div>{t('invoices:reminders.previewPastDue', { count: days })}</div> : null
+              })()}
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', marginBottom: 12 }}>
+              <input type="checkbox" checked={attachPdf} onChange={e => setAttachPdf(e.target.checked)} />
+              {t('invoices:reminders.attachPdf')}
+            </label>
+            <div className={styles.formActions}>
+              <button className={styles.cancelBtn} onClick={() => setReminderModal(null)}>{t('common:action.cancel')}</button>
+              <button className={styles.confirmBtn} onClick={handleSendReminderOrReceipt} disabled={reminderSending || reminderRecipients === null || reminderRecipients.length === 0}>
+                {reminderSending ? t('invoices:detail.sending') : t('common:action.send')}
+              </button>
             </div>
           </div>
         )}

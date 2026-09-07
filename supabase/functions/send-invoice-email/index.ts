@@ -211,6 +211,38 @@ Deno.serve(async (req) => {
 
     const qrAttachments = await buildQrAttachments(adminClient, company?.payment_instructions)
 
+    // Payments block: every ledger payment, paid to date, balance due — so a
+    // resend after a partial payment leads with the real balance.
+    const { data: ledgerPayments } = await adminClient
+      .from('invoice_payments')
+      .select('amount, payment_method, payment_date, reference_number')
+      .eq('invoice_id', invoice_id)
+      .order('payment_date', { ascending: true })
+    const paidToDate = Math.round((ledgerPayments ?? []).reduce((s: number, p: { amount: number }) => s + (Number(p.amount) || 0), 0) * 100) / 100
+    const balanceDue = Math.round(((Number(invoice.total) || 0) - paidToDate) * 100) / 100
+    const fmtM = (v: number) => `$${(Number(v) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    const paymentsBlockHtml = (ledgerPayments ?? []).length > 0 ? `
+      <table style="width:100%; border-collapse:collapse; font-size:13px; margin:12px 0;">
+        <thead><tr>
+          <th style="text-align:left; padding:6px 8px; font-size:11px; color:#777; text-transform:uppercase;">Date</th>
+          <th style="text-align:left; padding:6px 8px; font-size:11px; color:#777; text-transform:uppercase;">Method</th>
+          <th style="text-align:left; padding:6px 8px; font-size:11px; color:#777; text-transform:uppercase;">Reference</th>
+          <th style="text-align:right; padding:6px 8px; font-size:11px; color:#777; text-transform:uppercase;">Amount</th>
+        </tr></thead>
+        <tbody>${(ledgerPayments ?? []).map((p: { payment_date: string; payment_method: string | null; reference_number: string | null; amount: number }) => `
+          <tr>
+            <td style="padding:6px 8px; border-bottom:1px solid #eee;">${p.payment_date ? new Date(p.payment_date + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : ''}</td>
+            <td style="padding:6px 8px; border-bottom:1px solid #eee; text-transform:capitalize;">${escapeHtml((p.payment_method || '').replace(/_/g, ' '))}</td>
+            <td style="padding:6px 8px; border-bottom:1px solid #eee; color:#777;">${escapeHtml(p.reference_number || '')}</td>
+            <td style="padding:6px 8px; border-bottom:1px solid #eee; text-align:right; font-family:monospace;">${fmtM(Number(p.amount) || 0)}</td>
+          </tr>`).join('')}
+        </tbody>
+        <tfoot>
+          <tr><td colspan="3" style="padding:6px 8px; font-weight:600;">Paid to date</td><td style="padding:6px 8px; text-align:right; font-family:monospace;">${fmtM(paidToDate)}</td></tr>
+          <tr><td colspan="3" style="padding:6px 8px; font-weight:700;">${balanceDue > 0 ? 'Balance due' : 'Paid in full'}</td><td style="padding:6px 8px; text-align:right; font-family:monospace; font-weight:700; color:${balanceDue > 0 ? '#dc2626' : '#16a34a'};">${fmtM(Math.max(0, balanceDue))}</td></tr>
+        </tfoot>
+      </table>` : ''
+
     const html = `
       <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
         ${logoHtml}
@@ -223,6 +255,7 @@ Deno.serve(async (req) => {
           ${escapeHtml(invoice.invoice_number)} for project <strong>${escapeHtml(project.name)}</strong>
         </p>
         ${totalRow}
+        ${paymentsBlockHtml}
         ${dueHtml}
         ${renderPaymentInstructionsHTML(company?.payment_instructions, tenantPrimary, 'Payment Methods', portalUrl)}
         <p style="font-size: 14px; color: #555; line-height: 1.5;">

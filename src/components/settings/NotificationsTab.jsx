@@ -1,4 +1,7 @@
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { supabase } from '../../lib/supabase';
+import { useEffectiveCompany } from '../../hooks/useEffectiveCompany';
 import styles from './NotificationsTab.module.css';
 
 const CHANNELS = [
@@ -15,8 +18,50 @@ const TYPES = [
 
 export default function NotificationsTab() {
   const { t } = useTranslation();
+  const { companyId } = useEffectiveCompany();
+  const [remindersOn, setRemindersOn] = useState(false);
+  const [remLoaded, setRemLoaded] = useState(false);
+  const [remSaving, setRemSaving] = useState(false);
+  const [remError, setRemError] = useState(null);
+
+  useEffect(() => {
+    if (!companyId) return;
+    let cancelled = false;
+    supabase.from('companies').select('invoice_reminders_enabled').eq('id', companyId).single()
+      .then(({ data }) => { if (!cancelled) { setRemindersOn(!!data?.invoice_reminders_enabled); setRemLoaded(true); } });
+    return () => { cancelled = true; };
+  }, [companyId]);
+
+  async function toggleReminders() {
+    const next = !remindersOn;
+    setRemSaving(true);
+    setRemError(null);
+    const { error } = await supabase.from('companies')
+      .update({ invoice_reminders_enabled: next, updated_at: new Date().toISOString() })
+      .eq('id', companyId);
+    if (error) setRemError(error.message);
+    else setRemindersOn(next);
+    setRemSaving(false);
+  }
+
   return (
     <div className={styles.tab}>
+      {/* Automatic payment reminders: the tenant's explicit switch. */}
+      <div style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg, 12px)', padding: '16px 20px', marginBottom: 16, background: 'var(--color-surface)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>{t('settings:reminders.title')}</div>
+            <div style={{ fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.5, marginTop: 4 }}>{t('settings:reminders.schedule')}</div>
+            <div style={{ fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.5, marginTop: 2 }}>{t('settings:reminders.importRule')}</div>
+          </div>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: remLoaded ? 'pointer' : 'default' }}>
+            <input type="checkbox" checked={remindersOn} disabled={!remLoaded || remSaving} onChange={toggleReminders} />
+            <span style={{ fontSize: 13, fontWeight: 600 }}>{remindersOn ? t('settings:reminders.on') : t('settings:reminders.off')}</span>
+          </label>
+        </div>
+        {remError && <p style={{ fontSize: 12, color: 'var(--color-danger, #dc2626)', margin: '8px 0 0' }}>{remError}</p>}
+      </div>
+
       <div className={styles.banner}>{t('settings:notifications.banner')}</div>
       <table className={styles.table}>
         <thead>

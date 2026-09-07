@@ -543,7 +543,12 @@
       "paidOn": "{{amount}} on {{date}}",
       "paidVia": "via {{method}}",
       "generating": "Generating…",
-      "downloadPdf": "Download PDF"
+      "downloadPdf": "Download PDF",
+      "paymentsTitle": "Payments",
+      "paidToDate": "Paid to date",
+      "balanceDue": "Balance due",
+      "paidInFull": "Paid in full",
+      "downloadReceipt": "Download receipt"
     },
     "estimate": {
       "errors": {
@@ -838,6 +843,13 @@
       "alt": "{{name}} logo",
       "upload": "Upload logo",
       "remove": "Remove logo"
+    },
+    "reminders": {
+      "title": "Automatic payment reminders",
+      "schedule": "Emails the client the balance on the due date, 7 days after, and 14 days after. Then they stop.",
+      "importRule": "Imported invoices are only reminded after you send a manual reminder or mark them verified.",
+      "on": "On",
+      "off": "Off"
     }
   },
   "clients": {
@@ -1401,6 +1413,39 @@
       "target_status": "The target invoice cannot accept payments in its current status.",
       "different_client": "Payments can only transfer between invoices of the same client.",
       "bad_action": "Unsupported payment action."
+    },
+    "reminders": {
+      "sendReminder": "Send reminder",
+      "sendReceipt": "Send receipt",
+      "receiptPdf": "Receipt",
+      "reminderSent": "Reminder sent.",
+      "receiptSent": "Receipt sent.",
+      "previewTo": "To",
+      "previewSubject": "Subject",
+      "previewPastDue": "{{count}} days past due",
+      "subjectReminder": "Balance due {{amount}} on invoice {{number}}",
+      "subjectReceipt": "Receipt for invoice {{number}}, paid in full",
+      "attachPdf": "Attach PDF",
+      "noRecipients": "No client email on file",
+      "needsVerification": "Automatic reminders: off until verified",
+      "markVerified": "Mark verified",
+      "needsVerificationFilter": "Needs verification ({{count}})",
+      "kind": {
+        "reminder": "Reminder",
+        "receipt": "Receipt"
+      },
+      "step": {
+        "due": "due date",
+        "plus7": "+7 days",
+        "plus14": "+14 days",
+        "manual": "manual"
+      },
+      "status": {
+        "queued": "queued",
+        "sent": "sent",
+        "failed": "failed",
+        "skipped": "skipped"
+      }
     }
   },
   "lite": {

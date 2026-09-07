@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Download } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { generateInvoicePDF } from '../lib/generateInvoicePDF'
+import { generateReceiptPDF } from '../lib/generateReceiptPDF'
 import InvoiceStatusBadge from '../components/invoices/InvoiceStatusBadge'
 import { portalQrUrl } from '../lib/portalAsset'
 import { fetchPortalQrDataUrls } from '../lib/qrData'
@@ -83,6 +84,7 @@ export default function InvoicePortalPage() {
         project: { name: data.project_name, address: data.project_address },
         client: { display_name: data.client_name, business_name: data.client_business },
         company: companyData,
+        payments: data.payments || [],
         qrImages,
         returnAs: 'blob',
       })
@@ -90,6 +92,33 @@ export default function InvoicePortalPage() {
       const a = document.createElement('a')
       a.href = url
       a.download = `${inv.invoice_number}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } finally {
+      setDownloading(false)
+    }
+  }
+
+  async function handleReceiptDownload() {
+    if (!data) return
+    setDownloading(true)
+    try {
+      const inv2 = data.invoice
+      const companyData = { name: data.company_name, primary_color: data.company_primary_color }
+      const pdf = generateReceiptPDF({
+        invoice: inv2,
+        payments: data.payments || [],
+        project: { name: data.project_name, address: data.project_address },
+        client: { display_name: data.client_name, business_name: data.client_business },
+        company: companyData,
+        returnAs: 'blob',
+      })
+      const url = URL.createObjectURL(pdf)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `receipt-${inv2.invoice_number}.pdf`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
@@ -127,6 +156,9 @@ export default function InvoicePortalPage() {
   const tenantLogoUrl = data.company_logo_url || null
   const tenantPrimary = data.company_primary_color || null
   const adjNum = Number(inv.adjustment_amount) || 0
+  const payments = data.payments || []
+  const paidToDate = Math.round(payments.reduce((s, p) => s + (Number(p.amount) || 0), 0) * 100) / 100
+  const balancePortal = Math.round(((Number(inv.total) || 0) - paidToDate) * 100) / 100
 
   return (
     <div className={styles.page}>
@@ -208,7 +240,37 @@ export default function InvoicePortalPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', width: 220, fontSize: 18, fontWeight: 700, color: 'var(--color-text)', paddingTop: 6, borderTop: '1px solid var(--color-border)' }}>
             <span>{t('portal:invoice.total')}</span><span style={{ fontFamily: 'monospace' }}>{fmtMoney(inv.total)}</span>
           </div>
+          {payments.length > 0 && (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', width: 220, fontSize: 14, color: 'var(--color-text-muted)' }}>
+                <span>{t('portal:invoice.paidToDate')}</span><span>{fmtMoney(paidToDate)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', width: 220, fontSize: 15, fontWeight: 700, color: balancePortal > 0 ? 'var(--color-danger, #dc2626)' : 'var(--color-success)' }}>
+                <span>{balancePortal > 0 ? t('portal:invoice.balanceDue') : t('portal:invoice.paidInFull')}</span>
+                <span style={{ fontFamily: 'monospace' }}>{fmtMoney(Math.max(0, balancePortal))}</span>
+              </div>
+            </>
+          )}
         </div>
+
+        {/* Payments block: each ledger payment */}
+        {payments.length > 0 && (
+          <div style={{ margin: '16px 0', overflowX: 'auto' }}>
+            <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--color-text-muted)', marginBottom: 6 }}>{t('portal:invoice.paymentsTitle')}</div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <tbody>
+                {payments.map((p, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                    <td style={{ padding: '6px 6px' }}>{p.payment_date ? fmtDate(p.payment_date) : ''}</td>
+                    <td style={{ padding: '6px 6px', textTransform: 'capitalize' }}>{(p.payment_method || '').replace(/_/g, ' ')}</td>
+                    <td style={{ padding: '6px 6px', color: 'var(--color-text-muted)' }}>{p.reference_number || ''}</td>
+                    <td style={{ padding: '6px 6px', textAlign: 'right', fontFamily: 'monospace' }}>{fmtMoney(p.amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* Notes + Terms */}
         {inv.notes && (
@@ -235,6 +297,13 @@ export default function InvoicePortalPage() {
                   fallback for invoices paid before the ledger was authoritative. */}
               {(inv.last_payment_method || inv.payment_method) && <> {t('portal:invoice.paidVia', { method: (inv.last_payment_method || inv.payment_method).replace(/_/g, ' ') })}</>}
             </div>
+            {inv.status === 'paid' && (
+              <button
+                onClick={handleReceiptDownload}
+                disabled={downloading}
+                style={{ marginTop: 10, padding: '8px 16px', fontSize: 13, fontWeight: 600, background: 'var(--color-success)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}
+              >{t('portal:invoice.downloadReceipt')}</button>
+            )}
           </div>
         )}
 

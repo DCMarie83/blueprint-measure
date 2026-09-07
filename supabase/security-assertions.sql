@@ -929,7 +929,50 @@ a34 AS (
          ) THEN 'PASS' ELSE 'FAIL' END::text,
          (SELECT r::text FROM public.portal_safe_payment_instructions(
              '{"ach":{"enabled":true,"routing_number":"111","account_number":"222"}}'::jsonb) AS r)::text
+),
+
+-- ── A35 ────────────────────────────────────────────────────────────
+-- Lane F: the reminder queue table is RLS-protected with a company-scoped
+-- select, the queuer is a locked-down security definer, and the daily cron
+-- job exists. NOTE: cron.job requires the pg_cron extension; if the schema
+-- is absent this assertion errors loudly, which is the alarm.
+a35_bad AS (
+  SELECT 'invoice_reminders table missing'::text AS problem
+  WHERE to_regclass('public.invoice_reminders') IS NULL
+  UNION ALL
+  SELECT 'invoice_reminders RLS off'
+  FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public' AND c.relname = 'invoice_reminders' AND c.relrowsecurity = false
+  UNION ALL
+  SELECT 'no company-scoped select policy on invoice_reminders'
+  WHERE to_regclass('public.invoice_reminders') IS NOT NULL
+    AND NOT EXISTS (
+      SELECT 1 FROM pg_policy p
+      WHERE p.polrelid = 'public.invoice_reminders'::regclass
+        AND p.polcmd IN ('r', '*')
+        AND pg_get_expr(p.polqual, p.polrelid) ILIKE '%company_id%')
+  UNION ALL
+  SELECT 'queue_invoice_reminders missing or misconfigured'
+  WHERE NOT EXISTS (
+    SELECT 1 FROM pg_proc p
+    WHERE p.pronamespace = 'public'::regnamespace
+      AND p.proname = 'queue_invoice_reminders'
+      AND p.prosecdef
+      AND EXISTS (SELECT 1 FROM unnest(coalesce(p.proconfig, '{}')) cfg WHERE cfg LIKE 'search_path=%')
+      AND NOT has_function_privilege('anon', p.oid, 'EXECUTE')
+      AND NOT has_function_privilege('authenticated', p.oid, 'EXECUTE'))
+  UNION ALL
+  SELECT 'cron job invoice-reminders-daily missing'
+  WHERE NOT EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'invoice-reminders-daily')
+),
+a35 AS (
+  SELECT 'A35'::text,
+         'invoice_reminders: RLS + company select; queue fn locked; daily cron present'::text,
+         CASE WHEN (SELECT count(*) FROM a35_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
+         coalesce('PROBLEMS: ' || (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a35_bad),
+                  'queue table, policy, function, and cron all present')::text
 )
+
 
 SELECT * FROM a1
 UNION ALL SELECT * FROM a2
@@ -965,4 +1008,5 @@ UNION ALL SELECT * FROM a31
 UNION ALL SELECT * FROM a32
 UNION ALL SELECT * FROM a33
 UNION ALL SELECT * FROM a34
+UNION ALL SELECT * FROM a35
 ORDER BY id;

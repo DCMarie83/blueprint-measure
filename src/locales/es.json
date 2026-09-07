@@ -543,7 +543,12 @@
       "paidOn": "{{amount}} el {{date}}",
       "paidVia": "por {{method}}",
       "generating": "Generando…",
-      "downloadPdf": "Descargar PDF"
+      "downloadPdf": "Descargar PDF",
+      "paymentsTitle": "Pagos",
+      "paidToDate": "Pagado a la fecha",
+      "balanceDue": "Saldo pendiente",
+      "paidInFull": "Pagada en su totalidad",
+      "downloadReceipt": "Descargar recibo"
     },
     "estimate": {
       "errors": {
@@ -838,6 +843,13 @@
       "alt": "Logo de {{name}}",
       "upload": "Subir logo",
       "remove": "Quitar logo"
+    },
+    "reminders": {
+      "title": "Recordatorios de pago automáticos",
+      "schedule": "Envía al cliente el saldo el día de vencimiento, 7 días después y 14 días después. Luego se detienen.",
+      "importRule": "Las facturas importadas solo reciben recordatorios después de que envíes un recordatorio manual o las marques verificadas.",
+      "on": "Activados",
+      "off": "Apagados"
     }
   },
   "clients": {
@@ -1401,6 +1413,39 @@
       "target_status": "La factura de destino no puede recibir pagos en su estado actual.",
       "different_client": "Los pagos solo se transfieren entre facturas del mismo cliente.",
       "bad_action": "Acción de pago no admitida."
+    },
+    "reminders": {
+      "sendReminder": "Enviar recordatorio",
+      "sendReceipt": "Enviar recibo",
+      "receiptPdf": "Recibo",
+      "reminderSent": "Recordatorio enviado.",
+      "receiptSent": "Recibo enviado.",
+      "previewTo": "Para",
+      "previewSubject": "Asunto",
+      "previewPastDue": "{{count}} días de atraso",
+      "subjectReminder": "Saldo pendiente {{amount}} en la factura {{number}}",
+      "subjectReceipt": "Recibo de la factura {{number}}, pagada en su totalidad",
+      "attachPdf": "Adjuntar PDF",
+      "noRecipients": "El cliente no tiene correo registrado",
+      "needsVerification": "Recordatorios automáticos: apagados hasta verificar",
+      "markVerified": "Marcar verificada",
+      "needsVerificationFilter": "Por verificar ({{count}})",
+      "kind": {
+        "reminder": "Recordatorio",
+        "receipt": "Recibo"
+      },
+      "step": {
+        "due": "fecha de vencimiento",
+        "plus7": "+7 días",
+        "plus14": "+14 días",
+        "manual": "manual"
+      },
+      "status": {
+        "queued": "en cola",
+        "sent": "enviado",
+        "failed": "falló",
+        "skipped": "omitido"
+      }
     }
   },
   "lite": {

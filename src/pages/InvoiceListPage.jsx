@@ -58,6 +58,7 @@ export default function InvoiceListPage() {
   const { invoices, loading, error, refetch } = useInvoices()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [needsVerification, setNeedsVerification] = useState(false)
   // Sort choice survives back-navigation within the session.
   const [sortKey, setSortKeyState] = useState(() => {
     try {
@@ -75,6 +76,7 @@ export default function InvoiceListPage() {
 
   let filtered = invoices
   if (statusFilter !== 'all') filtered = filtered.filter(inv => inv.status === statusFilter)
+  if (needsVerification) filtered = filtered.filter(inv => inv.import_source && !inv.reminders_verified_at)
   if (search) {
     const q = search.toLowerCase()
     filtered = filtered.filter(inv =>
@@ -134,6 +136,10 @@ export default function InvoiceListPage() {
                   {t(`invoices:list.filter.${s}`)} ({counts[s]})
                 </button>
               ))}
+              <button
+                className={`${styles.chip} ${needsVerification ? styles.chipActive : ''}`}
+                onClick={() => setNeedsVerification(v => !v)}
+              >{t('invoices:reminders.needsVerificationFilter', { count: invoices.filter(inv => inv.import_source && !inv.reminders_verified_at).length })}</button>
             </div>
             <select className={styles.sortSelect} value={sortKey} onChange={e => setSortKey(e.target.value)}>
               {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{t(o.label)}</option>)}

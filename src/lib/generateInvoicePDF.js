@@ -91,7 +91,7 @@ function renderPaymentInstructions(doc, pi, x, y, primaryRgb, pageWidth, pageHei
  * @param {'blob'|'base64'|'save'} opts.returnAs - Output format
  * @returns {Blob|string|void}
  */
-export function generateInvoicePDF({ invoice, lineItems, project, client, company, timeDetail = [], timeZone, qrImages = {}, returnAs = 'blob' }) {
+export function generateInvoicePDF({ invoice, lineItems, project, client, company, payments = [], timeDetail = [], timeZone, qrImages = {}, returnAs = 'blob' }) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
@@ -270,6 +270,49 @@ export function generateInvoicePDF({ invoice, lineItems, project, client, compan
   doc.text('TOTAL', pageWidth - margin - 76, y + 9)
   doc.text(fmtMoney(totalNum), pageWidth - margin - 4, y + 9, { align: 'right' })
   y += 22
+
+  // ── Payments block: every ledger payment, paid to date, balance due ──
+  if (Array.isArray(payments) && payments.length > 0) {
+    if (y > pageHeight - 70) { doc.addPage(); y = margin }
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(...primaryRgb)
+    doc.text('PAYMENTS', margin, y)
+    y += 4
+
+    const payBody = payments.map(p => [
+      p.payment_date ? new Date(p.payment_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '',
+      (p.payment_method || '').replace(/_/g, ' '),
+      p.reference_number || '',
+      fmtMoney(Number(p.amount) || 0),
+    ])
+    autoTable(doc, {
+      startY: y,
+      margin: { left: margin, right: margin },
+      head: [['Date', 'Method', 'Reference', 'Amount']],
+      body: payBody,
+      theme: 'grid',
+      headStyles: { fillColor: DARK, textColor: WHITE, fontStyle: 'bold', fontSize: 9 },
+      styles: { fontSize: 9, textColor: DARK, cellPadding: { top: 2.5, bottom: 2.5, left: 4, right: 4 } },
+      columnStyles: { 3: { halign: 'right' } },
+    })
+    y = doc.lastAutoTable.finalY + 6
+
+    const paidToDate = Math.round(payments.reduce((s2, p) => s2 + (Number(p.amount) || 0), 0) * 100) / 100
+    const balanceDue = Math.round((totalNum - paidToDate) * 100) / 100
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(...DARK)
+    doc.text('Paid to date', pageWidth - margin - 60, y)
+    doc.text(fmtMoney(paidToDate), pageWidth - margin, y, { align: 'right' })
+    y += 6
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(...(balanceDue > 0 ? [220, 38, 38] : [22, 163, 74]))
+    doc.text(balanceDue > 0 ? 'Balance due' : 'Paid in full', pageWidth - margin - 60, y)
+    doc.text(fmtMoney(Math.max(0, balanceDue)), pageWidth - margin, y, { align: 'right' })
+    doc.setTextColor(...DARK)
+    y += 10
+  }
 
   // ── Time detail (clocked punches only) ───────────────────
   // Rendered only when this invoice contains punch-backed hourly entries. One

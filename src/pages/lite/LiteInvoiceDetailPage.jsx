@@ -143,7 +143,7 @@ export default function LiteInvoiceDetailPage() {
     setBusy(true); setActionError(null)
     try {
       const companyData = await buildBranding()
-      const pdf = generateInvoicePDF({ invoice, lineItems, project, client: gc, company: companyData, timeDetail, timeZone: tz, qrImages: companyData.qrImages, returnAs: 'blob' })
+      const pdf = generateInvoicePDF({ invoice, lineItems, payments, project, client: gc, company: companyData, timeDetail, timeZone: tz, qrImages: companyData.qrImages, returnAs: 'blob' })
       const url = URL.createObjectURL(pdf)
       const a = document.createElement('a')
       a.href = url
@@ -170,7 +170,7 @@ export default function LiteInvoiceDetailPage() {
     setBusy(true); setActionError(null); setSendOk(false)
     try {
       const companyData = await buildBranding()
-      const pdfBase64 = generateInvoicePDF({ invoice, lineItems, project, client: gc, company: companyData, timeDetail, timeZone: tz, qrImages: companyData.qrImages, returnAs: 'base64' })
+      const pdfBase64 = generateInvoicePDF({ invoice, lineItems, payments, project, client: gc, company: companyData, timeDetail, timeZone: tz, qrImages: companyData.qrImages, returnAs: 'base64' })
       const { error: fnErr } = await supabase.functions.invoke('send-lite-invoice-email', {
         body: { invoice_id: id, pdf_base64: pdfBase64 },
       })
@@ -192,7 +192,7 @@ export default function LiteInvoiceDetailPage() {
     setBusy(true); setActionError(null); setRemindOk(false)
     try {
       const companyData = await buildBranding()
-      const pdfBase64 = generateInvoicePDF({ invoice, lineItems, project, client: gc, company: companyData, timeDetail, timeZone: tz, qrImages: companyData.qrImages, returnAs: 'base64' })
+      const pdfBase64 = generateInvoicePDF({ invoice, lineItems, payments, project, client: gc, company: companyData, timeDetail, timeZone: tz, qrImages: companyData.qrImages, returnAs: 'base64' })
       const { error: fnErr } = await supabase.functions.invoke('send-lite-invoice-email', {
         body: { invoice_id: id, pdf_base64: pdfBase64, mode: 'reminder' },
       })
@@ -397,7 +397,7 @@ export default function LiteInvoiceDetailPage() {
               <div key={p.id} className={styles.entryRow}>
                 <div className={styles.entryMain}>
                   <div className={styles.entryName}>{fmtMoney(p.amount)}</div>
-                  <div className={styles.entryMeta}>{p.payment_method || t('lite:invoiceDetail.payment')} · {fmtDate(p.payment_date)}</div>
+                  <div className={styles.entryMeta}>{p.payment_method || t('lite:invoiceDetail.payment')} · {fmtDate(p.payment_date)}{p.reference_number ? ` · ${p.reference_number}` : ''}</div>
                 </div>
               </div>
             ))}
