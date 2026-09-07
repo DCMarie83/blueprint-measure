@@ -160,7 +160,7 @@ export default function PortalPage() {
 
         {/* Deposit payment methods (only when deposit > 0) */}
         {estimateData?.estimate?.deposit_amount > 0 && (
-          <PaymentInstructionsBlock paymentInstructions={data.company_payment_instructions} variant="portal" heading={t('portal:portalPage.depositPaymentMethods')} qrUrlFor={(k) => portalQrUrl(token, k)} />
+          <PaymentInstructionsBlock paymentInstructions={data.company_payment_instructions} variant="portal" surface="portal" portalToken={token} heading={t('portal:portalPage.depositPaymentMethods')} qrUrlFor={(k) => portalQrUrl(token, k)} />
         )}
 
         <div className={styles.footerWrap}>

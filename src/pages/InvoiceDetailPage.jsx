@@ -114,6 +114,20 @@ export default function InvoiceDetailPage() {
   // For PDF: fetch project + client + company data
   const [pdfLoading, setPdfLoading] = useState(false)
 
+  // Bank-details reveals for this invoice (client_activity, matched on the
+  // invoice number the RPC stamps as metadata.ref).
+  const [bankViews, setBankViews] = useState(0)
+  useEffect(() => {
+    if (!invoice?.invoice_number) { setBankViews(0); return }
+    let cancelled = false
+    supabase.from('client_activity')
+      .select('id', { count: 'exact', head: true })
+      .eq('activity_type', 'bank_details_viewed')
+      .eq('metadata->>ref', invoice.invoice_number)
+      .then(({ count }) => { if (!cancelled) setBankViews(count ?? 0) })
+    return () => { cancelled = true }
+  }, [invoice?.invoice_number])
+
   // Completion notice pending on the job: the notice sends with this invoice.
   const [noticePending, setNoticePending] = useState(false)
   useEffect(() => {
@@ -402,6 +416,11 @@ export default function InvoiceDetailPage() {
                   <span style={{ padding: '4px 12px', borderRadius: 9999, background: p.bg, color: p.color, fontWeight: 700, fontSize: 'var(--text-xs)', whiteSpace: 'nowrap', textDecoration: p.strike ? 'line-through' : undefined }}>{t(p.label)}</span>
                 )
               })()}
+              {bankViews > 0 && (
+                <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+                  {t('invoices:detail.bankDetailsViewed', { count: bankViews })}
+                </span>
+              )}
               {overpaidBy > 0 && (
                 <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-warning, #d97706)', whiteSpace: 'nowrap' }}>
                   {t('invoices:detail.overpaidBy', { amount: fmtMoney(overpaidBy) })}
@@ -656,7 +675,7 @@ export default function InvoiceDetailPage() {
 
         {/* Payment options: matches what the client gets on the portal and email */}
         <div className={styles.section}>
-          <PaymentInstructionsBlock paymentInstructions={paymentInstructions} variant="portal" qrUrlFor={(k) => qrUrls[k] || null} />
+          <PaymentInstructionsBlock paymentInstructions={paymentInstructions} variant="portal" surface="app" qrUrlFor={(k) => qrUrls[k] || null} />
         </div>
 
         {/* Documents: source files from Document Import + direct attach (G54) */}

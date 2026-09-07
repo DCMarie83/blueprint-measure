@@ -25,6 +25,7 @@ const TYPE_CONFIG = {
   invoice_paid:      { icon: CheckCircle, label: 'clients:activity.invoicePaid' },
   invoice_voided:    { icon: XCircle,     label: 'clients:activity.invoiceVoided' },
   portal_accessed:   { icon: Eye,         label: 'clients:activity.portalAccessed' },
+  bank_details_viewed: { icon: Eye,       label: 'clients:activity.bankDetailsViewed' },
 }
 
 // Type filter groups mapped from the activity_type vocabulary; null = all.
@@ -39,7 +40,7 @@ const FILTER_TYPES = {
     'invoice_marked_sent', 'invoice_edited_after_send',
   ],
   estimates: ['estimate_sent', 'estimate_viewed', 'estimate_accepted', 'estimate_declined', 'estimate_changes_requested'],
-  portal: ['portal_accessed', 'invoice_viewed', 'estimate_viewed'],
+  portal: ['portal_accessed', 'invoice_viewed', 'estimate_viewed', 'bank_details_viewed'],
 }
 const FILTER_ORDER = ['all', 'notes', 'money', 'estimates', 'portal']
 

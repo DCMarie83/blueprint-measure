@@ -225,6 +225,7 @@ export default function PaymentInstructionsTab() {
         <label className={styles.field}><span className={styles.fieldLabel}>{t('settings:payment.extraInstructions')}</span>
           <textarea className={styles.textarea} value={d.instructions || ''} onChange={e => update(method, 'instructions', e.target.value)} rows={2} />
         </label>
+        <p style={{ fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.5, margin: '4px 0 0' }}>{t('settings:payment.bankSafetyNote')}</p>
       </>
     )
   }
@@ -291,7 +292,7 @@ export default function PaymentInstructionsTab() {
       {/* Preview: exactly what the client sees on the portal */}
       <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--color-border)' }}>
         <h3 style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 'var(--tracking-caps, 0.04em)', color: 'var(--color-text-muted)', margin: '0 0 10px' }}>{t('settings:payment.previewTitle')}</h3>
-        <PaymentInstructionsBlock paymentInstructions={form} variant="portal" qrUrlFor={(key) => qrUrls[key] || null} />
+        <PaymentInstructionsBlock paymentInstructions={form} variant="portal" surface="portal" qrUrlFor={(key) => qrUrls[key] || null} />
       </div>
     </div>
   )

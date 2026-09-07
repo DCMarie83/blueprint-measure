@@ -9,14 +9,20 @@
 //   buildPaymentMethods({
 //     zelle: { enabled: true, handle: 'a@b.c', qr_path: 'co/zelle.png' },
 //     ach: { enabled: true, bank_name: 'B', routing_number: '1', account_number: '2', account_type: 'checking' },
-//   })
+//   }, { surface: 'app' })
 //   => [
-//     { key: 'zelle', lines: [{ label: null, value: 'a@b.c' }], link: null, qr_path: 'co/zelle.png' },
+//     { key: 'zelle', lines: [{ label: null, value: 'a@b.c' }], link: null, qr_path: 'co/zelle.png', linkLabel: null },
 //     { key: 'ach', lines: [
 //       { label: 'bank', value: 'B' }, { label: 'routing', value: '1' },
 //       { label: 'account', value: '2' }, { label: 'accountType', value: 'checking' },
-//     ], link: null, qr_path: null },
+//     ], link: null, qr_path: null, linkLabel: null },
 //   ]
+//   Same input with { surface: 'portal' } and ach.has_details true
+//   => the ach entry becomes { key: 'ach', lines: [], revealable: true, ... }
+//   Same input with { surface: 'pdf' } or { surface: 'email' }
+//   => the ach entry becomes the single pointer
+//      { key: 'bank_pointer', pointer: true, lines: [{ label: null,
+//        value: 'Bank transfer details are available on your secure invoice page.' }] }
 
 export const METHOD_ORDER = ['check', 'zelle', 'venmo', 'cashapp', 'ach', 'wire', 'card_external', 'other']
 
@@ -43,15 +49,21 @@ export const EN_LINE_LABELS = {
   swift: 'SWIFT/BIC',
 }
 
+export const BANK_POINTER_TEXT = 'Bank transfer details are available on your secure invoice page.'
+
 const trimmed = (v) => String(v ?? '').trim()
 
 function lines(pairs) {
   return pairs.filter(p => trimmed(p.value) !== '').map(p => ({ label: p.label, value: trimmed(p.value) }))
 }
 
-export function buildPaymentMethods(pi) {
+// surface: 'app' (contractor screens, full bank lines) | 'portal' (bank
+// methods collapse to a revealable row when details exist) | 'pdf' | 'email'
+// (bank methods collapse to ONE pointer line; numbers never render).
+export function buildPaymentMethods(pi, { surface = 'app' } = {}) {
   if (!pi || typeof pi !== 'object') return []
   const out = []
+  let pointerEmitted = false
   const push = (key, methodLines, extra = {}) => {
     const link = trimmed(extra.link) || null
     const qr = trimmed(extra.qr_path) || null
@@ -71,21 +83,28 @@ export function buildPaymentMethods(pi) {
       const prefix = key === 'venmo' ? '@' : key === 'cashapp' ? '$' : ''
       push(key, lines([{ label: null, value: trimmed(d.handle) ? prefix + trimmed(d.handle) : '' }]),
         { link: d.link, qr_path: d.qr_path })
-    } else if (key === 'ach') {
+    } else if (key === 'ach' || key === 'wire') {
+      const hasDetails = d.has_details === true ||
+        trimmed(d.routing_number) !== '' || trimmed(d.account_number) !== '' || trimmed(d.swift) !== ''
+      if (surface === 'pdf' || surface === 'email') {
+        if (!pointerEmitted && (hasDetails || trimmed(d.bank_name) || trimmed(d.instructions))) {
+          out.push({ key: 'bank_pointer', pointer: true, lines: [{ label: null, value: BANK_POINTER_TEXT }], link: null, qr_path: null, linkLabel: null })
+          pointerEmitted = true
+        }
+        continue
+      }
+      if (surface === 'portal' && hasDetails) {
+        out.push({ key, lines: [], link: null, qr_path: null, linkLabel: null, revealable: true })
+        continue
+      }
+      // app surface (full details from the company row), or a portal shape
+      // that carries no numbers at all: plain lines, numbers only if present.
       push(key, lines([
         { label: 'bank', value: d.bank_name },
         { label: 'routing', value: d.routing_number },
         { label: 'account', value: d.account_number },
-        { label: 'accountType', value: d.account_type },
+        key === 'ach' ? { label: 'accountType', value: d.account_type } : { label: 'swift', value: d.swift },
         // Legacy free-text ACH stays visible until replaced with fields.
-        { label: null, value: d.instructions },
-      ]))
-    } else if (key === 'wire') {
-      push(key, lines([
-        { label: 'bank', value: d.bank_name },
-        { label: 'routing', value: d.routing_number },
-        { label: 'account', value: d.account_number },
-        { label: 'swift', value: d.swift },
         { label: null, value: d.instructions },
       ]))
     } else if (key === 'card_external') {

@@ -266,7 +266,7 @@ export default function GCInvoiceReviewPage() {
         )}
 
         {/* Payment instructions */}
-        <PaymentInstructionsBlock paymentInstructions={data.company_payment_instructions} variant="portal" qrUrlFor={(k) => portalQrUrl(token, k)} />
+        <PaymentInstructionsBlock paymentInstructions={data.company_payment_instructions} variant="portal" surface="portal" portalToken={token} qrUrlFor={(k) => portalQrUrl(token, k)} />
 
         {/* ── Response actions ─────────────────────────────────────── */}
         {done ? (

@@ -239,7 +239,7 @@ export default function InvoicePortalPage() {
         )}
 
         {/* Payment instructions */}
-        <PaymentInstructionsBlock paymentInstructions={data.company_payment_instructions} variant="portal" qrUrlFor={(k) => portalQrUrl(token, k)} />
+        <PaymentInstructionsBlock paymentInstructions={data.company_payment_instructions} variant="portal" surface="portal" portalToken={token} qrUrlFor={(k) => portalQrUrl(token, k)} />
 
         {/* Download PDF */}
         <div style={{ textAlign: 'center', margin: '24px 0 8px' }}>

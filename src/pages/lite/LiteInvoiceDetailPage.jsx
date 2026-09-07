@@ -310,7 +310,7 @@ export default function LiteInvoiceDetailPage() {
 
         {/* Payment options: matches the GC review page and the email */}
         <div className={styles.card}>
-          <PaymentInstructionsBlock paymentInstructions={paymentInstructions} variant="portal" qrUrlFor={(k) => qrUrls[k] || null} />
+          <PaymentInstructionsBlock paymentInstructions={paymentInstructions} variant="portal" surface="app" qrUrlFor={(k) => qrUrls[k] || null} />
         </div>
 
         {/* Actions */}

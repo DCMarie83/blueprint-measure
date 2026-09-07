@@ -27,12 +27,19 @@ import { buildPaymentMethods, EN_METHOD_LABELS, EN_LINE_LABELS } from '../_share
 // images reference cid: inline attachments built by buildQrAttachments — the
 // service role downloads them from the private payment-qr bucket; no signed
 // URLs that would expire in the client's inbox.
-function renderPaymentInstructionsHTML(pi: Record<string, unknown> | null, primaryColor: string, heading = 'Payment Methods'): string {
-  const methods = buildPaymentMethods(pi)
+function renderPaymentInstructionsHTML(pi: Record<string, unknown> | null, primaryColor: string, heading = 'Payment Methods', portalUrl: string | null = null): string {
+  const methods = buildPaymentMethods(pi, { surface: 'email' })
   if (methods.length === 0) return ''
   const blocks: string[] = []
   for (const m of methods) {
     const parts: string[] = []
+    if (m.pointer) {
+      // Bank details never ride an email: one pointer line, linked to the
+      // secure portal page when we have it.
+      const text = escapeHtml(m.lines[0]?.value || '')
+      blocks.push(`<p style="font-size: 14px; color: #1b2426; line-height: 1.6; margin: 0 0 10px;">${portalUrl ? `<a href="${portalUrl}" style="color:${primaryColor};">${text}</a>` : text}</p>`)
+      continue
+    }
     if (m.key !== 'other') parts.push(`<strong>${EN_METHOD_LABELS[m.key] || m.key}</strong>`)
     for (const line of m.lines) {
       parts.push(line.label ? `${EN_LINE_LABELS[line.label] || line.label}: ${escapeHtml(line.value)}` : escapeHtml(line.value).replace(/\n/g, '<br/>'))
@@ -287,7 +294,7 @@ Deno.serve(async (req) => {
         ${clockedHtml}
         ${totalRow}
         ${dueHtml}
-        ${renderPaymentInstructionsHTML(company?.payment_instructions, tenantPrimary)}
+        ${renderPaymentInstructionsHTML(company?.payment_instructions, tenantPrimary, 'Payment Methods', reviewUrl)}
         <p style="font-size: 13px; color: #888; margin-top: 24px;">A PDF copy is attached. Questions? Just reply to this email.</p>
         ${reviewBtnHtml}
         ${referralCard}

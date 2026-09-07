@@ -830,7 +830,8 @@
       "swift": "SWIFT/BIC",
       "extraInstructions": "Instrucciones adicionales (opcional)",
       "httpsOnly": "El enlace debe comenzar con https://",
-      "previewTitle": "Vista previa para el cliente"
+      "previewTitle": "Vista previa para el cliente",
+      "bankSafetyNote": "Se muestran solo en el portal seguro del cliente cuando el cliente lo pide, por 10 minutos a la vez. Nunca se imprimen en PDF ni en correos. Cada vista queda registrada."
     },
     "logo": {
       "removeConfirm": "¿Quitar el logo de la empresa?",
@@ -987,7 +988,8 @@
         "money": "Dinero",
         "estimates": "Cotizaciones",
         "portal": "Portal"
-      }
+      },
+      "bankDetailsViewed": "Datos bancarios vistos"
     },
     "address": {
       "confirmDelete": "¿Eliminar esta dirección?",
@@ -1298,7 +1300,8 @@
         "text": "Por mensaje de texto",
         "other": "Otro"
       },
-      "completionNoticePending": "Aviso de finalización pendiente; se envía con esta factura."
+      "completionNoticePending": "Aviso de finalización pendiente; se envía con esta factura.",
+      "bankDetailsViewed": "Datos bancarios vistos {{count}} veces"
     },
     "payment": {
       "methodsHeading": "Métodos de pago",
@@ -1325,6 +1328,24 @@
         "account": "Número de cuenta",
         "accountType": "Tipo de cuenta",
         "swift": "SWIFT/BIC"
+      },
+      "revealRow": {
+        "ach": "Transferencia bancaria (ACH)",
+        "wire": "Transferencia internacional"
+      },
+      "reveal": {
+        "showDetails": "Mostrar datos",
+        "loading": "Cargando...",
+        "confirmText": "Estos datos se mostrarán durante 10 minutos. No reenvíes ni tomes captura de esta página.",
+        "confirmShow": "Mostrar por 10 minutos",
+        "countdown": "Se oculta en {{time}}",
+        "hideNow": "Ocultar ahora",
+        "errors": {
+          "bad_method": "Ese método de pago no está disponible.",
+          "channel_unavailable": "Estos datos solo se pueden mostrar en esta página.",
+          "not_found": "Esta página ya no está disponible. Pide un enlace nuevo a tu contratista.",
+          "method_disabled": "La transferencia bancaria no está disponible por ahora. Consulta con tu contratista."
+        }
       }
     },
     "import": {

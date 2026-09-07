@@ -830,7 +830,8 @@
       "swift": "SWIFT/BIC",
       "extraInstructions": "Additional instructions (optional)",
       "httpsOnly": "The link must start with https://",
-      "previewTitle": "Client preview"
+      "previewTitle": "Client preview",
+      "bankSafetyNote": "Shown only on the secure client portal after the client asks, for 10 minutes at a time. Never printed on PDFs or in emails. Every view is logged."
     },
     "logo": {
       "removeConfirm": "Remove company logo?",
@@ -987,7 +988,8 @@
         "money": "Money",
         "estimates": "Estimates",
         "portal": "Portal"
-      }
+      },
+      "bankDetailsViewed": "Bank details viewed"
     },
     "address": {
       "confirmDelete": "Delete this address?",
@@ -1298,7 +1300,8 @@
         "text": "Text message",
         "other": "Other"
       },
-      "completionNoticePending": "Completion notice pending, sends with this invoice."
+      "completionNoticePending": "Completion notice pending, sends with this invoice.",
+      "bankDetailsViewed": "Bank details viewed {{count}} times"
     },
     "payment": {
       "methodsHeading": "Payment Methods",
@@ -1325,6 +1328,24 @@
         "account": "Account number",
         "accountType": "Account type",
         "swift": "SWIFT/BIC"
+      },
+      "revealRow": {
+        "ach": "Bank transfer (ACH)",
+        "wire": "Wire transfer"
+      },
+      "reveal": {
+        "showDetails": "Show details",
+        "loading": "Loading...",
+        "confirmText": "These details will be shown for 10 minutes. Do not forward or screenshot this page.",
+        "confirmShow": "Show for 10 minutes",
+        "countdown": "Hides in {{time}}",
+        "hideNow": "Hide now",
+        "errors": {
+          "bad_method": "That payment method is not available.",
+          "channel_unavailable": "These details can only be shown on this page.",
+          "not_found": "This page is no longer available. Ask your contractor for a new link.",
+          "method_disabled": "Bank transfer is not currently offered. Ask your contractor."
+        }
       }
     },
     "import": {

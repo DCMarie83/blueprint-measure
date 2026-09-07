@@ -38,6 +38,7 @@ expected_anon_fns(fn) AS (
     ('gc_respond_to_invoice'),
     ('get_founder_spots'),
     ('get_lite_offer'),
+    ('get_portal_bank_details'),
     ('get_portal_estimate'),
     ('get_portal_invoice'),
     ('get_portal_project'),
@@ -912,6 +913,22 @@ a33 AS (
          CASE WHEN (SELECT count(*) FROM a33_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
          coalesce('PROBLEMS: ' || (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a33_bad),
                   'private bucket with all three verb policies present')::text
+),
+
+-- ── A34 ────────────────────────────────────────────────────────────
+-- Lane O2: the portal-safe stripper must remove routing/account numbers.
+-- NOTE: this assertion CALLS the function; if it is ever dropped the whole
+-- assertions file errors at parse time — which is itself the alarm.
+a34 AS (
+  SELECT 'A34'::text,
+         'portal_safe_payment_instructions strips routing and account numbers'::text,
+         CASE WHEN (
+           SELECT (r::text NOT LIKE '%111%') AND (r::text NOT LIKE '%222%')
+           FROM public.portal_safe_payment_instructions(
+             '{"ach":{"enabled":true,"routing_number":"111","account_number":"222"}}'::jsonb) AS r
+         ) THEN 'PASS' ELSE 'FAIL' END::text,
+         (SELECT r::text FROM public.portal_safe_payment_instructions(
+             '{"ach":{"enabled":true,"routing_number":"111","account_number":"222"}}'::jsonb) AS r)::text
 )
 
 SELECT * FROM a1
@@ -947,4 +964,5 @@ UNION ALL SELECT * FROM a30
 UNION ALL SELECT * FROM a31
 UNION ALL SELECT * FROM a32
 UNION ALL SELECT * FROM a33
+UNION ALL SELECT * FROM a34
 ORDER BY id;

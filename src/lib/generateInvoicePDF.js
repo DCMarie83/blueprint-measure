@@ -28,7 +28,7 @@ function sanitizeFilename(str) {
 
 
 function renderPaymentInstructions(doc, pi, x, y, primaryRgb, pageWidth, pageHeight, margin, heading = 'Payment Methods', qrImages = {}) {
-  const methods = buildPaymentMethods(pi)
+  const methods = buildPaymentMethods(pi, { surface: 'pdf' })
   if (methods.length === 0) return y
 
   if (y > pageHeight - 60) { doc.addPage(); y = margin }
@@ -47,7 +47,7 @@ function renderPaymentInstructions(doc, pi, x, y, primaryRgb, pageWidth, pageHei
     const startY = y
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(...DARK)
-    if (m.key !== 'other') {
+    if (m.key !== 'other' && !m.pointer) {
       doc.text(EN_METHOD_LABELS[m.key] || m.key, x, y)
       y += 4.5
     }
