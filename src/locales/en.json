@@ -1139,7 +1139,9 @@
       "backToInvoice": "invoice",
       "lockedPaid": "A paid invoice cannot be edited. Use a change order for additional work.",
       "lockedVoid": "A void invoice cannot be edited. Use a change order for additional work.",
-      "confirmPartialEdit": "This invoice has payments recorded. Saving will re-derive its status against the new total. Continue?"
+      "confirmPartialEdit": "This invoice has payments recorded. Saving will re-derive its status against the new total. Continue?",
+      "billedToDate": "Billed to date: {{amount}} across {{count}} invoices",
+      "estimateAlreadyInvoiced": "The accepted estimate {{number}} already appears on an invoice for this job."
     },
     "lineItems": {
       "sectionLabel": "Line Items",
@@ -1941,7 +1943,18 @@
       "title": "Move to {{col}}?",
       "notify": "Notify {{client}} by email",
       "clientFallback": "client",
-      "moving": "Moving..."
+      "moving": "Moving...",
+      "depositAmount": "Deposit amount",
+      "depositHint": "Prefilled with payments collected on this job.",
+      "startDate": "Scheduled start date",
+      "startDateRequired": "Enter a start date to notify the client.",
+      "timeWindow": "Arrival window (optional)",
+      "timeWindowPlaceholder": "8:00 to 10:00 AM",
+      "expectedCompletion": "Expected completion (optional)",
+      "enablePortal": "Enable the client portal and include the link",
+      "scheduledFor": "Scheduled start: {{date}}",
+      "createFinalInvoice": "Create the final invoice now?",
+      "emailFailed": "Card moved. The client email did not send: {{error}}"
     },
     "errors": {
       "moveFailed": "Could not move job: {{error}}",

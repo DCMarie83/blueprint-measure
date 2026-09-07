@@ -93,6 +93,7 @@ function InvoiceFormInner({ existingInvoice, existingLineItems }) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const fromEstimateId = searchParams.get('from_estimate')
+  const fromProjectId = searchParams.get('from_project')
   const { companyId } = useEffectiveCompany()
   const { createInvoice, updateInvoice, saving, error: mutError } = useInvoiceMutations()
   const isEdit = !!existingInvoice
@@ -113,6 +114,10 @@ function InvoiceFormInner({ existingInvoice, existingLineItems }) {
       : [emptyLine()]
   )
   const [formError, setFormError] = useState(null)
+
+  // ?from_project context: billed-to-date banner + already-invoiced warning
+  const [billedInfo, setBilledInfo] = useState(null) // { total, count }
+  const [estWarning, setEstWarning] = useState(null) // estimate number already on an invoice
 
   // Load projects for dropdown
   useEffect(() => {
@@ -154,6 +159,60 @@ function InvoiceFormInner({ existingInvoice, existingLineItems }) {
       if (items.length > 0) setLineItems(items)
     })()
   }, [fromEstimateId, isEdit])
+
+  // Pre-populate the FINAL invoice from the job (?from_project): the accepted
+  // estimate's lines (same variant resolution as ?from_estimate, lineage
+  // stamped) plus each approved change order as its own line, with a
+  // billed-to-date banner from the job's non-draft, non-void invoices.
+  // Nothing sends from here; the labeled Send button remains the only send.
+  useEffect(() => {
+    if (!fromProjectId || isEdit || fromEstimateId) return
+    ;(async () => {
+      const [{ data: ests }, { data: cos }, { data: invs }] = await Promise.all([
+        supabase.from('estimates').select('*, estimate_line_items(*)').eq('project_id', fromProjectId).eq('status', 'accepted').order('accepted_at', { ascending: false }).limit(1),
+        supabase.from('change_orders').select('id, co_number, title, amount, status').eq('project_id', fromProjectId).eq('status', 'approved').order('created_at', { ascending: true }),
+        supabase.from('invoices').select('id, total, status, estimate_id').eq('project_id', fromProjectId),
+      ])
+      setProjectId(fromProjectId)
+
+      const est = (ests ?? [])[0] ?? null
+      const items = []
+      if (est) {
+        setEstimateId(est.id)
+        setTitle(prev => prev || est.title || '')
+        const variant = est.accepted_variant || est.selected_variant || 'good'
+        const rateField = `rate_${variant}`
+        for (const li of (est.estimate_line_items ?? []).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))) {
+          items.push({
+            id: crypto.randomUUID(),
+            description: li.description || '',
+            category_name: li.category_name || '',
+            item_type: '',
+            unit: li.unit || 'each',
+            quantity: Number(li.quantity) || 0,
+            rate: Number(li[rateField]) || 0,
+            source_estimate_line_item_id: li.id,
+          })
+        }
+      }
+      for (const co of (cos ?? [])) {
+        items.push({
+          id: crypto.randomUUID(),
+          description: co.co_number ? `${co.co_number}: ${co.title}` : co.title,
+          category_name: '',
+          item_type: '',
+          unit: 'lump_sum',
+          quantity: 1,
+          rate: Number(co.amount) || 0,
+        })
+      }
+      if (items.length > 0) setLineItems(items)
+
+      const counted = (invs ?? []).filter(i => i.status !== 'draft' && i.status !== 'void')
+      setBilledInfo({ total: counted.reduce((s, i) => s + (Number(i.total) || 0), 0), count: counted.length })
+      if (est && (invs ?? []).some(i => i.estimate_id === est.id)) setEstWarning(est.estimate_number || '')
+    })()
+  }, [fromProjectId, isEdit, fromEstimateId])
 
   function updateLine(id, field, value) {
     setLineItems(prev => prev.map(li => li.id === id ? { ...li, [field]: value } : li))
@@ -197,13 +256,19 @@ function InvoiceFormInner({ existingInvoice, existingLineItems }) {
         <h1 className={styles.title}>{isEdit ? t('invoices:form.editTitle') : t('invoices:form.newTitle')}</h1>
 
         {estimateBanner && <div className={styles.banner}>{estimateBanner}</div>}
+        {billedInfo && (
+          <div className={styles.banner}>{t('invoices:form.billedToDate', { amount: fmtMoney(billedInfo.total), count: billedInfo.count })}</div>
+        )}
+        {estWarning !== null && (
+          <div className={styles.error}>{t('invoices:form.estimateAlreadyInvoiced', { number: estWarning })}</div>
+        )}
         {(formError || mutError) && <div className={styles.error}>{formError || mutError}</div>}
 
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.row}>
             <label className={styles.field}>
               <span className={styles.label}>{t('invoices:form.project')}</span>
-              <select className={styles.select} value={projectId} onChange={e => setProjectId(e.target.value)} disabled={isEdit || !!fromEstimateId} required>
+              <select className={styles.select} value={projectId} onChange={e => setProjectId(e.target.value)} disabled={isEdit || !!fromEstimateId || !!fromProjectId} required>
                 <option value="">{t('invoices:form.selectProject')}</option>
                 {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>

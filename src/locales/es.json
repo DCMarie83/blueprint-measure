@@ -1139,7 +1139,9 @@
       "backToInvoice": "la factura",
       "lockedPaid": "Una factura pagada no se puede editar. Usa una orden de cambio para trabajo adicional.",
       "lockedVoid": "Una factura anulada no se puede editar. Usa una orden de cambio para trabajo adicional.",
-      "confirmPartialEdit": "Esta factura tiene pagos registrados. Al guardar, el estado se recalculará según el nuevo total. ¿Continuar?"
+      "confirmPartialEdit": "Esta factura tiene pagos registrados. Al guardar, el estado se recalculará según el nuevo total. ¿Continuar?",
+      "billedToDate": "Facturado a la fecha: {{amount}} en {{count}} facturas",
+      "estimateAlreadyInvoiced": "La cotización aceptada {{number}} ya aparece en una factura de este trabajo."
     },
     "lineItems": {
       "sectionLabel": "Líneas",
@@ -1941,7 +1943,18 @@
       "title": "¿Mover a {{col}}?",
       "notify": "Notificar a {{client}} por correo",
       "clientFallback": "cliente",
-      "moving": "Moviendo..."
+      "moving": "Moviendo...",
+      "depositAmount": "Monto del depósito",
+      "depositHint": "Precargado con los pagos cobrados en este trabajo.",
+      "startDate": "Fecha de inicio programada",
+      "startDateRequired": "Ingresa una fecha de inicio para notificar al cliente.",
+      "timeWindow": "Ventana de llegada (opcional)",
+      "timeWindowPlaceholder": "8:00 a 10:00 AM",
+      "expectedCompletion": "Finalización esperada (opcional)",
+      "enablePortal": "Activar el portal del cliente e incluir el enlace",
+      "scheduledFor": "Inicio programado: {{date}}",
+      "createFinalInvoice": "¿Crear la factura final ahora?",
+      "emailFailed": "La tarjeta se movió. El correo al cliente no se envió: {{error}}"
     },
     "errors": {
       "moveFailed": "No se pudo mover el trabajo: {{error}}",

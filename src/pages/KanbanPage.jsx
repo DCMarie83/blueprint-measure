@@ -168,10 +168,15 @@ export default function KanbanPage() {
   const [importMenuOpen, setImportMenuOpen] = useState(false)
   const { moneyMap } = useJobMoneyMap()
 
-  // Confirm-gated move state (In Progress / Complete)
-  const [pendingMove, setPendingMove] = useState(null) // { projectId, fromColumnId, toColumnId, toColName, project }
+  // Confirm-gated move state: any column with notify_status set opens the
+  // dialog BEFORE anything is written. The dialog is column-aware.
+  const [pendingMove, setPendingMove] = useState(null) // { projectId, fromColumnId, toColumnId, toColName, statusType, project, hasEmail, clientName }
   const [notifyClient, setNotifyClient] = useState(true)
   const [confirmMoving, setConfirmMoving] = useState(false)
+  const [dlg, setDlg] = useState({ amount: '', startDate: '', windowText: '', completionDate: '', includePortal: false, createInvoice: true })
+  const [dlgError, setDlgError] = useState(null)
+  // Inline board notice: the card moved but the client email did not send.
+  const [moveNotice, setMoveNotice] = useState(null)
 
   // Filters
   const [search, setSearch] = useState('')
@@ -252,11 +257,22 @@ export default function KanbanPage() {
     const toCol = columns.find(c => c.id === toColumnId)
     const project = allProjects.find(p => p.id === active.id)
 
-    // Gate: columns flagged with notify_status require confirmation + optional client email
+    // Gate: columns flagged with notify_status require confirmation + optional
+    // client email. The dialog opens before anything is written.
     if (toCol?.notify_status) {
       const linkedClient = project?.client_id ? clients.find(c => c.id === project.client_id) : null
       const hasEmail = linkedClient && (linkedClient.primary_email || linkedClient.client_contacts?.some(cc => cc.is_portal_recipient && cc.email))
-      setPendingMove({ projectId: active.id, fromColumnId, toColumnId, toColName: resolveColumnLabel(t, toCol), statusType: toCol.notify_status, project, hasEmail: !!hasEmail, clientName: linkedClient?.display_name })
+      const statusType = toCol.notify_status
+      setDlg({
+        amount: statusType === 'deposit_received' ? String(moneyMap.get(active.id)?.collected ?? '') : '',
+        startDate: project?.scheduled_start ? String(project.scheduled_start).slice(0, 10) : '',
+        windowText: '',
+        completionDate: project?.estimated_completion ? String(project.estimated_completion).slice(0, 10) : '',
+        includePortal: false,
+        createInvoice: true,
+      })
+      setDlgError(null)
+      setPendingMove({ projectId: active.id, fromColumnId, toColumnId, toColName: resolveColumnLabel(t, toCol), statusType, project, hasEmail: !!hasEmail, clientName: linkedClient?.display_name })
       setNotifyClient(!!hasEmail)
       return
     }
@@ -272,9 +288,19 @@ export default function KanbanPage() {
 
   async function handleConfirmMove() {
     if (!pendingMove) return
+    const { projectId, statusType } = pendingMove
+    const willNotify = notifyClient && pendingMove.hasEmail
+
+    // Scheduled: a start date is required to notify the client.
+    if (statusType === 'scheduled' && willNotify && !dlg.startDate) {
+      setDlgError(t('jobs:moveModal.startDateRequired'))
+      return
+    }
+
     setConfirmMoving(true)
+    setDlgError(null)
     try {
-      const result = await moveProject(pendingMove.projectId, pendingMove.fromColumnId, pendingMove.toColumnId)
+      const result = await moveProject(projectId, pendingMove.fromColumnId, pendingMove.toColumnId)
       if (result?.error) {
         alert(t('jobs:errors.moveFailed', { error: result.error }))
         setConfirmMoving(false)
@@ -282,12 +308,52 @@ export default function KanbanPage() {
         return
       }
 
-      // Send client notification (fire-and-forget)
-      if (notifyClient && pendingMove.hasEmail) {
-        const statusType = pendingMove.statusType
-        supabase.functions.invoke('send-status-email', {
-          body: { project_id: pendingMove.projectId, status_type: statusType },
-        }).catch(err => console.error('Status email failed', err))
+      // Column-specific project writes (dates, portal), independent of notify.
+      const projectPatch = {}
+      if (statusType === 'scheduled') {
+        if (dlg.startDate) projectPatch.scheduled_start = new Date(dlg.startDate + 'T09:00:00').toISOString()
+        if (dlg.completionDate) projectPatch.estimated_completion = new Date(dlg.completionDate + 'T17:00:00').toISOString()
+        if (dlg.includePortal) projectPatch.portal_enabled = true
+      }
+      if (statusType === 'in_progress' && dlg.completionDate) {
+        projectPatch.estimated_completion = new Date(dlg.completionDate + 'T17:00:00').toISOString()
+      }
+      if (Object.keys(projectPatch).length > 0) {
+        const { error: patchErr } = await supabase.from('projects').update(projectPatch).eq('id', projectId)
+        if (patchErr) console.error('Move detail write failed', patchErr)
+      }
+
+      // Client notification: awaited, so a failure surfaces on the board.
+      let emailFailed = null
+      if (willNotify) {
+        const payload = {
+          amount: statusType === 'deposit_received' ? Number(dlg.amount) || 0 : undefined,
+          window: statusType === 'scheduled' && dlg.windowText.trim() ? dlg.windowText.trim() : undefined,
+          scheduled_start: projectPatch.scheduled_start,
+          estimated_completion: projectPatch.estimated_completion,
+          include_portal_link: statusType === 'scheduled' ? dlg.includePortal : undefined,
+        }
+        const { error: fnErr } = await supabase.functions.invoke('send-status-email', {
+          body: { project_id: projectId, status_type: statusType, payload },
+        })
+        if (fnErr) {
+          let msg = fnErr.message
+          try {
+            const body = await fnErr.context?.json()
+            if (body?.error) msg = body.error
+          } catch { /* keep the generic message */ }
+          emailFailed = msg
+        }
+      }
+
+      if (emailFailed) {
+        setMoveNotice(t('jobs:moveModal.emailFailed', { error: emailFailed }))
+      } else {
+        setMoveNotice(null)
+        // Complete: offer the final invoice, prefilled from the job.
+        if (statusType === 'complete' && dlg.createInvoice) {
+          navigate(`/invoices/new?from_project=${projectId}`)
+        }
       }
     } catch (err) {
       alert(t('jobs:errors.moveFailed', { error: err.message || t('common:misc.unknownError') }))
@@ -376,6 +442,12 @@ export default function KanbanPage() {
             {hasActiveFilters && (
               <div className={styles.filterCount}>{t('jobs:filterCount', { shown: filteredProjects.length, total: totalProjects })}</div>
             )}
+            {moveNotice && (
+              <div role="alert" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, margin: '0 0 12px', padding: '10px 14px', background: 'var(--color-danger-bg, rgba(220,38,38,0.08))', border: '1px solid var(--color-danger, #dc2626)', borderRadius: 'var(--radius-md)', fontSize: 13, color: 'var(--color-danger, #dc2626)' }}>
+                <span>{moveNotice}</span>
+                <button onClick={() => setMoveNotice(null)} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>×</button>
+              </div>
+            )}
             {view === 'kanban' ? (
               <>
                 <div className={styles.boardContainer} ref={boardScrollRef}>
@@ -444,11 +516,66 @@ export default function KanbanPage() {
             <p style={{ fontSize: 14, color: 'var(--color-text-muted)', lineHeight: 1.5, marginBottom: 16 }}>
               {pendingMove.project?.name}
             </p>
+            {/* Column-aware fields */}
+            {pendingMove.statusType === 'deposit_received' && (
+              <label style={{ display: 'block', marginBottom: 14 }}>
+                <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 4 }}>{t('jobs:moveModal.depositAmount')}</span>
+                <input type="number" step="0.01" min="0" value={dlg.amount} onChange={e => setDlg(d => ({ ...d, amount: e.target.value }))}
+                  style={{ width: 160, padding: '7px 10px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-bg)', color: 'var(--color-text)', fontSize: 14 }} />
+                <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)', marginTop: 4 }}>{t('jobs:moveModal.depositHint')}</span>
+              </label>
+            )}
+            {pendingMove.statusType === 'scheduled' && (
+              <div style={{ marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <label>
+                  <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 4 }}>{t('jobs:moveModal.startDate')}</span>
+                  <input type="date" value={dlg.startDate} onChange={e => setDlg(d => ({ ...d, startDate: e.target.value }))}
+                    style={{ padding: '7px 10px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-bg)', color: 'var(--color-text)', fontSize: 14 }} />
+                </label>
+                <label>
+                  <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 4 }}>{t('jobs:moveModal.timeWindow')}</span>
+                  <input type="text" value={dlg.windowText} onChange={e => setDlg(d => ({ ...d, windowText: e.target.value }))} placeholder={t('jobs:moveModal.timeWindowPlaceholder')}
+                    style={{ width: '100%', padding: '7px 10px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-bg)', color: 'var(--color-text)', fontSize: 14 }} />
+                </label>
+                <label>
+                  <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 4 }}>{t('jobs:moveModal.expectedCompletion')}</span>
+                  <input type="date" value={dlg.completionDate} onChange={e => setDlg(d => ({ ...d, completionDate: e.target.value }))}
+                    style={{ padding: '7px 10px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-bg)', color: 'var(--color-text)', fontSize: 14 }} />
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={dlg.includePortal} onChange={e => setDlg(d => ({ ...d, includePortal: e.target.checked }))} />
+                  {t('jobs:moveModal.enablePortal')}
+                </label>
+              </div>
+            )}
+            {pendingMove.statusType === 'in_progress' && (
+              <div style={{ marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {pendingMove.project?.scheduled_start && (
+                  <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>
+                    {t('jobs:moveModal.scheduledFor', { date: new Date(pendingMove.project.scheduled_start).toLocaleDateString() })}
+                  </p>
+                )}
+                <label>
+                  <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 4 }}>{t('jobs:moveModal.expectedCompletion')}</span>
+                  <input type="date" value={dlg.completionDate} onChange={e => setDlg(d => ({ ...d, completionDate: e.target.value }))}
+                    style={{ padding: '7px 10px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-bg)', color: 'var(--color-text)', fontSize: 14 }} />
+                </label>
+              </div>
+            )}
+            {pendingMove.statusType === 'complete' && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer', marginBottom: 14 }}>
+                <input type="checkbox" checked={dlg.createInvoice} onChange={e => setDlg(d => ({ ...d, createInvoice: e.target.checked }))} />
+                {t('jobs:moveModal.createFinalInvoice')}
+              </label>
+            )}
             {pendingMove.hasEmail && (
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer', marginBottom: 20 }}>
                 <input type="checkbox" checked={notifyClient} onChange={e => setNotifyClient(e.target.checked)} />
                 {t('jobs:moveModal.notify', { client: pendingMove.clientName || t('jobs:moveModal.clientFallback') })}
               </label>
+            )}
+            {dlgError && (
+              <p role="alert" style={{ fontSize: 13, color: 'var(--color-danger, #dc2626)', margin: '0 0 12px' }}>{dlgError}</p>
             )}
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button onClick={() => setPendingMove(null)} style={{ padding: '8px 16px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontSize: 13, color: 'var(--color-text)' }}>

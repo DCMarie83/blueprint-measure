@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
     // 4. Fetch estimate + project
     const { data: estimate, error: estErr } = await adminClient
       .from('estimates')
-      .select('id, estimate_number, title, status, good_total, better_total, best_total, notes, deposit_amount, project_id, company_id')
+      .select('id, estimate_number, title, status, good_total, better_total, best_total, accepted_variant, selected_variant, notes, deposit_amount, project_id, company_id')
       .eq('id', estimate_id)
       .single()
     if (estErr || !estimate) return json({ error: 'Estimate not found' }, 404)
@@ -138,27 +138,23 @@ Deno.serve(async (req) => {
     const tenantLogoUrl = company?.logo_url || null
     const estTitle = estimate.title || estimate.estimate_number
 
-    // Build total display — single variant or all 3
+    // One price. Resolve the display variant exactly as generateEstimatePDF:
+    // accepted_variant || selected_variant || 'good' (the single-price model
+    // stores the price on good_total with no variant selected). An explicit
+    // selected_variant in the request still wins for legacy callers.
     const totalMap: Record<string, number> = { good: Number(estimate.good_total || 0), better: Number(estimate.better_total || 0), best: Number(estimate.best_total || 0) }
-    const selectedTotal = selected_variant ? totalMap[selected_variant] : null
-    const totalHtml = selectedTotal != null
-      ? `<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="width: 100%; margin: 16px 0; border-collapse: separate; border-spacing: 0;">
+    const displayVariant: string = selected_variant || estimate.accepted_variant || estimate.selected_variant || 'good'
+    const displayTotal = totalMap[displayVariant] ?? totalMap.good
+    const totalHtml = `<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="width: 100%; margin: 16px 0; border-collapse: separate; border-spacing: 0;">
            <tr>
              <td style="padding: 14px 16px; background: #1b2426; border-radius: 8px 0 0 8px; color: #ffffff; font-size: 15px; font-weight: 600;">Estimate Total</td>
-             <td style="padding: 14px 16px; background: #1b2426; border-radius: 0 8px 8px 0; color: ${tenantPrimary}; font-size: 20px; font-weight: 700; font-family: monospace; text-align: right; white-space: nowrap;">$${selectedTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+             <td style="padding: 14px 16px; background: #1b2426; border-radius: 0 8px 8px 0; color: ${tenantPrimary}; font-size: 20px; font-weight: 700; font-family: monospace; text-align: right; white-space: nowrap;">$${displayTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
            </tr>
          </table>`
-      : `<table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px;">
-          <tr><td style="padding: 8px 12px; background: #f5f5f5; border-radius: 4px 0 0 0;">Option 1</td><td style="padding: 8px 12px; background: #f5f5f5; text-align: right; border-radius: 0 4px 0 0;">$${totalMap.good.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr>
-          <tr><td style="padding: 8px 12px;">Option 2</td><td style="padding: 8px 12px; text-align: right;">$${totalMap.better.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr>
-          <tr><td style="padding: 8px 12px; background: #f5f5f5; border-radius: 0 0 0 4px; font-weight: 600;">Option 3</td><td style="padding: 8px 12px; background: #f5f5f5; text-align: right; font-weight: 600; border-radius: 0 0 4px 0;">$${totalMap.best.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr>
-        </table>`
 
-    // Build deposit display
+    // Deposit anchors to the same displayed total.
     const depositAmount = Number(estimate.deposit_amount || 0)
-    const refTotalForDeposit = selected_variant
-      ? Number(estimate[`${selected_variant}_total`] || 0)
-      : Number(estimate.better_total || 0)
+    const refTotalForDeposit = displayTotal
     const depositPct = (depositAmount > 0 && refTotalForDeposit > 0)
       ? Math.round((depositAmount / refTotalForDeposit) * 100)
       : null

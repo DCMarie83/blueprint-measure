@@ -44,11 +44,13 @@ Deno.serve(async (req) => {
     const { data: { user }, error: userErr } = await anonClient.auth.getUser()
     if (userErr || !user) return json({ error: 'Invalid auth' }, 401)
 
-    // 2. Parse input
-    const { project_id, status_type } = await req.json()
+    // 2. Parse input. payload is optional per-column context from the board's
+    // confirm dialog: { amount, window, scheduled_start, estimated_completion,
+    // include_portal_link }.
+    const { project_id, status_type, payload = {} } = await req.json()
     if (!project_id) return json({ error: 'project_id required' }, 400)
-    if (!status_type || !['in_progress', 'complete'].includes(status_type)) {
-      return json({ error: 'status_type must be in_progress or complete' }, 400)
+    if (!status_type || !['deposit_received', 'scheduled', 'in_progress', 'complete'].includes(status_type)) {
+      return json({ error: 'status_type must be deposit_received, scheduled, in_progress, or complete' }, 400)
     }
 
     // 3. Service-role client
@@ -115,25 +117,58 @@ Deno.serve(async (req) => {
     const siteUrl = Deno.env.get('SITE_URL') || 'https://app.rivetdog.com'
     const portalUrl = project.portal_token ? `${siteUrl}/portal/${project.portal_token}` : null
 
+    // Payload dates win over the project row (the board writes them in the
+    // same confirm, but a race should never blank the email's date line).
+    const startDate = formatDate(payload.scheduled_start || project.scheduled_start)
+    const completionDate = formatDate(payload.estimated_completion || project.estimated_completion)
+    const windowText = typeof payload.window === 'string' && payload.window.trim() ? payload.window.trim() : null
+    const amount = Number(payload.amount) || 0
+    const amountFmt = `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
+    const addressLine = project.address ? `<p style="font-size: 14px; color: #555;">${escapeHtml(project.address)}</p>` : ''
+    const completionLine = completionDate
+      ? `<p style="font-size: 14px; color: #1b2426; line-height: 1.5;">Expected completion <strong>${completionDate}</strong>.</p>`
+      : ''
+
     let subject: string
     let bodyContent: string
+    let showPortalLink = false
 
-    if (status_type === 'in_progress') {
-      subject = `Work is starting on your project`
-
-      const scheduleLine = formatDate(project.scheduled_start)
-        ? `<p style="font-size: 14px; color: #1b2426; line-height: 1.5;">Work begins <strong>${formatDate(project.scheduled_start)}</strong>.</p>`
-        : ''
-      const completionLine = formatDate(project.estimated_completion)
-        ? `<p style="font-size: 14px; color: #1b2426; line-height: 1.5;">Estimated completion <strong>${formatDate(project.estimated_completion)}</strong>.</p>`
-        : ''
-
+    if (status_type === 'deposit_received') {
+      subject = `We received your deposit`
       bodyContent = `
         <p style="font-size: 15px; color: #1b2426; line-height: 1.5;">
-          Work is starting on your project <strong>${escapeHtml(project.name)}</strong>.
+          We received your deposit${amount > 0 ? ` of <strong>${amountFmt}</strong>` : ''} for <strong>${escapeHtml(project.name)}</strong>. Thank you.
         </p>
-        ${project.address ? `<p style="font-size: 14px; color: #555;">${escapeHtml(project.address)}</p>` : ''}
-        ${scheduleLine}
+        ${addressLine}
+        <p style="font-size: 14px; color: #555; line-height: 1.5;">
+          We'll be in touch soon with your schedule. If you have any questions, just reply or give us a call.
+        </p>
+      `
+    } else if (status_type === 'scheduled') {
+      subject = `Your project is scheduled`
+      const windowLine = windowText
+        ? `<p style="font-size: 14px; color: #1b2426; line-height: 1.5;">Arrival window: <strong>${escapeHtml(windowText)}</strong>.</p>`
+        : ''
+      bodyContent = `
+        <p style="font-size: 15px; color: #1b2426; line-height: 1.5;">
+          Your project <strong>${escapeHtml(project.name)}</strong> is scheduled${startDate ? ` to start on <strong>${startDate}</strong>` : ''}.
+        </p>
+        ${addressLine}
+        ${windowLine}
+        ${completionLine}
+        <p style="font-size: 14px; color: #555; line-height: 1.5;">
+          If that date does not work for you, let us know and we'll find one that does.
+        </p>
+      `
+      showPortalLink = payload.include_portal_link === true
+    } else if (status_type === 'in_progress') {
+      subject = `Work is starting on your project`
+      bodyContent = `
+        <p style="font-size: 15px; color: #1b2426; line-height: 1.5;">
+          Work has started on your project <strong>${escapeHtml(project.name)}</strong>.
+        </p>
+        ${addressLine}
         ${completionLine}
         <p style="font-size: 14px; color: #555; line-height: 1.5;">
           We'll keep you updated as work progresses. If you have any questions, don't hesitate to reach out.
@@ -141,19 +176,20 @@ Deno.serve(async (req) => {
       `
     } else {
       subject = `Your project is complete`
-
       bodyContent = `
         <p style="font-size: 15px; color: #1b2426; line-height: 1.5;">
           Your project <strong>${escapeHtml(project.name)}</strong> is complete.
         </p>
-        ${project.address ? `<p style="font-size: 14px; color: #555;">${escapeHtml(project.address)}</p>` : ''}
+        ${addressLine}
         <p style="font-size: 14px; color: #555; line-height: 1.5;">
           Thank you for choosing ${escapeHtml(companyName)}. We appreciate your business and look forward to working with you again.
         </p>
       `
     }
 
-    const portalBlock = portalUrl
+    // The portal link rides along only when the dialog asked for it
+    // (scheduled) or on the completion thank-you, matching prior behavior.
+    const portalBlock = (portalUrl && (showPortalLink || status_type === 'complete' || status_type === 'in_progress'))
       ? `<a href="${portalUrl}" style="display: inline-block; margin: 16px 0; padding: 12px 24px; background: #f27243; color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">View Your Project Portal</a>`
       : ''
 
@@ -178,7 +214,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         from: `${companyName} via RivetDog <noreply@rivetdog.com>`,
         to: recipients,
-        subject: `${subject} — ${companyName}`,
+        subject: `${subject} - ${companyName}`,
         html,
       }),
     })

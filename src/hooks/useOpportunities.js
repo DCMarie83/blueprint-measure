@@ -56,11 +56,11 @@ export function useOpportunities() {
     fetchBoard()
   }, [fetchBoard])
 
+  // Moves are pure data: update the column and, when the target column carries
+  // a status_key, sync projects.status to it. Client notifications belong to
+  // the board's confirm dialog exclusively; nothing here ever emails.
   async function moveProject(projectId, fromColumnId, toColumnId) {
-    // Capture pre-move state for portal email trigger
-    const fromCol = columns.find(c => c.id === fromColumnId)
     const toCol = columns.find(c => c.id === toColumnId)
-    const movedProject = fromCol?.projects?.find(p => p.id === projectId)
 
     // Optimistic local update
     setColumns(prev => {
@@ -75,7 +75,7 @@ export function useOpportunities() {
           return {
             ...col,
             projects: [
-              { ...mp, kanban_column_id: toColumnId, updated_at: new Date().toISOString() },
+              { ...mp, kanban_column_id: toColumnId, ...(toCol?.status_key ? { status: toCol.status_key } : {}), updated_at: new Date().toISOString() },
               ...col.projects,
             ],
           }
@@ -84,38 +84,20 @@ export function useOpportunities() {
       })
     })
 
-    // Persist
+    // Persist. A null status_key leaves projects.status untouched.
+    const patch = { kanban_column_id: toColumnId, updated_at: new Date().toISOString() }
+    if (toCol?.status_key) patch.status = toCol.status_key
     const { error: updateError } = await supabase
       .from('projects')
-      .update({ kanban_column_id: toColumnId, updated_at: new Date().toISOString() })
+      .update(patch)
       .eq('id', projectId)
 
     if (updateError) {
       await fetchBoard()
-      return { error: updateError.message }
+      return { error: updateError.message, column: toCol ?? null }
     }
 
-    // Auto-email on first move to Scheduled column (fire-and-forget)
-    if (
-      toCol?.name === 'Scheduled' &&
-      !movedProject?.portal_email_sent_at &&
-      movedProject?.client_id
-    ) {
-      ;(async () => {
-        try {
-          await supabase.from('projects').update({ portal_enabled: true }).eq('id', projectId)
-          const { error: invokeErr } = await supabase.functions.invoke('send-portal-email', {
-            body: { project_id: projectId },
-          })
-          if (invokeErr) console.error('Portal email invoke failed', invokeErr)
-          await fetchBoard()
-        } catch (err) {
-          console.error('Portal email trigger failed', err)
-        }
-      })()
-    }
-
-    return { error: null }
+    return { error: null, column: toCol ?? null }
   }
 
   return { columns, loading, error, refetch: fetchBoard, moveProject }

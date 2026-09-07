@@ -802,6 +802,47 @@ a28 AS (
                       AND tgname = 'invoices_lifecycle_guard'
                       AND NOT tgisinternal),
                   'TRIGGER MISSING')::text
+),
+
+-- ── A29 / A30 ──────────────────────────────────────────────────────
+-- Lane N lifecycle sync: kanban_columns.status_key drives projects.status
+-- on board moves, and the seeder must keep stamping status_key + the four
+-- notify columns for new tenants. A re-run of an old seeder or migration
+-- would silently strip both.
+a29 AS (
+  SELECT 'A29'::text,
+         'kanban_columns.status_key exists with its check constraint'::text,
+         CASE WHEN EXISTS (
+           SELECT 1 FROM information_schema.columns
+           WHERE table_schema = 'public' AND table_name = 'kanban_columns' AND column_name = 'status_key'
+         ) AND EXISTS (
+           SELECT 1 FROM pg_constraint
+           WHERE conrelid = 'public.kanban_columns'::regclass
+             AND contype = 'c'
+             AND pg_get_constraintdef(oid) ILIKE '%status_key%'
+         ) THEN 'PASS' ELSE 'FAIL' END::text,
+         coalesce((SELECT string_agg(conname || ': ' || pg_get_constraintdef(oid), '; ')
+                     FROM pg_constraint
+                    WHERE conrelid = 'public.kanban_columns'::regclass
+                      AND contype = 'c'
+                      AND pg_get_constraintdef(oid) ILIKE '%status_key%'),
+                  'COLUMN OR CHECK MISSING')::text
+),
+a30 AS (
+  SELECT 'A30'::text,
+         'seed_base_kanban_columns stamps status_key and notifies deposit_received'::text,
+         CASE WHEN EXISTS (
+           SELECT 1 FROM pg_proc
+           WHERE pronamespace = 'public'::regnamespace
+             AND proname = 'seed_base_kanban_columns'
+             AND pg_get_functiondef(oid) ILIKE '%status_key%'
+             AND pg_get_functiondef(oid) ILIKE '%deposit_received%'
+         ) THEN 'PASS' ELSE 'FAIL' END::text,
+         CASE WHEN EXISTS (
+           SELECT 1 FROM pg_proc
+           WHERE pronamespace = 'public'::regnamespace AND proname = 'seed_base_kanban_columns'
+         ) THEN 'seeder present; PASS requires both status_key and deposit_received in its body'
+         ELSE 'FUNCTION MISSING' END::text
 )
 
 SELECT * FROM a1
@@ -832,4 +873,6 @@ UNION ALL SELECT * FROM a25
 UNION ALL SELECT * FROM a26
 UNION ALL SELECT * FROM a27
 UNION ALL SELECT * FROM a28
+UNION ALL SELECT * FROM a29
+UNION ALL SELECT * FROM a30
 ORDER BY id;
