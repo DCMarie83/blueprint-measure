@@ -25,9 +25,9 @@ export function useProject(projectId) {
       .eq('id', projectId)
       .eq('company_id', companyId)
       .is('deleted_at', null)
-      .single()
+      .maybeSingle()
 
-    if (projectError) {
+    if (projectError || !projectData) {
       setError('Project not found.')
       setLoading(false)
       return

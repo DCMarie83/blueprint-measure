@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Save, Trash2, Plus, Package, Download, Send, FileText, Check } from 'lucide-react'
 import BackLink from '../components/BackLink'
@@ -284,11 +284,17 @@ export default function EstimateDetailPage() {
   }
 
   if (builder.error || !estimate) {
+    // Plain not-found state — never the raw database message. The job is
+    // unknown for a missing estimate, so the way out is the Jobs board.
     return (
       <div className={styles.page}>
-        
+
         <main className={styles.main}>
-          <div className={styles.empty}>{builder.error || t('estimates:detail.notFound')}</div>
+          <BackLink to="/jobs" label={t('jobs:page.title')} />
+          <div className={styles.empty} style={{ marginTop: 16 }}>
+            <p style={{ margin: '0 0 12px' }}>{t('estimates:detail.noLongerExists')}</p>
+            <Link to="/jobs" style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}>{t('estimates:detail.goToJobs')}</Link>
+          </div>
         </main>
       </div>
     )
@@ -533,10 +539,42 @@ export default function EstimateDetailPage() {
   }
 
   async function handleDelete() {
-    if (!window.confirm(t('estimates:detail.deleteConfirm'))) return
+    const isAccepted = estimate.status === 'accepted'
+    let confirmText = t('estimates:detail.deleteConfirm')
+    if (isAccepted) {
+      // Deleting the accepted quote unlinks its invoices (FK is SET NULL) and
+      // drops the job's contract value; the confirm says so with the count.
+      const { count } = await supabase
+        .from('invoices')
+        .select('id', { count: 'exact', head: true })
+        .eq('estimate_id', estimate.id)
+      confirmText = t('estimates:detail.deleteAcceptedConfirm', { count: count ?? 0 })
+    }
+    if (!window.confirm(confirmText)) return
     try {
+      const projectId = estimate.project_id
       await builder.deleteEstimate()
-      navigate(`/project/${estimate.project_id}`)
+
+      if (isAccepted && projectId) {
+        const { data: remaining } = await supabase
+          .from('estimates')
+          .select('id, status')
+          .eq('project_id', projectId)
+          .in('status', ['sent', 'accepted'])
+        const rows = remaining ?? []
+        const anyAccepted = rows.some(r => r.status === 'accepted')
+        const projectPatch = {}
+        if (!anyAccepted) projectPatch.contract_value = null
+        if (rows.length === 0) {
+          // No live quote left on the job: back to Review.
+          await moveJobByColumnKey('review', projectPatch)
+        } else if (Object.keys(projectPatch).length > 0) {
+          await supabase.from('projects').update({ ...projectPatch, updated_at: new Date().toISOString() }).eq('id', projectId)
+        }
+        logEstimateActivity('estimate_deleted', `Estimate ${estimate.estimate_number} deleted`, null)
+      }
+
+      navigate(`/project/${projectId}`)
     } catch (err) {
       alert(t('estimates:detail.deleteFailed', { message: err.message }))
     }

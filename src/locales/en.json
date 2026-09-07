@@ -1702,7 +1702,8 @@
       "loading": "Fetching your materials...",
       "backDashboard": "dashboard",
       "notFound": "Materials order not found.",
-      "estimateLabel": "Estimate · {{date}}{{variant}}{{tail}}"
+      "estimateLabel": "Estimate · {{date}}{{variant}}{{tail}}",
+      "backJob": "job"
     },
     "notices": {
       "saveFailed": "Save failed — see the error above.",
@@ -2332,7 +2333,7 @@
       "resendToClient": "Resend to Client",
       "sendToClient": "Send to Client",
       "smartBidReadyToast": "Smart Bid ready. Every number has a reason.",
-      "backToProject": "Back to project",
+      "backToProject": "job",
       "untitledEstimate": "Untitled Estimate",
       "status": {
         "draft": "Draft",
@@ -2399,7 +2400,10 @@
           "placeholder": "Comment"
         }
       },
-      "lostJobNoSend": "This job is marked lost. Reopen it before sending a quote."
+      "lostJobNoSend": "This job is marked lost. Reopen it before sending a quote.",
+      "noLongerExists": "This estimate no longer exists.",
+      "goToJobs": "Go to jobs",
+      "deleteAcceptedConfirm": "This is the accepted quote on this job. Deleting it removes the job's contract value and unlinks {{count}} invoice(s) from it. This cannot be undone."
     },
     "send": {
       "sendFailed": "Failed to send estimate",
@@ -2485,7 +2489,7 @@
   "smartbid": {
     "page": {
       "title": "Smart Bid",
-      "backProject": "project",
+      "backProject": "job",
       "loadingMeasurements": "Loading measurements…",
       "errorIncludeGroup": "Include at least one measurement group.",
       "zonesCount_one": "{{count}} zone",

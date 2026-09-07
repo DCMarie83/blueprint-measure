@@ -298,7 +298,7 @@ export default function MaterialOrderBuilderPage() {
     <div>
       
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 20px' }}>
-        <BackLink to={`/project/${order.project_id}`} label="project" />
+        <BackLink to={`/project/${order.project_id}`} label={t('materials:page.backJob')} />
 
         {view === 'start' && (
           <MaterialsStartScreen hasZones={hasZones} onQuick={startQuick} onSwipe={startSwipe} onTable={startTable} />

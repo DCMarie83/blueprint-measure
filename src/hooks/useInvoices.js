@@ -69,9 +69,9 @@ export function useInvoice(invoiceId) {
         .from('invoices')
         .select('*, invoice_line_items(*)')
         .eq('id', invoiceId)
-        .single()
+        .maybeSingle()
       if (err) throw err
-      setInvoice(data)
+      setInvoice(data ?? null)
       setLineItems((data?.invoice_line_items ?? []).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)))
 
       // Fetch payments

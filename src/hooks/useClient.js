@@ -23,9 +23,9 @@ export function useClient(clientId) {
         .select('*')
         .eq('id', clientId)
         .eq('company_id', companyId)
-        .single()
+        .maybeSingle()
       if (clientErr) throw clientErr
-      setClient(clientData)
+      setClient(clientData ?? null)
 
       const { data: contactData } = await supabase
         .from('client_contacts')

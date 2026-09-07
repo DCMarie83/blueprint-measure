@@ -1702,7 +1702,8 @@
       "loading": "Buscando tus materiales...",
       "backDashboard": "panel",
       "notFound": "No se encontró la orden de materiales.",
-      "estimateLabel": "Cotización · {{date}}{{variant}}{{tail}}"
+      "estimateLabel": "Cotización · {{date}}{{variant}}{{tail}}",
+      "backJob": "trabajo"
     },
     "notices": {
       "saveFailed": "No se guardó — mira el error de arriba.",
@@ -2332,7 +2333,7 @@
       "resendToClient": "Reenviar al cliente",
       "sendToClient": "Enviar al cliente",
       "smartBidReadyToast": "Smart Bid listo. Cada número tiene una razón.",
-      "backToProject": "Volver al proyecto",
+      "backToProject": "trabajo",
       "untitledEstimate": "Cotización sin título",
       "status": {
         "draft": "Borrador",
@@ -2399,7 +2400,10 @@
           "placeholder": "Comentario"
         }
       },
-      "lostJobNoSend": "Este trabajo está marcado como perdido. Reábrelo antes de enviar una cotización."
+      "lostJobNoSend": "Este trabajo está marcado como perdido. Reábrelo antes de enviar una cotización.",
+      "noLongerExists": "Esta cotización ya no existe.",
+      "goToJobs": "Ir a trabajos",
+      "deleteAcceptedConfirm": "Esta es la cotización aceptada de este trabajo. Al eliminarla se quita el valor de contrato del trabajo y se desvinculan {{count}} factura(s). Esto no se puede deshacer."
     },
     "send": {
       "sendFailed": "No se pudo enviar la cotización",
@@ -2485,7 +2489,7 @@
   "smartbid": {
     "page": {
       "title": "Smart Bid",
-      "backProject": "proyecto",
+      "backProject": "trabajo",
       "loadingMeasurements": "Cargando mediciones…",
       "errorIncludeGroup": "Incluye al menos un grupo de mediciones.",
       "zonesCount_one": "{{count}} zona",

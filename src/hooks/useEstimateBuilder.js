@@ -26,15 +26,17 @@ export function useEstimateBuilder(estimateId) {
     setLoading(true)
     setError(null)
     try {
+      // maybeSingle: a missing id resolves to null (not-found state), never a
+      // raw PostgREST coercion error on the page.
       const { data, error: err } = await supabase
         .from('estimates')
         .select('*, estimate_line_items(*)')
         .eq('id', estimateId)
-        .single()
+        .maybeSingle()
       if (err) throw err
-      setEstimate(data)
+      setEstimate(data ?? null)
       setLineItems(
-        (data.estimate_line_items ?? [])
+        (data?.estimate_line_items ?? [])
           .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
       )
     } catch (err) {
