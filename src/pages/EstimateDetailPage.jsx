@@ -144,6 +144,20 @@ export default function EstimateDetailPage() {
   // Fetch project + client + company for PDF/Send
   const [projectData, setProjectData] = useState(null)
   const [clientData, setClientData] = useState(null)
+
+  // Manual response-status prompt: { status } + its required input
+  const [statusPrompt, setStatusPrompt] = useState(null)
+  const [statusPromptValue, setStatusPromptValue] = useState('')
+  const [statusPromptSaving, setStatusPromptSaving] = useState(false)
+
+  // Opening a responded estimate marks the response seen (dashboard unread).
+  useEffect(() => {
+    if (!estimate?.id) return
+    if (!['accepted', 'declined', 'changes_requested'].includes(estimate.status)) return
+    if (estimate.response_seen_at) return
+    supabase.from('estimates').update({ response_seen_at: new Date().toISOString() }).eq('id', estimate.id)
+      .then(() => {}, () => {})
+  }, [estimate?.id, estimate?.status, estimate?.response_seen_at])
   const [companyData, setCompanyData] = useState(null)
 
   const estimate = builder.estimate
@@ -162,7 +176,7 @@ export default function EstimateDetailPage() {
     if (!estimate?.project_id) return
     const { data: proj } = await supabase
       .from('projects')
-      .select('id, name, address, client_id, company_id, portal_token')
+      .select('id, name, address, client_id, company_id, portal_token, follow_up_at, follow_up_note')
       .eq('id', estimate.project_id)
       .single()
     if (!proj) return
@@ -422,35 +436,97 @@ export default function EstimateDetailPage() {
     catch (err) { console.error('Deposit save failed:', err) }
   }
 
+  // Move the job to a column resolved by column_key (never position) and sync
+  // its status from the column's status_key — same shape the portal RPCs use.
+  async function moveJobByColumnKey(columnKey, extraPatch = {}) {
+    if (!estimate.project_id || !estimate.company_id) return
+    const { data: col } = await supabase
+      .from('kanban_columns')
+      .select('id, status_key')
+      .eq('company_id', estimate.company_id)
+      .eq('column_key', columnKey)
+      .maybeSingle()
+    if (!col) return
+    const patch = { kanban_column_id: col.id, updated_at: new Date().toISOString(), ...extraPatch }
+    if (col.status_key) patch.status = col.status_key
+    await supabase.from('projects').update(patch).eq('id', estimate.project_id)
+  }
+
+  async function logEstimateActivity(activityType, title, body) {
+    try {
+      if (!projectData?.client_id) return
+      await supabase.from('client_activity').insert({
+        company_id: estimate.company_id,
+        client_id: projectData.client_id,
+        activity_type: activityType,
+        title,
+        body: body || null,
+        is_automated: true,
+        metadata: { estimate_id: estimate.id, project_id: estimate.project_id },
+      })
+    } catch { /* activity trail is best-effort */ }
+  }
+
+  // Manual response states require their data: accept asks who accepted,
+  // decline asks the reason, changes requested asks the comment. Each writes
+  // the same columns the portal RPCs write, moves the job the same way, and
+  // logs the same activity type. No response state without its data.
   async function handleStatusChange(newStatus) {
+    if (newStatus === 'accepted' || newStatus === 'declined' || newStatus === 'changes_requested') {
+      setStatusPrompt({ status: newStatus })
+      setStatusPromptValue('')
+      return
+    }
     try {
       const patch = { status: newStatus }
       if (newStatus === 'sent' && !estimate.sent_at) patch.sent_at = new Date().toISOString()
-      if (newStatus === 'accepted') patch.accepted_at = new Date().toISOString()
-      if (newStatus === 'declined') patch.declined_at = new Date().toISOString()
       await builder.updateEstimate(patch)
-
-      // Auto-move project to the Accepted kanban column (by column_key, never
-      // position) and sync the job's status from that column's status_key —
-      // mirrors the portal accept_estimate RPC behavior.
-      if (newStatus === 'accepted' && estimate.project_id && estimate.company_id) {
-        const { data: acceptedCol } = await supabase
-          .from('kanban_columns')
-          .select('id, status_key')
-          .eq('company_id', estimate.company_id)
-          .eq('column_key', 'accepted')
-          .maybeSingle()
-        if (acceptedCol) {
-          const patch = { kanban_column_id: acceptedCol.id, updated_at: new Date().toISOString() }
-          if (acceptedCol.status_key) patch.status = acceptedCol.status_key
-          await supabase
-            .from('projects')
-            .update(patch)
-            .eq('id', estimate.project_id)
-        }
-      }
     } catch (err) {
       alert(t('estimates:detail.statusUpdateFailed', { message: err.message }))
+    }
+  }
+
+  async function handleConfirmStatusPrompt() {
+    if (!statusPrompt) return
+    const value = statusPromptValue.trim()
+    if (!value) return
+    const now = new Date().toISOString()
+    setStatusPromptSaving(true)
+    try {
+      if (statusPrompt.status === 'accepted') {
+        await builder.updateEstimate({
+          status: 'accepted', accepted_at: now, accepted_by_name: value,
+          declined_at: null, decline_reason: null,
+        })
+        await moveJobByColumnKey('accepted')
+        await logEstimateActivity('estimate_accepted', `Estimate ${estimate.estimate_number} accepted`, `Accepted by ${value}`)
+      } else if (statusPrompt.status === 'declined') {
+        await builder.updateEstimate({
+          status: 'declined', declined_at: now, decline_reason: value,
+          accepted_at: null,
+        })
+        // Default the follow-up to a week out when the job has none.
+        const extra = {}
+        if (!projectData?.follow_up_at) {
+          const d = new Date(); d.setDate(d.getDate() + 7)
+          extra.follow_up_at = d.toISOString().slice(0, 10)
+        }
+        await moveJobByColumnKey('declined', extra)
+        await logEstimateActivity('estimate_declined', `Estimate ${estimate.estimate_number} declined`, value)
+      } else if (statusPrompt.status === 'changes_requested') {
+        await builder.updateEstimate({
+          status: 'changes_requested', change_request_comment: value, changes_requested_at: now,
+          accepted_at: null, declined_at: null, decline_reason: null,
+        })
+        await moveJobByColumnKey('review')
+        await logEstimateActivity('estimate_changes_requested', 'Estimate changes requested', value)
+      }
+      setStatusPrompt(null)
+      fetchProjectClientCompany()
+    } catch (err) {
+      alert(t('estimates:detail.statusUpdateFailed', { message: err.message }))
+    } finally {
+      setStatusPromptSaving(false)
     }
   }
 
@@ -506,8 +582,8 @@ export default function EstimateDetailPage() {
     setPickerZone(null)
   }
 
-  const canSend = isAdmin && (estimate.status === 'draft' || estimate.status === 'sent' || estimate.status === 'changes_requested')
-  const sendLabel = (estimate.status === 'sent' || estimate.status === 'changes_requested') ? t('estimates:detail.resendToClient') : t('estimates:detail.sendToClient')
+  const canSend = isAdmin && (estimate.status === 'draft' || estimate.status === 'sent' || estimate.status === 'changes_requested' || estimate.status === 'declined')
+  const sendLabel = (estimate.status === 'sent' || estimate.status === 'changes_requested' || estimate.status === 'declined') ? t('estimates:detail.resendToClient') : t('estimates:detail.sendToClient')
 
   return (
     <div className={styles.page}>
@@ -669,6 +745,45 @@ export default function EstimateDetailPage() {
                 {scenarioNotice && (
                   <div style={{ marginTop: 8, fontSize: 12, fontWeight: 600, color: '#F27243' }}>{scenarioNotice}</div>
                 )}
+              </div>
+            )}
+
+            {estimate.status === 'declined' && (
+              <div style={{ background: 'var(--color-danger-bg, rgba(220,38,38,0.08))', borderLeft: '3px solid var(--color-danger, #dc2626)', borderRadius: 'var(--radius-md)', padding: '12px 16px', marginBottom: 16 }}>
+                <div style={{ fontWeight: 700, color: 'var(--color-text, #1b2426)', marginBottom: 4 }}>{t('estimates:detail.declinedTitle')}</div>
+                {estimate.decline_reason && (
+                  <div style={{ fontSize: 14, color: 'var(--color-text, #1b2426)', lineHeight: 1.5, marginBottom: 6 }}>{estimate.decline_reason}</div>
+                )}
+                {estimate.declined_at && (
+                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 8 }}>{timeAgo(estimate.declined_at, t)}</div>
+                )}
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                  <label>
+                    <span style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 3 }}>{t('estimates:detail.followUpOn')}</span>
+                    <input type="date" value={projectData?.follow_up_at || ''}
+                      onChange={async e => {
+                        const val = e.target.value || null
+                        try {
+                          await supabase.from('projects').update({ follow_up_at: val }).eq('id', estimate.project_id)
+                          setProjectData(prev => prev ? { ...prev, follow_up_at: val } : prev)
+                        } catch { /* keep prior value */ }
+                      }}
+                      style={{ padding: '5px 8px', fontSize: 13, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-bg)', color: 'var(--color-text)' }} />
+                  </label>
+                  <label style={{ flex: 1, minWidth: 180 }}>
+                    <span style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 3 }}>{t('estimates:detail.followUpNote')}</span>
+                    <input type="text" defaultValue={projectData?.follow_up_note || ''}
+                      onBlur={async e => {
+                        const val = e.target.value.trim() || null
+                        try {
+                          await supabase.from('projects').update({ follow_up_note: val }).eq('id', estimate.project_id)
+                          setProjectData(prev => prev ? { ...prev, follow_up_note: val } : prev)
+                        } catch { /* keep prior value */ }
+                      }}
+                      style={{ width: '100%', padding: '5px 8px', fontSize: 13, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-bg)', color: 'var(--color-text)' }} />
+                  </label>
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--color-text, #1b2426)', marginTop: 8 }}>{t('estimates:detail.reviseAndResend')}</div>
               </div>
             )}
 
@@ -864,6 +979,41 @@ export default function EstimateDetailPage() {
             builder.refetch()
           }}
         />
+      )}
+
+      {/* Manual response-status prompt: the data the portal would capture */}
+      {statusPrompt && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setStatusPrompt(null)}>
+          <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', padding: 24, maxWidth: 420, width: '90%' }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 17, margin: '0 0 12px' }}>
+              {t(`estimates:detail.statusPrompt.${statusPrompt.status}.title`)}
+            </h3>
+            {statusPrompt.status === 'accepted' ? (
+              <input
+                autoFocus
+                value={statusPromptValue}
+                onChange={e => setStatusPromptValue(e.target.value)}
+                placeholder={t('estimates:detail.statusPrompt.accepted.placeholder')}
+                style={{ width: '100%', padding: '8px 10px', fontSize: 14, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-bg)', color: 'var(--color-text)', marginBottom: 16 }}
+              />
+            ) : (
+              <textarea
+                autoFocus
+                rows={3}
+                value={statusPromptValue}
+                onChange={e => setStatusPromptValue(e.target.value)}
+                placeholder={t(`estimates:detail.statusPrompt.${statusPrompt.status}.placeholder`)}
+                style={{ width: '100%', padding: '8px 10px', fontSize: 14, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-bg)', color: 'var(--color-text)', marginBottom: 16, resize: 'vertical' }}
+              />
+            )}
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setStatusPrompt(null)} style={{ padding: '8px 16px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontSize: 13, color: 'var(--color-text)' }}>{t('common:action.cancel')}</button>
+              <button onClick={handleConfirmStatusPrompt} disabled={statusPromptSaving || !statusPromptValue.trim()} style={{ padding: '8px 16px', background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontSize: 13, fontWeight: 600, opacity: (statusPromptSaving || !statusPromptValue.trim()) ? 0.6 : 1 }}>
+                {statusPromptSaving ? '…' : t('common:action.confirm')}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

@@ -14,6 +14,7 @@ import NewSessionForm from '../components/auth/NewSessionForm'
 import MultiFileUploader from '../components/canvas/MultiFileUploader'
 import BackLink from '../components/BackLink'
 import PortalShareSection from '../components/portal/PortalShareSection'
+import { markProjectLost } from '../components/jobs/LostJobsView'
 import ClientCard from '../components/clients/ClientCard'
 import ClientPicker from '../components/clients/ClientPicker'
 import QuickClientForm from '../components/clients/QuickClientForm'
@@ -96,6 +97,51 @@ export default function ProjectDetailPage() {
   const [collected, setCollected] = useState(0)
   const [projectDocs, setProjectDocs] = useState([])
   const [docsVersion, setDocsVersion] = useState(0)
+
+  // Completion notice (labeled send) + mark lost
+  const [completionSending, setCompletionSending] = useState(false)
+  const [completionMsg, setCompletionMsg] = useState(null)
+
+  async function handleSendCompletionNotice() {
+    setCompletionSending(true)
+    setCompletionMsg(null)
+    try {
+      const { error: fnErr } = await supabase.functions.invoke('send-status-email', {
+        body: { project_id: projectId, status_type: 'complete' },
+      })
+      if (fnErr) {
+        let msg = fnErr.message
+        try {
+          const body = await fnErr.context?.json()
+          if (body?.error) msg = body.error
+        } catch { /* keep generic */ }
+        throw new Error(msg)
+      }
+      await updateProject(projectId, { completion_notice_pending: false })
+      setCompletionMsg({ ok: true, text: t('jobs:completion.sent') })
+      refetch()
+    } catch (err) {
+      setCompletionMsg({ ok: false, text: t('jobs:completion.sendFailed', { error: err.message }) })
+    } finally {
+      setCompletionSending(false)
+    }
+  }
+
+  async function handleMarkLostFromDetail() {
+    const reason = window.prompt(t('jobs:lost.reasonPrompt'))
+    if (reason === null) return
+    try {
+      await markProjectLost(supabase, {
+        projectId,
+        clientId: project?.client_id ?? null,
+        companyId: company?.id ?? null,
+        reason,
+      })
+      refetch()
+    } catch (err) {
+      alert(t('jobs:lost.markFailed', { error: err.message }))
+    }
+  }
 
   // Collected = the payments ledger on this job's non-void invoices — the
   // same definition Reports and the money map use.
@@ -320,6 +366,65 @@ export default function ProjectDetailPage() {
                 style={{ padding: '4px 8px', fontSize: 13, border: '1px solid var(--color-border)', borderRadius: 4, background: 'var(--color-bg)', color: 'var(--color-text)' }}
               />
             </div>
+            {/* Follow-up: editable on any job; the dashboard lists due ones */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: 11, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('jobs:followUp.dateLabel')}</label>
+              <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                <input
+                  type="date"
+                  value={project.follow_up_at || ''}
+                  onChange={async (e) => {
+                    const val = e.target.value || null
+                    try { await updateProject(projectId, { follow_up_at: val }); refetch() }
+                    catch (err) { console.error('Failed to save follow-up date:', err) }
+                  }}
+                  style={{ padding: '4px 8px', fontSize: 13, border: '1px solid var(--color-border)', borderRadius: 4, background: 'var(--color-bg)', color: 'var(--color-text)' }}
+                />
+                {project.follow_up_at && (
+                  <button
+                    onClick={async () => { try { await updateProject(projectId, { follow_up_at: null }); refetch() } catch { /* noop */ } }}
+                    style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: 14, padding: 2 }}
+                    title={t('jobs:followUp.clear')}
+                  >×</button>
+                )}
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 180 }}>
+              <label style={{ fontSize: 11, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('jobs:followUp.noteLabel')}</label>
+              <input
+                type="text"
+                defaultValue={project.follow_up_note || ''}
+                onBlur={async (e) => {
+                  const val = e.target.value.trim() || null
+                  if (val === (project.follow_up_note || null)) return
+                  try { await updateProject(projectId, { follow_up_note: val }); refetch() }
+                  catch (err) { console.error('Failed to save follow-up note:', err) }
+                }}
+                style={{ padding: '4px 8px', fontSize: 13, border: '1px solid var(--color-border)', borderRadius: 4, background: 'var(--color-bg)', color: 'var(--color-text)' }}
+              />
+            </div>
+          </div>
+
+          {/* Completion notice + lost controls */}
+          <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+            <button
+              onClick={handleSendCompletionNotice}
+              disabled={completionSending}
+              style={{ fontSize: 12, fontWeight: 600, padding: '6px 12px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', color: 'var(--color-primary)', cursor: 'pointer', opacity: completionSending ? 0.6 : 1 }}
+            >{completionSending ? t('jobs:completion.sending') : t('jobs:completion.sendNotice')}</button>
+            {project.completion_notice_pending && (
+              <span style={{ fontSize: 12, color: 'var(--color-warning, #d97706)', fontWeight: 600 }}>{t('jobs:completion.pending')}</span>
+            )}
+            {completionMsg && <span style={{ fontSize: 12, color: completionMsg.ok ? 'var(--color-success)' : 'var(--color-danger)' }}>{completionMsg.text}</span>}
+            {project.status !== 'lost' && (
+              <button
+                onClick={handleMarkLostFromDetail}
+                style={{ fontSize: 12, fontWeight: 600, padding: '6px 12px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', color: 'var(--color-text-muted)', cursor: 'pointer' }}
+              >{t('jobs:lost.markLost')}</button>
+            )}
+            {project.status === 'lost' && (
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-danger, #dc2626)' }}>{t('jobs:lost.badge')}</span>
+            )}
           </div>
 
           {/* Money header: contract + approved COs = current value · billed · collected */}
@@ -618,6 +723,9 @@ export default function ProjectDetailPage() {
                     </div>
                     {est.title && (
                       <span style={{ fontSize: 11, color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>{est.estimate_number}</span>
+                    )}
+                    {est.status === 'declined' && est.decline_reason && (
+                      <span style={{ fontSize: 12, color: 'var(--color-danger, #dc2626)' }}>{est.decline_reason}</span>
                     )}
                   </div>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>

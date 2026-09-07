@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Download, Send, CheckCircle, XCircle, Edit, Trash2, RotateCcw, Pencil } from 'lucide-react'
@@ -104,6 +104,16 @@ export default function InvoiceDetailPage() {
 
   // For PDF: fetch project + client + company data
   const [pdfLoading, setPdfLoading] = useState(false)
+
+  // Completion notice pending on the job: the notice sends with this invoice.
+  const [noticePending, setNoticePending] = useState(false)
+  useEffect(() => {
+    if (!invoice?.project_id) { setNoticePending(false); return }
+    let cancelled = false
+    supabase.from('projects').select('completion_notice_pending').eq('id', invoice.project_id).maybeSingle()
+      .then(({ data }) => { if (!cancelled) setNoticePending(!!data?.completion_notice_pending) })
+    return () => { cancelled = true }
+  }, [invoice?.project_id])
 
   async function fetchPdfData() {
     if (!invoice) return null
@@ -392,6 +402,9 @@ export default function InvoiceDetailPage() {
               <div style={{ fontSize: 13, color: 'var(--color-danger, #dc2626)', margin: '4px 0' }}>{numberError}</div>
             )}
             {invoice.title && <div className={styles.invTitle}>{invoice.title}</div>}
+            {status === 'draft' && noticePending && (
+              <div style={{ fontSize: 13, color: 'var(--color-warning, #d97706)', fontWeight: 600, margin: '4px 0' }}>{t('invoices:detail.completionNoticePending')}</div>
+            )}
             <div className={styles.dates}>
               <span>{t('invoices:detail.issued', { date: fmtDate(invoice.created_at) })}</span>
               {invoice.due_date && <span> &middot; {t('invoices:detail.due', { date: fmtDate(invoice.due_date) })}</span>}

@@ -5,6 +5,7 @@ const DEFAULTS = Object.freeze({
   time_format: '12h',
   first_day_of_week: 'sunday',
   measurement_units: 'imperial',
+  email_client: 'system',
 });
 
 export function detectBrowserTimezone() {
@@ -24,6 +25,7 @@ export function resolveUserPrefs(userProfile) {
     time_format: p.time_format || DEFAULTS.time_format,
     first_day_of_week: p.first_day_of_week || DEFAULTS.first_day_of_week,
     measurement_units: p.measurement_units || DEFAULTS.measurement_units,
+    email_client: p.email_client || DEFAULTS.email_client,
   };
 }
 
@@ -54,6 +56,11 @@ export const PREF_OPTIONS = Object.freeze({
   first_day_of_week: [
     { value: 'sunday', label: 'Sunday' },
     { value: 'monday', label: 'Monday' },
+  ],
+  email_client: [
+    { value: 'system', label: 'System default' },
+    { value: 'gmail', label: 'Gmail on the web' },
+    { value: 'outlook', label: 'Outlook on the web' },
   ],
   measurement_units: [
     { value: 'imperial', label: 'Imperial (ft, in)' },

@@ -43,13 +43,15 @@ function periodLabel(period) {
   return r.from ? `${r.from} to ${r.to}` : 'All time'
 }
 
-// Job picker options: working jobs first, then complete and archived jobs in
-// a "Closed jobs" group. Nothing is excluded.
+// Job picker options: working jobs first, then closed jobs (complete,
+// archived, lost) in their own group. Declined stays working: an open bid can
+// still take hours. Nothing is excluded.
+const CLOSED_JOB_STATUSES = new Set(['complete', 'archived', 'lost'])
 function JobPickerOptions({ projects, withClient = true }) {
   const { t } = useTranslation()
   const label = (p) => (withClient && p.client_name ? `${p.name} — ${p.client_name}` : p.name)
-  const working = projects.filter(p => p.status !== 'complete' && p.status !== 'archived')
-  const closed = projects.filter(p => p.status === 'complete' || p.status === 'archived')
+  const working = projects.filter(p => !CLOSED_JOB_STATUSES.has(p.status))
+  const closed = projects.filter(p => CLOSED_JOB_STATUSES.has(p.status))
   return (
     <>
       {working.map(p => <option key={p.id} value={p.id}>{label(p)}</option>)}

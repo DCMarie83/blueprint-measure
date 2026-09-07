@@ -579,7 +579,9 @@
       "requestChangesTitle": "Solicitar cambios",
       "whatChanged": "¿Qué te gustaría cambiar?",
       "changesPlaceholder": "Describe los cambios que te gustaría...",
-      "sendRequest": "Enviar solicitud"
+      "sendRequest": "Enviar solicitud",
+      "changesRequestedRevising": "Cambios solicitados el {{date}}. {{company}} está revisando esta cotización.",
+      "yourContractor": "tu contratista"
     },
     "gcReview": {
       "errors": {
@@ -712,7 +714,9 @@
       "measurementUnits": "Unidades de medida",
       "measurementUnitsHint": "Afecta cómo se muestran los planos y las cotizaciones.",
       "saving": "Guardando…",
-      "savePreferences": "Guardar preferencias"
+      "savePreferences": "Guardar preferencias",
+      "emailClient": "Abrir enlaces de correo en",
+      "emailClientHint": "Se aplica a los enlaces de correo en toda la app."
     },
     "notifications": {
       "banner": "Los controles de notificaciones se activan con la facturación. Podrás elegir qué recibes y dónde.",
@@ -863,7 +867,8 @@
       "noInvoices": "Este cliente aún no tiene facturas.",
       "estimatesCount": "Cotizaciones ({{count}})",
       "noEstimates": "Este cliente aún no tiene cotizaciones.",
-      "paidAmount": "cobrado {{amount}}"
+      "paidAmount": "cobrado {{amount}}",
+      "text": "Mensaje"
     },
     "form": {
       "streetPlaceholder": "Dirección de la calle",
@@ -990,7 +995,10 @@
       "portalUpdates": "Recibe actualizaciones del portal",
       "notes": "Notas",
       "primary": "Principal",
-      "portal": "Portal"
+      "portal": "Portal",
+      "copyEmail": "Copiar correo",
+      "copyPhone": "Copiar teléfono",
+      "textAction": "Enviar mensaje de texto"
     },
     "card": {
       "confirmUnlink": "¿Desvincular este cliente de este trabajo?",
@@ -1231,7 +1239,8 @@
         "mailed": "Por correo postal",
         "text": "Por mensaje de texto",
         "other": "Otro"
-      }
+      },
+      "completionNoticePending": "Aviso de finalización pendiente; se envía con esta factura."
     },
     "payment": {
       "methodsHeading": "Métodos de pago",
@@ -1889,6 +1898,17 @@
       "yesterday": "Ayer",
       "daysAgo": "hace {{count}}d",
       "weeksAgo": "hace {{count}}sem"
+    },
+    "followUps": {
+      "title": "Seguimientos ({{count}})"
+    },
+    "clientResponses": {
+      "title": "Respuestas de clientes",
+      "status": {
+        "accepted": "Aceptada",
+        "declined": "Rechazada",
+        "changes_requested": "Cambios solicitados"
+      }
     }
   },
   "jobs": {
@@ -1908,7 +1928,8 @@
     },
     "view": {
       "kanban": "Vista Kanban",
-      "list": "Vista de lista"
+      "list": "Vista de lista",
+      "lost": "Perdidos"
     },
     "column": {
       "emptyDrop": "Suelta un trabajo aquí"
@@ -1921,7 +1942,9 @@
       "estimatesCount_one": "{{count}} cotización",
       "estimatesCount_other": "{{count}} cotizaciones",
       "invoicesCount_one": "{{count}} factura",
-      "invoicesCount_other": "{{count}} facturas"
+      "invoicesCount_other": "{{count}} facturas",
+      "changesRequested": "Cambios solicitados",
+      "followUp": "Seguimiento {{date}}"
     },
     "label": {
       "updated": "Actualizado {{time}}"
@@ -1954,7 +1977,8 @@
       "enablePortal": "Activar el portal del cliente e incluir el enlace",
       "scheduledFor": "Inicio programado: {{date}}",
       "createFinalInvoice": "¿Crear la factura final ahora?",
-      "emailFailed": "La tarjeta se movió. El correo al cliente no se envió: {{error}}"
+      "emailFailed": "La tarjeta se movió. El correo al cliente no se envió: {{error}}",
+      "notifyWithInvoice": "Enviar el aviso de finalización con la factura final"
     },
     "errors": {
       "moveFailed": "No se pudo mover el trabajo: {{error}}",
@@ -2065,7 +2089,8 @@
       "deposit_received": "Depósito recibido",
       "scheduled": "Programado",
       "in_progress": "En progreso",
-      "complete": "Completado"
+      "complete": "Completado",
+      "declined": "Rechazado"
     },
     "import": {
       "button": "Importar",
@@ -2178,6 +2203,52 @@
       "empty": "Este trabajo aún no tiene horas registradas.",
       "hours": "{{hours}} h",
       "unknownCrew": "Trabajador desconocido"
+    },
+    "window": {
+      "label": "Rango",
+      "days30": "Últimos 30 días",
+      "days90": "Últimos 90 días",
+      "days180": "Últimos 180 días",
+      "all": "Todo",
+      "custom": "Fechas personalizadas",
+      "showing": "Mostrando {{shown}} de {{total}} trabajos ({{range}})",
+      "range": {
+        "30": "últimos 30 días",
+        "90": "últimos 90 días",
+        "180": "últimos 180 días",
+        "all": "todo",
+        "custom": "rango personalizado"
+      }
+    },
+    "lost": {
+      "markLost": "Marcar perdido",
+      "markFailed": "No se pudo marcar el trabajo como perdido: {{error}}",
+      "promptTitle": "¿Marcar este trabajo como perdido?",
+      "reasonOptional": "Motivo (opcional)",
+      "reasonPrompt": "¿Por qué se perdió este trabajo? (opcional)",
+      "empty": "No hay trabajos perdidos.",
+      "reopen": "Reabrir",
+      "reopenFailed": "No se pudo reabrir el trabajo: {{error}}",
+      "badge": "Perdido",
+      "col": {
+        "job": "Trabajo",
+        "client": "Cliente",
+        "lastQuote": "Última cotización",
+        "lostDate": "Fecha de pérdida",
+        "reason": "Motivo"
+      }
+    },
+    "followUp": {
+      "dateLabel": "Seguimiento",
+      "noteLabel": "Nota de seguimiento",
+      "clear": "Quitar seguimiento"
+    },
+    "completion": {
+      "sendNotice": "Enviar aviso de finalización",
+      "sending": "Enviando...",
+      "pending": "Aviso de finalización pendiente",
+      "sent": "Aviso de finalización enviado",
+      "sendFailed": "El aviso de finalización no se envió: {{error}}"
     }
   },
   "estimates": {
@@ -2260,7 +2331,24 @@
       "ofTotal": "del total",
       "termsConditions": "Términos y condiciones",
       "termsPlaceholder": "Calendario de depósitos, términos de pago, garantía, política de cancelación...",
-      "deleteEstimate": "Eliminar cotización"
+      "deleteEstimate": "Eliminar cotización",
+      "declinedTitle": "Rechazada por el cliente",
+      "followUpOn": "Seguimiento el",
+      "followUpNote": "Nota",
+      "statusPrompt": {
+        "accepted": {
+          "title": "¿Quién aceptó esta cotización?",
+          "placeholder": "Nombre"
+        },
+        "declined": {
+          "title": "¿Por qué fue rechazada?",
+          "placeholder": "Motivo"
+        },
+        "changes_requested": {
+          "title": "¿Qué cambios pidió el cliente?",
+          "placeholder": "Comentario"
+        }
+      }
     },
     "send": {
       "sendFailed": "No se pudo enviar la cotización",

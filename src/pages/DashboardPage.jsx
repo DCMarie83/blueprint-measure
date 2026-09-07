@@ -5,6 +5,8 @@ import QuickActionsRow from '../components/dashboard/QuickActionsRow'
 import GettingStartedChecklist from '../components/dashboard/GettingStartedChecklist'
 import PipelinePreview from '../components/dashboard/PipelinePreview'
 import StatsTiles from '../components/dashboard/StatsTiles'
+import FollowUpsWidget from '../components/dashboard/FollowUpsWidget'
+import ClientResponsesWidget from '../components/dashboard/ClientResponsesWidget'
 import RecentActivity from '../components/dashboard/RecentActivity'
 import ContinueWorking from '../components/dashboard/ContinueWorking'
 import TipsPanel from '../components/dashboard/TipsPanel'
@@ -44,6 +46,8 @@ export default function DashboardPage() {
             {isNewUser && checklist && !checklist.allComplete && (
               <GettingStartedChecklist checklist={checklist} />
             )}
+            <ClientResponsesWidget />
+            <FollowUpsWidget />
             {pipeline && <PipelinePreview pipeline={pipeline} hasZeroJobs={hasZeroJobs} />}
             <ContinueWorking />
             {stats && <StatsTiles stats={stats} />}

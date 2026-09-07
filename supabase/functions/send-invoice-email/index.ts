@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
 
     const { data: project, error: projErr } = await adminClient
       .from('projects')
-      .select('id, name, address, client_id, company_id')
+      .select('id, name, address, client_id, company_id, completion_notice_pending')
       .eq('id', invoice.project_id)
       .single()
     if (projErr || !project) return json({ error: 'Project not found' }, 404)
@@ -167,10 +167,19 @@ Deno.serve(async (req) => {
       ? `<a href="${portalUrl}" style="display: inline-block; margin: 16px 0; padding: 14px 28px; background: ${tenantPrimary}; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px;">View Invoice Online</a>`
       : ''
 
+    // Pending completion notice rides this invoice email instead of a
+    // separate status email; the flag clears after a successful send.
+    const completionBanner = project.completion_notice_pending
+      ? `<p style="font-size: 15px; color: #1b2426; line-height: 1.5; padding: 12px 16px; background: #f0faf1; border-left: 3px solid #16a34a; border-radius: 8px;">
+          Your project <strong>${escapeHtml(project.name)}</strong> is complete. Thank you for choosing ${escapeHtml(companyName)}. Your final invoice is below.
+        </p>`
+      : ''
+
     const html = `
       <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
         ${logoHtml}
         <h2 style="color: ${tenantPrimary}; margin: 0 0 16px 0;">${escapeHtml(companyName)}</h2>
+        ${completionBanner}
         <p style="font-size: 15px; color: #1b2426; line-height: 1.5;">
           You've received an invoice: <strong>${escapeHtml(invTitle)}</strong>
         </p>
@@ -215,6 +224,14 @@ Deno.serve(async (req) => {
       const errText = await resendRes.text()
       console.error('Resend failed', errText)
       return json({ error: 'Email send failed' }, 502)
+    }
+
+    // Completion notice delivered with this invoice: clear the pending flag.
+    if (project.completion_notice_pending) {
+      await adminClient
+        .from('projects')
+        .update({ completion_notice_pending: false, updated_at: new Date().toISOString() })
+        .eq('id', project.id)
     }
 
     // 10. Update invoice status (draft → sent)

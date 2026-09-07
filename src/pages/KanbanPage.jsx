@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Plus, Columns3, List, Upload } from 'lucide-react'
+import { Plus, Columns3, List, Upload, XCircle } from 'lucide-react'
 import {
   DndContext, DragOverlay, useDroppable,
   useSensor, useSensors, PointerSensor, TouchSensor, KeyboardSensor,
@@ -20,6 +20,7 @@ import { useJobMoneyMap } from '../hooks/useJobMoneyMap'
 import FloatingScrollbar from '../components/common/FloatingScrollbar'
 import JobsListView, { DOT_COLORS } from '../components/jobs/JobsListView'
 import JobsFilterBar from '../components/jobs/JobsFilterBar'
+import LostJobsView, { markProjectLost } from '../components/jobs/LostJobsView'
 import { useOpportunities } from '../hooks/useOpportunities'
 import { useProjects } from '../hooks/useProjects'
 import { resolveColumnLabel } from '../lib/kanbanColumnLabel'
@@ -89,7 +90,12 @@ function CardMoneyStrip({ project, money }) {
   )
 }
 
-function SortableJobCard({ project, columnId, accent, money }) {
+function truncate(text, max = 70) {
+  const s = String(text || '').trim()
+  return s.length > max ? s.slice(0, max - 1) + '…' : s
+}
+
+function SortableJobCard({ project, columnId, columnKey, accent, money, onMarkLost }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -97,6 +103,7 @@ function SortableJobCard({ project, columnId, accent, money }) {
     data: { columnId, project },
   })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.3 : 1, borderTop: `3px solid ${accent}` }
+  const response = money?.latestResponse
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}
@@ -106,13 +113,35 @@ function SortableJobCard({ project, columnId, accent, money }) {
       <div className={styles.cardMeta}>
         <span>{t('jobs:label.updated', { time: timeAgo(project.updated_at, t) })}</span>
       </div>
+      {/* Client response chips: changes requested (any column) / declined info */}
+      {response?.type === 'changes_requested' && (
+        <div style={{ marginTop: 4, fontSize: 11, fontWeight: 600, color: '#F27243' }}>
+          {t('jobs:card.changesRequested')}{response.text ? `: ${truncate(response.text)}` : ''}
+        </div>
+      )}
+      {columnKey === 'declined' && (
+        <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {response?.type === 'declined' && response.text && (
+            <div style={{ fontSize: 11, color: 'var(--color-danger, #dc2626)' }}>{truncate(response.text)}</div>
+          )}
+          {project.follow_up_at && (
+            <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+              {t('jobs:card.followUp', { date: new Date(project.follow_up_at + 'T00:00:00').toLocaleDateString() })}
+            </div>
+          )}
+          <button
+            onClick={(e) => { e.stopPropagation(); onMarkLost?.(project) }}
+            style={{ alignSelf: 'flex-start', marginTop: 2, fontSize: 11, fontWeight: 600, padding: '2px 8px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-pill, 9999px)', color: 'var(--color-text-muted)', cursor: 'pointer' }}
+          >{t('jobs:lost.markLost')}</button>
+        </div>
+      )}
       <CardRecordChips money={money} />
       <CardMoneyStrip project={project} money={money} />
     </div>
   )
 }
 
-function DroppableColumn({ column, moneyMap }) {
+function DroppableColumn({ column, moneyMap, onMarkLost }) {
   const { t } = useTranslation()
   const { setNodeRef, isOver } = useDroppable({ id: column.id, data: { columnId: column.id } })
   // Reuse the jobs list-view positional palette so the card top-accent matches
@@ -128,7 +157,7 @@ function DroppableColumn({ column, moneyMap }) {
         <div className={styles.cardList}>
           {column.projects.length === 0 ? (
             <div className={styles.emptyColumn}>{t('jobs:column.emptyDrop')}</div>
-          ) : column.projects.map(p => <SortableJobCard key={p.id} project={p} columnId={column.id} accent={accent} money={moneyMap?.get(p.id)} />)}
+          ) : column.projects.map(p => <SortableJobCard key={p.id} project={p} columnId={column.id} columnKey={column.column_key} accent={accent} money={moneyMap?.get(p.id)} onMarkLost={onMarkLost} />)}
         </div>
       </SortableContext>
     </div>
@@ -150,12 +179,42 @@ function DragCardDisplay({ project }) {
 const VIEW_OPTIONS = [
   { value: 'kanban', icon: Columns3, label: 'jobs:view.kanban' },
   { value: 'list', icon: List, label: 'jobs:view.list' },
+  { value: 'lost', icon: XCircle, label: 'jobs:view.lost' },
 ]
+
+// Board window: jobs with updated_at inside the range load; the rest stay in
+// the database. Persisted for the session like the invoice sort.
+const JOBS_WINDOW_KEY = 'rivetdog_jobs_window'
+const WINDOW_CHOICES = ['30', '90', '180', 'all', 'custom']
+
+function loadWindowPref() {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(JOBS_WINDOW_KEY) || 'null')
+    if (saved && WINDOW_CHOICES.includes(saved.choice)) return saved
+  } catch { /* ignore */ }
+  return { choice: '90', from: '', to: '' }
+}
+
+function windowFromChoice({ choice, from, to }) {
+  if (choice === 'all') return { windowFrom: null, windowTo: null }
+  if (choice === 'custom') return { windowFrom: from || null, windowTo: to || null }
+  const days = Number(choice)
+  const d = new Date()
+  d.setDate(d.getDate() - days)
+  return { windowFrom: d.toISOString().slice(0, 10), windowTo: null }
+}
 
 export default function KanbanPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { columns, loading, error, moveProject, refetch } = useOpportunities()
+  const [windowPref, setWindowPref] = useState(loadWindowPref)
+  const { windowFrom, windowTo } = windowFromChoice(windowPref)
+  const { columns, totalCount, loading, error, moveProject, refetch } = useOpportunities({ windowFrom, windowTo })
+
+  function updateWindowPref(next) {
+    setWindowPref(next)
+    try { sessionStorage.setItem(JOBS_WINDOW_KEY, JSON.stringify(next)) } catch { /* ignore */ }
+  }
   const { createProject } = useProjects()
   const { createEstimate } = useEstimates()
   const { clients } = useClients()
@@ -177,6 +236,31 @@ export default function KanbanPage() {
   const [dlgError, setDlgError] = useState(null)
   // Inline board notice: the card moved but the client email did not send.
   const [moveNotice, setMoveNotice] = useState(null)
+
+  // Mark lost prompt (from a Declined-column card): optional reason.
+  const [lostPrompt, setLostPrompt] = useState(null) // { projectId, name, clientId }
+  const [lostReason, setLostReason] = useState('')
+  const [lostSaving, setLostSaving] = useState(false)
+
+  async function handleMarkLost() {
+    if (!lostPrompt) return
+    setLostSaving(true)
+    try {
+      await markProjectLost(supabase, {
+        projectId: lostPrompt.projectId,
+        clientId: lostPrompt.clientId,
+        companyId: effectiveCompanyId,
+        reason: lostReason,
+      })
+      setLostPrompt(null)
+      setLostReason('')
+      await refetch()
+    } catch (err) {
+      alert(t('jobs:lost.markFailed', { error: err.message || t('common:misc.unknownError') }))
+    } finally {
+      setLostSaving(false)
+    }
+  }
 
   // Filters
   const [search, setSearch] = useState('')
@@ -318,6 +402,10 @@ export default function KanbanPage() {
       if (statusType === 'in_progress' && dlg.completionDate) {
         projectPatch.estimated_completion = new Date(dlg.completionDate + 'T17:00:00').toISOString()
       }
+      // Complete + final invoice: no email at move time — the completion
+      // notice rides the invoice email instead (pending flag on the job).
+      const deferNotice = statusType === 'complete' && dlg.createInvoice
+      if (deferNotice && willNotify) projectPatch.completion_notice_pending = true
       if (Object.keys(projectPatch).length > 0) {
         const { error: patchErr } = await supabase.from('projects').update(projectPatch).eq('id', projectId)
         if (patchErr) console.error('Move detail write failed', patchErr)
@@ -325,7 +413,7 @@ export default function KanbanPage() {
 
       // Client notification: awaited, so a failure surfaces on the board.
       let emailFailed = null
-      if (willNotify) {
+      if (willNotify && !deferNotice) {
         const payload = {
           amount: statusType === 'deposit_received' ? Number(dlg.amount) || 0 : undefined,
           window: statusType === 'scheduled' && dlg.windowText.trim() ? dlg.windowText.trim() : undefined,
@@ -437,11 +525,20 @@ export default function KanbanPage() {
               typeFilter={typeFilter} onTypeChange={setTypeFilter}
               ownerFilter={ownerFilter} onOwnerChange={setOwnerFilter} ownerOptions={ownerOptions}
               clientFilter={clientFilter} onClientChange={setClientFilter} clientOptions={clientOptions}
+              windowChoice={windowPref.choice}
+              onWindowChange={choice => updateWindowPref({ ...windowPref, choice })}
+              customFrom={windowPref.from} customTo={windowPref.to}
+              onCustomFromChange={from => updateWindowPref({ ...windowPref, from })}
+              onCustomToChange={to => updateWindowPref({ ...windowPref, to })}
               onClearAll={clearAll} hasActiveFilters={hasActiveFilters}
             />
-            {hasActiveFilters && (
-              <div className={styles.filterCount}>{t('jobs:filterCount', { shown: filteredProjects.length, total: totalProjects })}</div>
-            )}
+            <div className={styles.filterCount}>
+              {t('jobs:window.showing', {
+                shown: hasActiveFilters ? filteredProjects.length : totalProjects,
+                total: totalCount,
+                range: t('jobs:window.range.' + windowPref.choice),
+              })}
+            </div>
             {moveNotice && (
               <div role="alert" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, margin: '0 0 12px', padding: '10px 14px', background: 'var(--color-danger-bg, rgba(220,38,38,0.08))', border: '1px solid var(--color-danger, #dc2626)', borderRadius: 'var(--radius-md)', fontSize: 13, color: 'var(--color-danger, #dc2626)' }}>
                 <span>{moveNotice}</span>
@@ -456,7 +553,7 @@ export default function KanbanPage() {
                     onDragCancel={() => setActiveId(null)}
                     onDragEnd={handleDragEnd}>
                     <div className={styles.board}>
-                      {filteredColumns.map(col => <DroppableColumn key={col.id} column={col} moneyMap={moneyMap} />)}
+                      {filteredColumns.map(col => <DroppableColumn key={col.id} column={col} moneyMap={moneyMap} onMarkLost={p => setLostPrompt({ projectId: p.id, name: p.name, clientId: p.client_id })} />)}
                     </div>
                     <DragOverlay>
                       {activeProject ? <DragCardDisplay project={activeProject} /> : null}
@@ -465,6 +562,8 @@ export default function KanbanPage() {
                 </div>
                 <FloatingScrollbar targetRef={boardScrollRef} />
               </>
+            ) : view === 'lost' ? (
+              <LostJobsView companyId={effectiveCompanyId} refreshBoard={refetch} />
             ) : (
               <JobsListView
                 projects={filteredProjects}
@@ -476,6 +575,24 @@ export default function KanbanPage() {
           </>
         )}
       </main>
+
+      {lostPrompt && (
+        <Modal onClose={() => { setLostPrompt(null); setLostReason('') }}>
+          <div style={{ padding: 24, maxWidth: 400 }}>
+            <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 18, marginBottom: 8 }}>{t('jobs:lost.promptTitle')}</h3>
+            <p style={{ fontSize: 14, color: 'var(--color-text-muted)', lineHeight: 1.5, marginBottom: 12 }}>{lostPrompt.name}</p>
+            <label style={{ display: 'block', marginBottom: 16 }}>
+              <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 4 }}>{t('jobs:lost.reasonOptional')}</span>
+              <textarea rows={2} value={lostReason} onChange={e => setLostReason(e.target.value)}
+                style={{ width: '100%', padding: '7px 10px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-bg)', color: 'var(--color-text)', fontSize: 14, resize: 'vertical' }} />
+            </label>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => { setLostPrompt(null); setLostReason('') }} style={{ padding: '8px 16px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontSize: 13, color: 'var(--color-text)' }}>{t('common:action.cancel')}</button>
+              <button onClick={handleMarkLost} disabled={lostSaving} style={{ padding: '8px 16px', background: 'var(--color-danger, #dc2626)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontSize: 13, fontWeight: 600, opacity: lostSaving ? 0.6 : 1 }}>{lostSaving ? '…' : t('jobs:lost.markLost')}</button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {showNewJob && (
         <Modal title={t('jobs:newJobModalTitle')} onClose={() => setShowNewJob(false)}>
@@ -571,7 +688,9 @@ export default function KanbanPage() {
             {pendingMove.hasEmail && (
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer', marginBottom: 20 }}>
                 <input type="checkbox" checked={notifyClient} onChange={e => setNotifyClient(e.target.checked)} />
-                {t('jobs:moveModal.notify', { client: pendingMove.clientName || t('jobs:moveModal.clientFallback') })}
+                {pendingMove.statusType === 'complete' && dlg.createInvoice
+                  ? t('jobs:moveModal.notifyWithInvoice')
+                  : t('jobs:moveModal.notify', { client: pendingMove.clientName || t('jobs:moveModal.clientFallback') })}
               </label>
             )}
             {dlgError && (

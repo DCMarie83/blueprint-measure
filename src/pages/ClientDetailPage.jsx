@@ -1,13 +1,15 @@
 import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Home, Building2, HardHat, Mail, Phone, FileText, Briefcase, Trash2, Edit, DollarSign, Clock, Tag, Globe, ChevronDown, ChevronRight } from 'lucide-react'
+import { Home, Building2, HardHat, Mail, Phone, MessageSquare, FileText, Briefcase, Trash2, Edit, DollarSign, Clock, Tag, Globe, ChevronDown, ChevronRight } from 'lucide-react'
 import BackLink from '../components/BackLink'
 import Modal from '../components/ui/Modal'
 import ClientForm from '../components/clients/ClientForm'
 import ClientLogoUpload from '../components/clients/ClientLogoUpload'
 import ClientAddressEditor from '../components/clients/ClientAddressEditor'
 import ClientContactsSection from '../components/clients/ClientContactsSection'
+import { useUserPrefs } from '../hooks/useUserPrefs'
+import { buildEmailLink, emailLinkTarget } from '../lib/emailLink'
 import ClientActivitySection from '../components/clients/ClientActivitySection'
 import DocumentsSection from '../components/documents/DocumentsSection'
 import InvoiceStatusBadge from '../components/invoices/InvoiceStatusBadge'
@@ -76,6 +78,7 @@ const actionBtn = { display: 'inline-flex', alignItems: 'center', gap: 6, paddin
 
 export default function ClientDetailPage() {
   const { t } = useTranslation()
+  const prefs = useUserPrefs()
   const { id } = useParams()
   const navigate = useNavigate()
   const { client, contacts, projects, invoices, estimates, documents, loading, error, refetch, addContact, updateContact, deleteContact } = useClient(id)
@@ -189,7 +192,8 @@ export default function ClientDetailPage() {
         {/* Pinned quick actions */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
           {client.primary_phone && <a style={actionBtn} href={`tel:${client.primary_phone}`} onClick={() => track('call')}><Phone size={14} /> {t('clients:detail.call')}</a>}
-          {client.primary_email && <a style={actionBtn} href={`mailto:${client.primary_email}`} onClick={() => track('email')}><Mail size={14} /> {t('clients:detail.email')}</a>}
+          {client.primary_phone && <a style={actionBtn} href={`sms:${client.primary_phone}`} onClick={() => track('text')}><MessageSquare size={14} /> {t('clients:detail.text')}</a>}
+          {client.primary_email && <a style={actionBtn} href={buildEmailLink(prefs, client.primary_email)} target={emailLinkTarget(prefs)} rel="noopener noreferrer" onClick={() => track('email')}><Mail size={14} /> {t('clients:detail.email')}</a>}
           <button style={actionBtn} onClick={handleNewEstimate}><FileText size={14} /> {t('clients:detail.newEstimate')}</button>
           <button style={actionBtn} onClick={handleNewJob}><Briefcase size={14} /> {t('clients:detail.newJob')}</button>
         </div>

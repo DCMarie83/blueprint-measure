@@ -216,6 +216,7 @@ export function dueDateFromTerms(invoiceDate, billingTerms) {
 // | in_progress | complete | archived | active.
 export const PROJECT_STATUSES = new Set([
   'new_lead', 'estimating', 'estimate_sent', 'approved', 'in_progress', 'complete', 'archived', 'active',
+  'declined', 'lost',
 ])
 
 export function normalizeProjectStatus(value) {
@@ -227,6 +228,7 @@ export function normalizeProjectStatus(value) {
 export function deriveProjectStatusFromColumn(columnKey) {
   switch (columnKey) {
     case 'complete': return 'complete'
+    case 'declined': return 'declined'
     case 'in_progress': return 'in_progress'
     case 'sent_to_client': return 'estimate_sent'
     case 'accepted':
@@ -242,7 +244,7 @@ export function deriveProjectStatusFromColumn(columnKey) {
 // lazy-loaded, so a static map keeps resolution language-independent).
 export const BASE_COLUMN_KEYS = [
   'measurements_estimates', 'job_costing', 'review', 'sent_to_client', 'accepted',
-  'deposit_received', 'scheduled', 'in_progress', 'complete',
+  'deposit_received', 'scheduled', 'in_progress', 'complete', 'declined',
 ]
 
 const COLUMN_LABEL_TO_KEY = {
@@ -267,6 +269,8 @@ const COLUMN_LABEL_TO_KEY = {
   'en progreso': 'in_progress',
   'complete': 'complete',
   'completado': 'complete',
+  'declined': 'declined',
+  'rechazado': 'declined',
 }
 
 export function resolveColumnKeyFromLabel(label) {

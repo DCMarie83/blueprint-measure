@@ -22,7 +22,7 @@ export function useDashboardData() {
       // Parallel queries
       const [companyRes, projectsRes, sessionsRes, profilesRes, columnsRes, clientsRes] = await Promise.all([
         supabase.from('companies').select('created_at, trade_vertical').eq('id', companyId).single(),
-        supabase.from('projects').select('id, name, address, status, created_at, updated_at, kanban_column_id, sessions(id, created_at)').eq('company_id', companyId).is('deleted_at', null).order('updated_at', { ascending: false }),
+        supabase.from('projects').select('id, name, address, status, created_at, updated_at, kanban_column_id, sessions(id, created_at)').eq('company_id', companyId).is('deleted_at', null).neq('status', 'lost').order('updated_at', { ascending: false }),
         supabase.from('sessions').select('id, project_name, project_id, created_at').eq(isImpersonating ? 'company_id' : 'user_id', isImpersonating ? companyId : user.id).order('created_at', { ascending: false }).limit(20),
         supabase.from('user_profiles').select('user_id').eq('company_id', companyId).is('deleted_at', null),
         supabase.from('kanban_columns').select('id, name, position, column_key').eq('company_id', companyId).order('position', { ascending: true }),

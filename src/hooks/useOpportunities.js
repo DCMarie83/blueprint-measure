@@ -3,10 +3,15 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useEffectiveCompany } from './useEffectiveCompany'
 
-export function useOpportunities() {
+// windowFrom / windowTo: ISO date strings bounding updated_at. Jobs outside
+// the window are not loaded. Lost jobs never load onto the board regardless
+// of window. totalCount counts every non-lost, non-deleted job so the board
+// can read "Showing N of M jobs".
+export function useOpportunities({ windowFrom = null, windowTo = null } = {}) {
   const { user } = useAuth()
   const { companyId } = useEffectiveCompany()
   const [columns, setColumns] = useState([])
+  const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -24,14 +29,23 @@ export function useOpportunities() {
 
       if (colErr) throw colErr
 
-      const { data: projData, error: projErr } = await supabase
+      let projQuery = supabase
         .from('projects')
         .select('*, sessions(id)')
         .eq('company_id', companyId)
         .is('deleted_at', null)
+        .neq('status', 'lost')
         .order('updated_at', { ascending: false })
+      if (windowFrom) projQuery = projQuery.gte('updated_at', windowFrom)
+      if (windowTo) projQuery = projQuery.lte('updated_at', windowTo + 'T23:59:59.999Z')
+      const [{ data: projData, error: projErr }, { count, error: countErr }] = await Promise.all([
+        projQuery,
+        supabase.from('projects').select('id', { count: 'exact', head: true })
+          .eq('company_id', companyId).is('deleted_at', null).neq('status', 'lost'),
+      ])
 
       if (projErr) throw projErr
+      if (countErr) throw countErr
 
       const projects = (projData ?? []).map(p => ({
         ...p,
@@ -45,12 +59,13 @@ export function useOpportunities() {
       }))
 
       setColumns(board)
+      setTotalCount(count ?? 0)
     } catch (err) {
       setError(err.message ?? 'Failed to load board')
     } finally {
       setLoading(false)
     }
-  }, [user, companyId])
+  }, [user, companyId, windowFrom, windowTo])
 
   useEffect(() => {
     fetchBoard()
@@ -100,5 +115,5 @@ export function useOpportunities() {
     return { error: null, column: toCol ?? null }
   }
 
-  return { columns, loading, error, refetch: fetchBoard, moveProject }
+  return { columns, totalCount, loading, error, refetch: fetchBoard, moveProject }
 }

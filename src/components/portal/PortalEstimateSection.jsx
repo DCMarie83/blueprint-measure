@@ -15,7 +15,7 @@ function fmtDate(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
-export default function PortalEstimateSection({ estimate, lineItems, portalToken }) {
+export default function PortalEstimateSection({ estimate, lineItems, portalToken, companyName }) {
   const { t } = useTranslation()
   const unitLabels = { sf: t('common:units.sf'), lf: t('common:units.lf'), each: t('common:units.each'), hour: t('common:units.hour'), lump_sum: t('common:units.lumpSum') }
   const [showAccept, setShowAccept] = useState(false)
@@ -44,6 +44,22 @@ export default function PortalEstimateSection({ estimate, lineItems, portalToken
     groups.push({ category: cat, items: catMap[cat] })
   }
 
+  // The contractor notification is the only signal the response was heard:
+  // retry the invoke once before giving up (in-app dashboard is the backstop).
+  async function invokeNotify() {
+    try {
+      const { error: fnErr } = await supabase.functions.invoke('notify-estimate-response', {
+        body: { estimate_id: estimate.id },
+      })
+      if (!fnErr) return
+    } catch { /* fall through to retry */ }
+    try {
+      await supabase.functions.invoke('notify-estimate-response', {
+        body: { estimate_id: estimate.id },
+      })
+    } catch { /* the dashboard Client responses widget still surfaces it */ }
+  }
+
   async function handleAccept() {
     setSubmitting(true)
     setError(null)
@@ -58,9 +74,7 @@ export default function PortalEstimateSection({ estimate, lineItems, portalToken
       setResponseStatus('accepted')
       setShowAccept(false)
 
-      supabase.functions.invoke('notify-estimate-response', {
-        body: { estimate_id: estimate.id },
-      }).catch(() => {})
+      invokeNotify()
     } catch (err) {
       setError(err.message || t('portal:estimate.errors.acceptFailed'))
     } finally {
@@ -81,9 +95,7 @@ export default function PortalEstimateSection({ estimate, lineItems, portalToken
       setResponseStatus('declined')
       setShowDecline(false)
 
-      supabase.functions.invoke('notify-estimate-response', {
-        body: { estimate_id: estimate.id },
-      }).catch(() => {})
+      invokeNotify()
     } catch (err) {
       setError(err.message || t('portal:estimate.errors.declineFailed'))
     } finally {
@@ -104,9 +116,7 @@ export default function PortalEstimateSection({ estimate, lineItems, portalToken
       setResponseStatus('changes_requested')
       setShowChanges(false)
 
-      supabase.functions.invoke('notify-estimate-response', {
-        body: { estimate_id: estimate.id },
-      }).catch(() => {})
+      invokeNotify()
     } catch (err) {
       setError(err.message || t('portal:estimate.errors.requestFailed'))
     } finally {
@@ -143,7 +153,15 @@ export default function PortalEstimateSection({ estimate, lineItems, portalToken
       {responseStatus === 'changes_requested' && (
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.12)', borderRadius: 8, padding: '12px 16px', margin: '12px 0', fontSize: 14, color: '#1b2426', lineHeight: 1.5 }}>
           <AlertCircle size={18} style={{ flexShrink: 0, marginTop: 1 }} />
-          <span>{t('portal:estimate.changesRequestedBanner')}</span>
+          <div>
+            <div>{t('portal:estimate.changesRequestedRevising', {
+              date: fmtDate(estimate.changes_requested_at || new Date().toISOString()),
+              company: companyName || t('portal:estimate.yourContractor'),
+            })}</div>
+            {(estimate.change_request_comment || changeComment) && (
+              <div style={{ marginTop: 6, fontStyle: 'italic', color: '#555' }}>{estimate.change_request_comment || changeComment}</div>
+            )}
+          </div>
         </div>
       )}
 

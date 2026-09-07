@@ -579,7 +579,9 @@
       "requestChangesTitle": "Request Changes",
       "whatChanged": "What would you like changed?",
       "changesPlaceholder": "Describe the changes you'd like...",
-      "sendRequest": "Send Request"
+      "sendRequest": "Send Request",
+      "changesRequestedRevising": "Changes requested on {{date}}. {{company}} is revising this estimate.",
+      "yourContractor": "your contractor"
     },
     "gcReview": {
       "errors": {
@@ -712,7 +714,9 @@
       "measurementUnits": "Measurement units",
       "measurementUnitsHint": "Affects blueprint and estimate displays.",
       "saving": "Saving…",
-      "savePreferences": "Save preferences"
+      "savePreferences": "Save preferences",
+      "emailClient": "Open email links in",
+      "emailClientHint": "Applies to email links across the app."
     },
     "notifications": {
       "banner": "Notification controls go live with billing. You'll be able to choose what you receive and where.",
@@ -863,7 +867,8 @@
       "noInvoices": "No invoices for this client yet.",
       "estimatesCount": "Estimates ({{count}})",
       "noEstimates": "No estimates for this client yet.",
-      "paidAmount": "paid {{amount}}"
+      "paidAmount": "paid {{amount}}",
+      "text": "Text"
     },
     "form": {
       "streetPlaceholder": "Street address",
@@ -990,7 +995,10 @@
       "portalUpdates": "Receives portal updates",
       "notes": "Notes",
       "primary": "Primary",
-      "portal": "Portal"
+      "portal": "Portal",
+      "copyEmail": "Copy email",
+      "copyPhone": "Copy phone",
+      "textAction": "Send a text"
     },
     "card": {
       "confirmUnlink": "Unlink this client from this job?",
@@ -1231,7 +1239,8 @@
         "mailed": "Mailed",
         "text": "Text message",
         "other": "Other"
-      }
+      },
+      "completionNoticePending": "Completion notice pending, sends with this invoice."
     },
     "payment": {
       "methodsHeading": "Payment Methods",
@@ -1889,6 +1898,17 @@
       "yesterday": "Yesterday",
       "daysAgo": "{{count}}d ago",
       "weeksAgo": "{{count}}w ago"
+    },
+    "followUps": {
+      "title": "Follow-ups ({{count}})"
+    },
+    "clientResponses": {
+      "title": "Client responses",
+      "status": {
+        "accepted": "Accepted",
+        "declined": "Declined",
+        "changes_requested": "Changes requested"
+      }
     }
   },
   "jobs": {
@@ -1908,7 +1928,8 @@
     },
     "view": {
       "kanban": "Kanban view",
-      "list": "List view"
+      "list": "List view",
+      "lost": "Lost"
     },
     "column": {
       "emptyDrop": "Drop a job here"
@@ -1921,7 +1942,9 @@
       "estimatesCount_one": "{{count}} estimate",
       "estimatesCount_other": "{{count}} estimates",
       "invoicesCount_one": "{{count}} invoice",
-      "invoicesCount_other": "{{count}} invoices"
+      "invoicesCount_other": "{{count}} invoices",
+      "changesRequested": "Changes requested",
+      "followUp": "Follow up {{date}}"
     },
     "label": {
       "updated": "Updated {{time}}"
@@ -1954,7 +1977,8 @@
       "enablePortal": "Enable the client portal and include the link",
       "scheduledFor": "Scheduled start: {{date}}",
       "createFinalInvoice": "Create the final invoice now?",
-      "emailFailed": "Card moved. The client email did not send: {{error}}"
+      "emailFailed": "Card moved. The client email did not send: {{error}}",
+      "notifyWithInvoice": "Send the completion notice with the final invoice"
     },
     "errors": {
       "moveFailed": "Could not move job: {{error}}",
@@ -2065,7 +2089,8 @@
       "deposit_received": "Deposit Received",
       "scheduled": "Scheduled",
       "in_progress": "In Progress",
-      "complete": "Complete"
+      "complete": "Complete",
+      "declined": "Declined"
     },
     "import": {
       "button": "Import",
@@ -2178,6 +2203,52 @@
       "empty": "No time logged on this job yet.",
       "hours": "{{hours}} h",
       "unknownCrew": "Unknown worker"
+    },
+    "window": {
+      "label": "Range",
+      "days30": "Last 30 days",
+      "days90": "Last 90 days",
+      "days180": "Last 180 days",
+      "all": "All time",
+      "custom": "Custom dates",
+      "showing": "Showing {{shown}} of {{total}} jobs ({{range}})",
+      "range": {
+        "30": "last 30 days",
+        "90": "last 90 days",
+        "180": "last 180 days",
+        "all": "all time",
+        "custom": "custom range"
+      }
+    },
+    "lost": {
+      "markLost": "Mark lost",
+      "markFailed": "Could not mark the job lost: {{error}}",
+      "promptTitle": "Mark this job lost?",
+      "reasonOptional": "Reason (optional)",
+      "reasonPrompt": "Why was this job lost? (optional)",
+      "empty": "No lost jobs.",
+      "reopen": "Reopen",
+      "reopenFailed": "Could not reopen the job: {{error}}",
+      "badge": "Lost",
+      "col": {
+        "job": "Job",
+        "client": "Client",
+        "lastQuote": "Last quote",
+        "lostDate": "Lost date",
+        "reason": "Reason"
+      }
+    },
+    "followUp": {
+      "dateLabel": "Follow up",
+      "noteLabel": "Follow-up note",
+      "clear": "Clear follow-up"
+    },
+    "completion": {
+      "sendNotice": "Send completion notice",
+      "sending": "Sending...",
+      "pending": "Completion notice pending",
+      "sent": "Completion notice sent",
+      "sendFailed": "The completion notice did not send: {{error}}"
     }
   },
   "estimates": {
@@ -2260,7 +2331,24 @@
       "ofTotal": "of total",
       "termsConditions": "Terms & Conditions",
       "termsPlaceholder": "Deposit schedule, payment terms, warranty, cancellation policy...",
-      "deleteEstimate": "Delete Estimate"
+      "deleteEstimate": "Delete Estimate",
+      "declinedTitle": "Declined by the client",
+      "followUpOn": "Follow up on",
+      "followUpNote": "Note",
+      "statusPrompt": {
+        "accepted": {
+          "title": "Who accepted this estimate?",
+          "placeholder": "Name"
+        },
+        "declined": {
+          "title": "Why was it declined?",
+          "placeholder": "Reason"
+        },
+        "changes_requested": {
+          "title": "What changes did the client request?",
+          "placeholder": "Comment"
+        }
+      }
     },
     "send": {
       "sendFailed": "Failed to send estimate",

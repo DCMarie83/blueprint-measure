@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
     // 1. Fetch estimate
     const { data: estimate, error: estErr } = await adminClient
       .from('estimates')
-      .select('id, estimate_number, title, status, good_total, better_total, best_total, project_id, company_id, response_notified_at, change_request_comment')
+      .select('id, estimate_number, title, status, good_total, better_total, best_total, project_id, company_id, response_notified_at, change_request_comment, decline_reason')
       .eq('id', estimate_id)
       .single()
     if (estErr || !estimate) return json({ error: 'Estimate not found' }, 404)
@@ -56,11 +56,27 @@ Deno.serve(async (req) => {
       .single()
     if (!project) return json({ error: 'Project not found' }, 404)
 
-    // 5. Fetch contractor's email via auth.users
-    const { data: { user: contractor }, error: userErr } = await adminClient.auth.admin.getUserById(project.user_id)
-    if (userErr || !contractor?.email) {
-      console.error('Could not fetch contractor email', userErr)
-      return json({ error: 'Contractor email not found' }, 404)
+    // 5. Recipients: every contractor_admin of the company, resolved to their
+    // auth emails and deduplicated. The project owner is the fallback when the
+    // company has no admins on file.
+    const recipientEmails = new Set<string>()
+    const { data: admins } = await adminClient
+      .from('user_profiles')
+      .select('user_id')
+      .eq('company_id', estimate.company_id)
+      .eq('role', 'contractor_admin')
+    for (const row of (admins ?? [])) {
+      try {
+        const { data: { user: adminUser } } = await adminClient.auth.admin.getUserById(row.user_id)
+        if (adminUser?.email) recipientEmails.add(adminUser.email)
+      } catch { /* skip unresolvable */ }
+    }
+    if (recipientEmails.size === 0 && project.user_id) {
+      const { data: { user: owner } } = await adminClient.auth.admin.getUserById(project.user_id)
+      if (owner?.email) recipientEmails.add(owner.email)
+    }
+    if (recipientEmails.size === 0) {
+      return json({ error: 'No contractor recipients found' }, 404)
     }
 
     // 6. Fetch client name + company name
@@ -90,8 +106,14 @@ Deno.serve(async (req) => {
     const siteUrl = Deno.env.get('SITE_URL') || 'https://app.rivetdog.com'
     const estimateUrl = `${siteUrl}/estimates/${estimate.id}`
 
-    const commentBlock = isChanges && estimate.change_request_comment
-      ? `<div style="background: #f9fafb; border-left: 3px solid #f27243; border-radius: 6px; padding: 12px 16px; margin: 12px 0; font-size: 14px; color: #1b2426; line-height: 1.5;">${escapeHtml(estimate.change_request_comment)}</div>`
+    // The client's words ride along: the change comment or the decline reason.
+    const quotedText = isChanges
+      ? estimate.change_request_comment
+      : estimate.status === 'declined'
+        ? estimate.decline_reason
+        : null
+    const commentBlock = quotedText
+      ? `<div style="background: #f9fafb; border-left: 3px solid ${statusColor}; border-radius: 6px; padding: 12px 16px; margin: 12px 0; font-size: 14px; color: #1b2426; line-height: 1.5;">${escapeHtml(quotedText)}</div>`
       : ''
 
     const html = `
@@ -121,7 +143,7 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         from: `${companyName} via RivetDog <noreply@rivetdog.com>`,
-        to: [contractor.email],
+        to: Array.from(recipientEmails),
         subject: `Estimate ${isChanges ? 'changes requested' : statusVerb}: ${escapeHtml(estTitle)} from ${escapeHtml(clientName)}`,
         html,
       }),

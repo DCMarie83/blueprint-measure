@@ -129,6 +129,12 @@ export default function PreferencesTab() {
         </select>
       </Field>
 
+      <Field label={t('settings:preferences.emailClient')} hint={t('settings:preferences.emailClientHint')}>
+        <select className={styles.select} value={pending.email_client} onChange={(e) => update('email_client', e.target.value)}>
+          {PREF_OPTIONS.email_client.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      </Field>
+
       <Field label={t('settings:preferences.measurementUnits')} hint={t('settings:preferences.measurementUnitsHint')}>
         <select className={styles.select} value={pending.measurement_units} onChange={(e) => update('measurement_units', e.target.value)}>
           {PREF_OPTIONS.measurement_units.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}

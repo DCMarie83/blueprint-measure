@@ -228,9 +228,19 @@ Deno.serve(async (req) => {
     if (selected_variant) {
       updatePatch.selected_variant = selected_variant
     }
-    if (estimate.status === 'draft' || estimate.status === 'changes_requested') {
+    if (estimate.status === 'draft' || estimate.status === 'changes_requested' || estimate.status === 'declined') {
       updatePatch.status = 'sent'
       updatePatch.sent_at = new Date().toISOString()
+    }
+    if (estimate.status === 'changes_requested' || estimate.status === 'declined') {
+      // A revised estimate going back out clears the response fields so the
+      // portal shows the fresh quote, not the stale response state.
+      updatePatch.change_request_comment = null
+      updatePatch.changes_requested_at = null
+      updatePatch.declined_at = null
+      updatePatch.decline_reason = null
+      updatePatch.response_notified_at = null
+      updatePatch.response_seen_at = null
     }
 
     await adminClient
@@ -238,10 +248,27 @@ Deno.serve(async (req) => {
       .update(updatePatch)
       .eq('id', estimate_id)
 
-    // Auto-enable portal on project
+    // Auto-enable portal + clear the follow-up: a resent quote is the follow-up.
+    const projectPatch: Record<string, unknown> = { portal_enabled: true, follow_up_at: null, updated_at: new Date().toISOString() }
+
+    // A re-quote after changes_requested or declined returns the job to the
+    // Sent to Client column (by column_key) and syncs its status.
+    if (estimate.status === 'changes_requested' || estimate.status === 'declined') {
+      const { data: sentCol } = await adminClient
+        .from('kanban_columns')
+        .select('id, status_key')
+        .eq('company_id', estimate.company_id)
+        .eq('column_key', 'sent_to_client')
+        .maybeSingle()
+      if (sentCol) {
+        projectPatch.kanban_column_id = sentCol.id
+        if (sentCol.status_key) projectPatch.status = sentCol.status_key
+      }
+    }
+
     await adminClient
       .from('projects')
-      .update({ portal_enabled: true })
+      .update(projectPatch)
       .eq('id', project.id)
 
     // Activity log (fire-and-forget backfill)

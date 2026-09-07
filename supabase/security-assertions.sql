@@ -843,6 +843,48 @@ a30 AS (
            WHERE pronamespace = 'public'::regnamespace AND proname = 'seed_base_kanban_columns'
          ) THEN 'seeder present; PASS requires both status_key and deposit_received in its body'
          ELSE 'FUNCTION MISSING' END::text
+),
+
+-- ── A31 / A32 ──────────────────────────────────────────────────────
+-- Lane R decline/lost: the Declined column must exist on every base board
+-- (its column_key allowed by the check), and project_is_open must treat
+-- lost as closed but declined as open (declined is a live bid).
+a31_bad AS (
+  SELECT c.name AS problem
+  FROM public.companies c
+  WHERE EXISTS (SELECT 1 FROM public.kanban_columns k WHERE k.company_id = c.id AND k.is_base)
+    AND NOT EXISTS (SELECT 1 FROM public.kanban_columns k WHERE k.company_id = c.id AND k.column_key = 'declined')
+),
+a31 AS (
+  SELECT 'A31'::text,
+         'column_key check allows declined and every base board has the Declined column'::text,
+         CASE WHEN EXISTS (
+                SELECT 1 FROM pg_constraint
+                WHERE conrelid = 'public.kanban_columns'::regclass
+                  AND contype = 'c'
+                  AND pg_get_constraintdef(oid) ILIKE '%column_key%'
+                  AND pg_get_constraintdef(oid) ILIKE '%declined%')
+              AND (SELECT count(*) FROM a31_bad) = 0
+         THEN 'PASS' ELSE 'FAIL' END::text,
+         coalesce('COMPANIES MISSING DECLINED COLUMN: ' ||
+                  (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a31_bad),
+                  'check allows declined; all base boards carry the column')::text
+),
+a32 AS (
+  SELECT 'A32'::text,
+         'project_is_open: lost is closed, declined is open'::text,
+         CASE WHEN EXISTS (
+                SELECT 1 FROM pg_proc
+                WHERE pronamespace = 'public'::regnamespace AND proname = 'project_is_open')
+              AND public.project_is_open('lost') = false
+              AND public.project_is_open('declined') = true
+         THEN 'PASS' ELSE 'FAIL' END::text,
+         CASE WHEN EXISTS (
+                SELECT 1 FROM pg_proc
+                WHERE pronamespace = 'public'::regnamespace AND proname = 'project_is_open')
+         THEN 'project_is_open(lost)=' || public.project_is_open('lost')::text ||
+              ', project_is_open(declined)=' || public.project_is_open('declined')::text
+         ELSE 'FUNCTION MISSING' END::text
 )
 
 SELECT * FROM a1
@@ -875,4 +917,6 @@ UNION ALL SELECT * FROM a27
 UNION ALL SELECT * FROM a28
 UNION ALL SELECT * FROM a29
 UNION ALL SELECT * FROM a30
+UNION ALL SELECT * FROM a31
+UNION ALL SELECT * FROM a32
 ORDER BY id;
