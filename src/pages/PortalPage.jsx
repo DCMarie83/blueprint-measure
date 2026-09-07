@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabase'
 import { resolvePortalStatus } from '../lib/kanbanColumnLabel'
 import PortalEstimateSection from '../components/portal/PortalEstimateSection'
+import { portalQrUrl } from '../lib/portalAsset'
 import PaymentInstructionsBlock from '../components/invoices/PaymentInstructionsBlock'
 import LanguageToggle from '../components/LanguageToggle'
 import styles from './PortalPage.module.css'
@@ -159,7 +160,7 @@ export default function PortalPage() {
 
         {/* Deposit payment methods (only when deposit > 0) */}
         {estimateData?.estimate?.deposit_amount > 0 && (
-          <PaymentInstructionsBlock paymentInstructions={data.company_payment_instructions} variant="portal" heading={t('portal:portalPage.depositPaymentMethods')} />
+          <PaymentInstructionsBlock paymentInstructions={data.company_payment_instructions} variant="portal" heading={t('portal:portalPage.depositPaymentMethods')} qrUrlFor={(k) => portalQrUrl(token, k)} />
         )}
 
         <div className={styles.footerWrap}>

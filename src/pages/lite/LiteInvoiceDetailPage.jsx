@@ -7,6 +7,10 @@ import { useInvoice, useInvoiceMutations, isOverdue } from '../../hooks/useInvoi
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import { useSheetSignal } from '../../hooks/useSheetSignal'
 import { useAuth } from '../../context/AuthContext'
+import { mergeInstructionDefaults } from '../../hooks/usePaymentInstructions'
+import { useSignedQrUrls } from '../../hooks/useSignedQrUrls'
+import PaymentInstructionsBlock from '../../components/invoices/PaymentInstructionsBlock'
+import { fetchQrDataUrls } from '../../lib/qrData'
 import { generateInvoicePDF } from '../../lib/generateInvoicePDF'
 import { generateLiteInvoiceXLSX } from '../../lib/generateLiteInvoiceXLSX'
 import { supabase } from '../../lib/supabase'
@@ -56,6 +60,9 @@ export default function LiteInvoiceDetailPage() {
   const tz = getEffectiveTimeZone(userProfile)
   const { invoice, lineItems, payments, loading, error, refetch } = useInvoice(id)
   const { recordPayment } = useInvoiceMutations()
+  // On-screen payment options: the same block the GC gets.
+  const paymentInstructions = mergeInstructionDefaults(company?.payment_instructions)
+  const qrUrls = useSignedQrUrls(paymentInstructions)
 
   const [gc, setGc] = useState(null)
   const [project, setProject] = useState(null)
@@ -128,6 +135,7 @@ export default function LiteInvoiceDetailPage() {
         }
       } catch { /* skip logo */ }
     }
+    companyData.qrImages = await fetchQrDataUrls(companyData.payment_instructions)
     return companyData
   }
 
@@ -135,7 +143,7 @@ export default function LiteInvoiceDetailPage() {
     setBusy(true); setActionError(null)
     try {
       const companyData = await buildBranding()
-      const pdf = generateInvoicePDF({ invoice, lineItems, project, client: gc, company: companyData, timeDetail, timeZone: tz, returnAs: 'blob' })
+      const pdf = generateInvoicePDF({ invoice, lineItems, project, client: gc, company: companyData, timeDetail, timeZone: tz, qrImages: companyData.qrImages, returnAs: 'blob' })
       const url = URL.createObjectURL(pdf)
       const a = document.createElement('a')
       a.href = url
@@ -162,7 +170,7 @@ export default function LiteInvoiceDetailPage() {
     setBusy(true); setActionError(null); setSendOk(false)
     try {
       const companyData = await buildBranding()
-      const pdfBase64 = generateInvoicePDF({ invoice, lineItems, project, client: gc, company: companyData, timeDetail, timeZone: tz, returnAs: 'base64' })
+      const pdfBase64 = generateInvoicePDF({ invoice, lineItems, project, client: gc, company: companyData, timeDetail, timeZone: tz, qrImages: companyData.qrImages, returnAs: 'base64' })
       const { error: fnErr } = await supabase.functions.invoke('send-lite-invoice-email', {
         body: { invoice_id: id, pdf_base64: pdfBase64 },
       })
@@ -184,7 +192,7 @@ export default function LiteInvoiceDetailPage() {
     setBusy(true); setActionError(null); setRemindOk(false)
     try {
       const companyData = await buildBranding()
-      const pdfBase64 = generateInvoicePDF({ invoice, lineItems, project, client: gc, company: companyData, timeDetail, timeZone: tz, returnAs: 'base64' })
+      const pdfBase64 = generateInvoicePDF({ invoice, lineItems, project, client: gc, company: companyData, timeDetail, timeZone: tz, qrImages: companyData.qrImages, returnAs: 'base64' })
       const { error: fnErr } = await supabase.functions.invoke('send-lite-invoice-email', {
         body: { invoice_id: id, pdf_base64: pdfBase64, mode: 'reminder' },
       })
@@ -299,6 +307,11 @@ export default function LiteInvoiceDetailPage() {
             )}
           </div>
         )}
+
+        {/* Payment options: matches the GC review page and the email */}
+        <div className={styles.card}>
+          <PaymentInstructionsBlock paymentInstructions={paymentInstructions} variant="portal" qrUrlFor={(k) => qrUrls[k] || null} />
+        </div>
 
         {/* Actions */}
         <div className={styles.card}>

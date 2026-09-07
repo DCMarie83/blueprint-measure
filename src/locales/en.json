@@ -795,7 +795,8 @@
         "cashapp": "Cash App",
         "ach": "ACH / Wire Transfer",
         "cardExternal": "Card (External Link)",
-        "other": "Other"
+        "other": "Other",
+        "wire": "Wire transfer"
       },
       "payableTo": "Make check payable to",
       "mailingAddress": "Mailing address",
@@ -809,7 +810,27 @@
       "invalidUrl": "Must be a valid URL (https://...)",
       "payWithCard": "Pay with Card",
       "savedToast": "Payment methods saved — fetch fees handled.",
-      "saving": "Saving…"
+      "saving": "Saving…",
+      "paymentLink": "Payment link (optional)",
+      "qrLabel": "QR code (optional)",
+      "qrUpload": "Upload QR",
+      "qrReplace": "Replace QR",
+      "qrRemove": "Remove",
+      "qrWorking": "Working...",
+      "qrHint": "PNG, JPG, or WebP up to 2 MB.",
+      "qrBadType": "Use a PNG, JPG, or WebP image.",
+      "qrTooLarge": "The image must be under 2 MB.",
+      "bankName": "Bank name",
+      "routingNumber": "Routing number",
+      "accountNumber": "Account number",
+      "accountType": "Account type",
+      "accountTypeNone": "Not specified",
+      "accountTypeChecking": "Checking",
+      "accountTypeSavings": "Savings",
+      "swift": "SWIFT/BIC",
+      "extraInstructions": "Additional instructions (optional)",
+      "httpsOnly": "The link must start with https://",
+      "previewTitle": "Client preview"
     },
     "logo": {
       "removeConfirm": "Remove company logo?",
@@ -1281,17 +1302,29 @@
     },
     "payment": {
       "methodsHeading": "Payment Methods",
-      "payWithCard": "Pay with Card",
+      "payWithCard": "Pay by card",
       "method": {
         "check": "Check",
         "zelle": "Zelle",
         "venmo": "Venmo",
         "cashapp": "Cash App",
-        "ach": "ACH / Wire"
+        "ach": "ACH transfer",
+        "wire": "Wire transfer",
+        "card_external": "Pay by card"
       },
       "check": {
         "payableTo": "Make payable to: ",
         "mailTo": "Mail to: {{address}}"
+      },
+      "qrAlt": "QR code for {{method}}",
+      "line": {
+        "payableTo": "Payable to",
+        "mailTo": "Mail to",
+        "bank": "Bank",
+        "routing": "Routing number",
+        "account": "Account number",
+        "accountType": "Account type",
+        "swift": "SWIFT/BIC"
       }
     },
     "import": {

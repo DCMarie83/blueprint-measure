@@ -21,30 +21,57 @@ function json(data: unknown, status = 200) {
   })
 }
 
-const PI_ORDER = ['check', 'zelle', 'venmo', 'cashapp', 'ach', 'card_external', 'other']
+import { buildPaymentMethods, EN_METHOD_LABELS, EN_LINE_LABELS } from '../_shared/paymentMethods.ts'
 
-function renderPaymentInstructionsHTML(pi: Record<string, any> | null, primaryColor: string): string {
-  if (!pi) return ''
-  const enabled = PI_ORDER.filter(k => pi[k]?.enabled)
-  if (enabled.length === 0) return ''
-  const lines: string[] = []
-  for (const k of enabled) {
-    const d = pi[k]
-    if (k === 'check') lines.push(`<strong>Check</strong> — Payable to: ${escapeHtml(d.payable_to || '')}${d.mailing_address ? `<br/>Mail to: ${escapeHtml(d.mailing_address).replace(/\n/g, '<br/>')}` : ''}`)
-    else if (k === 'zelle') lines.push(`<strong>Zelle:</strong> ${escapeHtml(d.handle || '')}`)
-    else if (k === 'venmo') lines.push(`<strong>Venmo:</strong> @${escapeHtml(d.handle || '')}`)
-    else if (k === 'cashapp') lines.push(`<strong>Cash App:</strong> $${escapeHtml(d.handle || '')}`)
-    else if (k === 'ach') lines.push(`<strong>ACH/Wire:</strong> ${escapeHtml(d.instructions || '').replace(/\n/g, '<br/>')}`)
-    else if (k === 'card_external') lines.push(`<a href="${d.url || '#'}" style="display:inline-block; background:${primaryColor}; color:white; padding:10px 16px; border-radius:6px; text-decoration:none; font-weight:600;">${escapeHtml(d.label || 'Pay with Card')}</a>`)
-    else if (k === 'other') lines.push(escapeHtml(d.instructions || '').replace(/\n/g, '<br/>'))
+// Renders from the one shared payment model (_shared/paymentMethods.ts). QR
+// images reference cid: inline attachments built by buildQrAttachments — the
+// service role downloads them from the private payment-qr bucket; no signed
+// URLs that would expire in the client's inbox.
+function renderPaymentInstructionsHTML(pi: Record<string, unknown> | null, primaryColor: string, heading = 'Payment Methods'): string {
+  const methods = buildPaymentMethods(pi)
+  if (methods.length === 0) return ''
+  const blocks: string[] = []
+  for (const m of methods) {
+    const parts: string[] = []
+    if (m.key !== 'other') parts.push(`<strong>${EN_METHOD_LABELS[m.key] || m.key}</strong>`)
+    for (const line of m.lines) {
+      parts.push(line.label ? `${EN_LINE_LABELS[line.label] || line.label}: ${escapeHtml(line.value)}` : escapeHtml(line.value).replace(/\n/g, '<br/>'))
+    }
+    if (m.link) {
+      if (m.key === 'card_external') {
+        parts.push(`<a href="${m.link}" style="display:inline-block; background:${primaryColor}; color:white; padding:10px 16px; border-radius:6px; text-decoration:none; font-weight:600;">${escapeHtml(m.linkLabel || 'Pay by card')}</a>`)
+      } else {
+        parts.push(`<a href="${m.link}" style="color:${primaryColor};">${escapeHtml(m.link)}</a>`)
+      }
+    }
+    const qrImg = m.qr_path ? `<img src="cid:qr-${m.key}" width="96" height="96" style="display:block; margin-top:6px; border:1px solid #eee; border-radius:6px;" alt="" />` : ''
+    blocks.push(`<p style="font-size: 14px; color: #1b2426; line-height: 1.6; margin: 0 0 10px;">${parts.join('<br/>')}</p>${qrImg}`)
   }
   return `
     <div style="margin: 20px 0; padding: 16px; background: #f9fafb; border-radius: 8px;">
-      <h3 style="color: ${primaryColor}; font-size: 14px; margin: 0 0 12px; text-transform: uppercase; letter-spacing: 0.5px;">Payment Methods</h3>
-      ${lines.map(l => `<p style="font-size: 14px; color: #1b2426; line-height: 1.6; margin: 0 0 8px;">${l}</p>`).join('')}
+      <h3 style="color: ${primaryColor}; font-size: 14px; margin: 0 0 12px; text-transform: uppercase; letter-spacing: 0.5px;">${heading}</h3>
+      ${blocks.join('')}
     </div>
   `
 }
+
+// Inline QR attachments for Resend (content_id referenced by cid: in the HTML).
+async function buildQrAttachments(adminClient: ReturnType<typeof createClient>, pi: Record<string, unknown> | null) {
+  const attachments: { filename: string; content: string; content_id: string }[] = []
+  for (const m of buildPaymentMethods(pi)) {
+    if (!m.qr_path) continue
+    try {
+      const { data } = await adminClient.storage.from('payment-qr').download(m.qr_path)
+      if (!data) continue
+      const buf = new Uint8Array(await data.arrayBuffer())
+      let bin = ''
+      for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000))
+      attachments.push({ filename: m.qr_path.split('/').pop() || `${m.key}.png`, content: btoa(bin), content_id: `qr-${m.key}` })
+    } catch { /* image simply omitted */ }
+  }
+  return attachments
+}
+
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
@@ -250,6 +277,8 @@ Deno.serve(async (req) => {
         </table>
     `
 
+    const qrAttachments = await buildQrAttachments(adminClient, company?.payment_instructions)
+
     const html = `
       <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
         ${logoHtml}
@@ -290,6 +319,7 @@ Deno.serve(async (req) => {
             filename: `${String(invoice.invoice_number).replace(/[^a-zA-Z0-9_\- ]/g, '')}.pdf`,
             content: pdf_base64,
           },
+          ...qrAttachments,
         ],
       }),
     })

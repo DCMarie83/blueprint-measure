@@ -9,6 +9,7 @@ const STRIPE = [245, 245, 245]
 const FALLBACK_PRIMARY = [242, 114, 67] // #f27243
 
 import { getDisplayVariant } from './estimateDisplay'
+import { buildPaymentMethods, EN_METHOD_LABELS, EN_LINE_LABELS } from './paymentMethods'
 
 const UNIT_LABELS = { sf: 'SF', lf: 'LF', each: 'Each', hour: 'Hour', lump_sum: 'Lump Sum' }
 
@@ -26,36 +27,51 @@ function sanitizeFilename(str) {
   return str.replace(/[^a-zA-Z0-9_\- ]/g, '').replace(/\s+/g, '_')
 }
 
-const PI_ORDER = ['check', 'zelle', 'venmo', 'cashapp', 'ach', 'card_external', 'other']
 
-function renderPaymentInstructions(doc, pi, x, y, primaryRgb, pageWidth, pageHeight, marginVal, heading = 'Payment Methods') {
-  if (!pi) return y
-  const enabled = PI_ORDER.filter(k => pi[k]?.enabled)
-  if (enabled.length === 0) return y
+function renderPaymentInstructions(doc, pi, x, y, primaryRgb, pageWidth, pageHeight, marginVal, heading = 'Payment Methods', qrImages = {}) {
+  const methods = buildPaymentMethods(pi)
+  if (methods.length === 0) return y
+
   if (y > pageHeight - 60) { doc.addPage(); y = marginVal }
+
   doc.setFontSize(10)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(...primaryRgb)
   doc.text(heading.toUpperCase(), x, y)
   y += 6
+
   doc.setFontSize(9)
-  doc.setFont('helvetica', 'normal')
-  doc.setTextColor(...DARK)
-  for (const k of enabled) {
-    const d = pi[k]
-    let line = ''
-    if (k === 'check') line = `Check — Payable to: ${d.payable_to || ''}${d.mailing_address ? `  |  Mail to: ${d.mailing_address.replace(/\n/g, ', ')}` : ''}`
-    else if (k === 'zelle') line = `Zelle: ${d.handle || ''}`
-    else if (k === 'venmo') line = `Venmo: @${d.handle || ''}`
-    else if (k === 'cashapp') line = `Cash App: $${d.handle || ''}`
-    else if (k === 'ach') line = `ACH/Wire: ${(d.instructions || '').replace(/\n/g, ', ')}`
-    else if (k === 'card_external') line = `${d.label || 'Pay with Card'}: ${d.url || ''}`
-    else if (k === 'other') line = (d.instructions || '').replace(/\n/g, ', ')
-    if (line) {
-      const lines = doc.splitTextToSize(line, pageWidth - marginVal * 2)
-      doc.text(lines, x, y)
-      y += lines.length * 4 + 2
+  const maxTextWidth = pageWidth - marginVal * 2 - 30
+
+  for (const m of methods) {
+    if (y > pageHeight - 40) { doc.addPage(); y = marginVal }
+    const startY = y
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(...DARK)
+    if (m.key !== 'other') {
+      doc.text(EN_METHOD_LABELS[m.key] || m.key, x, y)
+      y += 4.5
     }
+    doc.setFont('helvetica', 'normal')
+    for (const line of m.lines) {
+      const text = line.label ? `${EN_LINE_LABELS[line.label] || line.label}: ${line.value}` : line.value
+      const wrapped = doc.splitTextToSize(text, maxTextWidth)
+      doc.text(wrapped, x, y)
+      y += wrapped.length * 4
+    }
+    if (m.link) {
+      const text = m.key === 'card_external' ? `${m.linkLabel || 'Pay by card'}: ${m.link}` : m.link
+      const wrapped = doc.splitTextToSize(text, maxTextWidth)
+      doc.text(wrapped, x, y)
+      y += wrapped.length * 4
+    }
+    if (qrImages[m.key]) {
+      try {
+        doc.addImage(qrImages[m.key], pageWidth - marginVal - 24, startY - 3, 24, 24)
+        if (y < startY + 23) y = startY + 23
+      } catch { /* unsupported image data — text stands alone */ }
+    }
+    y += 3
   }
   return y + 4
 }
@@ -73,7 +89,7 @@ function renderPaymentInstructions(doc, pi, x, y, primaryRgb, pageWidth, pageHei
  * @param {'blob'|'base64'|'save'} opts.returnAs - Output format
  * @returns {Blob|string|void}
  */
-export function generateEstimatePDF({ estimate, lineItems, project, client, company, variant = null, returnAs = 'blob' }) {
+export function generateEstimatePDF({ estimate, lineItems, project, client, company, variant = null, qrImages = {}, returnAs = 'blob' }) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
@@ -341,7 +357,7 @@ export function generateEstimatePDF({ estimate, lineItems, project, client, comp
         y += 8
 
         // Deposit payment methods (only when deposit > 0)
-        y = renderPaymentInstructions(doc, company?.payment_instructions, margin, y, companyPrimaryRgb, pageWidth, pageHeight, margin, 'Deposit Payment Methods')
+        y = renderPaymentInstructions(doc, company?.payment_instructions, margin, y, companyPrimaryRgb, pageWidth, pageHeight, margin, 'Deposit Payment Methods', qrImages)
       }
 
       if (showTerms) {

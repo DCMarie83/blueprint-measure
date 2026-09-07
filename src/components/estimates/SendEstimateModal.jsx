@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabase'
 import { snapshotEstimateOnSend } from '../../lib/smartBid'
 import { trackMaterials } from '../../lib/analytics'
 import styles from './SendEstimateModal.module.css'
+import { fetchQrDataUrls } from '../../lib/qrData'
 
 function fmtMoney(val) {
   if (val == null) return '$0.00'
@@ -34,12 +35,14 @@ export default function SendEstimateModal({ estimate, lineItems, project, client
     setSending(true)
     setError(null)
     try {
+      const qrImages = await fetchQrDataUrls(company?.payment_instructions)
       const pdfBase64 = generateEstimatePDF({
         estimate,
         lineItems,
         project,
         client,
         company,
+        qrImages,
         returnAs: 'base64',
       })
 

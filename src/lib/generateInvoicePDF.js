@@ -2,6 +2,7 @@ import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { hexToRgb, normalizedPrimary } from '../utils/colorUtils'
 import { formatTimeOnly } from './effectiveTime'
+import { buildPaymentMethods, EN_METHOD_LABELS, EN_LINE_LABELS } from './paymentMethods'
 
 const DARK = [27, 36, 38]
 const MUTED = [138, 144, 150]
@@ -25,12 +26,10 @@ function sanitizeFilename(str) {
   return str.replace(/[^a-zA-Z0-9_\- ]/g, '').replace(/\s+/g, '_')
 }
 
-const PI_ORDER = ['check', 'zelle', 'venmo', 'cashapp', 'ach', 'card_external', 'other']
 
-function renderPaymentInstructions(doc, pi, x, y, primaryRgb, pageWidth, pageHeight, margin, heading = 'Payment Methods') {
-  if (!pi) return y
-  const enabled = PI_ORDER.filter(k => pi[k]?.enabled)
-  if (enabled.length === 0) return y
+function renderPaymentInstructions(doc, pi, x, y, primaryRgb, pageWidth, pageHeight, margin, heading = 'Payment Methods', qrImages = {}) {
+  const methods = buildPaymentMethods(pi)
+  if (methods.length === 0) return y
 
   if (y > pageHeight - 60) { doc.addPage(); y = margin }
 
@@ -41,25 +40,37 @@ function renderPaymentInstructions(doc, pi, x, y, primaryRgb, pageWidth, pageHei
   y += 6
 
   doc.setFontSize(9)
-  doc.setFont('helvetica', 'normal')
-  doc.setTextColor(...DARK)
+  const maxTextWidth = pageWidth - margin * 2 - 30
 
-  for (const k of enabled) {
-    const d = pi[k]
-    let line = ''
-    if (k === 'check') line = `Check — Payable to: ${d.payable_to || ''}${d.mailing_address ? `  |  Mail to: ${d.mailing_address.replace(/\n/g, ', ')}` : ''}`
-    else if (k === 'zelle') line = `Zelle: ${d.handle || ''}`
-    else if (k === 'venmo') line = `Venmo: @${d.handle || ''}`
-    else if (k === 'cashapp') line = `Cash App: $${d.handle || ''}`
-    else if (k === 'ach') line = `ACH/Wire: ${(d.instructions || '').replace(/\n/g, ', ')}`
-    else if (k === 'card_external') line = `${d.label || 'Pay with Card'}: ${d.url || ''}`
-    else if (k === 'other') line = (d.instructions || '').replace(/\n/g, ', ')
-
-    if (line) {
-      const lines = doc.splitTextToSize(line, pageWidth - margin * 2)
-      doc.text(lines, x, y)
-      y += lines.length * 4 + 2
+  for (const m of methods) {
+    if (y > pageHeight - 40) { doc.addPage(); y = margin }
+    const startY = y
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(...DARK)
+    if (m.key !== 'other') {
+      doc.text(EN_METHOD_LABELS[m.key] || m.key, x, y)
+      y += 4.5
     }
+    doc.setFont('helvetica', 'normal')
+    for (const line of m.lines) {
+      const text = line.label ? `${EN_LINE_LABELS[line.label] || line.label}: ${line.value}` : line.value
+      const wrapped = doc.splitTextToSize(text, maxTextWidth)
+      doc.text(wrapped, x, y)
+      y += wrapped.length * 4
+    }
+    if (m.link) {
+      const text = m.key === 'card_external' ? `${m.linkLabel || 'Pay by card'}: ${m.link}` : m.link
+      const wrapped = doc.splitTextToSize(text, maxTextWidth)
+      doc.text(wrapped, x, y)
+      y += wrapped.length * 4
+    }
+    if (qrImages[m.key]) {
+      try {
+        doc.addImage(qrImages[m.key], pageWidth - margin - 24, startY - 3, 24, 24)
+        if (y < startY + 23) y = startY + 23
+      } catch { /* unsupported image data — text stands alone */ }
+    }
+    y += 3
   }
   return y + 4
 }
@@ -80,7 +91,7 @@ function renderPaymentInstructions(doc, pi, x, y, primaryRgb, pageWidth, pageHei
  * @param {'blob'|'base64'|'save'} opts.returnAs - Output format
  * @returns {Blob|string|void}
  */
-export function generateInvoicePDF({ invoice, lineItems, project, client, company, timeDetail = [], timeZone, returnAs = 'blob' }) {
+export function generateInvoicePDF({ invoice, lineItems, project, client, company, timeDetail = [], timeZone, qrImages = {}, returnAs = 'blob' }) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
@@ -298,7 +309,7 @@ export function generateInvoicePDF({ invoice, lineItems, project, client, compan
   }
 
   // ── Payment instructions ────────────────────────────────
-  y = renderPaymentInstructions(doc, company?.payment_instructions, margin, y, primaryRgb, pageWidth, pageHeight, margin)
+  y = renderPaymentInstructions(doc, company?.payment_instructions, margin, y, primaryRgb, pageWidth, pageHeight, margin, 'Payment Methods', qrImages)
 
   // ── Payment info + Notes + Terms ─────────────────────────
   const showDue = invoice.due_date

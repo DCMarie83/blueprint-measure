@@ -5,6 +5,7 @@ import { ChevronLeft } from 'lucide-react'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
+import PaymentInstructionsTab from '../../components/settings/PaymentInstructionsTab'
 import { updateUserPrefs } from '../../lib/userPrefs'
 import { isValidTimeZone, COMMON_US_TIMEZONES } from '../../lib/effectiveTime'
 import styles from './lite.module.css'
@@ -22,7 +23,6 @@ export default function LiteBusinessInfoPage() {
 
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
-  const [payText, setPayText] = useState('')
   const [timezone, setTimezone] = useState('') // '' = Automatic (device time)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
@@ -32,7 +32,6 @@ export default function LiteBusinessInfoPage() {
     if (!company) return
     setName(company.name || '')
     setPhone(company.business_phone || '')
-    setPayText(company.payment_instructions?.other?.instructions || '')
   }, [company])
 
   useEffect(() => {
@@ -56,19 +55,12 @@ export default function LiteBusinessInfoPage() {
     }
     setSaving(true); setError(null); setSavedOk(false)
     try {
-      // Preserve any other structured payment keys; only touch the free-text slot.
-      const existing = (company?.payment_instructions && typeof company.payment_instructions === 'object')
-        ? { ...company.payment_instructions } : {}
-      if (payText.trim()) existing.other = { enabled: true, instructions: payText.trim() }
-      else delete existing.other
-      const payment_instructions = Object.keys(existing).length ? existing : null
-
+      // Payment options save through the shared Payment tab below.
       const { error: updErr } = await supabase
         .from('companies')
         .update({
           name: name.trim() || null,
           business_phone: phone.trim() || null,
-          payment_instructions,
           updated_at: new Date().toISOString(),
         })
         .eq('id', companyId)
@@ -128,23 +120,17 @@ export default function LiteBusinessInfoPage() {
             <p className={styles.helper}>{t('lite:business.tzHelper')}</p>
           </div>
 
-          <div className={styles.field}>
-            <span className={styles.fieldLabel}>{t('lite:business.paymentInstructions')}</span>
-            <textarea
-              className={styles.input}
-              style={{ minHeight: 100, resize: 'vertical', fontFamily: 'inherit' }}
-              value={payText}
-              onChange={e => setPayText(e.target.value)}
-              placeholder={t('lite:business.payPlaceholder')}
-            />
-            <p className={styles.helper}>{t('lite:business.payHelper')}</p>
-          </div>
-
           {error && <div className={styles.error} style={{ marginTop: 12, marginBottom: 0 }}>{error}</div>}
 
           <div className={styles.sheetActions} style={{ marginTop: 16 }}>
             {savedOk && <span className={styles.helper} style={{ color: 'var(--color-success)', alignSelf: 'center' }}>{t('lite:business.saved')}</span>}
             <button className={styles.primaryBtn} onClick={handleSave} disabled={saving}>{saving ? t('lite:business.saving') : t('common:action.save')}</button>
+          </div>
+
+          {/* Payment options: the same tab Pro uses, full method set. */}
+          <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--color-border)' }}>
+            <h2 className={styles.fieldLabel} style={{ fontSize: 14, marginBottom: 10 }}>{t('lite:business.paymentInstructions')}</h2>
+            <PaymentInstructionsTab />
           </div>
         </div>
       </main>

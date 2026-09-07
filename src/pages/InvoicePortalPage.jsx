@@ -5,6 +5,8 @@ import { Download } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { generateInvoicePDF } from '../lib/generateInvoicePDF'
 import InvoiceStatusBadge from '../components/invoices/InvoiceStatusBadge'
+import { portalQrUrl } from '../lib/portalAsset'
+import { fetchPortalQrDataUrls } from '../lib/qrData'
 import PaymentInstructionsBlock from '../components/invoices/PaymentInstructionsBlock'
 import LanguageToggle from '../components/LanguageToggle'
 import styles from './PortalPage.module.css'
@@ -75,11 +77,13 @@ export default function InvoicePortalPage() {
           }
         } catch { /* skip logo */ }
       }
+      const qrImages = await fetchPortalQrDataUrls(companyData.payment_instructions, token)
       const pdf = generateInvoicePDF({
         invoice: inv, lineItems,
         project: { name: data.project_name, address: data.project_address },
         client: { display_name: data.client_name, business_name: data.client_business },
         company: companyData,
+        qrImages,
         returnAs: 'blob',
       })
       const url = URL.createObjectURL(pdf)
@@ -235,7 +239,7 @@ export default function InvoicePortalPage() {
         )}
 
         {/* Payment instructions */}
-        <PaymentInstructionsBlock paymentInstructions={data.company_payment_instructions} variant="portal" />
+        <PaymentInstructionsBlock paymentInstructions={data.company_payment_instructions} variant="portal" qrUrlFor={(k) => portalQrUrl(token, k)} />
 
         {/* Download PDF */}
         <div style={{ textAlign: 'center', margin: '24px 0 8px' }}>

@@ -8,6 +8,11 @@ import { useLinkedDocuments } from '../hooks/useLinkedDocuments'
 import { useInvoice, useInvoiceMutations, isOverdue } from '../hooks/useInvoices'
 import { generateInvoicePDF } from '../lib/generateInvoicePDF'
 import { useAuth } from '../context/AuthContext'
+import { useEffectiveCompany } from '../hooks/useEffectiveCompany'
+import { mergeInstructionDefaults } from '../hooks/usePaymentInstructions'
+import { useSignedQrUrls } from '../hooks/useSignedQrUrls'
+import PaymentInstructionsBlock from '../components/invoices/PaymentInstructionsBlock'
+import { fetchQrDataUrls } from '../lib/qrData'
 import { supabase } from '../lib/supabase'
 import styles from './InvoiceDetailPage.module.css'
 
@@ -60,7 +65,11 @@ export default function InvoiceDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { company } = useAuth()
+  const { company: effectiveCompany } = useEffectiveCompany()
   const { invoice, lineItems, payments, loading, error, refetch } = useInvoice(id)
+  // On-screen payment options: the same block the client sees.
+  const paymentInstructions = mergeInstructionDefaults(effectiveCompany?.payment_instructions)
+  const qrUrls = useSignedQrUrls(paymentInstructions)
   const { documents, refetch: refetchDocuments } = useLinkedDocuments('invoice', id)
   const { markSent, markPaidInFull, markVoid, reopenInvoice, recordPayment, updatePayment, deletePayment, transferPayment, deleteInvoice, updateInvoiceNumber } = useInvoiceMutations()
 
@@ -137,7 +146,8 @@ export default function InvoiceDetailPage() {
         }
       } catch { /* skip logo */ }
     }
-    return { project: proj, client: cli, company: companyData }
+    const qrImages = await fetchQrDataUrls(companyData.payment_instructions)
+    return { project: proj, client: cli, company: companyData, qrImages }
   }
 
   async function handleDownloadPDF() {
@@ -145,7 +155,7 @@ export default function InvoiceDetailPage() {
     try {
       const data = await fetchPdfData()
       if (!data) return
-      const pdf = generateInvoicePDF({ invoice, lineItems, project: data.project, client: data.client, company: data.company, returnAs: 'blob' })
+      const pdf = generateInvoicePDF({ invoice, lineItems, project: data.project, client: data.client, company: data.company, qrImages: data.qrImages, returnAs: 'blob' })
       const url = URL.createObjectURL(pdf)
       const a = document.createElement('a')
       a.href = url
@@ -166,7 +176,7 @@ export default function InvoiceDetailPage() {
     try {
       const pdfData = await fetchPdfData()
       if (!pdfData) throw new Error(t('invoices:detail.errorPdfData'))
-      const pdfBase64 = generateInvoicePDF({ invoice, lineItems, project: pdfData.project, client: pdfData.client, company: pdfData.company, returnAs: 'base64' })
+      const pdfBase64 = generateInvoicePDF({ invoice, lineItems, project: pdfData.project, client: pdfData.client, company: pdfData.company, qrImages: pdfData.qrImages, returnAs: 'base64' })
       const { error: fnErr } = await supabase.functions.invoke('send-invoice-email', {
         body: { invoice_id: id, pdf_base64: pdfBase64 },
       })
@@ -642,6 +652,11 @@ export default function InvoiceDetailPage() {
           {isVoid && (
             <p style={{ fontSize: 13, color: 'var(--color-text-muted)', fontStyle: 'italic', margin: '12px 0 0' }}>{t('invoices:detail.reopenToRecord')}</p>
           )}
+        </div>
+
+        {/* Payment options: matches what the client gets on the portal and email */}
+        <div className={styles.section}>
+          <PaymentInstructionsBlock paymentInstructions={paymentInstructions} variant="portal" qrUrlFor={(k) => qrUrls[k] || null} />
         </div>
 
         {/* Documents: source files from Document Import + direct attach (G54) */}

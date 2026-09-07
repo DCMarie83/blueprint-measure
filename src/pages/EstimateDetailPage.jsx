@@ -25,6 +25,7 @@ import SmartBadge from '../components/smartbid/SmartBadge'
 import RegionChip from '../components/smartbid/RegionChip'
 import MarketBand from '../components/smartbid/MarketBand'
 import styles from './EstimateDetailPage.module.css'
+import { fetchQrDataUrls } from '../lib/qrData'
 
 // Display-only number tween (~500ms, cubic ease-out). Snaps under reduced motion.
 // Stored values are written once through the normal update path; this only eases
@@ -580,9 +581,11 @@ export default function EstimateDetailPage() {
     }
   }
 
-  function handleDownloadPDF(variant = null) {
+  async function handleDownloadPDF(variant = null) {
     setPdfMenuOpen(false)
+    const qrImages = await fetchQrDataUrls(companyData?.payment_instructions)
     const pdf = generateEstimatePDF({
+      qrImages,
       estimate: { ...estimate, title: title || null, notes },
       lineItems,
       project: projectData,

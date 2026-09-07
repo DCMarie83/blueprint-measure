@@ -3,14 +3,26 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useEffectiveCompany } from './useEffectiveCompany'
 
-const DEFAULT_INSTRUCTIONS = {
+export const DEFAULT_INSTRUCTIONS = {
   check: { enabled: false, payable_to: '', mailing_address: '' },
-  zelle: { enabled: false, handle: '' },
-  venmo: { enabled: false, handle: '' },
-  cashapp: { enabled: false, handle: '' },
-  ach: { enabled: false, instructions: '' },
-  card_external: { enabled: false, label: 'Pay with Card', url: '' },
+  zelle: { enabled: false, handle: '', qr_path: '', link: '' },
+  venmo: { enabled: false, handle: '', qr_path: '', link: '' },
+  cashapp: { enabled: false, handle: '', qr_path: '', link: '' },
+  ach: { enabled: false, bank_name: '', routing_number: '', account_number: '', account_type: '', instructions: '' },
+  wire: { enabled: false, bank_name: '', routing_number: '', account_number: '', swift: '', instructions: '' },
+  card_external: { enabled: false, label: 'Pay by card', url: '' },
   other: { enabled: false, instructions: '' },
+}
+
+// Rows written before the shape change carry the old keys (ach was one
+// free-text `instructions`). Merge defaults key-by-key so every method has
+// the full field set, while legacy values (like that ach text) survive.
+export function mergeInstructionDefaults(raw) {
+  const merged = {}
+  for (const key of Object.keys(DEFAULT_INSTRUCTIONS)) {
+    merged[key] = { ...DEFAULT_INSTRUCTIONS[key], ...(raw?.[key] && typeof raw[key] === 'object' ? raw[key] : {}) }
+  }
+  return merged
 }
 
 export function usePaymentInstructions() {
@@ -31,7 +43,7 @@ export function usePaymentInstructions() {
         .eq('id', companyId)
         .single()
       if (err) throw err
-      setPaymentInstructions(data?.payment_instructions ?? DEFAULT_INSTRUCTIONS)
+      setPaymentInstructions(mergeInstructionDefaults(data?.payment_instructions))
     } catch (err) {
       setError(err.message)
     } finally {
@@ -44,7 +56,7 @@ export function usePaymentInstructions() {
   // Refresh from company context when it changes
   useEffect(() => {
     if (company?.payment_instructions) {
-      setPaymentInstructions(company.payment_instructions)
+      setPaymentInstructions(mergeInstructionDefaults(company.payment_instructions))
     }
   }, [company?.payment_instructions])
 

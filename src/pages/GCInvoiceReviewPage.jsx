@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { CheckCircle, MessageSquare } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import InvoiceStatusBadge from '../components/invoices/InvoiceStatusBadge'
+import { portalQrUrl } from '../lib/portalAsset'
 import PaymentInstructionsBlock from '../components/invoices/PaymentInstructionsBlock'
 import LanguageToggle from '../components/LanguageToggle'
 import styles from './PortalPage.module.css'
@@ -265,7 +266,7 @@ export default function GCInvoiceReviewPage() {
         )}
 
         {/* Payment instructions */}
-        <PaymentInstructionsBlock paymentInstructions={data.company_payment_instructions} variant="portal" />
+        <PaymentInstructionsBlock paymentInstructions={data.company_payment_instructions} variant="portal" qrUrlFor={(k) => portalQrUrl(token, k)} />
 
         {/* ── Response actions ─────────────────────────────────────── */}
         {done ? (

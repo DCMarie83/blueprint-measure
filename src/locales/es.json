@@ -795,7 +795,8 @@
         "cashapp": "Cash App",
         "ach": "ACH / Transferencia bancaria",
         "cardExternal": "Tarjeta (enlace externo)",
-        "other": "Otro"
+        "other": "Otro",
+        "wire": "Transferencia bancaria"
       },
       "payableTo": "Girar el cheque a nombre de",
       "mailingAddress": "Dirección postal",
@@ -809,7 +810,27 @@
       "invalidUrl": "Debe ser una URL válida (https://...)",
       "payWithCard": "Pagar con tarjeta",
       "savedToast": "Métodos de pago guardados.",
-      "saving": "Guardando…"
+      "saving": "Guardando…",
+      "paymentLink": "Enlace de pago (opcional)",
+      "qrLabel": "Código QR (opcional)",
+      "qrUpload": "Subir QR",
+      "qrReplace": "Reemplazar QR",
+      "qrRemove": "Quitar",
+      "qrWorking": "Procesando...",
+      "qrHint": "PNG, JPG o WebP de hasta 2 MB.",
+      "qrBadType": "Usa una imagen PNG, JPG o WebP.",
+      "qrTooLarge": "La imagen debe ser menor de 2 MB.",
+      "bankName": "Nombre del banco",
+      "routingNumber": "Número de ruta",
+      "accountNumber": "Número de cuenta",
+      "accountType": "Tipo de cuenta",
+      "accountTypeNone": "Sin especificar",
+      "accountTypeChecking": "Cuenta de cheques",
+      "accountTypeSavings": "Cuenta de ahorros",
+      "swift": "SWIFT/BIC",
+      "extraInstructions": "Instrucciones adicionales (opcional)",
+      "httpsOnly": "El enlace debe comenzar con https://",
+      "previewTitle": "Vista previa para el cliente"
     },
     "logo": {
       "removeConfirm": "¿Quitar el logo de la empresa?",
@@ -1287,11 +1308,23 @@
         "zelle": "Zelle",
         "venmo": "Venmo",
         "cashapp": "Cash App",
-        "ach": "ACH / Transferencia"
+        "ach": "Transferencia ACH",
+        "wire": "Transferencia bancaria",
+        "card_external": "Pagar con tarjeta"
       },
       "check": {
         "payableTo": "A nombre de: ",
         "mailTo": "Enviar a: {{address}}"
+      },
+      "qrAlt": "Código QR para {{method}}",
+      "line": {
+        "payableTo": "A nombre de",
+        "mailTo": "Enviar a",
+        "bank": "Banco",
+        "routing": "Número de ruta",
+        "account": "Número de cuenta",
+        "accountType": "Tipo de cuenta",
+        "swift": "SWIFT/BIC"
       }
     },
     "import": {

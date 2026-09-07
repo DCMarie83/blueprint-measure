@@ -885,6 +885,33 @@ a32 AS (
          THEN 'project_is_open(lost)=' || public.project_is_open('lost')::text ||
               ', project_is_open(declined)=' || public.project_is_open('declined')::text
          ELSE 'FUNCTION MISSING' END::text
+),
+
+-- ── A33 ────────────────────────────────────────────────────────────
+-- Lane O: payment QR images live in a PRIVATE bucket with per-company
+-- path policies (copy of the A23 import-documents pattern).
+a33_bad AS (
+  SELECT 'bucket payment-qr missing'::text AS problem
+  WHERE NOT EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'payment-qr')
+  UNION ALL
+  SELECT 'bucket payment-qr is PUBLIC'
+  FROM storage.buckets WHERE id = 'payment-qr' AND public = true
+  UNION ALL
+  SELECT 'no ' || v.verb || ' policy names payment-qr'
+  FROM (VALUES ('SELECT'), ('INSERT'), ('DELETE')) AS v(verb)
+  WHERE EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'payment-qr')
+    AND NOT EXISTS (
+      SELECT 1 FROM pg_policies p
+      WHERE p.schemaname = 'storage' AND p.tablename = 'objects'
+        AND (p.cmd = v.verb OR p.cmd = 'ALL')
+        AND (coalesce(p.qual, '') ILIKE '%payment-qr%' OR coalesce(p.with_check, '') ILIKE '%payment-qr%'))
+),
+a33 AS (
+  SELECT 'A33'::text,
+         'storage bucket payment-qr: private, with select/insert/delete policies on storage.objects'::text,
+         CASE WHEN (SELECT count(*) FROM a33_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
+         coalesce('PROBLEMS: ' || (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a33_bad),
+                  'private bucket with all three verb policies present')::text
 )
 
 SELECT * FROM a1
@@ -919,4 +946,5 @@ UNION ALL SELECT * FROM a29
 UNION ALL SELECT * FROM a30
 UNION ALL SELECT * FROM a31
 UNION ALL SELECT * FROM a32
+UNION ALL SELECT * FROM a33
 ORDER BY id;
