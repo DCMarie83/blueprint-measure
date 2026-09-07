@@ -497,7 +497,7 @@ function CostingPortfolio({ rows, totalCount, loading, search, searchActive, onS
       {/* KPI cards */}
       <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 16 }}>
         {[
-          { label: t('reports:kpi.quoted'), value: fmtMoney(totals.quoted), accent: '#26464C' },
+          { label: t('reports:kpi.quoted'), value: fmtMoney(totals.quoted), sub: t('reports:kpi.quotedHint'), accent: '#26464C' },
           { label: t('reports:kpi.billed'), value: fmtMoney(totals.billed), accent: '#26464C' },
           { label: t('reports:kpi.collected'), value: fmtMoney(totals.collected), accent: '#26464C' },
           { label: t('reports:kpi.totalCost'), value: fmtMoney(totals.totalCost), accent: 'var(--color-text-muted)' },
@@ -696,6 +696,32 @@ function CostingDetail({ detail, loading, onBack }) {
           <Stat label={t('reports:th.billed')} value={fmtMoney(d.billed)} />
           <Stat label={t('reports:th.collected')} value={fmtMoney(d.collected)} />
         </div>
+
+        {/* G66: approved change orders — part of quoted */}
+        {(d.coBreakdown?.length ?? 0) > 0 && (
+          <div className={styles.tableWrap} style={{ marginTop: 14 }}><ScrollbarInside />
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th className={styles.th}>{t('reports:coTable.number')}</th>
+                <th className={styles.th}>{t('reports:coTable.title')}</th>
+                <th className={styles.th}>{t('reports:coTable.approved')}</th>
+                <th className={styles.th} style={{ textAlign: 'right' }}>{t('reports:th.amount')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {d.coBreakdown.map(co => (
+                <tr key={co.id} className={styles.tr}>
+                  <td className={styles.td}>{co.co_number || '–'}</td>
+                  <td className={styles.td}>{co.title}</td>
+                  <td className={styles.td} style={{ whiteSpace: 'nowrap' }}>{co.approved_at ? new Date(co.approved_at).toLocaleDateString() : '–'}</td>
+                  <td className={styles.td} style={{ textAlign: 'right', fontWeight: 600 }}>{fmtMoney(co.amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          </div>
+        )}
 
         {/* G61: the job's invoices, linked. Draft/void rows are greyed and
             labeled — they are excluded from the totals above (math unchanged). */}

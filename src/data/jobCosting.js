@@ -54,6 +54,7 @@ export async function getJobCostingRows(companyId, { from, to } = {}) {
     materialOrders,
     materialItems,
     expenses,
+    changeOrders,
   ] = await Promise.all([
     supabase.from('projects').select('id, name, status, client_id, clients(display_name)').eq('company_id', companyId).is('deleted_at', null).then(must),
     supabase.from('estimates').select('id, project_id, status, accepted_at, accepted_variant, selected_variant, good_total, better_total, best_total').eq('company_id', companyId).eq('status', 'accepted').then(must),
@@ -65,6 +66,7 @@ export async function getJobCostingRows(companyId, { from, to } = {}) {
     supabase.from('material_orders').select('id, project_id, selected_variant, created_at').eq('company_id', companyId).then(must),
     supabase.from('material_order_items').select('material_order_id, quantity, coats, unit, overage_pct, cost_premium, cost_standard, cost_commercial').eq('company_id', companyId).then(must),
     supabase.from('expenses').select('project_id, amount, expense_date').eq('company_id', companyId).then(must),
+    supabase.from('change_orders').select('project_id, amount, status, approved_at, created_at').eq('company_id', companyId).eq('status', 'approved').then(must),
   ])
 
   // Index by project
@@ -106,6 +108,11 @@ export async function getJobCostingRows(companyId, { from, to } = {}) {
     ;(expByProject[ex.project_id] ??= []).push(ex)
   }
 
+  const coByProject = {}
+  for (const co of (changeOrders ?? [])) {
+    ;(coByProject[co.project_id] ??= []).push(co)
+  }
+
   const rows = []
 
   for (const proj of (projects ?? [])) {
@@ -117,6 +124,7 @@ export async function getJobCostingRows(companyId, { from, to } = {}) {
     const projTimeEntries = teByProject[pid] ?? []
     const projOrders = moByProject[pid] ?? []
     const projExpenses = expByProject[pid] ?? []
+    const projCOs = coByProject[pid] ?? []
 
     const projPayments = []
     for (const inv of projInvoices) {
@@ -137,7 +145,8 @@ export async function getJobCostingRows(companyId, { from, to } = {}) {
         projPayments.some(p => inRange(p.payment_date)) ||
         projTimeEntries.some(t => inRange(t.work_date)) ||
         projOrders.some(o => inRange(o.created_at)) ||
-        projExpenses.some(x => inRange(x.expense_date))
+        projExpenses.some(x => inRange(x.expense_date)) ||
+        projCOs.some(co => inRange(co.approved_at || co.created_at))
       if (!hasActivity) continue
     }
 
@@ -150,6 +159,9 @@ export async function getJobCostingRows(companyId, { from, to } = {}) {
     } else {
       flag_no_accepted_estimate = true
     }
+    // G66: contract value = accepted quote plus approved change orders. One
+    // definition, shared with the card and the job header.
+    quoted += projCOs.reduce((s2, co) => s2 + num(co.amount), 0)
 
     // Billed: excludes draft (the query already excluded void)
     const billed = projInvoices.filter(i => i.status !== 'draft').reduce((s, i) => s + num(i.total), 0)
@@ -219,6 +231,7 @@ export async function getJobCostingDetail(companyId, projectId) {
     materialOrders,
     materialItems,
     expenseRows,
+    changeOrders,
   ] = await Promise.all([
     // maybeSingle: a missing project stays a null return below, not a throw.
     supabase.from('projects').select('id, name, status, client_id, clients(display_name)').eq('id', projectId).maybeSingle().then(must),
@@ -230,6 +243,7 @@ export async function getJobCostingDetail(companyId, projectId) {
     supabase.from('material_orders').select('id, project_id, title, selected_variant, stores(name)').eq('project_id', projectId).eq('company_id', companyId).then(must),
     supabase.from('material_order_items').select('material_order_id, quantity, coats, unit, overage_pct, cost_premium, cost_standard, cost_commercial').eq('company_id', companyId).then(must),
     supabase.from('expenses').select('id, expense_date, category, description, vendor, amount').eq('project_id', projectId).eq('company_id', companyId).order('expense_date', { ascending: false }).then(must),
+    supabase.from('change_orders').select('id, co_number, title, amount, approved_at, created_at').eq('project_id', projectId).eq('company_id', companyId).eq('status', 'approved').order('created_at', { ascending: true }).then(must),
   ])
 
   if (!project) return null
@@ -274,6 +288,15 @@ export async function getJobCostingDetail(companyId, projectId) {
   } else {
     flag_no_accepted_estimate = true
   }
+  // G66: quoted = accepted quote plus approved change orders.
+  const coBreakdown = (changeOrders ?? []).map(co => ({
+    id: co.id,
+    co_number: co.co_number,
+    title: co.title,
+    amount: num(co.amount),
+    approved_at: co.approved_at || co.created_at,
+  }))
+  quoted += coBreakdown.reduce((s2, co) => s2 + co.amount, 0)
 
   const billed = countableInvoices.reduce((s, i) => s + num(i.total), 0)
   const collected = allPayments.reduce((s, p) => s + num(p.amount), 0)
@@ -343,6 +366,7 @@ export async function getJobCostingDetail(companyId, projectId) {
     materialsBreakdown,
     expensesBreakdown: expenseRows ?? [],
     invoicesBreakdown,
+    coBreakdown,
   }
 }
 
@@ -371,6 +395,7 @@ export async function getPeriodSummary(companyId, { from, to } = {}) {
     materialOrders,
     materialItems,
     expenses,
+    changeOrders,
   ] = await Promise.all([
     clip(supabase.from('estimates').select('project_id, accepted_at, accepted_variant, selected_variant, good_total, better_total, best_total').eq('company_id', companyId).eq('status', 'accepted'), 'accepted_at').then(must),
     clip(supabase.from('invoices').select('project_id, total, status, created_at').eq('company_id', companyId).not('status', 'in', '(void,draft)'), 'created_at').then(must),
@@ -380,14 +405,30 @@ export async function getPeriodSummary(companyId, { from, to } = {}) {
     clip(supabase.from('material_orders').select('id, project_id, selected_variant, created_at').eq('company_id', companyId), 'created_at').then(must),
     supabase.from('material_order_items').select('material_order_id, quantity, coats, unit, overage_pct, cost_premium, cost_standard, cost_commercial').eq('company_id', companyId).then(must),
     clip(supabase.from('expenses').select('project_id, amount, expense_date').eq('company_id', companyId), 'expense_date').then(must),
+    // Approved COs clip client-side on approved_at falling back to created_at
+    // (a coalesce PostgREST range filters cannot express).
+    supabase.from('change_orders').select('project_id, amount, approved_at, created_at').eq('company_id', companyId).eq('status', 'approved').then(must),
   ])
 
   const projectSet = new Set()
   const touch = (pid) => { if (pid) projectSet.add(pid) }
 
-  // Quoted: sum of accepted totals for estimates accepted within the window.
+  // Quoted: accepted totals for estimates accepted within the window, plus
+  // approved change orders approved within it (G66 — same rule everywhere).
   let quoted = 0
   for (const e of (estimates ?? [])) { quoted += getAcceptedTotal(e); touch(e.project_id) }
+  const inWindow = (dateStr) => {
+    if (!dateStr) return false
+    const d = String(dateStr).slice(0, 10)
+    if (from && d < from) return false
+    if (to && d > to) return false
+    return true
+  }
+  for (const co of (changeOrders ?? [])) {
+    if (!inWindow(co.approved_at || co.created_at)) continue
+    quoted += num(co.amount)
+    touch(co.project_id)
+  }
 
   // Billed: non-void / non-draft invoices issued (created) within the window.
   let billed = 0

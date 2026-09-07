@@ -3122,7 +3122,8 @@
       "collected": "Cobrado",
       "totalCost": "Costo total",
       "actualMargin": "Margen real",
-      "cashPosition": "Posición de caja"
+      "cashPosition": "Posición de caja",
+      "quotedHint": "Cotización aceptada más órdenes de cambio aprobadas."
     },
     "section": {
       "revenue": "Ingresos",
@@ -3179,6 +3180,11 @@
       "noBilling": "sin facturación",
       "noQuote": "sin cotización",
       "noCollections": "sin pagos"
+    },
+    "coTable": {
+      "number": "OC",
+      "title": "Orden de cambio",
+      "approved": "Aprobada"
     }
   },
   "time": {

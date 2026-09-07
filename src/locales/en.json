@@ -3122,7 +3122,8 @@
       "collected": "Collected",
       "totalCost": "Total Cost",
       "actualMargin": "Actual Margin",
-      "cashPosition": "Cash position"
+      "cashPosition": "Cash position",
+      "quotedHint": "Accepted quote plus approved change orders."
     },
     "section": {
       "revenue": "Revenue",
@@ -3179,6 +3180,11 @@
       "noBilling": "no billing",
       "noQuote": "no quote",
       "noCollections": "no payments"
+    },
+    "coTable": {
+      "number": "CO",
+      "title": "Change order",
+      "approved": "Approved"
     }
   },
   "time": {

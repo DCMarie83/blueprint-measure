@@ -44,7 +44,10 @@ export default function JobsListView({ projects, columns, onClickProject, moneyM
         const clientLabel = linkedClient?.display_name || project.client_name || null
 
         const money = moneyMap?.get(project.id)
-        const currentValue = (Number(project.contract_value) || 0) + (money?.approvedCO || 0)
+        // G66 rule: accepted quote + approved COs; imported contract_value
+        // only when no accepted estimate exists.
+        const baseValue = (money?.quoted || 0) > 0 ? money.quoted : (Number(project.contract_value) || 0)
+        const currentValue = baseValue + (money?.approvedCO || 0)
         const hasMoney = currentValue !== 0 || (money?.billed || 0) !== 0 || (money?.collected || 0) !== 0 || (money?.openCoCount || 0) > 0
 
         return (

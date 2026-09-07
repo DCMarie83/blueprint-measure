@@ -75,7 +75,10 @@ function CardRecordChips({ money }) {
 // company-scoped useJobMoneyMap fetch, never per-card queries.
 function CardMoneyStrip({ project, money }) {
   const { t } = useTranslation()
-  const currentValue = (Number(project.contract_value) || 0) + (money?.approvedCO || 0)
+  // G66 rule: contract value = accepted quote + approved COs. The imported
+  // contract_value stands in only when the job has no accepted estimate.
+  const baseValue = (money?.quoted || 0) > 0 ? money.quoted : (Number(project.contract_value) || 0)
+  const currentValue = baseValue + (money?.approvedCO || 0)
   const billed = money?.billed || 0
   const collected = money?.collected || 0
   const openCos = money?.openCoCount || 0

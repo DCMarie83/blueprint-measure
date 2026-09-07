@@ -232,7 +232,11 @@ export default function ProjectDetailPage() {
     .filter(inv => inv.status !== 'draft' && inv.status !== 'void')
     .reduce((s, inv) => s + (Number(inv.total) || 0), 0)
   const contractValue = Number(project?.contract_value) || 0
-  const currentValue = contractValue + approvedTotal
+  // G66 rule: accepted quote + approved COs; the imported contract_value
+  // stands in only when the job has no accepted estimate. Same definition as
+  // the board card and Job Costing quoted — approved COs never count twice.
+  const baseContract = acceptedAmount > 0 ? acceptedAmount : contractValue
+  const currentValue = baseContract + approvedTotal
   const { orders: materialOrders, createOrder: createMaterialOrder, updateOrder: updateMaterialOrder, deleteOrder: deleteMaterialOrder } = useMaterialOrders(projectId)
   const [editingOrderId, setEditingOrderId] = useState(null)
   const [editingTitle, setEditingTitle] = useState('')
