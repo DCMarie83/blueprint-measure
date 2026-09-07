@@ -953,7 +953,15 @@
       "invoiceViewed": "Factura vista por el cliente",
       "invoicePaid": "Factura pagada",
       "invoiceVoided": "Factura anulada",
-      "portalAccessed": "Acceso al portal"
+      "portalAccessed": "Acceso al portal",
+      "titleCount": "Actividad ({{count}})",
+      "filter": {
+        "all": "Todo",
+        "notes": "Notas",
+        "money": "Dinero",
+        "estimates": "Cotizaciones",
+        "portal": "Portal"
+      }
     },
     "address": {
       "confirmDelete": "¿Eliminar esta dirección?",
@@ -1088,6 +1096,30 @@
       "failedCount": "{{count}} fallaron:",
       "done": "Listo",
       "badgeTermsIgnored": "términos de facturación ignorados"
+    },
+    "nav": {
+      "projects": "Trabajos",
+      "invoices": "Facturas",
+      "estimates": "Cotizaciones",
+      "documents": "Documentos",
+      "activity": "Actividad",
+      "addresses": "Direcciones",
+      "contacts": "Contactos"
+    },
+    "projects": {
+      "sortLabel": "Ordenar",
+      "sortUpdated": "Última actualización",
+      "sortName": "Nombre A-Z",
+      "sortStatus": "Estado",
+      "filter": {
+        "all": "Todos",
+        "working": "En curso",
+        "closed": "Cerrados"
+      },
+      "noMatches": "Ningún trabajo coincide con este filtro.",
+      "quotedShort": "Cotizado {{amount}}",
+      "billedShort": "Facturado {{amount}}",
+      "collectedShort": "Cobrado {{amount}}"
     }
   },
   "invoices": {

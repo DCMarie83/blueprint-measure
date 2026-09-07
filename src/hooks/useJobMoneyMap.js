@@ -28,7 +28,7 @@ export function useJobMoneyMap() {
           supabase.from('invoices').select('id, project_id, total, status').eq('company_id', companyId),
           supabase.from('invoice_payments').select('invoice_id, amount').eq('company_id', companyId),
           supabase.from('change_orders').select('project_id, amount, status').eq('company_id', companyId),
-          supabase.from('estimates').select('id, project_id, status, decline_reason, declined_at, change_request_comment, changes_requested_at').eq('company_id', companyId),
+          supabase.from('estimates').select('id, project_id, status, decline_reason, declined_at, change_request_comment, changes_requested_at, accepted_at, accepted_variant, selected_variant, good_total, better_total, best_total').eq('company_id', companyId),
           supabase.from('documents').select('linked_type, linked_id').eq('company_id', companyId).in('linked_type', ['project', 'invoice', 'estimate']),
         ])
         if (cancelled) return
@@ -41,7 +41,7 @@ export function useJobMoneyMap() {
             map.set(projectId, {
               billed: 0, collected: 0, approvedCO: 0, openCoCount: 0,
               invoiceCount: 0, estimateCount: 0, documentCount: 0,
-              latestResponse: null,
+              latestResponse: null, quoted: 0, _quotedAt: null,
             })
           }
           return map.get(projectId)
@@ -76,6 +76,17 @@ export function useJobMoneyMap() {
           estimateProject.set(est.id, est.project_id)
           const e = entry(est.project_id)
           e.estimateCount += 1
+          // Quoted: the newest ACCEPTED estimate's resolved total (variant
+          // total falling back to good_total — same coalesce as Reports).
+          if (est.status === 'accepted') {
+            const at = est.accepted_at || ''
+            if (e._quotedAt == null || at > e._quotedAt) {
+              const v = est.accepted_variant || est.selected_variant
+              const variantTotal = v ? Number(est[`${v}_total`]) : 0
+              e.quoted = variantTotal || Number(est.good_total) || 0
+              e._quotedAt = at
+            }
+          }
           // Latest client response per project, for the card chips: declined
           // (with reason) or changes_requested (with comment), newest wins.
           const responses = []

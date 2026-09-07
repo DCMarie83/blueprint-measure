@@ -9,6 +9,7 @@ import ClientLogoUpload from '../components/clients/ClientLogoUpload'
 import ClientAddressEditor from '../components/clients/ClientAddressEditor'
 import ClientContactsSection from '../components/clients/ClientContactsSection'
 import { useUserPrefs } from '../hooks/useUserPrefs'
+import { useJobMoneyMap } from '../hooks/useJobMoneyMap'
 import { buildEmailLink, emailLinkTarget } from '../lib/emailLink'
 import ClientActivitySection from '../components/clients/ClientActivitySection'
 import DocumentsSection from '../components/documents/DocumentsSection'
@@ -71,6 +72,16 @@ function CollapsibleSection({ collapseKey, title, rowCount, className, titleClas
   )
 }
 
+// Projects sort persists for the session like the invoice sort.
+const PROJECTS_SORT_KEY = 'rivetdog_client_projects_sort'
+const PROJECT_SORTS = ['updated', 'name', 'status']
+const CLOSED_STATUSES = new Set(['complete', 'archived', 'lost'])
+
+function fmtMoneyCompact(v) {
+  const n = Number(v) || 0
+  return `$${n.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+}
+
 const statCard = { flex: '1 1 160px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)', padding: '14px 16px' }
 const statLabel = { fontSize: 12, color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }
 const statValue = { fontSize: 20, fontWeight: 800, color: 'var(--color-text, #1b2426)', fontVariantNumeric: 'tabular-nums' }
@@ -89,6 +100,56 @@ export default function ClientDetailPage() {
   const [deleting, setDeleting] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [notice, setNotice] = useState(null)
+  const { moneyMap } = useJobMoneyMap()
+
+  // Projects sort + status filter
+  const [projectSort, setProjectSortState] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem(PROJECTS_SORT_KEY)
+      if (PROJECT_SORTS.includes(saved)) return saved
+    } catch { /* ignore */ }
+    return 'updated'
+  })
+  function setProjectSort(next) {
+    setProjectSortState(next)
+    try { sessionStorage.setItem(PROJECTS_SORT_KEY, next) } catch { /* ignore */ }
+  }
+  const [projectFilter, setProjectFilter] = useState('all') // all | working | closed
+
+  // Chip counts for sections whose data lives in child components.
+  const [activityCount, setActivityCount] = useState(null)
+  const [addressCount, setAddressCount] = useState(null)
+  useEffect(() => {
+    if (!id) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const [act, addr] = await Promise.all([
+          supabase.from('client_activity').select('id', { count: 'exact', head: true }).eq('client_id', id),
+          supabase.from('client_addresses').select('id', { count: 'exact', head: true }).eq('client_id', id),
+        ])
+        if (cancelled) return
+        setActivityCount(act.count ?? 0)
+        setAddressCount(addr.count ?? 0)
+      } catch { /* chips fall back to no count */ }
+    })()
+    return () => { cancelled = true }
+  }, [id])
+
+  const visibleProjects = (() => {
+    let list = projects ?? []
+    if (projectFilter === 'working') list = list.filter(p => !CLOSED_STATUSES.has(p.status))
+    if (projectFilter === 'closed') list = list.filter(p => CLOSED_STATUSES.has(p.status))
+    const sorted = [...list]
+    if (projectSort === 'name') sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+    else if (projectSort === 'status') sorted.sort((a, b) => (a.status || '').localeCompare(b.status || '') || (a.name || '').localeCompare(b.name || ''))
+    else sorted.sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))
+    return sorted
+  })()
+
+  function scrollToSection(anchor) {
+    document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   const ltv = useCountUp(Number(client?.lifetime_value) || 0)
 
@@ -229,25 +290,86 @@ export default function ClientDetailPage() {
           </div>
         )}
 
+        {/* Section nav: sticky anchor chips so long pages never need a hunt */}
+        <nav style={{ position: 'sticky', top: 0, zIndex: 10, display: 'flex', gap: 6, flexWrap: 'wrap', padding: '8px 0', margin: '0 0 12px', background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
+          {[
+            { anchor: 'section-projects', label: t('clients:nav.projects'), count: projects.length },
+            { anchor: 'section-invoices', label: t('clients:nav.invoices'), count: invoices.length },
+            { anchor: 'section-estimates', label: t('clients:nav.estimates'), count: estimates.length },
+            { anchor: 'section-documents', label: t('clients:nav.documents'), count: documents?.length ?? 0 },
+            { anchor: 'section-activity', label: t('clients:nav.activity'), count: activityCount },
+            { anchor: 'section-addresses', label: t('clients:nav.addresses'), count: addressCount },
+            { anchor: 'section-contacts', label: t('clients:nav.contacts'), count: contacts.length },
+          ].map(c => (
+            <button
+              key={c.anchor}
+              onClick={() => scrollToSection(c.anchor)}
+              style={{ padding: '4px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', borderRadius: 'var(--radius-pill, 9999px)', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}
+            >
+              {c.label}{c.count != null ? ` (${c.count})` : ''}
+            </button>
+          ))}
+        </nav>
+
         {/* Projects */}
-        <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>{t('clients:detail.projectsCount', { count: projects.length })}</h2>
-          {projects.length === 0 ? (
-            <p className={styles.muted}>{t('clients:detail.noJobs')}</p>
+        <div id="section-projects">
+        <CollapsibleSection
+          collapseKey={`client_${id}_projects`}
+          rowCount={projects.length}
+          title={t('clients:detail.projectsCount', { count: projects.length })}
+          className={styles.section}
+          titleClassName={styles.sectionTitle}
+        >
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--color-text-muted)' }}>
+              {t('clients:projects.sortLabel')}
+              <select value={projectSort} onChange={e => setProjectSort(e.target.value)}
+                style={{ padding: '4px 8px', fontSize: 12, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)', color: 'var(--color-text)' }}>
+                <option value="updated">{t('clients:projects.sortUpdated')}</option>
+                <option value="name">{t('clients:projects.sortName')}</option>
+                <option value="status">{t('clients:projects.sortStatus')}</option>
+              </select>
+            </label>
+            <span style={{ display: 'inline-flex', gap: 4 }}>
+              {['all', 'working', 'closed'].map(f => (
+                <button key={f} onClick={() => setProjectFilter(f)}
+                  style={{ padding: '3px 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer', borderRadius: 'var(--radius-pill, 9999px)', border: projectFilter === f ? '1px solid var(--color-primary)' : '1px solid var(--color-border)', background: projectFilter === f ? 'var(--color-primary)' : 'var(--color-surface)', color: projectFilter === f ? 'var(--color-on-primary, #fff)' : 'var(--color-text-muted)' }}>
+                  {t(`clients:projects.filter.${f}`)}
+                </button>
+              ))}
+            </span>
+          </div>
+          {visibleProjects.length === 0 ? (
+            <p className={styles.muted}>{projects.length === 0 ? t('clients:detail.noJobs') : t('clients:projects.noMatches')}</p>
           ) : (
             <div className={styles.jobList}>
-              {projects.map(p => (
-                <div key={p.id} className={styles.jobRow} onClick={() => navigate(`/project/${p.id}`)}>
-                  <Briefcase size={14} />
-                  <span className={styles.jobName}>{p.name}</span>
-                  <span className={styles.jobStatus}>{p.status}</span>
-                </div>
-              ))}
+              {visibleProjects.map(p => {
+                const money = moneyMap?.get(p.id)
+                return (
+                  <div key={p.id} className={styles.jobRow} onClick={() => navigate(`/project/${p.id}`)}>
+                    <Briefcase size={14} />
+                    <span className={styles.jobName}>{p.name}</span>
+                    <span className={styles.jobStatus}>{p.status}</span>
+                    <span style={{ fontSize: 12, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+                      {p.updated_at ? new Date(p.updated_at).toLocaleDateString() : ''}
+                    </span>
+                    {money && (
+                      <span style={{ fontSize: 12, color: 'var(--color-text-muted)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', display: 'inline-flex', gap: 8 }}>
+                        {money.quoted > 0 && <span>{t('clients:projects.quotedShort', { amount: fmtMoneyCompact(money.quoted) })}</span>}
+                        {money.billed > 0 && <span>{t('clients:projects.billedShort', { amount: fmtMoneyCompact(money.billed) })}</span>}
+                        {money.collected > 0 && <span>{t('clients:projects.collectedShort', { amount: fmtMoneyCompact(money.collected) })}</span>}
+                      </span>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           )}
-        </section>
+        </CollapsibleSection>
+        </div>
 
         {/* Invoices — FK union: invoices.client_id OR the client's projects */}
+        <div id="section-invoices">
         <CollapsibleSection
           collapseKey={`client_${id}_invoices`}
           rowCount={invoices.length}
@@ -278,8 +400,10 @@ export default function ClientDetailPage() {
             </div>
           )}
         </CollapsibleSection>
+        </div>
 
         {/* Estimates — via the client's projects (estimates carry no client_id) */}
+        <div id="section-estimates">
         <CollapsibleSection
           collapseKey={`client_${id}_estimates`}
           rowCount={estimates.length}
@@ -307,17 +431,25 @@ export default function ClientDetailPage() {
             </div>
           )}
         </CollapsibleSection>
+        </div>
 
         {/* Documents: linked to this client or its records + direct attach (G54) */}
-        <DocumentsSection documents={documents} collapsible collapseKey={`client_${id}_documents`} uploadTarget={{ type: 'client', id }} onUploaded={refetch} />
+        <div id="section-documents">
+          <DocumentsSection documents={documents} collapsible collapseKey={`client_${id}_documents`} uploadTarget={{ type: 'client', id }} onUploaded={refetch} />
+        </div>
 
         {/* Recent activity (entries deep-link to the most specific real surface) */}
-        <ClientActivitySection clientId={id} onChange={() => refetch()} />
+        <div id="section-activity">
+          <ClientActivitySection clientId={id} onChange={() => refetch()} />
+        </div>
 
         {/* Addresses */}
-        <ClientAddressEditor clientId={id} />
+        <div id="section-addresses">
+          <ClientAddressEditor clientId={id} />
+        </div>
 
         {/* Contacts */}
+        <div id="section-contacts">
         <ClientContactsSection
           clientId={id}
           contacts={contacts}
@@ -327,6 +459,7 @@ export default function ClientDetailPage() {
           deleteContact={deleteContact}
           onChange={() => refetch()}
         />
+        </div>
       </main>
 
       {showEdit && (

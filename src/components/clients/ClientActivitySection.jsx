@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { FileText, Mail, Phone, MessageSquare, Users, Send, CheckCircle, XCircle, Eye, Edit, Trash2, Plus, ArrowUpRight } from 'lucide-react'
+import { FileText, Mail, Phone, MessageSquare, Users, Send, CheckCircle, XCircle, Eye, Edit, Trash2, Plus, ArrowUpRight, ChevronDown, ChevronRight } from 'lucide-react'
 import { useClientActivity } from '../../hooks/useClientActivity'
+import { useSessionCollapse } from '../../hooks/useSessionCollapse'
 import ClientActivityModal from './ClientActivityModal'
 import { timeAgo } from '../../utils/timeAgo'
 import { activityLink } from '../../lib/clientsView'
@@ -26,10 +27,50 @@ const TYPE_CONFIG = {
   portal_accessed:   { icon: Eye,         label: 'clients:activity.portalAccessed' },
 }
 
+// Type filter groups mapped from the activity_type vocabulary; null = all.
+const FILTER_TYPES = {
+  all: null,
+  notes: ['note', 'email', 'call', 'sms', 'meeting'],
+  money: [
+    'payment_recorded', 'payment_edited', 'payment_deleted',
+    'payment_transferred_out', 'payment_transferred_in',
+    'invoice_created', 'invoice_sent', 'invoice_paid', 'invoice_voided',
+    'invoice_reopened', 'invoice_status_changed', 'invoice_number_changed',
+    'invoice_marked_sent', 'invoice_edited_after_send',
+  ],
+  estimates: ['estimate_sent', 'estimate_viewed', 'estimate_accepted', 'estimate_declined', 'estimate_changes_requested'],
+  portal: ['portal_accessed', 'invoice_viewed', 'estimate_viewed'],
+}
+const FILTER_ORDER = ['all', 'notes', 'money', 'estimates', 'portal']
+
+// The collapse default depends on the loaded count, so the session-collapse
+// state lives in this shell, mounted only after the first fetch resolves
+// (same G57 hook, same semantics: collapsed by default past 8 rows).
+function CollapsedShell({ collapseKey, rowCount, title, headerRight, children }) {
+  const [collapsed, setCollapsed] = useSessionCollapse(collapseKey, rowCount > 8)
+  return (
+    <>
+      <div className={styles.header}>
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          aria-expanded={!collapsed}
+          style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}
+        >
+          {collapsed ? <ChevronRight size={15} style={{ color: 'var(--color-text-muted)' }} /> : <ChevronDown size={15} style={{ color: 'var(--color-text-muted)' }} />}
+          <h2 className={styles.title} style={{ margin: 0 }}>{title}</h2>
+        </button>
+        {headerRight}
+      </div>
+      {!collapsed && children}
+    </>
+  )
+}
+
 export default function ClientActivitySection({ clientId, onChange }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { activity, loading, addActivity, updateActivity, deleteActivity, hasMore, loadMore } = useClientActivity(clientId)
+  const [filter, setFilter] = useState('all')
+  const { activity, totalCount, loading, loadingMore, addActivity, updateActivity, deleteActivity, hasMore, loadMore } = useClientActivity(clientId, { types: FILTER_TYPES[filter] })
   const [modalActivity, setModalActivity] = useState(undefined) // undefined=closed, null=new, object=edit
   const [deleting, setDeleting] = useState(null)
   const [expanded, setExpanded] = useState({})
@@ -56,15 +97,34 @@ export default function ClientActivitySection({ clientId, onChange }) {
     }
   }
 
-  if (loading) return <div className={styles.muted}>{t('clients:activity.loading')}</div>
+  if (loading && activity.length === 0 && filter === 'all') return <div className={styles.muted}>{t('clients:activity.loading')}</div>
 
   return (
     <section className={styles.section}>
-      <div className={styles.header}>
-        <h2 className={styles.title}>{t('clients:activity.title')}</h2>
-        <button className={styles.addBtn} onClick={() => setModalActivity(null)}>
-          <Plus size={14} /> {t('clients:activity.logActivity')}
-        </button>
+      <CollapsedShell
+        collapseKey={`client_${clientId}_activity`}
+        rowCount={totalCount}
+        title={t('clients:activity.titleCount', { count: totalCount })}
+        headerRight={(
+          <button className={styles.addBtn} onClick={() => setModalActivity(null)}>
+            <Plus size={14} /> {t('clients:activity.logActivity')}
+          </button>
+        )}
+      >
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '10px 0' }}>
+        {FILTER_ORDER.map(key => (
+          <button
+            key={key}
+            onClick={() => setFilter(key)}
+            style={{
+              padding: '4px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              borderRadius: 'var(--radius-pill, 9999px)',
+              border: filter === key ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+              background: filter === key ? 'var(--color-primary)' : 'var(--color-surface)',
+              color: filter === key ? 'var(--color-on-primary, #fff)' : 'var(--color-text-muted)',
+            }}
+          >{t(`clients:activity.filter.${key}`)}</button>
+        ))}
       </div>
 
       {activity.length === 0 ? (
@@ -130,8 +190,11 @@ export default function ClientActivitySection({ clientId, onChange }) {
       )}
 
       {hasMore && (
-        <button className={styles.loadMoreBtn} onClick={loadMore}>{t('clients:activity.loadMore')}</button>
+        <button className={styles.loadMoreBtn} onClick={loadMore} disabled={loadingMore}>
+          {loadingMore ? t('clients:activity.loading') : t('clients:activity.loadMore')}
+        </button>
       )}
+      </CollapsedShell>
 
       {modalActivity !== undefined && (
         <ClientActivityModal

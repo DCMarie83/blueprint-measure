@@ -953,7 +953,15 @@
       "invoiceViewed": "Invoice viewed by client",
       "invoicePaid": "Invoice paid",
       "invoiceVoided": "Invoice voided",
-      "portalAccessed": "Portal accessed"
+      "portalAccessed": "Portal accessed",
+      "titleCount": "Activity ({{count}})",
+      "filter": {
+        "all": "All",
+        "notes": "Notes",
+        "money": "Money",
+        "estimates": "Estimates",
+        "portal": "Portal"
+      }
     },
     "address": {
       "confirmDelete": "Delete this address?",
@@ -1088,6 +1096,30 @@
       "failedCount": "{{count}} failed:",
       "done": "Done",
       "badgeTermsIgnored": "billing terms ignored"
+    },
+    "nav": {
+      "projects": "Jobs",
+      "invoices": "Invoices",
+      "estimates": "Estimates",
+      "documents": "Documents",
+      "activity": "Activity",
+      "addresses": "Addresses",
+      "contacts": "Contacts"
+    },
+    "projects": {
+      "sortLabel": "Sort",
+      "sortUpdated": "Last updated",
+      "sortName": "Name A-Z",
+      "sortStatus": "Status",
+      "filter": {
+        "all": "All",
+        "working": "Working",
+        "closed": "Closed"
+      },
+      "noMatches": "No jobs match this filter.",
+      "quotedShort": "Quoted {{amount}}",
+      "billedShort": "Billed {{amount}}",
+      "collectedShort": "Collected {{amount}}"
     }
   },
   "invoices": {
