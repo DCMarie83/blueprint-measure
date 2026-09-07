@@ -149,8 +149,14 @@ export default function EstimateDetailPage() {
   const [statusPrompt, setStatusPrompt] = useState(null)
   const [statusPromptValue, setStatusPromptValue] = useState('')
   const [statusPromptSaving, setStatusPromptSaving] = useState(false)
+  const [companyData, setCompanyData] = useState(null)
+
+  const estimate = builder.estimate
+  const { createOrder } = useMaterialOrders(estimate?.project_id)
 
   // Opening a responded estimate marks the response seen (dashboard unread).
+  // This hook must sit AFTER `const estimate` — its dependency array reads
+  // `estimate` at render time, which is a TDZ crash any earlier.
   useEffect(() => {
     if (!estimate?.id) return
     if (!['accepted', 'declined', 'changes_requested'].includes(estimate.status)) return
@@ -158,10 +164,6 @@ export default function EstimateDetailPage() {
     supabase.from('estimates').update({ response_seen_at: new Date().toISOString() }).eq('id', estimate.id)
       .then(() => {}, () => {})
   }, [estimate?.id, estimate?.status, estimate?.response_seen_at])
-  const [companyData, setCompanyData] = useState(null)
-
-  const estimate = builder.estimate
-  const { createOrder } = useMaterialOrders(estimate?.project_id)
 
   async function handleAddMaterials() {
     try {
