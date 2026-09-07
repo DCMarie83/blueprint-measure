@@ -4,7 +4,8 @@ import { useAuth } from '../context/AuthContext'
 import { useEffectiveCompany } from './useEffectiveCompany'
 
 export function isOverdue(invoice) {
-  if (!invoice || (invoice.status !== 'sent' && invoice.status !== 'partial')) return false
+  // viewed is treated like sent: a viewed invoice is still awaiting payment.
+  if (!invoice || (invoice.status !== 'sent' && invoice.status !== 'viewed' && invoice.status !== 'partial')) return false
   if (!invoice.due_date) return false
   return new Date(invoice.due_date) < new Date()
 }
@@ -183,6 +184,9 @@ export function useInvoiceMutations() {
       const subtotal = lineItems.reduce((sum, li) => sum + (Number(li.quantity || 0) * Number(li.rate || 0)), 0)
       const total = subtotal + (Number(adjustment_amount) || 0)
 
+      const { data: current, error: curErr } = await supabase.from('invoices').select('status').eq('id', id).single()
+      if (curErr) throw new Error(curErr.message)
+
       const { error: updErr } = await supabase
         .from('invoices')
         .update({
@@ -199,11 +203,17 @@ export function useInvoiceMutations() {
         .eq('id', id)
       if (updErr) throw new Error(updErr.message)
 
-      // Replace line items: delete all then re-insert
-      await supabase.from('invoice_line_items').delete().eq('invoice_id', id)
-      if (lineItems.length > 0) {
-        const rows = lineItems.map((li, i) => ({
-          invoice_id: id,
+      // I27: line items update by id. Existing rows update in place (lineage
+      // preserved), new rows insert, removed rows delete — never a blanket
+      // delete-and-reinsert.
+      const { data: existingRows, error: exErr } = await supabase.from('invoice_line_items').select('id').eq('invoice_id', id)
+      if (exErr) throw new Error(exErr.message)
+      const existingIds = new Set((existingRows ?? []).map(r => r.id))
+      const keptIds = new Set()
+      const inserts = []
+      for (let i = 0; i < lineItems.length; i++) {
+        const li = lineItems[i]
+        const fields = {
           description: li.description,
           category_name: li.category_name || null,
           item_type: li.item_type || null,
@@ -212,9 +222,31 @@ export function useInvoiceMutations() {
           unit_rate: Number(li.rate) || 0,
           total: (Number(li.quantity) || 0) * (Number(li.rate) || 0),
           sort_order: i,
-        }))
-        const { error: liErr } = await supabase.from('invoice_line_items').insert(rows)
-        if (liErr) throw new Error(liErr.message)
+          source_estimate_line_item_id: li.source_estimate_line_item_id ?? null,
+        }
+        if (li.id && existingIds.has(li.id)) {
+          keptIds.add(li.id)
+          const { error: rowErr } = await supabase.from('invoice_line_items').update(fields).eq('id', li.id)
+          if (rowErr) throw new Error(rowErr.message)
+        } else {
+          inserts.push({ ...fields, invoice_id: id })
+        }
+      }
+      if (inserts.length > 0) {
+        const { error: insErr } = await supabase.from('invoice_line_items').insert(inserts)
+        if (insErr) throw new Error(insErr.message)
+      }
+      const removedIds = [...existingIds].filter(rid => !keptIds.has(rid))
+      if (removedIds.length > 0) {
+        const { error: delErr } = await supabase.from('invoice_line_items').delete().in('id', removedIds)
+        if (delErr) throw new Error(delErr.message)
+      }
+
+      // I1: after any edit on a non-draft, the status re-derives against the
+      // new total through the RPC, and the edit is on the record.
+      if (current.status !== 'draft') {
+        await applyPayment('rederive', id)
+        logInvoiceActivity(id, 'invoice_edited_after_send', 'Invoice edited after sending; status re-derived from the ledger', { new_total: total })
       }
     } catch (err) {
       setError(err.message)
@@ -229,9 +261,17 @@ export function useInvoiceMutations() {
     if (err) throw new Error(err.message)
   }
 
-  async function markSent(id) {
-    const { error: err } = await supabase.from('invoices').update({ status: 'sent', sent_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', id)
+  // I5: mark a draft sent by hand, recording how it reached the client.
+  // The email path is the send button (the edge function stamps 'email').
+  async function markSent(id, deliveryMethod) {
+    const { error: err } = await supabase.from('invoices').update({
+      status: 'sent',
+      sent_at: new Date().toISOString(),
+      delivery_method: deliveryMethod || null,
+      updated_at: new Date().toISOString(),
+    }).eq('id', id)
     if (err) throw new Error(err.message)
+    logInvoiceActivity(id, 'invoice_marked_sent', `Invoice marked sent (${deliveryMethod || 'unspecified'})`, { delivery_method: deliveryMethod || null })
   }
 
   async function logInvoiceActivity(invoiceId, activityType, title, extraMeta = {}) {
@@ -248,159 +288,109 @@ export function useInvoiceMutations() {
     } catch { /* activity logging is best-effort */ }
   }
 
-  // ── Compute status from paid total ────────────────────────────────────────
-  // Returns { status, paid_at } to write on the invoice.
-  function computeStatusFromPayments(newPaidAmount, invoice) {
-    const total = Number(invoice.total) || 0
-    if (newPaidAmount >= total && total > 0) {
-      return { status: 'paid', paid_at: invoice.paid_at || new Date().toISOString() }
+  // ── Payments: one door ────────────────────────────────────────────────────
+  // Every ledger mutation goes through the apply_invoice_payment RPC: it locks
+  // the invoice, does cent-rounded math, and derives status from the ledger.
+  // The RPC never touches invoices.payment_method or payment_notes. Errors come
+  // back as { error: <code> }; codes surface on err.code for the UI to map.
+  async function applyPayment(action, invoiceId, params = {}) {
+    const { data, error: rpcErr } = await supabase.rpc('apply_invoice_payment', {
+      p_action: action,
+      p_invoice_id: invoiceId,
+      p_payment_id: params.paymentId ?? null,
+      p_amount: params.amount ?? null,
+      p_method: params.method ?? null,
+      p_date: params.date ?? null,
+      p_reference: params.reference ?? null,
+      p_notes: params.notes ?? null,
+      p_target_invoice_id: params.targetInvoiceId ?? null,
+    })
+    if (rpcErr) throw new Error(rpcErr.message)
+    if (data?.error) {
+      const err = new Error(data.error)
+      err.code = data.error
+      throw err
     }
-    if (newPaidAmount > 0) {
-      return { status: 'partial', paid_at: null }
-    }
-    // No payments — revert to sent or draft
-    return { status: invoice.sent_at ? 'sent' : 'draft', paid_at: null }
+    return data ?? {}
   }
-
-  // ── Payment functions ─────────────────────────────────────────────────────
 
   async function recordPayment(invoiceId, { amount, payment_method, payment_date, reference_number, notes }) {
-    // Fetch parent invoice for company_id + status check
-    const { data: inv, error: fetchErr } = await supabase.from('invoices').select('company_id, total, paid_at, sent_at, status').eq('id', invoiceId).single()
-    if (fetchErr) throw new Error(fetchErr.message)
-    if (inv.status === 'void') throw new Error('Cannot record payment on a voided invoice')
-
-    const { error: insErr } = await supabase.from('invoice_payments').insert({
-      invoice_id: invoiceId,
-      company_id: inv.company_id,
+    const result = await applyPayment('record', invoiceId, {
       amount: Number(amount) || 0,
-      payment_method: payment_method || null,
-      payment_date: payment_date || new Date().toISOString().slice(0, 10),
-      reference_number: reference_number || null,
+      method: payment_method || null,
+      date: payment_date || new Date().toISOString().slice(0, 10),
+      reference: reference_number || null,
       notes: notes || null,
-      recorded_by: user?.id,
     })
-    if (insErr) throw new Error(insErr.message)
-
-    // Recompute cached sum
-    const { data: pmts } = await supabase.from('invoice_payments').select('amount').eq('invoice_id', invoiceId)
-    const newPaidAmount = (pmts ?? []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
-    const { status, paid_at } = computeStatusFromPayments(newPaidAmount, inv)
-
-    const { error: updErr } = await supabase.from('invoices').update({
-      paid_amount: newPaidAmount,
-      status,
-      paid_at,
-      payment_method: null,
-      payment_notes: null,
-      updated_at: new Date().toISOString(),
-    }).eq('id', invoiceId)
-    if (updErr) throw new Error(updErr.message)
-
-    logInvoiceActivity(invoiceId, 'payment_recorded', `Payment of $${Number(amount).toFixed(2)} recorded`, { amount: Number(amount), payment_method })
+    logInvoiceActivity(invoiceId, 'payment_recorded', `Payment of $${(Number(amount) || 0).toFixed(2)} recorded`, { amount: Number(amount), payment_method })
+    return result
   }
 
-  // G77: edit an existing payment in place. UPDATE on the same
-  // invoice_payments row (id preserved, invoice_id never changes); status
-  // re-derives through computeStatusFromPayments — the SAME function
-  // recordPayment and deletePayment use. Pure data: no send-* call, no
-  // client-facing notification. clients.lifetime_value follows via the DB
-  // trigger on invoice_payments UPDATE.
+  // G77: edit an existing payment in place. Same RPC, action 'update' — the
+  // row id is preserved, invoice_id never changes, and status re-derives from
+  // the ledger inside the same locked transaction. Pure data: no send-* call.
   async function updatePayment(paymentId, invoiceId, { amount, payment_method, payment_date, reference_number, notes }) {
-    const { data: inv, error: fetchErr } = await supabase.from('invoices').select('company_id, total, paid_at, sent_at, status').eq('id', invoiceId).single()
-    if (fetchErr) throw new Error(fetchErr.message)
-    if (inv.status === 'void') throw new Error('Cannot edit a payment on a voided invoice')
-
-    const { data: oldPmt, error: oldErr } = await supabase.from('invoice_payments').select('amount, payment_date').eq('id', paymentId).single()
-    if (oldErr) throw new Error(oldErr.message)
-
-    const { error: updPmtErr } = await supabase.from('invoice_payments').update({
+    const result = await applyPayment('update', invoiceId, {
+      paymentId,
       amount: Number(amount) || 0,
-      payment_method: payment_method || null,
-      payment_date: payment_date || new Date().toISOString().slice(0, 10),
-      reference_number: reference_number || null,
+      method: payment_method || null,
+      date: payment_date || new Date().toISOString().slice(0, 10),
+      reference: reference_number || null,
       notes: notes || null,
-    }).eq('id', paymentId)
-    if (updPmtErr) throw new Error(updPmtErr.message)
-
-    // Recompute cached sum — identical to recordPayment/deletePayment.
-    const { data: pmts } = await supabase.from('invoice_payments').select('amount').eq('invoice_id', invoiceId)
-    const newPaidAmount = (pmts ?? []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
-    const { status, paid_at } = computeStatusFromPayments(newPaidAmount, inv)
-
-    const { error: updErr } = await supabase.from('invoices').update({
-      paid_amount: newPaidAmount,
-      status,
-      paid_at,
-      payment_method: null,
-      payment_notes: null,
-      updated_at: new Date().toISOString(),
-    }).eq('id', invoiceId)
-    if (updErr) throw new Error(updErr.message)
-
+    })
     const fmt = (v) => `$${(Number(v) || 0).toFixed(2)}`
+    const oldAmount = result.old_amount ?? null
+    const oldDate = result.old_date ?? null
     logInvoiceActivity(
       invoiceId,
       'payment_edited',
-      `Payment edited: ${fmt(oldPmt.amount)} on ${oldPmt.payment_date} changed to ${fmt(amount)} on ${payment_date || oldPmt.payment_date}`,
-      { old_amount: Number(oldPmt.amount) || 0, new_amount: Number(amount) || 0, old_date: oldPmt.payment_date, new_date: payment_date || oldPmt.payment_date },
+      `Payment edited: ${fmt(oldAmount)} on ${oldDate ?? '?'} changed to ${fmt(amount)} on ${payment_date || oldDate || '?'}`,
+      { old_amount: Number(oldAmount) || 0, new_amount: Number(amount) || 0, old_date: oldDate, new_date: payment_date || oldDate },
     )
+    return result
   }
 
   async function deletePayment(paymentId, invoiceId) {
-    const { error: delErr } = await supabase.from('invoice_payments').delete().eq('id', paymentId)
-    if (delErr) throw new Error(delErr.message)
-
-    // Recompute cached sum
-    const { data: inv } = await supabase.from('invoices').select('total, paid_at, sent_at, status').eq('id', invoiceId).single()
-    const { data: pmts } = await supabase.from('invoice_payments').select('amount').eq('invoice_id', invoiceId)
-    const newPaidAmount = (pmts ?? []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
-    const { status, paid_at } = computeStatusFromPayments(newPaidAmount, inv)
-
-    const { error: updErr } = await supabase.from('invoices').update({
-      paid_amount: newPaidAmount,
-      status,
-      paid_at,
-      payment_method: null,
-      payment_notes: null,
-      updated_at: new Date().toISOString(),
-    }).eq('id', invoiceId)
-    if (updErr) throw new Error(updErr.message)
-
+    const result = await applyPayment('delete', invoiceId, { paymentId })
     logInvoiceActivity(invoiceId, 'payment_deleted', 'Payment removed')
+    return result
+  }
+
+  // I6 override: move a payment row to another invoice of the same client.
+  // The RPC validates the target (non-draft, non-void, same client) and
+  // re-derives both invoices in one transaction. Both sides get an activity
+  // row naming the other invoice.
+  async function transferPayment(paymentId, invoiceId, targetInvoiceId) {
+    const [{ data: pmt }, { data: sourceInv }, { data: targetInv }] = await Promise.all([
+      supabase.from('invoice_payments').select('amount').eq('id', paymentId).single(),
+      supabase.from('invoices').select('invoice_number').eq('id', invoiceId).single(),
+      supabase.from('invoices').select('invoice_number').eq('id', targetInvoiceId).single(),
+    ])
+    const result = await applyPayment('transfer', invoiceId, { paymentId, targetInvoiceId })
+    const amountStr = `$${(Number(pmt?.amount) || 0).toFixed(2)}`
+    logInvoiceActivity(invoiceId, 'payment_transferred_out', `Payment of ${amountStr} transferred to invoice ${targetInv?.invoice_number ?? ''}`.trim(), { amount: Number(pmt?.amount) || 0, target_invoice_id: targetInvoiceId, target_invoice_number: targetInv?.invoice_number ?? null })
+    logInvoiceActivity(targetInvoiceId, 'payment_transferred_in', `Payment of ${amountStr} transferred from invoice ${sourceInv?.invoice_number ?? ''}`.trim(), { amount: Number(pmt?.amount) || 0, source_invoice_id: invoiceId, source_invoice_number: sourceInv?.invoice_number ?? null })
+    return result
   }
 
   async function markPaidInFull(invoiceId) {
-    const { data: inv, error: fetchErr } = await supabase.from('invoices').select('total, paid_amount, company_id, sent_at, paid_at, status').eq('id', invoiceId).single()
+    // Size the payment from the ledger, never the paid_amount cache.
+    const [{ data: inv, error: fetchErr }, { data: pmts, error: pmtErr }] = await Promise.all([
+      supabase.from('invoices').select('total, status').eq('id', invoiceId).single(),
+      supabase.from('invoice_payments').select('amount').eq('invoice_id', invoiceId),
+    ])
     if (fetchErr) throw new Error(fetchErr.message)
-    if (inv.status === 'void') throw new Error('Cannot record payment on a voided invoice')
+    if (pmtErr) throw new Error(pmtErr.message)
 
-    const remaining = (Number(inv.total) || 0) - (Number(inv.paid_amount) || 0)
+    const ledger = (pmts ?? []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+    const remaining = Math.round(((Number(inv.total) || 0) - ledger) * 100) / 100
     if (remaining <= 0) {
-      // Already fully paid — just flip status
-      await supabase.from('invoices').update({ status: 'paid', paid_at: inv.paid_at || new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', invoiceId)
+      // Ledger already covers the total — re-derive so the status says so.
+      await applyPayment('rederive', invoiceId)
       return
     }
 
     await recordPayment(invoiceId, { amount: remaining, payment_method: null, payment_date: null, reference_number: null, notes: 'Marked paid in full' })
-  }
-
-  // G55: direct status set. Pure data operation: never invokes any send-*
-  // function or client-facing notification. Fills lifecycle stamps only when
-  // blank (sent_at on leaving draft, paid_at on paid).
-  async function setStatus(id, nextStatus) {
-    const { data: inv, error: fetchErr } = await supabase.from('invoices').select('status, sent_at, paid_at').eq('id', id).single()
-    if (fetchErr) throw new Error(fetchErr.message)
-    if (inv.status === nextStatus) return
-    const now = new Date().toISOString()
-    const patch = { status: nextStatus, updated_at: now }
-    if (nextStatus !== 'draft' && nextStatus !== 'void' && !inv.sent_at) patch.sent_at = now
-    if (nextStatus === 'paid' && !inv.paid_at) patch.paid_at = now
-    const { error: updErr } = await supabase.from('invoices').update(patch).eq('id', id)
-    if (updErr) throw new Error(updErr.message)
-
-    // G76: activity trail, same channel markVoid/reopenInvoice use.
-    logInvoiceActivity(id, 'invoice_status_changed', `Status changed from ${inv.status} to ${nextStatus}`, { from: inv.status, to: nextStatus })
   }
 
   // G60: manual invoice number edit. Trimmed, non-empty; a unique-index
@@ -440,24 +430,20 @@ export function useInvoiceMutations() {
   }
 
   async function reopenInvoice(id) {
-    // Recompute status from existing payments
-    const { data: inv, error: fetchErr } = await supabase.from('invoices').select('total, paid_at, sent_at, status').eq('id', id).single()
+    // Reopen from void re-derives from the ledger. A voided invoice had left
+    // the building, so a missing sent_at is stamped first — otherwise the
+    // derivation would land on draft, which the lifecycle guard forbids.
+    const { data: inv, error: fetchErr } = await supabase.from('invoices').select('sent_at').eq('id', id).single()
     if (fetchErr) throw new Error(fetchErr.message)
 
-    const { data: pmts } = await supabase.from('invoice_payments').select('amount').eq('invoice_id', id)
-    const paidAmount = (pmts ?? []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
-    const { status, paid_at } = computeStatusFromPayments(paidAmount, inv)
-
-    const { error: updErr } = await supabase.from('invoices').update({
-      status,
-      paid_at,
-      paid_amount: paidAmount,
-      void_reason: null,
-      updated_at: new Date().toISOString(),
-    }).eq('id', id)
+    const patch = { void_reason: null, updated_at: new Date().toISOString() }
+    if (!inv.sent_at) patch.sent_at = new Date().toISOString()
+    const { error: updErr } = await supabase.from('invoices').update(patch).eq('id', id)
     if (updErr) throw new Error(updErr.message)
+
+    await applyPayment('rederive', id)
     logInvoiceActivity(id, 'invoice_reopened', 'Invoice reopened')
   }
 
-  return { createInvoice, updateInvoice, deleteInvoice, markSent, markPaidInFull, markVoid, reopenInvoice, recordPayment, updatePayment, deletePayment, setStatus, updateInvoiceNumber, saving, error }
+  return { createInvoice, updateInvoice, deleteInvoice, markSent, markPaidInFull, markVoid, reopenInvoice, recordPayment, updatePayment, deletePayment, transferPayment, updateInvoiceNumber, saving, error }
 }

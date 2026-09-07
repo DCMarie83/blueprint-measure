@@ -1135,7 +1135,11 @@
       "termsPlaceholder": "Términos de pago, cargos por mora, etc.",
       "saving": "Guardando…",
       "saveInvoice": "Guardar factura",
-      "createInvoice": "Crear factura"
+      "createInvoice": "Crear factura",
+      "backToInvoice": "la factura",
+      "lockedPaid": "Una factura pagada no se puede editar. Usa una orden de cambio para trabajo adicional.",
+      "lockedVoid": "Una factura anulada no se puede editar. Usa una orden de cambio para trabajo adicional.",
+      "confirmPartialEdit": "Esta factura tiene pagos registrados. Al guardar, el estado se recalculará según el nuevo total. ¿Continuar?"
     },
     "lineItems": {
       "sectionLabel": "Líneas",
@@ -1208,7 +1212,24 @@
       "editNumber": "Editar número de factura",
       "errorNumberEmpty": "El número de factura es obligatorio.",
       "numberConflict": "El número de factura {{number}} ya existe.",
-      "editPayment": "Editar pago"
+      "editPayment": "Editar pago",
+      "markSent": "Marcar enviada",
+      "markSentTitle": "Marcar factura como enviada",
+      "markSentConfirm": "Marcar enviada",
+      "deliveryMethodLabel": "¿Cómo se entregó?",
+      "overpaidBy": "Sobrepago de {{amount}}",
+      "transfer": "Transferir",
+      "transferPayment": "Transferir este pago a otra factura",
+      "transferTitle": "Transferir pago a otra factura",
+      "transferSelect": "Selecciona una factura",
+      "transferNoTargets": "Este cliente no tiene otras facturas abiertas.",
+      "transferConfirm": "Transferir pago",
+      "delivery": {
+        "handed_over": "Entregada en mano",
+        "mailed": "Por correo postal",
+        "text": "Por mensaje de texto",
+        "other": "Otro"
+      }
     },
     "payment": {
       "methodsHeading": "Métodos de pago",
@@ -1266,6 +1287,18 @@
       "importSuccess_one": "{{count}} factura importada correctamente.",
       "importSuccess_other": "{{count}} facturas importadas correctamente.",
       "badgeNoTotal": "sin total — se importa como borrador"
+    },
+    "rpcErrors": {
+      "draft_invoice": "Marca esta factura como enviada antes de registrar un pago.",
+      "void_invoice": "Esta factura está anulada. Reábrela antes de cambiar pagos.",
+      "bad_amount": "Ingresa un monto mayor que cero.",
+      "payment_not_found": "Ese pago ya no existe. Actualiza la página.",
+      "not_found": "Factura no encontrada.",
+      "forbidden": "No tienes acceso a esta factura.",
+      "bad_target": "Selecciona una factura válida para la transferencia.",
+      "target_status": "La factura de destino no puede recibir pagos en su estado actual.",
+      "different_client": "Los pagos solo se transfieren entre facturas del mismo cliente.",
+      "bad_action": "Acción de pago no admitida."
     }
   },
   "lite": {

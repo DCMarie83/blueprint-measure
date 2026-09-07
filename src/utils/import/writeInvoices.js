@@ -131,7 +131,6 @@ export async function writeInvoiceRows({
             client_id: clientText && isBlank(existingInv.client_id) ? clientId : null,
             payment_method: (raw.payment_method || '').trim() && isBlank(existingInv.payment_method) ? row._method : null,
             payment_notes: isBlank(existingInv.payment_notes) ? paymentNotes : null,
-            paid_amount: (raw.amount_paid || '').trim() && row._amountPaid > 0 && isBlankMoney(existingInv.paid_amount) ? row._amountPaid : null,
           })
         } else {
           // File import: the money writer. Status moves only via an explicitly
@@ -140,7 +139,6 @@ export async function writeInvoiceRows({
             status: row._explicitStatus ?? null,
             total: hasTotal ? row._total : null,
             subtotal: hasTotal ? row._total : null,
-            paid_amount: (raw.amount_paid || '').trim() && row._amountPaid > 0 ? row._amountPaid : null,
             due_date: hasDate ? row._dueDate : null,
             payment_method: (raw.payment_method || '').trim() ? row._method : null,
             payment_notes: paymentNotes,
@@ -180,6 +178,40 @@ export async function writeInvoiceRows({
 
         const { error: updErr } = await supabase.from('invoices').update(patch).eq('id', row._existingId)
         if (updErr) throw new Error(updErr.message)
+
+        // I4: paid_amount is never written without its ledger row. A file paid
+        // amount for an existing invoice with an EMPTY ledger creates the
+        // invoice_payments row (dated from the file's paid date, else the
+        // invoice date), then the RPC re-derives status and the cache. An
+        // invoice that already has ledger rows is left alone — the ledger is
+        // the record, blanks never overwrite.
+        if ((raw.amount_paid || '').trim() && row._amountPaid > 0) {
+          const { data: ledgerRows, error: ledgerErr } = await supabase
+            .from('invoice_payments').select('id').eq('invoice_id', row._existingId).limit(1)
+          if (ledgerErr) throw new Error(ledgerErr.message)
+          if ((ledgerRows ?? []).length === 0) {
+            const paymentDate = row._paidDate || row._invoiceDate || new Date().toISOString().slice(0, 10)
+            const { error: pmtErr } = await supabase.from('invoice_payments').insert({
+              invoice_id: row._existingId,
+              company_id: companyId,
+              amount: row._amountPaid,
+              payment_method: row._method,
+              payment_date: paymentDate,
+              created_at: paymentDate,
+              notes: `imported ${batchId}`,
+              recorded_by: userId,
+            })
+            if (pmtErr) throw new Error(`Payment failed: ${pmtErr.message}`)
+            const { data: rd, error: rdErr } = await supabase.rpc('apply_invoice_payment', {
+              p_action: 'rederive', p_invoice_id: row._existingId,
+              p_payment_id: null, p_amount: null, p_method: null, p_date: null,
+              p_reference: null, p_notes: null, p_target_invoice_id: null,
+            })
+            if (rdErr) throw new Error(rdErr.message)
+            if (rd?.error) throw new Error(`Status rederive failed: ${rd.error}`)
+          }
+        }
+
         row._createdId = row._existingId
         updated.push({ name: label })
         onProgress?.(i + 1, rows.length)

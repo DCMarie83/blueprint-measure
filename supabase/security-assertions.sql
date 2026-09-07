@@ -729,6 +729,79 @@ a25 AS (
                     WHERE polrelid = 'public.time_entries'::regclass
                       AND polname = 'time_entries_select'),
                   'POLICY MISSING')::text
+),
+
+-- ── A26 / A27 / A28 ────────────────────────────────────────────────
+-- Lane I ledger integrity: the payment FK restricts invoice deletes, the
+-- payment RPCs are locked-down security definers, and the lifecycle guard
+-- trigger stands on invoices. Any of these reverting reopens the Module 3
+-- S1 holes (cascade-deleted ledgers, client-derived statuses, deletable
+-- sent invoices).
+a26 AS (
+  SELECT 'A26'::text,
+         'invoice_payments.invoice_id FK is ON DELETE RESTRICT'::text,
+         CASE WHEN EXISTS (
+           SELECT 1 FROM pg_constraint
+           WHERE conrelid = 'public.invoice_payments'::regclass
+             AND contype = 'f'
+             AND confrelid = 'public.invoices'::regclass
+             AND confdeltype = 'r'
+         ) THEN 'PASS' ELSE 'FAIL' END::text,
+         coalesce((SELECT string_agg(conname || ': ' || pg_get_constraintdef(oid), '; ')
+                     FROM pg_constraint
+                    WHERE conrelid = 'public.invoice_payments'::regclass
+                      AND contype = 'f'
+                      AND confrelid = 'public.invoices'::regclass),
+                  'FK MISSING')::text
+),
+a27_bad AS (
+  SELECT p.proname || ': ' || problem AS problem
+  FROM pg_proc p
+  CROSS JOIN LATERAL (
+    SELECT unnest(ARRAY[
+      CASE WHEN NOT p.prosecdef THEN 'not SECURITY DEFINER' END,
+      CASE WHEN NOT EXISTS (SELECT 1 FROM unnest(coalesce(p.proconfig, ARRAY[]::text[])) c WHERE c LIKE 'search_path=%')
+           THEN 'search_path not pinned' END,
+      CASE WHEN has_function_privilege('anon', p.oid, 'EXECUTE') THEN 'anon can EXECUTE' END,
+      CASE WHEN p.proname = 'rederive_invoice_status' AND has_function_privilege('authenticated', p.oid, 'EXECUTE')
+           THEN 'authenticated can EXECUTE (should be internal-only)' END
+    ]) AS problem
+  ) checks
+  WHERE p.pronamespace = 'public'::regnamespace
+    AND p.proname IN ('apply_invoice_payment', 'rederive_invoice_status')
+    AND problem IS NOT NULL
+  UNION ALL
+  SELECT missing.proname || ': function missing'
+  FROM (VALUES ('apply_invoice_payment'), ('rederive_invoice_status')) AS missing(proname)
+  WHERE NOT EXISTS (
+    SELECT 1 FROM pg_proc p
+    WHERE p.pronamespace = 'public'::regnamespace AND p.proname = missing.proname)
+),
+a27 AS (
+  SELECT 'A27'::text,
+         'apply_invoice_payment / rederive_invoice_status: security definer, pinned search_path, no anon; rederive not app-callable'::text,
+         CASE WHEN (SELECT count(*) FROM a27_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
+         coalesce('PROBLEMS: ' || (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a27_bad),
+                  'both functions locked down as designed')::text
+),
+a28 AS (
+  SELECT 'A28'::text,
+         'invoices_lifecycle_guard trigger exists BEFORE UPDATE OR DELETE on invoices'::text,
+         CASE WHEN EXISTS (
+           SELECT 1 FROM pg_trigger
+           WHERE tgrelid = 'public.invoices'::regclass
+             AND tgname = 'invoices_lifecycle_guard'
+             AND NOT tgisinternal
+             -- tgtype bits: 2 = BEFORE, 8 = DELETE, 16 = UPDATE
+             AND (tgtype & 2) = 2
+             AND (tgtype & 8) = 8
+             AND (tgtype & 16) = 16
+         ) THEN 'PASS' ELSE 'FAIL' END::text,
+         coalesce((SELECT pg_get_triggerdef(oid) FROM pg_trigger
+                    WHERE tgrelid = 'public.invoices'::regclass
+                      AND tgname = 'invoices_lifecycle_guard'
+                      AND NOT tgisinternal),
+                  'TRIGGER MISSING')::text
 )
 
 SELECT * FROM a1
@@ -756,4 +829,7 @@ UNION ALL SELECT * FROM a22
 UNION ALL SELECT * FROM a23
 UNION ALL SELECT * FROM a24
 UNION ALL SELECT * FROM a25
+UNION ALL SELECT * FROM a26
+UNION ALL SELECT * FROM a27
+UNION ALL SELECT * FROM a28
 ORDER BY id;

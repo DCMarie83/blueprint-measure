@@ -97,9 +97,10 @@ export default function ProjectDetailPage() {
   const [projectDocs, setProjectDocs] = useState([])
   const [docsVersion, setDocsVersion] = useState(0)
 
-  // Collected = the payments ledger for this job's invoices.
+  // Collected = the payments ledger on this job's non-void invoices — the
+  // same definition Reports and the money map use.
   useEffect(() => {
-    const ids = invoices.map(inv => inv.id)
+    const ids = invoices.filter(inv => inv.status !== 'void').map(inv => inv.id)
     if (ids.length === 0) { setCollected(0); return }
     let cancelled = false
     ;(async () => {

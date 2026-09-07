@@ -7,8 +7,9 @@ import { useEffectiveCompany } from './useEffectiveCompany'
 // never per-card queries.
 //   map.get(projectId) → { billed, collected, approvedCO, openCoCount,
 //                          invoiceCount, estimateCount, documentCount }
-// billed excludes draft and void invoices (matching Reports); collected sums
-// the payments ledger; approvedCO sums approved change_orders.amount;
+// billed excludes draft and void invoices; collected sums the payments
+// ledger on non-void invoices — the same two definitions Reports and the
+// job header use; approvedCO sums approved change_orders.amount;
 // openCoCount counts proposed change orders. invoiceCount counts non-void
 // invoices; documentCount counts documents linked to the job directly or to
 // its invoices/estimates.
@@ -45,15 +46,20 @@ export function useJobMoneyMap() {
           return map.get(projectId)
         }
 
+        const voidInvoiceIds = new Set()
         for (const inv of invoices ?? []) {
           if (!inv.project_id) continue
           invoiceProject.set(inv.id, inv.project_id)
+          if (inv.status === 'void') voidInvoiceIds.add(inv.id)
           if (inv.status !== 'void') entry(inv.project_id).invoiceCount += 1
           if (inv.status !== 'draft' && inv.status !== 'void') {
             entry(inv.project_id).billed += Number(inv.total) || 0
           }
         }
+        // Collected = the payments ledger on non-void invoices, the one
+        // definition used by Reports, the job header, and Lite.
         for (const p of payments ?? []) {
+          if (voidInvoiceIds.has(p.invoice_id)) continue
           const projectId = invoiceProject.get(p.invoice_id)
           if (!projectId) continue
           entry(projectId).collected += Number(p.amount) || 0

@@ -305,13 +305,14 @@ export default function LiteInvoiceDetailPage() {
           <div className={styles.segmentChips} style={{ marginBottom: 0 }}>
             <button className={styles.secondaryBtn} onClick={handleDownloadPDF} disabled={busy}><Download size={15} /> {t('lite:invoiceDetail.pdf')}</button>
             <button className={styles.secondaryBtn} onClick={handleDownloadExcel} disabled={busy}><FileSpreadsheet size={15} /> {t('lite:invoiceDetail.excel')}</button>
-            {hasEmail ? (
+            {/* I13: no send on void or paid — the edge function also refuses. */}
+            {invoice.status !== 'void' && invoice.status !== 'paid' && (hasEmail ? (
               <button className={styles.primaryBtn} onClick={handleSend} disabled={busy}>
                 <Send size={15} /> {busy ? t('lite:invoiceDetail.working') : invoice.status === 'draft' ? t('lite:invoiceDetail.sendToGc') : t('lite:invoiceDetail.resendToGc')}
               </button>
             ) : (
               <button className={styles.primaryBtn} disabled>{t('lite:invoiceDetail.sendToGc')}</button>
-            )}
+            ))}
             {canPay && (
               <button className={styles.secondaryBtn} onClick={openPaySheet} disabled={busy}><CheckCircle size={15} /> {t('lite:invoiceDetail.markPaid')}</button>
             )}

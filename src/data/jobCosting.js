@@ -57,7 +57,9 @@ export async function getJobCostingRows(companyId, { from, to } = {}) {
   ] = await Promise.all([
     supabase.from('projects').select('id, name, status, client_id, clients(display_name)').eq('company_id', companyId).is('deleted_at', null).then(must),
     supabase.from('estimates').select('id, project_id, status, accepted_at, accepted_variant, selected_variant, good_total, better_total, best_total').eq('company_id', companyId).eq('status', 'accepted').then(must),
-    supabase.from('invoices').select('id, project_id, total, status, created_at').eq('company_id', companyId).not('status', 'in', '(void,draft)').then(must),
+    // Non-void invoices: billed still excludes drafts (filtered below), but
+    // collected = the ledger on every non-void invoice, drafts included.
+    supabase.from('invoices').select('id, project_id, total, status, created_at').eq('company_id', companyId).neq('status', 'void').then(must),
     supabase.from('invoice_payments').select('id, invoice_id, amount, payment_date').eq('company_id', companyId).then(must),
     supabase.from('time_entries').select('project_id, hours, cost_rate, work_date').eq('company_id', companyId).then(must),
     supabase.from('material_orders').select('id, project_id, selected_variant, created_at').eq('company_id', companyId).then(must),
@@ -149,10 +151,10 @@ export async function getJobCostingRows(companyId, { from, to } = {}) {
       flag_no_accepted_estimate = true
     }
 
-    // Billed
-    const billed = projInvoices.reduce((s, i) => s + num(i.total), 0)
+    // Billed: excludes draft (the query already excluded void)
+    const billed = projInvoices.filter(i => i.status !== 'draft').reduce((s, i) => s + num(i.total), 0)
 
-    // Collected
+    // Collected: the payments ledger on non-void invoices
     const collected = projPayments.reduce((s, p) => s + num(p.amount), 0)
 
     // Labor
@@ -236,8 +238,9 @@ export async function getJobCostingDetail(companyId, projectId) {
   // exactly as before — they appear only in the breakdown list, labeled.
   const countableInvoices = (invoices ?? []).filter(i => i.status !== 'draft' && i.status !== 'void')
 
-  // Payments for this project's countable invoices
-  const invoiceIds = countableInvoices.map(i => i.id)
+  // Payments ledger for every non-void invoice on the job (billed still uses
+  // the countable set; collected is the ledger on non-void invoices).
+  const invoiceIds = (invoices ?? []).filter(i => i.status !== 'void').map(i => i.id)
   let allPayments = []
   if (invoiceIds.length > 0) {
     const pmts = must(await supabase.from('invoice_payments').select('invoice_id, amount, payment_date').in('invoice_id', invoiceIds))

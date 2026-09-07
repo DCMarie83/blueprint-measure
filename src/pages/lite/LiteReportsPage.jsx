@@ -129,9 +129,10 @@ export default function LiteReportsPage() {
     const entries = allEntries.filter(e => !isOpenPunch(e))
     const inWindow = d => { const x = day(d); return x && x >= from && x <= to }
 
-    // Section 1 — Payments received (per-payment rows: the mark-paid source).
+    // Section 1 — Payments received (per-payment ledger rows, non-void invoices).
+    const voidInvoiceIds = new Set(invoices.filter(i => i.status === 'void').map(i => i.id))
     const paymentRows = payments
-      .filter(p => inWindow(p.payment_date))
+      .filter(p => inWindow(p.payment_date) && !voidInvoiceIds.has(p.invoice_id))
       .map(p => {
         const inv = invoiceById[p.invoice_id]
         return {
@@ -146,12 +147,18 @@ export default function LiteReportsPage() {
       .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
     const paymentsTotal = paymentRows.reduce((s, r) => s + r.amount, 0)
 
-    // Section 2 — Invoices issued (created in window).
+    // Section 2 — Invoices issued (created in window). Collected per invoice
+    // is the payments ledger, never the paid_amount cache.
+    const ledgerByInvoice = {}
+    for (const p of payments) {
+      if (voidInvoiceIds.has(p.invoice_id)) continue
+      ledgerByInvoice[p.invoice_id] = (ledgerByInvoice[p.invoice_id] || 0) + (Number(p.amount) || 0)
+    }
     const invoiceRows = invoices
       .filter(inv => inWindow(inv.created_at))
       .map(inv => {
         const total = Number(inv.total) || 0
-        const collected = Number(inv.paid_amount) || 0
+        const collected = ledgerByInvoice[inv.id] || 0
         return {
           id: inv.id,
           invoiceNumber: inv.invoice_number,

@@ -74,6 +74,10 @@ Deno.serve(async (req) => {
       .single()
     if (invErr || !invoice) return json({ error: 'Invoice not found' }, 404)
 
+    // I13: void and paid invoices never go out.
+    if (invoice.status === 'void') return json({ error: 'This invoice is void and cannot be sent.' }, 400)
+    if (invoice.status === 'paid') return json({ error: 'This invoice is paid and cannot be sent.' }, 400)
+
     const { data: project, error: projErr } = await adminClient
       .from('projects')
       .select('id, name, address, client_id, company_id')
@@ -217,7 +221,7 @@ Deno.serve(async (req) => {
     if (invoice.status === 'draft') {
       await adminClient
         .from('invoices')
-        .update({ status: 'sent', sent_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .update({ status: 'sent', sent_at: new Date().toISOString(), delivery_method: 'email', updated_at: new Date().toISOString() })
         .eq('id', invoice_id)
     }
 

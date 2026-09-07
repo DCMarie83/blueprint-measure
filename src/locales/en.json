@@ -1135,7 +1135,11 @@
       "termsPlaceholder": "Payment terms, late fees, etc.",
       "saving": "Saving…",
       "saveInvoice": "Save Invoice",
-      "createInvoice": "Create Invoice"
+      "createInvoice": "Create Invoice",
+      "backToInvoice": "invoice",
+      "lockedPaid": "A paid invoice cannot be edited. Use a change order for additional work.",
+      "lockedVoid": "A void invoice cannot be edited. Use a change order for additional work.",
+      "confirmPartialEdit": "This invoice has payments recorded. Saving will re-derive its status against the new total. Continue?"
     },
     "lineItems": {
       "sectionLabel": "Line Items",
@@ -1208,7 +1212,24 @@
       "editNumber": "Edit invoice number",
       "errorNumberEmpty": "Invoice number is required.",
       "numberConflict": "Invoice number {{number}} already exists.",
-      "editPayment": "Edit payment"
+      "editPayment": "Edit payment",
+      "markSent": "Mark sent",
+      "markSentTitle": "Mark invoice sent",
+      "markSentConfirm": "Mark sent",
+      "deliveryMethodLabel": "How was it delivered?",
+      "overpaidBy": "Overpaid by {{amount}}",
+      "transfer": "Transfer",
+      "transferPayment": "Transfer this payment to another invoice",
+      "transferTitle": "Transfer payment to another invoice",
+      "transferSelect": "Select an invoice",
+      "transferNoTargets": "This client has no other open invoices.",
+      "transferConfirm": "Transfer payment",
+      "delivery": {
+        "handed_over": "Handed over",
+        "mailed": "Mailed",
+        "text": "Text message",
+        "other": "Other"
+      }
     },
     "payment": {
       "methodsHeading": "Payment Methods",
@@ -1266,6 +1287,18 @@
       "importSuccess_one": "{{count}} invoice imported successfully.",
       "importSuccess_other": "{{count}} invoices imported successfully.",
       "badgeNoTotal": "no total — imports as draft"
+    },
+    "rpcErrors": {
+      "draft_invoice": "Mark this invoice sent before recording a payment.",
+      "void_invoice": "This invoice is void. Reopen it before changing payments.",
+      "bad_amount": "Enter an amount greater than zero.",
+      "payment_not_found": "That payment no longer exists. Refresh the page.",
+      "not_found": "Invoice not found.",
+      "forbidden": "You do not have access to this invoice.",
+      "bad_target": "Select a valid invoice to transfer to.",
+      "target_status": "The target invoice cannot accept payments in its current status.",
+      "different_client": "Payments can only transfer between invoices of the same client.",
+      "bad_action": "Unsupported payment action."
     }
   },
   "lite": {

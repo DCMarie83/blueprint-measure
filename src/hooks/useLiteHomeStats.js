@@ -57,7 +57,7 @@ export function useLiteHomeStats(companyId) {
           .select('project_id, amount, invoice_id, work_date, created_at, clock_in_at, clock_out_at')
           .eq('company_id', companyId),
         supabase.from('invoice_payments')
-          .select('amount, payment_date')
+          .select('amount, payment_date, invoice_id')
           .eq('company_id', companyId),
         supabase.from('clients')
           .select('id, display_name, business_name, client_type')
@@ -101,9 +101,11 @@ export function useLiteHomeStats(companyId) {
         .filter(e => !e.invoice_id)
         .reduce((s, e) => s + (Number(e.amount) || 0), 0)
 
-      // ── Earned = payments recorded in the window ───────────────────
+      // ── Earned = ledger payments in the window on non-void invoices ──
+      const voidInvoiceIds = new Set(invoices.filter(i => i.status === 'void').map(i => i.id))
       let earnedMTD = 0, earnedYTD = 0
       for (const p of payments) {
+        if (voidInvoiceIds.has(p.invoice_id)) continue
         const d = String(p.payment_date || '').slice(0, 10)
         if (!d) continue
         const amt = Number(p.amount) || 0

@@ -34,7 +34,61 @@ function fmtMoney(val) {
   return `$${Number(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
-export default function InvoiceForm({ existingInvoice, existingLineItems }) {
+// I1: the route mounts this wrapper. With ?edit=<id> it loads the invoice and
+// its line items and hydrates the form (isEdit); paid and void are locked.
+// Without ?edit= it is the plain create form.
+export default function InvoiceForm() {
+  const { t } = useTranslation()
+  const [searchParams] = useSearchParams()
+  const editId = searchParams.get('edit')
+  const [loaded, setLoaded] = useState(null) // { invoice, lineItems }
+  const [loadState, setLoadState] = useState(editId ? 'loading' : 'none')
+
+  useEffect(() => {
+    if (!editId) { setLoadState('none'); setLoaded(null); return }
+    let cancelled = false
+    setLoadState('loading')
+    ;(async () => {
+      const { data, error } = await supabase
+        .from('invoices')
+        .select('*, invoice_line_items(*)')
+        .eq('id', editId)
+        .single()
+      if (cancelled) return
+      if (error || !data) { setLoadState('error'); return }
+      setLoaded({
+        invoice: data,
+        lineItems: (data.invoice_line_items ?? []).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
+      })
+      setLoadState('ready')
+    })()
+    return () => { cancelled = true }
+  }, [editId])
+
+  if (loadState === 'loading') {
+    return <div className={styles.page}><main className={styles.main}><p>{t('common:misc.loading')}</p></main></div>
+  }
+  if (loadState === 'error') {
+    return <div className={styles.page}><main className={styles.main}><p>{t('invoices:detail.notFound')}</p></main></div>
+  }
+  if (loadState === 'ready' && (loaded.invoice.status === 'paid' || loaded.invoice.status === 'void')) {
+    return (
+      <div className={styles.page}>
+        <main className={styles.main}>
+          <BackLink to={`/invoices/${editId}`} label={t('invoices:form.backToInvoice')} />
+          <h1 className={styles.title}>{t('invoices:form.editTitle')}</h1>
+          <div className={styles.error}>
+            {loaded.invoice.status === 'paid' ? t('invoices:form.lockedPaid') : t('invoices:form.lockedVoid')}
+          </div>
+        </main>
+      </div>
+    )
+  }
+  // key remounts the form when the target changes so state hydrates cleanly.
+  return <InvoiceFormInner key={editId || 'new'} existingInvoice={loaded?.invoice} existingLineItems={loaded?.lineItems} />
+}
+
+function InvoiceFormInner({ existingInvoice, existingLineItems }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -121,6 +175,9 @@ export default function InvoiceForm({ existingInvoice, existingLineItems }) {
 
     try {
       if (isEdit) {
+        // Partial invoices re-derive their status against the new total; the
+        // owner confirms that before the save runs.
+        if (existingInvoice.status === 'partial' && !window.confirm(t('invoices:form.confirmPartialEdit'))) return
         await updateInvoice(existingInvoice.id, { title, due_date: dueDate || null, notes, terms, adjustment_amount: adjustmentAmount, adjustment_label: adjustmentLabel, lineItems: validLines })
         navigate(`/invoices/${existingInvoice.id}`)
       } else {

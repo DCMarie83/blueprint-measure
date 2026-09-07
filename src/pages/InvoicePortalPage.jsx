@@ -144,7 +144,7 @@ export default function InvoicePortalPage() {
             {inv.invoice_number} &middot; {t('portal:invoice.issued', { date: fmtDate(inv.created_at) })}
             {inv.due_date && <> &middot; <strong style={{ color: 'var(--color-primary)' }}>{t('portal:invoice.due', { date: fmtDate(inv.due_date) })}</strong></>}
           </div>
-          <InvoiceStatusBadge status={inv.status} isOverdue={inv.status === 'sent' && inv.due_date && new Date(inv.due_date) < new Date()} />
+          <InvoiceStatusBadge status={inv.status} isOverdue={(inv.status === 'sent' || inv.status === 'viewed' || inv.status === 'partial') && inv.due_date && new Date(inv.due_date) < new Date()} />
         </div>
 
         {/* Project info */}
@@ -226,7 +226,10 @@ export default function InvoicePortalPage() {
             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-success)', marginBottom: 4 }}>{t('portal:invoice.paymentReceived')}</div>
             <div style={{ fontSize: 13, color: 'var(--color-text)' }}>
               {t('portal:invoice.paidOn', { amount: fmtMoney(inv.paid_amount), date: fmtDate(inv.paid_at) })}
-              {inv.payment_method && <> {t('portal:invoice.paidVia', { method: inv.payment_method.replace(/_/g, ' ') })}</>}
+              {/* Method comes from the latest ledger payment (last_payment_method,
+                  supplied by get_portal_invoice); the legacy header column is a
+                  fallback for invoices paid before the ledger was authoritative. */}
+              {(inv.last_payment_method || inv.payment_method) && <> {t('portal:invoice.paidVia', { method: (inv.last_payment_method || inv.payment_method).replace(/_/g, ' ') })}</>}
             </div>
           </div>
         )}

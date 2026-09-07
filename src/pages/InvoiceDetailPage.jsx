@@ -34,7 +34,7 @@ const STATUS_PILL = {
 }
 
 function statusPillProps(status, overdue) {
-  if (overdue && (status === 'sent' || status === 'partial')) {
+  if (overdue && (status === 'sent' || status === 'viewed' || status === 'partial')) {
     return { label: 'common:invoiceStatus.overdue', bg: 'var(--color-danger-bg)', color: 'var(--color-danger)' }
   }
   return STATUS_PILL[status] ?? STATUS_PILL.draft
@@ -62,7 +62,15 @@ export default function InvoiceDetailPage() {
   const { company } = useAuth()
   const { invoice, lineItems, payments, loading, error, refetch } = useInvoice(id)
   const { documents, refetch: refetchDocuments } = useLinkedDocuments('invoice', id)
-  const { markSent, markPaidInFull, markVoid, reopenInvoice, recordPayment, updatePayment, deletePayment, deleteInvoice, setStatus, updateInvoiceNumber } = useInvoiceMutations()
+  const { markSent, markPaidInFull, markVoid, reopenInvoice, recordPayment, updatePayment, deletePayment, transferPayment, deleteInvoice, updateInvoiceNumber } = useInvoiceMutations()
+
+  // apply_invoice_payment error codes → plain messages; anything unmapped
+  // falls back to the raw message (the lifecycle trigger speaks plain English).
+  function paymentErrorMessage(err) {
+    const known = ['draft_invoice', 'void_invoice', 'bad_amount', 'payment_not_found', 'not_found', 'forbidden', 'bad_target', 'target_status', 'different_client', 'bad_action']
+    if (err?.code && known.includes(err.code)) return t(`invoices:rpcErrors.${err.code}`)
+    return err?.message || String(err)
+  }
 
   // G77: inline payment edit state
   const [editingPaymentId, setEditingPaymentId] = useState(null)
@@ -84,6 +92,15 @@ export default function InvoiceDetailPage() {
   const [voidReason, setVoidReason] = useState('')
   const [actionSaving, setActionSaving] = useState(false)
   const [actionError, setActionError] = useState(null)
+
+  // I5: mark-sent modal (manual delivery; email goes through the send button)
+  const [showMarkSent, setShowMarkSent] = useState(false)
+  const [deliveryMethod, setDeliveryMethod] = useState('handed_over')
+
+  // I6: transfer a payment to another invoice of the same client
+  const [transferringPaymentId, setTransferringPaymentId] = useState(null)
+  const [transferTargets, setTransferTargets] = useState(null) // null = loading
+  const [transferTargetId, setTransferTargetId] = useState('')
 
   // For PDF: fetch project + client + company data
   const [pdfLoading, setPdfLoading] = useState(false)
@@ -160,14 +177,14 @@ export default function InvoiceDetailPage() {
       setShowPayForm(false)
       setPayAmount(''); setPayMethod('check'); setPayDate(new Date().toISOString().slice(0, 10)); setPayRef(''); setPayNotes('')
       await refetch()
-    } catch (err) { setActionError(err.message) }
+    } catch (err) { setActionError(paymentErrorMessage(err)) }
     finally { setActionSaving(false) }
   }
 
   async function handleMarkPaidInFull() {
     setActionSaving(true); setActionError(null)
     try { await markPaidInFull(id); await refetch() }
-    catch (err) { setActionError(err.message) }
+    catch (err) { setActionError(paymentErrorMessage(err)) }
     finally { setActionSaving(false) }
   }
 
@@ -199,7 +216,7 @@ export default function InvoiceDetailPage() {
       })
       setEditingPaymentId(null)
       await refetch()
-    } catch (err) { setActionError(err.message) }
+    } catch (err) { setActionError(paymentErrorMessage(err)) }
     finally { setActionSaving(false) }
   }
 
@@ -212,7 +229,7 @@ export default function InvoiceDetailPage() {
     if (!window.confirm(t('invoices:detail.confirmRemovePayment'))) return
     setActionSaving(true); setActionError(null)
     try { await deletePayment(paymentId, id); await refetch() }
-    catch (err) { setActionError(err.message) }
+    catch (err) { setActionError(paymentErrorMessage(err)) }
     finally { setActionSaving(false) }
   }
 
@@ -233,20 +250,56 @@ export default function InvoiceDetailPage() {
 
   async function handleDelete() {
     if (!window.confirm(t('invoices:detail.confirmDelete'))) return
+    setActionError(null)
+    // The lifecycle guard blocks deleting a non-draft; its message shows inline.
     try { await deleteInvoice(id); navigate('/invoices') }
-    catch (err) { alert(t('invoices:detail.deleteFailed', { message: err.message })) }
+    catch (err) { setActionError(err.message) }
   }
 
-  // G55: direct status change. Pure data; the only gate is a confirm on void.
-  async function handleStatusChange(next) {
-    if (!next || next === invoice.status) return
-    if (next === 'void' && !window.confirm(t('invoices:detail.confirmVoidStatus'))) return
+  // I5: manual mark-sent with a delivery method. Email is the send button.
+  async function handleMarkSent() {
     setActionSaving(true); setActionError(null)
     try {
-      if (next === 'void') await markVoid(id, null)
-      else await setStatus(id, next)
+      await markSent(id, deliveryMethod)
+      setShowMarkSent(false)
       await refetch()
     } catch (err) { setActionError(err.message) }
+    finally { setActionSaving(false) }
+  }
+
+  // I6: transfer a payment to another invoice of the same client.
+  async function openTransfer(paymentId) {
+    setActionError(null)
+    setTransferringPaymentId(paymentId)
+    setTransferTargetId('')
+    setTransferTargets(null)
+    let myClient = invoice.client_id ?? null
+    if (!myClient && invoice.project_id) {
+      const { data: proj } = await supabase.from('projects').select('client_id').eq('id', invoice.project_id).single()
+      myClient = proj?.client_id ?? null
+    }
+    const { data } = await supabase
+      .from('invoices')
+      .select('id, invoice_number, total, status, client_id, projects(client_id)')
+      .eq('company_id', invoice.company_id)
+      .not('status', 'in', '(draft,void)')
+      .neq('id', id)
+      .order('created_at', { ascending: false })
+    const targets = (data ?? []).filter(inv => {
+      const invClient = inv.client_id ?? inv.projects?.client_id ?? null
+      return invClient != null && invClient === myClient
+    })
+    setTransferTargets(targets)
+  }
+
+  async function handleTransfer() {
+    if (!transferTargetId) return
+    setActionSaving(true); setActionError(null)
+    try {
+      await transferPayment(transferringPaymentId, id, transferTargetId)
+      setTransferringPaymentId(null)
+      await refetch()
+    } catch (err) { setActionError(paymentErrorMessage(err)) }
     finally { setActionSaving(false) }
   }
 
@@ -276,8 +329,12 @@ export default function InvoiceDetailPage() {
   const total = Number(invoice.total) || 0
   const paidAmount = Number(invoice.paid_amount) || 0
   const balanceDue = Math.max(0, total - paidAmount)
+  const overpaidBy = Math.round((paidAmount - total) * 100) / 100
   const isVoid = status === 'void'
   const canRecordPayment = !isVoid && balanceDue > 0
+  const canEdit = status === 'draft' || status === 'sent' || status === 'viewed' || status === 'partial'
+  // I2: delete exists only for drafts with an empty ledger.
+  const canDelete = status === 'draft' && payments.length === 0
 
   return (
     <div className={styles.page}>
@@ -325,20 +382,11 @@ export default function InvoiceDetailPage() {
                   <span style={{ padding: '4px 12px', borderRadius: 9999, background: p.bg, color: p.color, fontWeight: 700, fontSize: 'var(--text-xs)', whiteSpace: 'nowrap', textDecoration: p.strike ? 'line-through' : undefined }}>{t(p.label)}</span>
                 )
               })()}
-              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 4 }}>
-                <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-muted)' }}>{t('invoices:detail.statusLabel')}</span>
-                <select
-                  value={status}
-                  disabled={actionSaving}
-                  onChange={e => handleStatusChange(e.target.value)}
-                  style={{ padding: '4px 8px', fontSize: 12, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
-                >
-                  {['draft', 'sent', 'partial', 'paid', 'void'].map(s => (
-                    <option key={s} value={s}>{t(`common:invoiceStatus.${s}`)}</option>
-                  ))}
-                  {status === 'viewed' && <option value="viewed">{t('common:invoiceStatus.viewed')}</option>}
-                </select>
-              </label>
+              {overpaidBy > 0 && (
+                <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-warning, #d97706)', whiteSpace: 'nowrap' }}>
+                  {t('invoices:detail.overpaidBy', { amount: fmtMoney(overpaidBy) })}
+                </span>
+              )}
             </div>
             {numberError && (
               <div style={{ fontSize: 13, color: 'var(--color-danger, #dc2626)', margin: '4px 0' }}>{numberError}</div>
@@ -354,15 +402,22 @@ export default function InvoiceDetailPage() {
               <Download size={15} /> {pdfLoading ? '…' : t('invoices:detail.pdf')}
             </button>
             {sendSuccess && <span style={{ color: 'var(--color-success)', fontSize: 13, fontWeight: 600 }}>{t('invoices:detail.sentConfirm')}</span>}
+            {canEdit && (
+              <button className={styles.toolBtn} onClick={() => navigate(`/invoices/new?edit=${id}`)}>
+                <Edit size={15} /> {t('common:action.edit')}
+              </button>
+            )}
             {status === 'draft' && (
               <>
-                <button className={styles.toolBtn} onClick={() => navigate(`/invoices/new?edit=${id}`)}>
-                  <Edit size={15} /> {t('common:action.edit')}
+                <button className={styles.toolBtn} onClick={() => { setDeliveryMethod('handed_over'); setShowMarkSent(true) }} disabled={actionSaving}>
+                  <CheckCircle size={15} /> {t('invoices:detail.markSent')}
                 </button>
                 <button className={styles.actionBtn} onClick={handleSendInvoice} disabled={actionSaving}>
                   <Send size={15} /> {actionSaving ? t('invoices:detail.sending') : t('invoices:detail.sendInvoice')}
                 </button>
-                <button className={styles.dangerBtn} onClick={handleDelete}><Trash2 size={15} /> {t('common:action.delete')}</button>
+                {canDelete && (
+                  <button className={styles.dangerBtn} onClick={handleDelete}><Trash2 size={15} /> {t('common:action.delete')}</button>
+                )}
               </>
             )}
             {(status === 'sent' || status === 'viewed' || status === 'partial') && (
@@ -516,6 +571,12 @@ export default function InvoiceDetailPage() {
                         title={t('invoices:detail.editPayment')}
                       ><Pencil size={13} /></button>
                       <button
+                        onClick={() => openTransfer(pmt.id)}
+                        disabled={actionSaving}
+                        style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: 12, fontWeight: 600, padding: '4px 6px', opacity: 0.7 }}
+                        title={t('invoices:detail.transferPayment')}
+                      >{t('invoices:detail.transfer')}</button>
+                      <button
                         onClick={() => handleDeletePayment(pmt.id)}
                         disabled={actionSaving}
                         style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: 16, padding: '4px 8px', opacity: 0.6, transition: 'opacity 0.15s' }}
@@ -528,6 +589,30 @@ export default function InvoiceDetailPage() {
                 </div>
                 )
               ))}
+              {/* I6: transfer picker — the same client's non-draft, non-void invoices */}
+              {transferringPaymentId && (
+                <div style={{ padding: '10px 12px', background: 'var(--color-surface)', borderLeft: '3px solid var(--color-primary)', borderRadius: 'var(--radius-md)' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{t('invoices:detail.transferTitle')}</div>
+                  {transferTargets === null ? (
+                    <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>{t('common:misc.loading')}</p>
+                  ) : transferTargets.length === 0 ? (
+                    <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>{t('invoices:detail.transferNoTargets')}</p>
+                  ) : (
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <select className={styles.formSelect} value={transferTargetId} onChange={e => setTransferTargetId(e.target.value)} style={{ minWidth: 240 }}>
+                        <option value="">{t('invoices:detail.transferSelect')}</option>
+                        {transferTargets.map(tg => (
+                          <option key={tg.id} value={tg.id}>{tg.invoice_number} · {fmtMoney(tg.total)} ({t(`common:invoiceStatus.${tg.status}`, { defaultValue: tg.status })})</option>
+                        ))}
+                      </select>
+                      <button className={styles.confirmBtn} onClick={handleTransfer} disabled={actionSaving || !transferTargetId}>
+                        {actionSaving ? t('invoices:detail.saving') : t('invoices:detail.transferConfirm')}
+                      </button>
+                    </div>
+                  )}
+                  <button className={styles.cancelBtn} style={{ marginTop: 8 }} onClick={() => setTransferringPaymentId(null)}>{t('common:action.cancel')}</button>
+                </div>
+              )}
             </div>
           )}
 
@@ -590,6 +675,26 @@ export default function InvoiceDetailPage() {
             <div className={styles.formActions}>
               <button className={styles.cancelBtn} onClick={() => setShowPayForm(false)}>{t('common:action.cancel')}</button>
               <button className={styles.confirmBtn} onClick={handleRecordPayment} disabled={actionSaving}>{actionSaving ? t('invoices:detail.saving') : t('invoices:detail.savePayment')}</button>
+            </div>
+          </div>
+        )}
+
+        {/* I5: Mark sent inline form (manual delivery; email is the send button) */}
+        {showMarkSent && (
+          <div className={styles.inlineForm}>
+            <h3 className={styles.formTitle}>{t('invoices:detail.markSentTitle')}</h3>
+            <label className={styles.formField}>
+              <span>{t('invoices:detail.deliveryMethodLabel')}</span>
+              <select className={styles.formSelect} value={deliveryMethod} onChange={e => setDeliveryMethod(e.target.value)}>
+                <option value="handed_over">{t('invoices:detail.delivery.handed_over')}</option>
+                <option value="mailed">{t('invoices:detail.delivery.mailed')}</option>
+                <option value="text">{t('invoices:detail.delivery.text')}</option>
+                <option value="other">{t('invoices:detail.delivery.other')}</option>
+              </select>
+            </label>
+            <div className={styles.formActions}>
+              <button className={styles.cancelBtn} onClick={() => setShowMarkSent(false)}>{t('common:action.cancel')}</button>
+              <button className={styles.confirmBtn} onClick={handleMarkSent} disabled={actionSaving}>{actionSaving ? t('invoices:detail.saving') : t('invoices:detail.markSentConfirm')}</button>
             </div>
           </div>
         )}
