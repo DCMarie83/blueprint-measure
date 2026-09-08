@@ -221,6 +221,7 @@ export function summarizePay(entries, crew) {
         hours: 0,
         pay: 0,
         hasMissingRate: false,
+        unpricedHours: 0,
       }
     }
     const h = Number(e.hours) || 0
@@ -228,7 +229,10 @@ export function summarizePay(entries, crew) {
     byWorker[cmId].hours += h
     byWorker[cmId].pay += entryPay
     // Money math unchanged; this only records that some hours priced at $0.
-    if (e.cost_rate == null || !(Number(e.cost_rate) > 0)) byWorker[cmId].hasMissingRate = true
+    if (e.cost_rate == null || !(Number(e.cost_rate) > 0)) {
+      byWorker[cmId].hasMissingRate = true
+      byWorker[cmId].unpricedHours += h
+    }
   }
   const rows = Object.values(byWorker)
   for (const r of rows) { r.rate = r.hours > 0 ? r.pay / r.hours : 0 }
@@ -419,4 +423,161 @@ export async function closeOpenPunch(id, hours) {
     .update({ hours: Number(hours), clock_out_at: new Date().toISOString(), status: 'submitted' })
     .eq('id', id)
   if (error) throw error
+}
+
+// ── Dated rates (crew_rates) ─────────────────────────────────────────────
+// crew_members.cost_rate stays synced to the rate in effect today so every
+// existing reader (pay snapshot trigger fallback, statement header, roster)
+// keeps working.
+
+export async function getCrewRates(crewMemberId) {
+  const { data, error } = await supabase
+    .from('crew_rates')
+    .select('*')
+    .eq('crew_member_id', crewMemberId)
+    .order('effective_from', { ascending: false })
+  if (error) throw error
+  return data ?? []
+}
+
+function rateInEffect(rates, dateStr) {
+  const applicable = rates.filter(r =>
+    r.effective_from <= dateStr && (r.effective_to == null || r.effective_to >= dateStr))
+  if (applicable.length === 0) return null
+  return [...applicable].sort((a, b) => (b.effective_from || '').localeCompare(a.effective_from || ''))[0]
+}
+
+async function syncCurrentRate(crewMemberId) {
+  const today = new Date().toISOString().slice(0, 10)
+  const rates = await getCrewRates(crewMemberId)
+  const current = rateInEffect(rates, today)
+  await supabase.from('crew_members')
+    .update({ cost_rate: current ? Number(current.rate) : null })
+    .eq('id', crewMemberId)
+}
+
+export async function addCrewRate({ companyId, crewMemberId, rate, effectiveFrom, note }) {
+  // Close the previous open row the day before the new one starts.
+  const dayBefore = new Date(effectiveFrom + 'T00:00:00')
+  dayBefore.setDate(dayBefore.getDate() - 1)
+  const closeTo = dayBefore.toISOString().slice(0, 10)
+  const { data: open } = await supabase
+    .from('crew_rates')
+    .select('id, effective_from')
+    .eq('crew_member_id', crewMemberId)
+    .is('effective_to', null)
+  for (const row of (open ?? [])) {
+    if (row.effective_from < effectiveFrom) {
+      await supabase.from('crew_rates').update({ effective_to: closeTo }).eq('id', row.id)
+    }
+  }
+  const { error } = await supabase.from('crew_rates').insert({
+    company_id: companyId,
+    crew_member_id: crewMemberId,
+    rate: Number(rate),
+    effective_from: effectiveFrom,
+    effective_to: null,
+    note: (note || '').trim() || null,
+  })
+  if (error) throw error
+  await syncCurrentRate(crewMemberId)
+}
+
+export async function updateCrewRate(id, crewMemberId, patch) {
+  const { error } = await supabase.from('crew_rates').update(patch).eq('id', id)
+  if (error) throw error
+  await syncCurrentRate(crewMemberId)
+}
+
+export async function deleteCrewRate(id, crewMemberId) {
+  const { error } = await supabase.from('crew_rates').delete().eq('id', id)
+  if (error) throw error
+  await syncCurrentRate(crewMemberId)
+}
+
+// Open (current) rates for the whole company, for the roster's "since" line.
+export async function getOpenCrewRates(companyId) {
+  const { data, error } = await supabase
+    .from('crew_rates')
+    .select('crew_member_id, rate, effective_from')
+    .eq('company_id', companyId)
+    .is('effective_to', null)
+  if (error) throw error
+  const map = {}
+  for (const r of (data ?? [])) {
+    if (!map[r.crew_member_id] || r.effective_from > map[r.crew_member_id].effective_from) {
+      map[r.crew_member_id] = r
+    }
+  }
+  return map
+}
+
+// ── Unpriced hours ───────────────────────────────────────────────────────
+
+export async function repriceUnpricedTimeEntries({ companyId, from, to, crewMemberId }) {
+  const { data, error } = await supabase.rpc('reprice_unpriced_time_entries', {
+    p_company_id: companyId,
+    p_from: from,
+    p_to: to,
+    p_crew_member_id: crewMemberId || null,
+  })
+  if (error) throw error
+  return data
+}
+
+// ── Assignments (project_assignments) ────────────────────────────────────
+
+export async function getProjectAssignments(projectId) {
+  const { data, error } = await supabase
+    .from('project_assignments')
+    .select('id, crew_member_id, crew_members(id, name, is_active)')
+    .eq('project_id', projectId)
+  if (error) throw error
+  return data ?? []
+}
+
+export async function getCrewAssignments(crewMemberId) {
+  const { data, error } = await supabase
+    .from('project_assignments')
+    .select('id, project_id, projects(id, name, status)')
+    .eq('crew_member_id', crewMemberId)
+  if (error) throw error
+  return data ?? []
+}
+
+export async function assignCrewToProject(projectId, crewMemberIds) {
+  const rows = crewMemberIds.map(id => ({ project_id: projectId, crew_member_id: id }))
+  // Ignore duplicate-pair conflicts: assigning an already-assigned member is a no-op.
+  const { error } = await supabase.from('project_assignments').upsert(rows, { onConflict: 'project_id,crew_member_id', ignoreDuplicates: true })
+  if (error) throw error
+}
+
+export async function removeAssignment(id) {
+  const { error } = await supabase.from('project_assignments').delete().eq('id', id)
+  if (error) throw error
+}
+
+// ── Crew identity: link a crew row to a company user by email ────────────
+// Called when a crew email is saved (crew page / share modal) and after a
+// team invite. One crew row per user per company (unique index enforces it).
+export async function linkCrewToUserByEmail({ crewMemberId, email, companyId, userId = null }) {
+  try {
+    let targetUserId = userId
+    if (!targetUserId) {
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('user_id')
+        .eq('company_id', companyId)
+        .eq('email', email)
+        .maybeSingle()
+      targetUserId = profile?.user_id ?? null
+    }
+    if (!targetUserId) return false
+    const { error } = await supabase
+      .from('crew_members')
+      .update({ user_id: targetUserId })
+      .eq('id', crewMemberId)
+      .is('user_id', null)
+    return !error
+  } catch { return false }
 }

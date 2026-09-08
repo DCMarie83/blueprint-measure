@@ -96,6 +96,7 @@ export default function RivetPayLinkPage() {
       if (rpcErr) throw rpcErr
       if (result?.error === 'already_open') { await loadLink(); return }
       if (result?.error === 'bad_job') { setClockError(t('crew:clock.badJob')); return }
+      if (result?.error === 'not_assigned') { setClockError(t('crew:clock.notAssigned')); return }
       if (result?.error) { setClockError(result.error); return }
       setClockedOutMsg('')
       setDescription('')
@@ -147,6 +148,7 @@ export default function RivetPayLinkPage() {
         p_description: manualDesc || null,
       })
       if (rpcErr) throw rpcErr
+      if (result?.error === 'not_assigned') { setManualIsError(true); setManualMsg(t('crew:clock.notAssigned')); return }
       if (result?.error) { setManualIsError(true); setManualMsg(t('crew:manual.error', { msg: result.error })); return }
       setManualIsError(false)
       setManualMsg(t('crew:manual.submitted'))
@@ -189,6 +191,7 @@ export default function RivetPayLinkPage() {
   }
 
   const jobs = data.jobs || []
+  const assignedOnly = data.assigned_only === true
 
   // Terms gate
   if (!data.terms_accepted) {
@@ -251,6 +254,10 @@ export default function RivetPayLinkPage() {
                 <button className={styles.clockOutBtn} onClick={handleClockOut} disabled={clockingOut}>
                   {clockingOut ? t('crew:clock.clockingOut') : t('crew:clock.clockOut')}
                 </button>
+              </div>
+            ) : assignedOnly && jobs.length === 0 ? (
+              <div className={styles.clockInBox}>
+                <p style={{ fontSize: 14, color: 'var(--color-text-muted, #666)', margin: 0 }}>{t('crew:clock.noAssignedJobs')}</p>
               </div>
             ) : (
               /* Clocked out — clock in form */

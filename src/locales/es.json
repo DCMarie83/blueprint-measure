@@ -197,7 +197,9 @@
       "badJob": "Ese trabajo ya no está disponible.",
       "clockInFailed": "No se pudo marcar entrada",
       "clockOutFailed": "No se pudo marcar salida",
-      "submittedHours": "Enviado para aprobación — {{hours}} hrs."
+      "submittedHours": "Enviado para aprobación — {{hours}} hrs.",
+      "notAssigned": "No estás asignado a ese trabajo. Consulta con tu administrador.",
+      "noAssignedJobs": "Aún no tienes trabajos asignados. Consulta con tu administrador."
     },
     "manual": {
       "toggle": "Registrar horas a mano",
@@ -2902,7 +2904,8 @@
       "generating": "Generando...",
       "statement": "Recibo",
       "total": "Total",
-      "missingRateNote": "Los trabajadores marcados con una advertencia tienen entradas sin tarifa de costo."
+      "missingRateNote": "Los trabajadores marcados con una advertencia tienen entradas sin tarifa de costo.",
+      "unpricedHours": "{{hours}} h sin tarifa"
     },
     "account": {
       "backToDashboard": "← Volver al Panel",
@@ -3072,6 +3075,13 @@
       "title": "Solicitar asientos adicionales",
       "body": "¿Solicitar asientos adicionales para tu equipo? Nos pondremos en contacto pronto.",
       "sendRequest": "Enviar solicitud"
+    },
+    "crewJobs": {
+      "allTitle": "La cuadrilla puede marcar entrada en cualquier trabajo abierto",
+      "assignedTitle": "La cuadrilla solo ve los trabajos asignados",
+      "allDesc": "El enlace de entrada muestra todos los trabajos abiertos del tablero.",
+      "assignedDesc": "El enlace de entrada muestra solo los trabajos asignados a cada miembro.",
+      "switchLabel": "Cualquier trabajo abierto"
     }
   },
   "ui": {
@@ -3202,7 +3212,8 @@
       "estimatedMargin": "Margen estimado",
       "actualMargin": "Margen real",
       "cashPosition": "Posición de caja",
-      "excludedFromTotals": "excluido de los totales"
+      "excludedFromTotals": "excluido de los totales",
+      "unpricedHours": "{{hours}} h sin tarifa"
     },
     "expenseCategory": {
       "material": "Material",
@@ -3290,7 +3301,8 @@
       "pay": "Pago",
       "status": "Estado",
       "clockIn": "Entrada",
-      "clockOut": "Salida"
+      "clockOut": "Salida",
+      "cost": "Costo"
     },
     "approvals": {
       "title": "Aprobaciones pendientes",
@@ -3386,7 +3398,12 @@
       "lifetime": "Total histórico",
       "approvedHours": "Horas aprobadas",
       "clockLog": "Registro de entradas y salidas",
-      "noSubmissions": "Aún no hay envíos."
+      "noSubmissions": "Aún no hay envíos.",
+      "hoursTitle": "Horas ({{count}})",
+      "noHours": "Aún no hay horas registradas.",
+      "ledgerHours": "Todas las horas registradas",
+      "pendingPunches": "Entradas pendientes",
+      "noPending": "Nada en espera de aprobación."
     },
     "expenses": {
       "category": {
@@ -3442,6 +3459,47 @@
       "importBtn_other": "Importar {{count}} registros",
       "importSuccess_one": "{{count}} registro de horas importado correctamente.",
       "importSuccess_other": "{{count}} registros de horas importados correctamente."
+    },
+    "rates": {
+      "title": "Tarifas",
+      "rateLabel": "Tarifa ($/h)",
+      "fromLabel": "Vigente desde",
+      "noteLabel": "Nota (opcional)",
+      "addRate": "Agregar tarifa",
+      "empty": "Sin tarifas todavía. Agrega una para valorar las horas de este trabajador.",
+      "to": "a",
+      "open": "(vigente)",
+      "since": "desde {{date}}",
+      "noneSet": "sin tarifa",
+      "deleteConfirm": "¿Eliminar esta tarifa? Las horas ya valoradas conservan su costo."
+    },
+    "unpriced": {
+      "banner": "{{hours}} horas en {{count}} registros no tienen tarifa",
+      "showOnly": "Mostrar solo estas",
+      "priceNow": "Valorar ahora",
+      "dialogTitle": "Valorar horas sin tarifa",
+      "crewLabel": "Miembro de la cuadrilla",
+      "allCrew": "Toda la cuadrilla",
+      "fromLabel": "Desde",
+      "toLabel": "Hasta",
+      "ratesThatApply": "Tarifas que se aplicarán:",
+      "priced": "{{count}} registros valorados.",
+      "noRate": "sin tarifa"
+    },
+    "assignments": {
+      "jobTitle": "Cuadrilla ({{count}})",
+      "assignCrew": "Asignar cuadrilla",
+      "jobEmpty": "Sin cuadrilla asignada a este trabajo.",
+      "allAssigned": "Toda la cuadrilla activa ya está asignada.",
+      "assign": "Asignar",
+      "crewTitle": "Trabajos asignados ({{count}})",
+      "crewEmpty": "Sin trabajos asignados."
+    },
+    "clock": {
+      "runningOn": "Entrada marcada en {{job}}",
+      "since": "desde {{time}}",
+      "clockIn": "Marcar entrada",
+      "clockOut": "Marcar salida"
     }
   },
   "blueprint": {

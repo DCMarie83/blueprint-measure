@@ -197,7 +197,9 @@
       "badJob": "That job is no longer available.",
       "clockInFailed": "Clock in failed",
       "clockOutFailed": "Clock out failed",
-      "submittedHours": "Submitted for approval — {{hours}} hrs."
+      "submittedHours": "Submitted for approval — {{hours}} hrs.",
+      "notAssigned": "You are not assigned to that job. Ask your admin.",
+      "noAssignedJobs": "No jobs assigned to you yet. Ask your admin."
     },
     "manual": {
       "toggle": "Log time manually",
@@ -2902,7 +2904,8 @@
       "generating": "Generating...",
       "statement": "Statement",
       "total": "Total",
-      "missingRateNote": "Workers marked with a warning have entries missing a cost rate."
+      "missingRateNote": "Workers marked with a warning have entries missing a cost rate.",
+      "unpricedHours": "{{hours}} hrs unpriced"
     },
     "account": {
       "backToDashboard": "← Back to Dashboard",
@@ -3072,6 +3075,13 @@
       "title": "Request additional seats",
       "body": "Request additional seats for your team? We'll be in touch shortly.",
       "sendRequest": "Send Request"
+    },
+    "crewJobs": {
+      "allTitle": "Crew can clock into any open job",
+      "assignedTitle": "Crew only see jobs they are assigned to",
+      "allDesc": "The clock link lists every open job on the board.",
+      "assignedDesc": "The clock link lists only the jobs each crew member is assigned to.",
+      "switchLabel": "Any open job"
     }
   },
   "ui": {
@@ -3202,7 +3212,8 @@
       "estimatedMargin": "Estimated Margin",
       "actualMargin": "Actual Margin",
       "cashPosition": "Cash position",
-      "excludedFromTotals": "excluded from totals"
+      "excludedFromTotals": "excluded from totals",
+      "unpricedHours": "{{hours}} hrs unpriced"
     },
     "expenseCategory": {
       "material": "Material",
@@ -3290,7 +3301,8 @@
       "pay": "Pay",
       "status": "Status",
       "clockIn": "Clock In",
-      "clockOut": "Clock Out"
+      "clockOut": "Clock Out",
+      "cost": "Cost"
     },
     "approvals": {
       "title": "Pending Approvals",
@@ -3386,7 +3398,12 @@
       "lifetime": "Lifetime",
       "approvedHours": "Approved hours",
       "clockLog": "Clock Log",
-      "noSubmissions": "No submissions yet."
+      "noSubmissions": "No submissions yet.",
+      "hoursTitle": "Hours ({{count}})",
+      "noHours": "No hours logged yet.",
+      "ledgerHours": "All logged hours",
+      "pendingPunches": "Pending clock-ins",
+      "noPending": "Nothing waiting for approval."
     },
     "expenses": {
       "category": {
@@ -3442,6 +3459,47 @@
       "importBtn_other": "Import {{count}} Entries",
       "importSuccess_one": "{{count}} time entry imported successfully.",
       "importSuccess_other": "{{count}} time entries imported successfully."
+    },
+    "rates": {
+      "title": "Rates",
+      "rateLabel": "Rate ($/hr)",
+      "fromLabel": "Effective from",
+      "noteLabel": "Note (optional)",
+      "addRate": "Add rate",
+      "empty": "No rates yet. Add one to price this worker’s hours.",
+      "to": "to",
+      "open": "(current)",
+      "since": "since {{date}}",
+      "noneSet": "no rate set",
+      "deleteConfirm": "Delete this rate? Hours already priced keep their cost."
+    },
+    "unpriced": {
+      "banner": "{{hours}} hours across {{count}} entries have no rate",
+      "showOnly": "Show only these",
+      "priceNow": "Price now",
+      "dialogTitle": "Price unpriced hours",
+      "crewLabel": "Crew member",
+      "allCrew": "All crew",
+      "fromLabel": "From",
+      "toLabel": "To",
+      "ratesThatApply": "Rates that will apply:",
+      "priced": "{{count}} entries priced.",
+      "noRate": "no rate"
+    },
+    "assignments": {
+      "jobTitle": "Crew ({{count}})",
+      "assignCrew": "Assign crew",
+      "jobEmpty": "No crew assigned to this job.",
+      "allAssigned": "Every active crew member is already assigned.",
+      "assign": "Assign",
+      "crewTitle": "Assigned jobs ({{count}})",
+      "crewEmpty": "Not assigned to any jobs."
+    },
+    "clock": {
+      "runningOn": "Clocked in on {{job}}",
+      "since": "since {{time}}",
+      "clockIn": "Clock in",
+      "clockOut": "Clock out"
     }
   },
   "blueprint": {

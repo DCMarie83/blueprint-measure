@@ -314,6 +314,7 @@ export async function getJobCostingDetail(companyId, projectId) {
     laborCost += num(te.hours) * num(te.cost_rate)
   }
   const laborBreakdown = Object.values(laborMap).sort((a, b) => b.cost - a.cost)
+  const laborUnpricedHours = Math.round((timeEntries ?? []).reduce((s2, te) => s2 + (te.cost_rate == null ? num(te.hours) : 0), 0) * 100) / 100
 
   // Filter material items to only this project's orders
   const projOrders = materialOrders ?? []
@@ -367,6 +368,7 @@ export async function getJobCostingDetail(companyId, projectId) {
     expensesBreakdown: expenseRows ?? [],
     invoicesBreakdown,
     coBreakdown,
+    laborUnpricedHours,
   }
 }
 

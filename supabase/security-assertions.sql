@@ -971,6 +971,82 @@ a35 AS (
          CASE WHEN (SELECT count(*) FROM a35_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
          coalesce('PROBLEMS: ' || (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a35_bad),
                   'queue table, policy, function, and cron all present')::text
+),
+
+-- ── A36 / A37 / A38 ────────────────────────────────────────────────
+-- Lane M: dated rates, the pricing trigger, and assignments.
+a36_bad AS (
+  SELECT 'crew_rates missing'::text AS problem WHERE to_regclass('public.crew_rates') IS NULL
+  UNION ALL
+  SELECT 'crew_rates RLS off'
+  FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public' AND c.relname = 'crew_rates' AND c.relrowsecurity = false
+  UNION ALL
+  SELECT 'crew_rates missing ' || v.verb || ' policy'
+  FROM (VALUES ('r'), ('a'), ('w'), ('d')) AS v(verb)
+  WHERE to_regclass('public.crew_rates') IS NOT NULL
+    AND NOT EXISTS (SELECT 1 FROM pg_policy p
+                    WHERE p.polrelid = 'public.crew_rates'::regclass AND p.polcmd IN (v.verb, '*'))
+  UNION ALL
+  SELECT 'crew_rates select policy does not reference crew_members.user_id'
+  WHERE to_regclass('public.crew_rates') IS NOT NULL
+    AND NOT EXISTS (SELECT 1 FROM pg_policy p
+                    WHERE p.polrelid = 'public.crew_rates'::regclass AND p.polcmd IN ('r', '*')
+                      AND pg_get_expr(p.polqual, p.polrelid) ILIKE '%user_id%')
+),
+a36 AS (
+  SELECT 'A36'::text,
+         'crew_rates: RLS on, four policies, crew-scoped select via crew_members.user_id'::text,
+         CASE WHEN (SELECT count(*) FROM a36_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
+         coalesce('PROBLEMS: ' || (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a36_bad),
+                  'table, RLS, and policies as designed')::text
+),
+a37 AS (
+  SELECT 'A37'::text,
+         'time_entries_price trigger BEFORE INSERT OR UPDATE; price_time_entry pinned'::text,
+         CASE WHEN EXISTS (
+                SELECT 1 FROM pg_trigger
+                WHERE tgrelid = 'public.time_entries'::regclass
+                  AND tgname = 'time_entries_price'
+                  AND NOT tgisinternal
+                  AND (tgtype & 2) = 2   -- BEFORE
+                  AND (tgtype & 4) = 4   -- INSERT
+                  AND (tgtype & 16) = 16 -- UPDATE
+              ) AND EXISTS (
+                SELECT 1 FROM pg_proc p
+                WHERE p.pronamespace = 'public'::regnamespace
+                  AND p.proname = 'price_time_entry'
+                  AND EXISTS (SELECT 1 FROM unnest(coalesce(p.proconfig, '{}')) cfg WHERE cfg LIKE 'search_path=%'))
+         THEN 'PASS' ELSE 'FAIL' END::text,
+         coalesce((SELECT pg_get_triggerdef(oid) FROM pg_trigger
+                    WHERE tgrelid = 'public.time_entries'::regclass AND tgname = 'time_entries_price' AND NOT tgisinternal),
+                  'TRIGGER MISSING')::text
+),
+a38_bad AS (
+  SELECT 'project_assignments missing'::text AS problem WHERE to_regclass('public.project_assignments') IS NULL
+  UNION ALL
+  SELECT 'project_assignments RLS off'
+  FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public' AND c.relname = 'project_assignments' AND c.relrowsecurity = false
+  UNION ALL
+  SELECT 'project_assignments missing ' || v.label || ' policy'
+  FROM (VALUES ('r', 'select'), ('a', 'insert'), ('d', 'delete')) AS v(verb, label)
+  WHERE to_regclass('public.project_assignments') IS NOT NULL
+    AND NOT EXISTS (SELECT 1 FROM pg_policy p
+                    WHERE p.polrelid = 'public.project_assignments'::regclass AND p.polcmd IN (v.verb, '*'))
+  UNION ALL
+  SELECT 'rivetpay_get_link does not reference crew_see_all_jobs'
+  WHERE NOT EXISTS (SELECT 1 FROM pg_proc
+                    WHERE pronamespace = 'public'::regnamespace
+                      AND proname = 'rivetpay_get_link'
+                      AND prosrc ILIKE '%crew_see_all_jobs%')
+),
+a38 AS (
+  SELECT 'A38'::text,
+         'project_assignments: RLS + select/insert/delete; rivetpay_get_link honors crew_see_all_jobs'::text,
+         CASE WHEN (SELECT count(*) FROM a38_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
+         coalesce('PROBLEMS: ' || (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a38_bad),
+                  'assignments table and clock-link gating as designed')::text
 )
 
 
@@ -1009,4 +1085,7 @@ UNION ALL SELECT * FROM a32
 UNION ALL SELECT * FROM a33
 UNION ALL SELECT * FROM a34
 UNION ALL SELECT * FROM a35
+UNION ALL SELECT * FROM a36
+UNION ALL SELECT * FROM a37
+UNION ALL SELECT * FROM a38
 ORDER BY id;

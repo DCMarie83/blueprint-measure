@@ -39,7 +39,9 @@ export default function PayTable({ rows, className, onDownloadStatement, downloa
               <td className={styles.td} style={{ textAlign: 'right', fontWeight: 600 }}>
                 {fmtUSD.format(r.pay)}
                 {r.hasMissingRate && (
-                  <span title={t('misc:payTable.missingRateTooltip')} style={{ marginLeft: 4, color: 'var(--color-warning, #f59e0b)' }}>⚠︎</span>
+                  <span title={t('misc:payTable.missingRateTooltip')} style={{ marginLeft: 6, color: 'var(--color-warning, #f59e0b)', fontSize: 11, fontWeight: 600 }}>
+                    {t('misc:payTable.unpricedHours', { hours: (r.unpricedHours || 0).toFixed(2) })}
+                  </span>
                 )}
               </td>
               {showActions && (

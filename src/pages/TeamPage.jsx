@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useImpersonation } from '../context/ImpersonationContext'
 import { useEffectiveCompany } from '../hooks/useEffectiveCompany'
+import { linkCrewToUserByEmail } from '../data/timeTracking'
 import { usePlan } from '../lib/plans'
 import { resolveEntitlements } from '../lib/entitlements'
 import Modal from '../components/ui/Modal'
@@ -20,6 +21,9 @@ export default function TeamPage() {
   const navigate = useNavigate()
   const [teamMembers, setTeamMembers] = useState([])
   const [companyName, setCompanyName] = useState('')
+  const [crewSeeAll, setCrewSeeAll] = useState(true)
+  const [crewSeeAllLoaded, setCrewSeeAllLoaded] = useState(false)
+  const [crewSeeAllSaving, setCrewSeeAllSaving] = useState(false)
   const [loading, setLoading] = useState(true)
   const [showDeleted, setShowDeleted] = useState(false)
   const [search, setSearch] = useState('')
@@ -57,13 +61,15 @@ export default function TeamPage() {
         return
       }
 
-      // Get company name
+      // Get company name + crew visibility switch
       const { data: companyData } = await supabase
         .from('companies')
-        .select('name')
+        .select('name, crew_see_all_jobs')
         .eq('id', effectiveCompanyId)
         .maybeSingle()
       setCompanyName(companyData?.name || '')
+      setCrewSeeAll(companyData?.crew_see_all_jobs !== false)
+      setCrewSeeAllLoaded(true)
 
       // RLS will scope this to same-tenant members
       const { data: members } = await supabase
@@ -77,6 +83,16 @@ export default function TeamPage() {
     }
     load()
   }, [user, effectiveCompanyId])
+
+  async function toggleCrewSeeAll() {
+    const next = !crewSeeAll
+    setCrewSeeAllSaving(true)
+    const { error } = await supabase.from('companies')
+      .update({ crew_see_all_jobs: next, updated_at: new Date().toISOString() })
+      .eq('id', effectiveCompanyId)
+    if (!error) setCrewSeeAll(next)
+    setCrewSeeAllSaving(false)
+  }
 
   async function handleInvite(e) {
     e.preventDefault()
@@ -98,6 +114,21 @@ export default function TeamPage() {
       }
       if (error) throw new Error(error.message)
       if (data?.error) throw new Error(data.error)
+
+      // Crew identity: an invite whose email matches an existing crew row
+      // links that row to the new user.
+      if (data?.user?.id) {
+        try {
+          const { data: crewRow } = await supabase
+            .from('crew_members')
+            .select('id')
+            .eq('company_id', effectiveCompanyId)
+            .eq('email', inviteEmail.trim())
+            .is('user_id', null)
+            .maybeSingle()
+          if (crewRow) await linkCrewToUserByEmail({ crewMemberId: crewRow.id, email: inviteEmail.trim(), companyId: effectiveCompanyId, userId: data.user.id })
+        } catch { /* linking is best-effort */ }
+      }
 
       // Refresh team list
       const { data: members } = await supabase
@@ -166,6 +197,20 @@ export default function TeamPage() {
     <div className={styles.page}>
       <main className={styles.main}>
         <h1 className={styles.title}>{t('team:title')} {companyName && `- ${companyName}`}</h1>
+
+        {/* Crew job visibility on the clock link */}
+        {crewSeeAllLoaded && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, margin: '10px 0 16px', padding: '12px 16px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg, 12px)' }}>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>{crewSeeAll ? t('team:crewJobs.allTitle') : t('team:crewJobs.assignedTitle')}</div>
+              <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>{crewSeeAll ? t('team:crewJobs.allDesc') : t('team:crewJobs.assignedDesc')}</div>
+            </div>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              <input type="checkbox" checked={crewSeeAll} disabled={crewSeeAllSaving} onChange={toggleCrewSeeAll} />
+              <span style={{ fontSize: 13, fontWeight: 600 }}>{t('team:crewJobs.switchLabel')}</span>
+            </label>
+          </div>
+        )}
         {/* Seat usage line */}
         {entitlements && !loading && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, fontSize: 13, color: 'var(--color-text-muted)' }}>

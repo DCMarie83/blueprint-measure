@@ -2,7 +2,12 @@ import { useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, Link } from 'react-router-dom'
 import { MapPin, AlertTriangle, Copy, Check } from 'lucide-react'
-import { getCrewMemberById, getCrewMemberPunches, updateCrewMember, sendRivetPayLinkEmail } from '../data/timeTracking'
+import {
+  getCrewMemberById, getCrewMemberPunches, updateCrewMember, sendRivetPayLinkEmail,
+  getCrewRates, addCrewRate, deleteCrewRate, getCrewAssignments, getMyTimeEntries,
+  linkCrewToUserByEmail,
+} from '../data/timeTracking'
+import { useEffectiveCompany } from '../hooks/useEffectiveCompany'
 import styles from './CrewMemberPage.module.css'
 import { ScrollbarInside } from '../components/common/FloatingScrollbar'
 
@@ -19,12 +24,42 @@ function fmtDate(iso) {
 export default function CrewMemberPage() {
   const { t } = useTranslation()
   const { id } = useParams()
+  const { companyId } = useEffectiveCompany()
   const [cm, setCm] = useState(null)
   const [punches, setPunches] = useState([])
+  const [entries, setEntries] = useState([])
+  const [rates, setRates] = useState([])
+  const [assignments, setAssignments] = useState([])
   const [loading, setLoading] = useState(true)
 
-  // Rate edit
-  const [rateSaving, setRateSaving] = useState(false)
+  // Add-rate form
+  const [rateValue, setRateValue] = useState('')
+  const [rateFrom, setRateFrom] = useState(new Date().toISOString().slice(0, 10))
+  const [rateNote, setRateNote] = useState('')
+  const [rateBusy, setRateBusy] = useState(false)
+
+  async function reloadRates() {
+    try { setRates(await getCrewRates(id)) } catch { /* section renders empty */ }
+  }
+
+  async function handleAddRate(e) {
+    e.preventDefault()
+    if (!rateValue || !rateFrom) return
+    setRateBusy(true)
+    try {
+      await addCrewRate({ companyId, crewMemberId: id, rate: rateValue, effectiveFrom: rateFrom, note: rateNote })
+      setRateValue(''); setRateNote('')
+      await reloadRates()
+      setCm(prev => prev ? { ...prev } : prev)
+    } catch (err) { alert(t('time:errors.generic', { error: err.message })) }
+    finally { setRateBusy(false) }
+  }
+
+  async function handleDeleteRate(rateId) {
+    if (!window.confirm(t('time:rates.deleteConfirm'))) return
+    try { await deleteCrewRate(rateId, id); await reloadRates() }
+    catch (err) { alert(t('time:errors.generic', { error: err.message })) }
+  }
 
   // Link toggle
   const [linkSaving, setLinkSaving] = useState(false)
@@ -44,13 +79,19 @@ export default function CrewMemberPage() {
     let cancelled = false
     ;(async () => {
       try {
-        const [member, punchList] = await Promise.all([
+        const [member, punchList, entryList, rateList, assignList] = await Promise.all([
           getCrewMemberById(id),
           getCrewMemberPunches(id),
+          getMyTimeEntries(id),
+          getCrewRates(id).catch(() => []),
+          getCrewAssignments(id).catch(() => []),
         ])
         if (!cancelled) {
           setCm(member)
           setPunches(punchList)
+          setEntries(entryList)
+          setRates(rateList)
+          setAssignments(assignList)
           setEmail(member.email || '')
         }
       } catch {
@@ -62,28 +103,18 @@ export default function CrewMemberPage() {
     return () => { cancelled = true }
   }, [id])
 
-  // Totals
+  // Totals: the time ledger (time_entries) is the record of hours. Punches
+  // only show below while pending approval.
   const { monthHours, lifetimeHours } = useMemo(() => {
-    const now = new Date()
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10)
     let month = 0, life = 0
-    for (const p of punches) {
-      if (p.status !== 'approved' || !p.hours) continue
-      life += Number(p.hours)
-      if (new Date(p.clock_in_at || p.created_at) >= monthStart) month += Number(p.hours)
+    for (const e of entries) {
+      const h = Number(e.hours) || 0
+      life += h
+      if ((e.work_date || '') >= monthStart) month += h
     }
     return { monthHours: month, lifetimeHours: life }
-  }, [punches])
-
-  async function handleRateSave(value) {
-    if (!cm) return
-    setRateSaving(true)
-    try {
-      await updateCrewMember(cm.id, { cost_rate: value === '' ? null : Number(value) })
-      setCm(prev => ({ ...prev, cost_rate: value === '' ? null : Number(value) }))
-    } catch (err) { alert(t('time:errors.generic', { error: err.message || t('common:misc.unknownError') })) }
-    finally { setRateSaving(false) }
-  }
+  }, [entries])
 
   async function handleToggleLink() {
     if (!cm) return
@@ -111,6 +142,8 @@ export default function CrewMemberPage() {
       if (trimmed !== (cm.email || '')) {
         await updateCrewMember(cm.id, { email: trimmed })
         setCm(prev => ({ ...prev, email: trimmed }))
+        // Crew identity: an email matching a company user links the crew row.
+        await linkCrewToUserByEmail({ crewMemberId: cm.id, email: trimmed, companyId })
       }
       await sendRivetPayLinkEmail(cm.id, trimmed)
       setEmailMsg(t('time:share.sent'))
@@ -148,17 +181,7 @@ export default function CrewMemberPage() {
           {cm.phone && <div className={styles.infoRow}><span className={styles.label}>{t('time:crewMember.phone')}</span> {cm.phone}</div>}
           <div className={styles.infoRow}>
             <span className={styles.label}>{t('time:crewMember.rate')}</span>
-            <input
-              type="number"
-              className={styles.rateInput}
-              step="0.01"
-              min="0"
-              placeholder="—"
-              defaultValue={cm.cost_rate ?? ''}
-              onBlur={e => handleRateSave(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') e.target.blur() }}
-              disabled={rateSaving}
-            />
+            <span style={{ fontWeight: 700 }}>{cm.cost_rate != null ? `$${Number(cm.cost_rate).toFixed(2)}` : t('time:rates.noneSet')}</span>
             <span className={styles.muted}>{t('time:crewMember.perHour')}</span>
           </div>
         </div>
@@ -197,25 +220,118 @@ export default function CrewMemberPage() {
           )}
         </div>
 
+        {/* Dated rates */}
+        <div className={styles.section}>
+          <h2 className={styles.sectionTitle}>{t('time:rates.title')}</h2>
+          <form onSubmit={handleAddRate} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 12 }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 11, color: 'var(--color-text-muted)' }}>
+              {t('time:rates.rateLabel')}
+              <input type="number" step="0.01" min="0" required value={rateValue} onChange={e => setRateValue(e.target.value)}
+                style={{ width: 100, padding: '6px 8px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-bg)', color: 'var(--color-text)' }} />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 11, color: 'var(--color-text-muted)' }}>
+              {t('time:rates.fromLabel')}
+              <input type="date" required value={rateFrom} onChange={e => setRateFrom(e.target.value)}
+                style={{ padding: '6px 8px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-bg)', color: 'var(--color-text)' }} />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 11, color: 'var(--color-text-muted)', flex: 1, minWidth: 140 }}>
+              {t('time:rates.noteLabel')}
+              <input type="text" value={rateNote} onChange={e => setRateNote(e.target.value)}
+                style={{ padding: '6px 8px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-bg)', color: 'var(--color-text)' }} />
+            </label>
+            <button type="submit" disabled={rateBusy}
+              style={{ padding: '7px 14px', fontSize: 13, fontWeight: 600, background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}>
+              {rateBusy ? '…' : t('time:rates.addRate')}
+            </button>
+          </form>
+          {rates.length === 0 ? (
+            <p className={styles.muted}>{t('time:rates.empty')}</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {rates.map(r => (
+                <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', fontSize: 13 }}>
+                  <span style={{ fontWeight: 700, minWidth: 70 }}>${Number(r.rate).toFixed(2)}</span>
+                  <span style={{ color: 'var(--color-text-muted)' }}>
+                    {r.effective_from}{r.effective_to ? ` ${t('time:rates.to')} ${r.effective_to}` : ` ${t('time:rates.open')}`}
+                  </span>
+                  {r.note && <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{r.note}</span>}
+                  <button onClick={() => handleDeleteRate(r.id)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--color-danger, #dc2626)', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
+                    {t('common:action.delete')}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Assigned jobs */}
+        <div className={styles.section}>
+          <h2 className={styles.sectionTitle}>{t('time:assignments.crewTitle', { count: assignments.length })}</h2>
+          {assignments.length === 0 ? (
+            <p className={styles.muted}>{t('time:assignments.crewEmpty')}</p>
+          ) : (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {assignments.map(a => (
+                <Link key={a.id} to={`/project/${a.project_id}`} style={{ fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 'var(--radius-pill, 9999px)', border: '1px solid var(--color-border)', color: 'var(--color-primary)', textDecoration: 'none' }}>
+                  {a.projects?.name || '—'}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Hours: the time ledger */}
+        <div className={styles.section}>
+          <h2 className={styles.sectionTitle}>{t('time:crewMember.hoursTitle', { count: entries.length })}</h2>
+          {entries.length === 0 ? (
+            <p className={styles.muted}>{t('time:crewMember.noHours')}</p>
+          ) : (
+            <div className={styles.tableWrap}><ScrollbarInside />
+              <table className={styles.table}>
+                <thead><tr>
+                  <th className={styles.th}>{t('time:table.date')}</th>
+                  <th className={styles.th}>{t('time:table.job')}</th>
+                  <th className={styles.th} style={{ textAlign: 'right' }}>{t('time:table.hours')}</th>
+                  <th className={styles.th} style={{ textAlign: 'right' }}>{t('time:table.cost')}</th>
+                </tr></thead>
+                <tbody>
+                  {entries.slice(0, 50).map(e => (
+                    <tr key={e.id} className={styles.tr}>
+                      <td className={styles.td}>{e.work_date}</td>
+                      <td className={styles.td}>{e.projects?.name || '—'}</td>
+                      <td className={styles.td} style={{ textAlign: 'right' }}>{Number(e.hours).toFixed(2)}</td>
+                      <td className={styles.td} style={{ textAlign: 'right' }}>
+                        {e.cost_rate == null
+                          ? <span style={{ color: 'var(--color-warning, #d97706)', fontSize: 12 }}>{t('time:unpriced.noRate')}</span>
+                          : `$${(Number(e.entry_cost) || Math.round(Number(e.hours) * Number(e.cost_rate) * 100) / 100).toFixed(2)}`}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
         {/* Totals */}
         <div className={styles.totalsRow}>
           <div className={styles.totalCard}>
             <div className={styles.totalLabel}>{t('time:crewMember.thisMonth')}</div>
             <div className={styles.totalValue}>{t('time:units.hrs', { value: monthHours.toFixed(1) })}</div>
-            <div className={styles.totalSub}>{t('time:crewMember.approvedHours')}</div>
+            <div className={styles.totalSub}>{t('time:crewMember.ledgerHours')}</div>
           </div>
           <div className={styles.totalCard}>
             <div className={styles.totalLabel}>{t('time:crewMember.lifetime')}</div>
             <div className={styles.totalValue}>{t('time:units.hrs', { value: lifetimeHours.toFixed(1) })}</div>
-            <div className={styles.totalSub}>{t('time:crewMember.approvedHours')}</div>
+            <div className={styles.totalSub}>{t('time:crewMember.ledgerHours')}</div>
           </div>
         </div>
 
         {/* Clock log */}
         <div className={styles.section}>
-          <h2 className={styles.sectionTitle}>{t('time:crewMember.clockLog')}</h2>
-          {punches.length === 0 ? (
-            <p className={styles.muted}>{t('time:crewMember.noSubmissions')}</p>
+          <h2 className={styles.sectionTitle}>{t('time:crewMember.pendingPunches')}</h2>
+          {punches.filter(p => p.status === 'open' || p.status === 'submitted').length === 0 ? (
+            <p className={styles.muted}>{t('time:crewMember.noPending')}</p>
           ) : (
             <div className={styles.tableWrap}><ScrollbarInside />
               <table className={styles.table}>
@@ -229,7 +345,7 @@ export default function CrewMemberPage() {
                   <th className={styles.th}>{t('time:table.source')}</th>
                 </tr></thead>
                 <tbody>
-                  {punches.map(p => (
+                  {punches.filter(p => p.status === 'open' || p.status === 'submitted').map(p => (
                     <tr key={p.id} className={styles.tr}>
                       <td className={styles.td}>{fmtDate(p.clock_in_at || p.created_at)}</td>
                       <td className={styles.td}>{p.projects?.name || '—'}</td>

@@ -11,8 +11,10 @@ import {
   createTimeEntry, createCrewDayEntries, updateTimeEntry, deleteTimeEntry,
   summarizePay, paystubRows,
   getPendingPunches, approvePunch, rejectPunch, closeOpenPunch,
-  sendRivetPayLinkEmail,
+  sendRivetPayLinkEmail, getOpenCrewRates, repriceUnpricedTimeEntries,
+  linkCrewToUserByEmail,
 } from '../data/timeTracking'
+import { useCrewPunch } from '../hooks/useCrewPunch'
 import PayTable from '../components/PayTable'
 import Modal from '../components/ui/Modal'
 import TimeEntryImportModal from '../components/time/TimeEntryImportModal'
@@ -97,6 +99,17 @@ export default function TimePage() {
   const [crew, setCrew] = useState([])
   const [allCrew, setAllCrew] = useState([])
   const [myCrewId, setMyCrewId] = useState(null)
+  const [myCrew, setMyCrew] = useState(null)
+  const [openRates, setOpenRates] = useState({})
+
+  // Unpriced-hours queue (team tab)
+  const [showUnpricedOnly, setShowUnpricedOnly] = useState(false)
+  const [priceDialog, setPriceDialog] = useState(false)
+  const [priceCrew, setPriceCrew] = useState('all')
+  const [priceFrom, setPriceFrom] = useState('')
+  const [priceTo, setPriceTo] = useState('')
+  const [priceBusy, setPriceBusy] = useState(false)
+  const [priceResult, setPriceResult] = useState(null)
   const [myEntries, setMyEntries] = useState([])
   const [teamEntries, setTeamEntries] = useState([])
   const [loading, setLoading] = useState(true)
@@ -156,6 +169,24 @@ export default function TimePage() {
   // breaks once the message is translated.
   const [emailMsgType, setEmailMsgType] = useState('error')
 
+  // Shared open-punch state: the same time_punch_submissions row the RivetPay
+  // link uses, via the same RPCs (see useCrewPunch).
+  const punch = useCrewPunch(myCrew)
+  const [clockJob, setClockJob] = useState('')
+  const [clockError, setClockError] = useState(null)
+
+  async function handleClockIn() {
+    if (!clockJob) return
+    setClockError(null)
+    try { await punch.clockIn(clockJob); setClockJob('') }
+    catch (err) { setClockError(err.message) }
+  }
+  async function handleClockOut() {
+    setClockError(null)
+    try { await punch.clockOut(); await loadData() }
+    catch (err) { setClockError(err.message) }
+  }
+
   // ── Load ────────────────────────────────────────────────────────────────
   const loadData = useCallback(async () => {
     if (!user || !companyId) return
@@ -178,6 +209,7 @@ export default function TimePage() {
       }
     }
     setMyCrewId(myCm?.id || null)
+    setMyCrew(myCm || null)
 
     // Pickers: jobs + active crew (both tabs depend on these)
     let crewList = []
@@ -209,14 +241,16 @@ export default function TimePage() {
     // Team section
     if (isAdmin) {
       try {
-        const [team, all, pending] = await Promise.all([
+        const [team, all, pending, rateMap] = await Promise.all([
           getCompanyTimeEntries(companyId, range),
           getAllCrewMembers(companyId),
           getPendingPunches(companyId),
+          getOpenCrewRates(companyId).catch(() => ({})),
         ])
         setTeamEntries(team)
         setAllCrew(all)
         setPunches(pending)
+        setOpenRates(rateMap)
         setCdRows(crewList.map(c => ({ crewMemberId: c.id, name: c.name, hours: '', notes: '' })))
       } catch (err) {
         console.error('Time load (team):', err)
@@ -306,15 +340,6 @@ export default function TimePage() {
     finally { setRosterSaving(null) }
   }
 
-  async function handleRateSave(cm, value) {
-    setRosterSaving(cm.id)
-    try {
-      await updateCrewMember(cm.id, { cost_rate: value === '' ? null : Number(value) })
-      setAllCrew(prev => prev.map(c => c.id === cm.id ? { ...c, cost_rate: value === '' ? null : Number(value) } : c))
-    } catch (err) { alert(t('time:errors.generic', { error: err.message || t('common:misc.unknownError') })) }
-    finally { setRosterSaving(null) }
-  }
-
   async function handleToggleLink(cm) {
     setRosterSaving(cm.id)
     try { await updateCrewMember(cm.id, { link_enabled: !cm.link_enabled }); await loadData() }
@@ -398,8 +423,12 @@ export default function TimePage() {
   // ── Derived ─────────────────────────────────────────────────────────────
   const myTotal = myEntries.reduce((s, e) => s + Number(e.hours), 0)
 
+  const unpricedEntries = useMemo(() => teamEntries.filter(e => e.cost_rate == null), [teamEntries])
+  const unpricedHours = useMemo(() => unpricedEntries.reduce((s2, e) => s2 + (Number(e.hours) || 0), 0), [unpricedEntries])
+
   const visibleEntries = useMemo(() => {
     let filtered = teamEntries
+    if (showUnpricedOnly) filtered = filtered.filter(e => e.cost_rate == null)
     if (workerFilter !== 'all') filtered = filtered.filter(e => e.crew_member_id === workerFilter)
     if (sortBy === 'job') {
       filtered = [...filtered].sort((a, b) => {
@@ -409,7 +438,7 @@ export default function TimePage() {
       })
     }
     return filtered
-  }, [teamEntries, workerFilter, sortBy])
+  }, [teamEntries, workerFilter, sortBy, showUnpricedOnly])
 
   const perJob = useMemo(() => {
     const pj = {}
@@ -418,6 +447,34 @@ export default function TimePage() {
   }, [visibleEntries])
 
   const payRows = useMemo(() => summarizePay(visibleEntries, allCrew), [visibleEntries, allCrew])
+
+  function openPriceDialog() {
+    const dates = unpricedEntries.map(e => e.work_date).filter(Boolean).sort()
+    setPriceFrom(dates[0] || new Date().toISOString().slice(0, 10))
+    setPriceTo(dates[dates.length - 1] || new Date().toISOString().slice(0, 10))
+    setPriceCrew('all')
+    setPriceResult(null)
+    setPriceDialog(true)
+  }
+
+  async function handlePriceNow() {
+    setPriceBusy(true)
+    setPriceResult(null)
+    try {
+      const count = await repriceUnpricedTimeEntries({
+        companyId,
+        from: priceFrom,
+        to: priceTo,
+        crewMemberId: priceCrew === 'all' ? null : priceCrew,
+      })
+      setPriceResult({ ok: true, count: Number(count) || 0 })
+      await loadData()
+    } catch (err) {
+      setPriceResult({ ok: false, error: err.message })
+    } finally {
+      setPriceBusy(false)
+    }
+  }
   const visibleTotal = visibleEntries.reduce((s, e) => s + Number(e.hours), 0)
   const stubs = useMemo(() => paystubRows(visibleEntries, allCrew), [visibleEntries, allCrew])
   const filterWorkerName = workerFilter === 'all' ? 'All workers' : (crew.find(c => c.id === workerFilter)?.name || 'Worker')
@@ -547,6 +604,57 @@ export default function TimePage() {
           )}
         </div>
 
+        {priceDialog && (
+          <Modal title={t('time:unpriced.dialogTitle')} onClose={() => setPriceDialog(false)}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 4 }}>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--color-text-muted)' }}>
+                {t('time:unpriced.crewLabel')}
+                <select value={priceCrew} onChange={e => setPriceCrew(e.target.value)}
+                  style={{ padding: '7px 10px', fontSize: 14, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-bg)', color: 'var(--color-text)' }}>
+                  <option value="all">{t('time:unpriced.allCrew')}</option>
+                  {allCrew.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </label>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--color-text-muted)' }}>
+                  {t('time:unpriced.fromLabel')}
+                  <input type="date" value={priceFrom} onChange={e => setPriceFrom(e.target.value)}
+                    style={{ padding: '7px 10px', fontSize: 14, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-bg)', color: 'var(--color-text)' }} />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--color-text-muted)' }}>
+                  {t('time:unpriced.toLabel')}
+                  <input type="date" value={priceTo} onChange={e => setPriceTo(e.target.value)}
+                    style={{ padding: '7px 10px', fontSize: 14, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-bg)', color: 'var(--color-text)' }} />
+                </label>
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                {t('time:unpriced.ratesThatApply')}
+                <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
+                  {(priceCrew === 'all' ? allCrew : allCrew.filter(c => c.id === priceCrew)).map(c => (
+                    <li key={c.id}>
+                      {c.name}: {openRates[c.id]
+                        ? `${fmtUSD.format(Number(openRates[c.id].rate))} ${t('time:rates.since', { date: openRates[c.id].effective_from })}`
+                        : t('time:rates.noneSet')}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              {priceResult && (
+                <p style={{ fontSize: 13, fontWeight: 600, margin: 0, color: priceResult.ok ? 'var(--color-success)' : 'var(--color-danger, #dc2626)' }}>
+                  {priceResult.ok ? t('time:unpriced.priced', { count: priceResult.count }) : priceResult.error}
+                </p>
+              )}
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                <button onClick={() => setPriceDialog(false)} style={{ padding: '8px 16px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontSize: 13, color: 'var(--color-text)' }}>{t('common:action.cancel')}</button>
+                <button onClick={handlePriceNow} disabled={priceBusy}
+                  style={{ padding: '8px 16px', background: 'var(--color-primary)', color: 'var(--color-on-primary, #fff)', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontSize: 13, fontWeight: 600, opacity: priceBusy ? 0.6 : 1 }}>
+                  {priceBusy ? '…' : t('time:unpriced.priceNow')}
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )}
+
         {showImport && (
           <Modal title={t('time:import.title')} onClose={() => setShowImport(false)}>
             <TimeEntryImportModal onClose={() => setShowImport(false)} onImported={loadData} />
@@ -578,6 +686,38 @@ export default function TimePage() {
             )}
             {tab === 'my' && !isImpersonating && (
               <>
+                {/* In-app clock: same punch state as the RivetPay link */}
+                {myCrew && (
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: '10px 14px', marginBottom: 12, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)' }}>
+                    {punch.openPunch ? (
+                      <>
+                        <Clock size={16} style={{ color: '#F27243' }} />
+                        <span style={{ fontSize: 13 }}>
+                          {t('time:clock.runningOn', { job: punch.openPunch.projects?.name || '—' })}
+                          {' '}<span style={{ color: 'var(--color-text-muted)' }}>{t('time:clock.since', { time: fmtLocalTime(punch.openPunch.clock_in_at) })}</span>
+                        </span>
+                        <button onClick={handleClockOut} disabled={punch.busy}
+                          style={{ marginLeft: 'auto', padding: '6px 14px', fontSize: 13, fontWeight: 600, background: 'var(--color-danger, #dc2626)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}>
+                          {punch.busy ? '…' : t('time:clock.clockOut')}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <Clock size={16} style={{ color: 'var(--color-text-muted)' }} />
+                        <select value={clockJob} onChange={e => setClockJob(e.target.value)}
+                          style={{ padding: '6px 8px', fontSize: 13, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-bg)', color: 'var(--color-text)', minWidth: 180 }}>
+                          <option value="">{t('time:form.selectJob')}</option>
+                          <JobPickerOptions projects={projects} />
+                        </select>
+                        <button onClick={handleClockIn} disabled={punch.busy || !clockJob}
+                          style={{ padding: '6px 14px', fontSize: 13, fontWeight: 600, background: 'var(--color-primary)', color: 'var(--color-on-primary, #fff)', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', opacity: (!clockJob || punch.busy) ? 0.6 : 1 }}>
+                          {punch.busy ? '…' : t('time:clock.clockIn')}
+                        </button>
+                      </>
+                    )}
+                    {clockError && <span style={{ fontSize: 12, color: 'var(--color-danger, #dc2626)' }}>{clockError}</span>}
+                  </div>
+                )}
                 <form className={styles.addForm} onSubmit={handleAdd}>
                   <select className={styles.formInput} value={formProject} onChange={e => setFormProject(e.target.value)} required>
                     <option value="">{t('time:form.selectJob')}</option>
@@ -609,6 +749,20 @@ export default function TimePage() {
               <>
                 {loadErrors.team && (
                   <p className={styles.empty} role="alert">{t('time:errors.sectionLoad', { error: loadErrors.team })}</p>
+                )}
+                {unpricedEntries.length > 0 && (
+                  <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 14px', marginBottom: 12, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.35)', borderRadius: 'var(--radius-md)', fontSize: 13 }}>
+                    <AlertTriangle size={15} style={{ color: 'var(--color-warning, #d97706)' }} />
+                    <span>{t('time:unpriced.banner', { hours: unpricedHours.toFixed(2), count: unpricedEntries.length })}</span>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 12 }}>
+                      <input type="checkbox" checked={showUnpricedOnly} onChange={e => setShowUnpricedOnly(e.target.checked)} />
+                      {t('time:unpriced.showOnly')}
+                    </label>
+                    <button onClick={openPriceDialog}
+                      style={{ marginLeft: 'auto', padding: '5px 12px', fontSize: 12, fontWeight: 600, background: 'var(--color-primary)', color: 'var(--color-on-primary, #fff)', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}>
+                      {t('time:unpriced.priceNow')}
+                    </button>
+                  </div>
                 )}
                 {/* ── Pending Approvals ────────────────────────────────── */}
                 {(submittedPunches.length > 0 || openPunches.length > 0) && (
@@ -812,9 +966,16 @@ export default function TimePage() {
                                 <button className={styles.iconBtn} style={{ fontWeight: 500, color: 'var(--color-primary)' }} onClick={() => navigate(`/time/crew/${cm.id}`)}>{cm.name}</button>
                               </td>
                               <td className={styles.td}>
-                                <input type="number" className={styles.inlineInput} style={{ width: 80 }} step="0.01" min="0" placeholder="—"
-                                  defaultValue={cm.cost_rate ?? ''} onBlur={e => handleRateSave(cm, e.target.value)}
-                                  onKeyDown={e => { if (e.key === 'Enter') e.target.blur() }} disabled={rosterSaving === cm.id} />
+                                {cm.cost_rate != null ? (
+                                  <span style={{ whiteSpace: 'nowrap' }}>
+                                    {fmtUSD.format(Number(cm.cost_rate))}
+                                    {openRates[cm.id]?.effective_from && (
+                                      <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}> {t('time:rates.since', { date: openRates[cm.id].effective_from })}</span>
+                                    )}
+                                  </span>
+                                ) : (
+                                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{t('time:rates.noneSet')}</span>
+                                )}
                               </td>
                               <td className={styles.td} style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{cm.user_id ? t('time:roster.login') : t('time:roster.noLogin')}</td>
                               <td className={styles.td}>

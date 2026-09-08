@@ -29,6 +29,7 @@ import SmartBadge from '../components/smartbid/SmartBadge'
 import InvoiceStatusBadge from '../components/invoices/InvoiceStatusBadge'
 import ChangeOrdersSection from '../components/jobs/ChangeOrdersSection'
 import JobTimeSection from '../components/jobs/JobTimeSection'
+import ProjectCrewSection from '../components/jobs/ProjectCrewSection'
 import DocumentsSection from '../components/documents/DocumentsSection'
 import { useInvoices, isOverdue } from '../hooks/useInvoices'
 import { useChangeOrders } from '../hooks/useChangeOrders'
@@ -879,6 +880,7 @@ export default function ProjectDetailPage() {
         />
 
         {/* Time entries */}
+        <ProjectCrewSection projectId={projectId} companyId={company?.id} />
         <JobTimeSection projectId={projectId} companyId={company?.id} />
 
         {/* Documents: linked to this job or its invoices/estimates + direct attach (G54) */}

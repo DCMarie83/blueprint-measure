@@ -759,7 +759,7 @@ function CostingDetail({ detail, loading, onBack }) {
       </SectionCard>
 
       {/* Labor */}
-      <SectionCard title={t('reports:section.labor')} subtitle={fmtMoney(d.laborCost)}>
+      <SectionCard title={t('reports:section.labor')} subtitle={(d.laborUnpricedHours ?? 0) > 0 ? `${fmtMoney(d.laborCost)} · ${t('reports:detail.unpricedHours', { hours: d.laborUnpricedHours })}` : fmtMoney(d.laborCost)}>
         {d.laborBreakdown.length === 0 ? (
           <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>{t('reports:detail.noLabor')}</p>
         ) : (
