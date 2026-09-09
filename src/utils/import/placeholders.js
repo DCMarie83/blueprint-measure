@@ -7,16 +7,19 @@ import { guessClientType } from './importHelpers'
 
 export function makeClientCreator({ companyId, batchId, created }) {
   const cache = new Map() // lower(name) → client id
-  return async function createPlaceholderClient(rawName) {
+  // meta (Lane V): { businessName } from the review-step "New client" form.
+  return async function createPlaceholderClient(rawName, meta = null) {
     const name = String(rawName ?? '').trim()
     const key = name.toLowerCase()
     if (cache.has(key)) return cache.get(key)
+    const businessName = String(meta?.businessName ?? '').trim() || null
     const { data, error } = await supabase
       .from('clients')
       .insert({
         company_id: companyId,
         display_name: name,
-        client_type: guessClientType(name),
+        business_name: businessName,
+        client_type: businessName ? 'commercial' : guessClientType(name),
         status: 'active',
         import_source: `${batchId}:placeholder`,
       })

@@ -13,6 +13,7 @@ import { useEffectiveCompany } from '../hooks/useEffectiveCompany'
 import { mergeInstructionDefaults } from '../hooks/usePaymentInstructions'
 import { useSignedQrUrls } from '../hooks/useSignedQrUrls'
 import PaymentInstructionsBlock from '../components/invoices/PaymentInstructionsBlock'
+import ChangeClientDialog from '../components/clients/ChangeClientDialog'
 import { fetchQrDataUrls } from '../lib/qrData'
 import { supabase } from '../lib/supabase'
 import styles from './InvoiceDetailPage.module.css'
@@ -65,9 +66,13 @@ export default function InvoiceDetailPage() {
   const { t } = useTranslation()
   const { id } = useParams()
   const navigate = useNavigate()
-  const { company } = useAuth()
-  const { company: effectiveCompany } = useEffectiveCompany()
+  const { company, userProfile, isSuperAdmin } = useAuth()
+  const { company: effectiveCompany, companyId: effectiveCompanyId } = useEffectiveCompany()
+  const isAdmin = isSuperAdmin || userProfile?.role === 'contractor_admin'
   const { invoice, lineItems, payments, loading, error, refetch } = useInvoice(id)
+  // Lane V: current job context + dialog state for "Change client".
+  const [reassignProject, setReassignProject] = useState(null)
+  const [showChangeClient, setShowChangeClient] = useState(false)
   // On-screen payment options: the same block the client sees.
   const paymentInstructions = mergeInstructionDefaults(effectiveCompany?.payment_instructions)
   const qrUrls = useSignedQrUrls(paymentInstructions)
@@ -236,6 +241,14 @@ export default function InvoiceDetailPage() {
       .then(({ data }) => { if (!cancelled) setNoticePending(!!data?.completion_notice_pending) })
     return () => { cancelled = true }
   }, [invoice?.project_id])
+
+  useEffect(() => {
+    if (!invoice?.project_id) { setReassignProject(null); return }
+    let cancelled = false
+    supabase.from('projects').select('id, name, address, client_id').eq('id', invoice.project_id).maybeSingle()
+      .then(({ data }) => { if (!cancelled) setReassignProject(data ?? null) })
+    return () => { cancelled = true }
+  }, [invoice?.project_id, invoice?.client_id])
 
   async function fetchPdfData() {
     if (!invoice) return null
@@ -547,6 +560,11 @@ export default function InvoiceDetailPage() {
             </div>
           </div>
           <div className={styles.actions}>
+            {isAdmin && reassignProject && (
+              <button className={styles.toolBtn} onClick={() => setShowChangeClient(true)}>
+                {t('clients:reassign.action')}
+              </button>
+            )}
             <button className={styles.toolBtn} onClick={handleDownloadPDF} disabled={pdfLoading}>
               <Download size={15} /> {pdfLoading ? '…' : t('invoices:detail.pdf')}
             </button>
@@ -927,6 +945,15 @@ export default function InvoiceDetailPage() {
               <button className={styles.dangerConfirmBtn} onClick={handleMarkVoid} disabled={actionSaving}>{actionSaving ? t('invoices:detail.saving') : t('invoices:detail.confirmVoid')}</button>
             </div>
           </div>
+        )}
+        {showChangeClient && reassignProject && (
+          <ChangeClientDialog
+            kind="invoice"
+            record={{ id: invoice.id, number: invoice.invoice_number }}
+            project={reassignProject}
+            onClose={() => setShowChangeClient(false)}
+            onMoved={refetch}
+          />
         )}
       </main>
     </div>

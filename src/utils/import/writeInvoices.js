@@ -253,7 +253,7 @@ export async function writeInvoiceRows({
       // ── Update existing invoice ─────────────────────────────
       if (row._disposition === 'update' && row._existingId) {
         let clientId = row._clientId ?? null
-        if (!clientId && clientText) clientId = await createClient(clientText)
+        if (!clientId && clientText) clientId = await createClient(clientText, row._clientMeta)
 
         const hasDate = !!row._invoiceDate
         const hasTotal = row._total != null
@@ -381,7 +381,7 @@ export async function writeInvoiceRows({
 
       let clientId = row._clientId ?? null
       if (!clientId && clientText) {
-        clientId = await createClient(clientText)
+        clientId = await createClient(clientText, row._clientMeta)
       }
 
       let projectId = row._projectId ?? null

@@ -43,7 +43,7 @@ export default function JobImportModal({ onClose, onImported }) {
     let cancelled = false
     ;(async () => {
       const [{ data: clientRows }, { data: colRows }, { data: projRows }] = await Promise.all([
-        supabase.from('clients').select('id, display_name, business_name, primary_email').eq('company_id', companyId),
+        supabase.from('clients').select('id, display_name, business_name, primary_email, client_type, import_source').eq('company_id', companyId),
         supabase.from('kanban_columns').select('*').eq('company_id', companyId).order('position', { ascending: true }),
         supabase.from('projects').select('id, name, client_id, import_source').eq('company_id', companyId).is('deleted_at', null),
       ])
@@ -56,6 +56,7 @@ export default function JobImportModal({ onClose, onImported }) {
       }
       setDeps({
         clientIndex: buildClientIndex(clientRows ?? []),
+        clients: clientRows ?? [],
         columns,
         defaultCol: lowestPositionColumn(columns),
         projectIndex,
@@ -124,7 +125,7 @@ export default function JobImportModal({ onClose, onImported }) {
     buildRow,
     reviewColumns: [
       { key: 'job', labelKey: 'jobs:import.colJob', render: (row) => row.name || t('import:empty'), badges: ['missing_name'] },
-      { key: 'client', labelKey: 'jobs:import.colClient', render: (row) => row.client || '', badges: ['new_client'] },
+      { key: 'client', labelKey: 'jobs:import.colClient', render: (row) => row.client || '', badges: ['new_client'], clientPicker: true },
       { key: 'column', labelKey: 'jobs:import.colColumn', render: (row, tt) => resolveColumnLabel(tt, row._column), badges: ['unknown_column'] },
       { key: 'status', labelKey: 'jobs:import.colStatus', render: (row) => row._status, badges: ['unknown_status'] },
       { key: 'value', labelKey: 'jobs:import.colValue', render: (row) => fmtValue(row._contractValue), badges: ['invalid_number', 'invalid_date'] },

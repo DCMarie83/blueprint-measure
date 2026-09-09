@@ -40,7 +40,7 @@ export default function EstimateImportModal({ onClose, onImported, initialRows =
       const [{ data: estRows }, { data: projRows }, { data: clientRows }, { data: colRows }] = await Promise.all([
         supabase.from('estimates').select('id, estimate_number, import_source, status').eq('company_id', companyId),
         supabase.from('projects').select('id, name, client_id').eq('company_id', companyId).is('deleted_at', null),
-        supabase.from('clients').select('id, display_name, business_name, primary_email').eq('company_id', companyId),
+        supabase.from('clients').select('id, display_name, business_name, primary_email, client_type, import_source').eq('company_id', companyId),
         supabase.from('kanban_columns').select('*').eq('company_id', companyId).order('position', { ascending: true }),
       ])
       if (cancelled) return
@@ -61,6 +61,7 @@ export default function EstimateImportModal({ onClose, onImported, initialRows =
         existingNumbers: new Set(estimateIndex.keys()),
         projectIndex,
         clientIndex: buildClientIndex(clientRows ?? []),
+        clients: clientRows ?? [],
         placeholderColumnId: completeCol?.id ?? null,
       })
     })()
@@ -132,7 +133,7 @@ export default function EstimateImportModal({ onClose, onImported, initialRows =
     reviewColumns: [
       { key: 'number', labelKey: 'estimates:import.colNumber', render: (row) => row.estimate_number || t('import:empty'), badges: ['missing_number', 'duplicate_in_file'], editKey: 'estimate_number' },
       { key: 'job', labelKey: 'estimates:import.colJob', render: (row) => row.job_name || t('import:empty'), badges: ['missing_job', 'new_job'], editKey: 'job_name' },
-      { key: 'client', labelKey: 'estimates:import.colClient', render: (row) => row.client || '', badges: ['new_client'], editKey: 'client' },
+      { key: 'client', labelKey: 'estimates:import.colClient', render: (row) => row.client || '', badges: ['new_client'], editKey: 'client', clientPicker: true },
       { key: 'date', labelKey: 'estimates:import.colDate', render: (row) => row._estimateDate || '', badges: ['invalid_date'], editKey: 'estimate_date' },
       { key: 'total', labelKey: 'estimates:import.colTotal', render: (row) => fmtMoney(row._total), badges: ['bad_total'], editKey: 'total' },
       { key: 'status', labelKey: 'estimates:import.colStatus', render: (row) => row._status, badges: ['unknown_status'] },

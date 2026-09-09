@@ -157,7 +157,7 @@ export async function writeEstimateRows({
 
       let clientId = row._clientId ?? null
       if (!clientId && clientText) {
-        clientId = await createClient(clientText)
+        clientId = await createClient(clientText, row._clientMeta)
       }
 
       let projectId = row._projectId ?? null

@@ -10,6 +10,7 @@ import PricingItemPicker from '../components/estimates/PricingItemPicker'
 import LineItemsTable from '../components/estimates/LineItemsTable'
 import SendEstimateModal from '../components/estimates/SendEstimateModal'
 import { useEstimateBuilder } from '../hooks/useEstimateBuilder'
+import ChangeClientDialog from '../components/clients/ChangeClientDialog'
 import { usePricingCategories } from '../hooks/usePricingCategories'
 import { usePricingItems } from '../hooks/usePricingItems'
 import { useAuth } from '../context/AuthContext'
@@ -151,6 +152,7 @@ export default function EstimateDetailPage() {
   const [statusPromptValue, setStatusPromptValue] = useState('')
   const [statusPromptSaving, setStatusPromptSaving] = useState(false)
   const [companyData, setCompanyData] = useState(null)
+  const [showChangeClient, setShowChangeClient] = useState(false)
 
   const estimate = builder.estimate
   const { createOrder } = useMaterialOrders(estimate?.project_id)
@@ -733,6 +735,11 @@ export default function EstimateDetailPage() {
           {isAdmin && (
             <div className={styles.headerActions}>
               {saveMsg && <span className={styles.saveMsg}>{saveMsg}</span>}
+              {projectData && (
+                <button className={styles.toolBtn} onClick={() => setShowChangeClient(true)}>
+                  {t('clients:reassign.action')}
+                </button>
+              )}
               <button className={styles.toolBtn} onClick={() => handleDownloadPDF(null)} title={t('estimates:detail.downloadPdf')}>
                 <Download size={15} /> PDF
               </button>
@@ -1028,6 +1035,15 @@ export default function EstimateDetailPage() {
 
         {/* Documents: source files from Document Import + direct attach (G54) */}
         <DocumentsSection documents={documents} uploadTarget={{ type: 'estimate', id }} onUploaded={refetchDocuments} />
+        {showChangeClient && projectData && (
+          <ChangeClientDialog
+            kind="estimate"
+            record={{ id: estimate.id, number: estimate.estimate_number }}
+            project={projectData}
+            onClose={() => setShowChangeClient(false)}
+            onMoved={() => { builder.refetch(); fetchProjectClientCompany() }}
+          />
+        )}
       </main>
 
       {showPicker && (

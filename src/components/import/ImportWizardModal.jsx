@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { parseImportFile } from '../../utils/import/parseImportFile'
 import { mintBatchId } from '../../utils/import/importHelpers'
 import { useColumnMapping } from './useColumnMapping'
+import ImportClientCell from './ImportClientCell'
 import styles from './ImportWizardModal.module.css'
 
 // Generic 4-step import wizard (Upload → Map → Review → Import), extracted from
@@ -23,6 +24,10 @@ import styles from './ImportWizardModal.module.css'
 //   HeldReview      component ({ rows, resolutions, setResolution, t }) rendered in
 //                   Review when held rows exist; setResolution(index, res|null)
 //   rowLabel        optional (row) => string naming a row in result lists
+//   clientPicker    optional { clients } — enables the Lane V client cell:
+//                   reviewColumns with clientPicker:true render a picker that
+//                   overrides the row's client at write time (existing client
+//                   by id, or a new one created by the writer's client creator)
 //   resolutionLabel optional (resolution, t) => string for the disposition column
 //   reviewedResult  optional (entry, t) => JSX for a writer `reviewed` result row
 //   modes           true → show the Add / Update / Add-and-update selector
@@ -65,6 +70,10 @@ export default function ImportWizardModal({ config, onClose, onImported, initial
   // G69: per-row resolutions for held (needs-review) rows, keyed by row index.
   // Nothing writes for a held row until a resolution is chosen on its card.
   const [resolutions, setResolutions] = useState({})
+  // Lane V: per-row client overrides, keyed by row index.
+  // { clientId, name } → existing client; { clientId: null, name, businessName? }
+  // → the writer's client creator makes it at write time.
+  const [clientOverrides, setClientOverrides] = useState({})
 
   // Step 4 state
   const [importing, setImporting] = useState(false)
@@ -119,9 +128,18 @@ export default function ImportWizardModal({ config, onClose, onImported, initial
     }
 
     return baseRows.map((mapped, idx) => {
-      const withEdits = edits[idx] ? { ...mapped, ...edits[idx] } : mapped
+      let withEdits = edits[idx] ? { ...mapped, ...edits[idx] } : mapped
+      // Lane V: an override replaces the client TEXT before buildRow so the
+      // whole resolution (matching, billing terms, warnings) reruns against
+      // the chosen client; the id is forced after for exactness.
+      const clientOv = config.clientPicker ? clientOverrides[idx] : null
+      if (clientOv) withEdits = { ...withEdits, client: clientOv.name }
       const built = config.buildRow(withEdits, ctx)
       const row = { _flags: [], _warnings: [], ...built, _index: idx }
+      if (clientOv?.clientId) row._clientId = clientOv.clientId
+      if (clientOv && !clientOv.clientId && clientOv.businessName) {
+        row._clientMeta = { businessName: clientOv.businessName }
+      }
       // Carry document-mode passthrough fields (doc linkage, extracted lines,
       // confidence) — any underscore-prefixed key the config didn't rebuild.
       if (docMode) {
@@ -418,7 +436,19 @@ export default function ImportWizardModal({ config, onClose, onImported, initial
                       )}
                       {config.reviewColumns.map((col, colIdx) => (
                         <td key={col.key}>
-                          {config.editableReview && col.editKey ? (
+                          {col.clientPicker && config.clientPicker ? (
+                            <ImportClientCell
+                              row={row}
+                              override={clientOverrides[row._index]}
+                              clients={config.clientPicker.clients}
+                              onChange={ov => setClientOverrides(prev => {
+                                const next = { ...prev }
+                                if (ov == null) delete next[row._index]
+                                else next[row._index] = ov
+                                return next
+                              })}
+                            />
+                          ) : config.editableReview && col.editKey ? (
                             <input
                               className={styles.mappingSelect}
                               style={{ minWidth: 70, padding: '3px 6px', fontSize: 12 }}

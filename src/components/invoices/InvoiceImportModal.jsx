@@ -50,7 +50,7 @@ export default function InvoiceImportModal({ onClose, onImported, initialRows = 
       const [{ data: invRows }, { data: projRows }, { data: clientRows }, { data: colRows }] = await Promise.all([
         supabase.from('invoices').select('id, invoice_number, import_source, status').eq('company_id', companyId),
         supabase.from('projects').select('id, name, client_id').eq('company_id', companyId).is('deleted_at', null),
-        supabase.from('clients').select('id, display_name, business_name, primary_email, billing_terms').eq('company_id', companyId),
+        supabase.from('clients').select('id, display_name, business_name, primary_email, billing_terms, client_type, import_source').eq('company_id', companyId),
         supabase.from('kanban_columns').select('*').eq('company_id', companyId).order('position', { ascending: true }),
       ])
       if (cancelled) return
@@ -71,6 +71,7 @@ export default function InvoiceImportModal({ onClose, onImported, initialRows = 
         existingNumbers: new Set(invoiceIndex.keys()),
         projectIndex,
         clientIndex: buildClientIndex(clientRows ?? []),
+        clients: clientRows ?? [],
         placeholderColumnId: completeCol?.id ?? null,
       })
     })()
@@ -163,6 +164,7 @@ export default function InvoiceImportModal({ onClose, onImported, initialRows = 
       return { id: match.id, isPlaceholder: isPlaceholderSource(match.import_source), existing: match }
     },
     dedupeKey: (row) => (row.invoice_number || '').trim().toLowerCase() || null,
+    clientPicker: { clients: deps?.clients ?? [] },
     // G69: any real (non-placeholder) number match is held for review in every
     // mode instead of skipping or silently updating. Placeholder skeletons
     // keep the fill-blank update path.
@@ -184,7 +186,7 @@ export default function InvoiceImportModal({ onClose, onImported, initialRows = 
     reviewColumns: [
       { key: 'number', labelKey: 'invoices:import.colNumber', render: (row) => row.invoice_number || t('import:empty'), badges: ['missing_number', 'duplicate_in_file'], editKey: 'invoice_number' },
       { key: 'job', labelKey: 'invoices:import.colJob', render: (row) => row.job_name || t('import:empty'), badges: ['missing_job', 'new_job'], editKey: 'job_name' },
-      { key: 'client', labelKey: 'invoices:import.colClient', render: (row) => row.client || '', badges: ['new_client'], editKey: 'client' },
+      { key: 'client', labelKey: 'invoices:import.colClient', render: (row) => row.client || '', badges: ['new_client'], editKey: 'client', clientPicker: true },
       { key: 'date', labelKey: 'invoices:import.colDate', render: (row) => row._invoiceDate || '', badges: ['invalid_date', 'invalid_paid_date'], editKey: 'invoice_date' },
       { key: 'total', labelKey: 'invoices:import.colTotal', render: (row) => fmtMoney(row._total), badges: ['no_total', 'bad_total'], editKey: 'total' },
       { key: 'paid', labelKey: 'invoices:import.colPaid', render: (row) => fmtMoney(row._amountPaid), badges: ['invalid_paid'], editKey: 'amount_paid' },

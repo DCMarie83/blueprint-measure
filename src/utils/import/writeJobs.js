@@ -41,7 +41,7 @@ export async function writeJobRows({ rows, batchId, onProgress, companyId, userI
       const clientText = (row.client || '').trim()
       let clientId = row._clientId ?? null
       if (!clientId && clientText) {
-        clientId = await createClient(clientText)
+        clientId = await createClient(clientText, row._clientMeta)
       }
 
       if (row._disposition === 'update' && row._existingId) {

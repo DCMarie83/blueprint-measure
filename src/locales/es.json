@@ -1174,6 +1174,24 @@
       "quotedShort": "Cotizado {{amount}}",
       "billedShort": "Facturado {{amount}}",
       "collectedShort": "Cobrado {{amount}}"
+    },
+    "reassign": {
+      "title": "Cambiar cliente",
+      "action": "Cambiar cliente",
+      "moveJob": "Mover este trabajo a otro cliente",
+      "moveJobHint": "Cada factura, cotización, documento y actividad de {{job}} sigue al trabajo.",
+      "moveInvoice": "Mover solo la factura {{number}}",
+      "moveEstimate": "Mover solo la cotización {{number}}",
+      "moveRecordHint": "El registro se mueve a un trabajo del otro cliente; sus documentos se mueven con él. Los pagos se quedan en la factura.",
+      "targetClient": "Cliente nuevo",
+      "targetJob": "Trabajo de ese cliente",
+      "pickJob": "Elige un trabajo...",
+      "createJob": "Crear un trabajo nuevo",
+      "jobNamePlaceholder": "Nombre del trabajo",
+      "jobAddressPlaceholder": "Dirección (opcional)",
+      "sameClient": "El trabajo ya pertenece a este cliente.",
+      "moving": "Moviendo...",
+      "confirm": "Mover"
     }
   },
   "invoices": {
@@ -4761,6 +4779,19 @@
     "heldUnresolvedHint_other": "{{count}} filas no tienen acción elegida y no se importarán.",
     "reviewedCount_one": "{{count}} fila revisada procesada",
     "reviewedCount_other": "{{count}} filas revisadas procesadas",
-    "notImportedNeedsReview": "No importadas, necesitan revisión"
+    "notImportedNeedsReview": "No importadas, necesitan revisión",
+    "clientCell": {
+      "changeTitle": "Cambiar el cliente de esta fila",
+      "newClient": "Cliente nuevo",
+      "changed": "Cambiado",
+      "placeholder": "Cliente provisional",
+      "modalTitle": "Cliente para esta fila",
+      "createNew": "Cliente nuevo...",
+      "nameLabel": "Nombre del cliente (obligatorio)",
+      "businessLabel": "Nombre del negocio (opcional)",
+      "backToSearch": "Volver a la búsqueda",
+      "nameRequired": "Se necesita un nombre de cliente.",
+      "clearOverride": "Usar el valor del archivo"
+    }
   }
 }

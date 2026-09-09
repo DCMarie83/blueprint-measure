@@ -1174,6 +1174,24 @@
       "quotedShort": "Quoted {{amount}}",
       "billedShort": "Billed {{amount}}",
       "collectedShort": "Collected {{amount}}"
+    },
+    "reassign": {
+      "title": "Change client",
+      "action": "Change client",
+      "moveJob": "Move this job to another client",
+      "moveJobHint": "Every invoice, estimate, document, and activity on {{job}} follows the job.",
+      "moveInvoice": "Move only invoice {{number}}",
+      "moveEstimate": "Move only estimate {{number}}",
+      "moveRecordHint": "The record moves to a job under the other client; its documents move with it. Payments stay on the invoice.",
+      "targetClient": "New client",
+      "targetJob": "Job under that client",
+      "pickJob": "Pick a job...",
+      "createJob": "Create a new job",
+      "jobNamePlaceholder": "Job name",
+      "jobAddressPlaceholder": "Address (optional)",
+      "sameClient": "The job already belongs to this client.",
+      "moving": "Moving...",
+      "confirm": "Move"
     }
   },
   "invoices": {
@@ -4761,6 +4779,19 @@
     "heldUnresolvedHint_other": "{{count}} rows have no chosen action and will not be imported.",
     "reviewedCount_one": "{{count}} reviewed row handled",
     "reviewedCount_other": "{{count}} reviewed rows handled",
-    "notImportedNeedsReview": "Not imported, needs review"
+    "notImportedNeedsReview": "Not imported, needs review",
+    "clientCell": {
+      "changeTitle": "Change the client for this row",
+      "newClient": "New client",
+      "changed": "Changed",
+      "placeholder": "Placeholder client",
+      "modalTitle": "Client for this row",
+      "createNew": "New client...",
+      "nameLabel": "Client name (required)",
+      "businessLabel": "Business name (optional)",
+      "backToSearch": "Back to search",
+      "nameRequired": "A client name is required.",
+      "clearOverride": "Use the file value"
+    }
   }
 }

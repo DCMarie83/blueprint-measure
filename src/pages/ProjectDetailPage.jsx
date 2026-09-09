@@ -15,6 +15,7 @@ import MultiFileUploader from '../components/canvas/MultiFileUploader'
 import BackLink from '../components/BackLink'
 import PortalShareSection from '../components/portal/PortalShareSection'
 import { markProjectLost } from '../components/jobs/LostJobsView'
+import ChangeClientDialog from '../components/clients/ChangeClientDialog'
 import ClientCard from '../components/clients/ClientCard'
 import ClientPicker from '../components/clients/ClientPicker'
 import QuickClientForm from '../components/clients/QuickClientForm'
@@ -61,6 +62,7 @@ export default function ProjectDetailPage() {
   const { company } = useEffectiveCompany()
   const { project, sessions, loading, error, refetch } = useProject(projectId)
   const isAdmin = userProfile?.role === 'contractor_admin' || isSuperAdmin
+  const [showChangeClient, setShowChangeClient] = useState(false)
   const { updateProject, createProject } = useProjects()
   const { createSession, updateSession, deleteSession } = useSessions()
   const { formatDate, formatDateTime } = useDateFormat()
@@ -468,6 +470,12 @@ export default function ProjectDetailPage() {
               <span style={{ fontSize: 12, color: 'var(--color-warning, #d97706)', fontWeight: 600 }}>{t('jobs:completion.pending')}</span>
             )}
             {completionMsg && <span style={{ fontSize: 12, color: completionMsg.ok ? 'var(--color-success)' : 'var(--color-danger)' }}>{completionMsg.text}</span>}
+            {isAdmin && (
+              <button
+                onClick={() => setShowChangeClient(true)}
+                style={{ fontSize: 12, fontWeight: 600, padding: '6px 12px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', color: 'var(--color-text-muted)', cursor: 'pointer' }}
+              >{t('clients:reassign.action')}</button>
+            )}
             {project.status !== 'lost' && (
               <button
                 onClick={handleMarkLostFromDetail}
@@ -885,6 +893,15 @@ export default function ProjectDetailPage() {
 
         {/* Documents: linked to this job or its invoices/estimates + direct attach (G54) */}
         <DocumentsSection documents={projectDocs} uploadTarget={{ type: 'project', id: projectId }} onUploaded={() => setDocsVersion(v => v + 1)} />
+        {showChangeClient && project && (
+          <ChangeClientDialog
+            kind="job"
+            record={{ id: project.id, number: project.name }}
+            project={project}
+            onClose={() => setShowChangeClient(false)}
+            onMoved={refetch}
+          />
+        )}
       </main>
 
       {showAddBlueprint && (
