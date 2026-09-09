@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Plus, Trash2 } from 'lucide-react'
 import BackLink from '../BackLink'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import { useInvoiceMutations } from '../../hooks/useInvoices'
+import { getNumberingInfo, previewNextNumber, invoiceNumberTaken } from '../../data/numbering'
 import { supabase } from '../../lib/supabase'
 import styles from './InvoiceForm.module.css'
 
@@ -119,6 +120,56 @@ function InvoiceFormInner({ existingInvoice, existingLineItems }) {
   const [billedInfo, setBilledInfo] = useState(null) // { total, count }
   const [estWarning, setEstWarning] = useState(null) // estimate number already on an invoice
 
+  // G80 numbering: the field shows the number the save WILL take (a read-only
+  // preview, never reserved). Untouched → drawn from the generator at save.
+  // Edited, or inherited from the source quote in shared mode → used as-is,
+  // with a 23505 collision surfacing the G60 error.
+  const [numbering, setNumbering] = useState(null)
+  const [numberValue, setNumberValue] = useState('')
+  const [numberEdited, setNumberEdited] = useState(false)
+  const numberEditedRef = useRef(false)
+  const [numberNote, setNumberNote] = useState(null) // 'auto' | 'inherited' | 'nextTaken'
+  const [sourceEstNumber, setSourceEstNumber] = useState(null)
+
+  useEffect(() => {
+    if (!companyId || isEdit) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const info = await getNumberingInfo(companyId)
+        if (!cancelled) setNumbering(info)
+      } catch { /* preview is best-effort; save still draws */ }
+    })()
+    return () => { cancelled = true }
+  }, [companyId, isEdit])
+
+  // Decide the default number once the mode and (any) source quote are known.
+  // Never overwrite a number the user has typed.
+  useEffect(() => {
+    if (!numbering || isEdit) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        if (numbering.mode === 'shared' && sourceEstNumber) {
+          const taken = await invoiceNumberTaken(companyId, sourceEstNumber)
+          if (cancelled) return
+          if (!taken) {
+            setNumberNote('inherited')
+            setNumberValue(v => (numberEditedRef.current ? v : sourceEstNumber))
+            return
+          }
+          setNumberNote('nextTaken')
+        } else {
+          setNumberNote('auto')
+        }
+        const preview = await previewNextNumber(companyId, 'invoice', numbering)
+        if (cancelled) return
+        setNumberValue(v => (numberEditedRef.current ? v : preview))
+      } catch { /* preview is best-effort */ }
+    })()
+    return () => { cancelled = true }
+  }, [numbering, sourceEstNumber, companyId, isEdit])
+
   // Load projects for dropdown
   useEffect(() => {
     if (!companyId) return
@@ -138,6 +189,7 @@ function InvoiceFormInner({ existingInvoice, existingLineItems }) {
       if (!est) return
       setProjectId(est.project_id)
       setEstimateId(est.id)
+      setSourceEstNumber(est.estimate_number || null)
       setEstimateBanner(t('invoices:form.fromEstimateBanner', { number: est.estimate_number }))
       setTitle(est.title || '')
       // Convert estimate line items → invoice line items using the selected variant or 'better' fallback
@@ -179,6 +231,7 @@ function InvoiceFormInner({ existingInvoice, existingLineItems }) {
       const items = []
       if (est) {
         setEstimateId(est.id)
+        setSourceEstNumber(est.estimate_number || null)
         setTitle(prev => prev || est.title || '')
         const variant = est.accepted_variant || est.selected_variant || 'good'
         const rateField = `rate_${variant}`
@@ -240,11 +293,18 @@ function InvoiceFormInner({ existingInvoice, existingLineItems }) {
         await updateInvoice(existingInvoice.id, { title, due_date: dueDate || null, notes, terms, adjustment_amount: adjustmentAmount, adjustment_label: adjustmentLabel, lineItems: validLines })
         navigate(`/invoices/${existingInvoice.id}`)
       } else {
-        const inv = await createInvoice({ project_id: projectId, estimate_id: estimateId || null, title, due_date: dueDate || null, notes, terms, adjustment_amount: adjustmentAmount, adjustment_label: adjustmentLabel, lineItems: validLines })
+        // Explicit only when the user edited the field or the number is
+        // inherited from the source quote; otherwise draw at save.
+        const explicit = numberEdited || numberNote === 'inherited'
+        const inv = await createInvoice({ project_id: projectId, estimate_id: estimateId || null, invoice_number: explicit ? numberValue.trim() : null, title, due_date: dueDate || null, notes, terms, adjustment_amount: adjustmentAmount, adjustment_label: adjustmentLabel, lineItems: validLines })
         navigate(`/invoices/${inv.id}`)
       }
     } catch (err) {
-      setFormError(err.message)
+      if (err.code === '23505') {
+        setFormError(t('invoices:detail.numberConflict', { number: numberValue.trim() }))
+      } else {
+        setFormError(err.message)
+      }
     }
   }
 
@@ -265,6 +325,31 @@ function InvoiceFormInner({ existingInvoice, existingLineItems }) {
         {(formError || mutError) && <div className={styles.error}>{formError || mutError}</div>}
 
         <form onSubmit={handleSubmit} className={styles.form}>
+          {!isEdit && (
+            <label className={styles.field} style={{ maxWidth: 260 }}>
+              <span className={styles.label}>{t('invoices:form.numberLabel')}</span>
+              <input
+                className={styles.input}
+                style={{ fontFamily: 'var(--font-mono)' }}
+                value={numberValue}
+                onChange={e => {
+                  setNumberValue(e.target.value)
+                  setNumberEdited(true)
+                  numberEditedRef.current = true
+                }}
+                placeholder={t('invoices:form.numberAutoHint')}
+              />
+              <span style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>
+                {numberEdited
+                  ? t('invoices:form.numberEditedHint')
+                  : numberNote === 'inherited'
+                    ? t('invoices:form.numberInheritedHint', { number: sourceEstNumber })
+                    : numberNote === 'nextTaken'
+                      ? t('invoices:form.numberNextTakenHint', { number: sourceEstNumber })
+                      : t('invoices:form.numberAutoHint')}
+              </span>
+            </label>
+          )}
           <div className={styles.row}>
             <label className={styles.field}>
               <span className={styles.label}>{t('invoices:form.project')}</span>

@@ -852,6 +852,18 @@
       "importRule": "Imported invoices are only reminded after you send a manual reminder or mark them verified.",
       "on": "On",
       "off": "Off"
+    },
+    "numbering": {
+      "title": "Document numbering",
+      "shared": "Shared sequence",
+      "sharedHint": "Quotes and invoices share one number series. An invoice created from a quote keeps the quote's number. Next number: {{number}}",
+      "prefixed": "Prefixed",
+      "prefixedHint": "Separate series with prefixes: EST-2026-0001 for quotes, INV-2026-0001 for invoices.",
+      "nextNumberLabel": "Next number",
+      "invalidNumber": "Enter a whole number greater than zero.",
+      "refusedBelowMax": "Must be greater than {{max}}, the highest number already on your quotes and invoices.",
+      "saved": "Numbering saved.",
+      "modeNote": "Changing the mode never changes numbers already on your documents."
     }
   },
   "clients": {
@@ -1214,7 +1226,12 @@
       "lockedVoid": "A void invoice cannot be edited. Use a change order for additional work.",
       "confirmPartialEdit": "This invoice has payments recorded. Saving will re-derive its status against the new total. Continue?",
       "billedToDate": "Billed to date: {{amount}} across {{count}} invoices",
-      "estimateAlreadyInvoiced": "The accepted estimate {{number}} already appears on an invoice for this job."
+      "estimateAlreadyInvoiced": "The accepted estimate {{number}} already appears on an invoice for this job.",
+      "numberLabel": "Invoice number",
+      "numberAutoHint": "Next available number, drawn when you save.",
+      "numberEditedHint": "This exact number will be used. If it is already taken, the save will tell you.",
+      "numberInheritedHint": "Keeps quote {{number}}'s number.",
+      "numberNextTakenHint": "Quote {{number}} is already on an invoice, so this invoice takes the next number."
     },
     "lineItems": {
       "sectionLabel": "Line Items",
@@ -1306,7 +1323,8 @@
         "other": "Other"
       },
       "completionNoticePending": "Completion notice pending, sends with this invoice.",
-      "bankDetailsViewed": "Bank details viewed {{count}} times"
+      "bankDetailsViewed": "Bank details viewed {{count}} times",
+      "fromQuote": "From quote {{number}}"
     },
     "payment": {
       "methodsHeading": "Payment Methods",
@@ -1641,7 +1659,8 @@
       "billsRange": "Bills the unbilled entries for {{gcName}} in this range.",
       "unbilledEntries_one": "{{count}} unbilled entry",
       "unbilledEntries_other": "{{count}} unbilled entries",
-      "creating": "Creating…"
+      "creating": "Creating…",
+      "invoiceNumberPreview": "Invoice number will be {{number}}."
     },
     "invoiceDetail": {
       "methodCash": "Cash",
@@ -2549,7 +2568,8 @@
       "lostJobNoSend": "This job is marked lost. Reopen it before sending a quote.",
       "noLongerExists": "This estimate no longer exists.",
       "goToJobs": "Go to jobs",
-      "deleteAcceptedConfirm": "This is the accepted quote on this job. Deleting it removes the job's contract value and unlinks {{count}} invoice(s) from it. This cannot be undone."
+      "deleteAcceptedConfirm": "This is the accepted quote on this job. Deleting it removes the job's contract value and unlinks {{count}} invoice(s) from it. This cannot be undone.",
+      "invoicedAs": "Invoiced as {{number}}"
     },
     "send": {
       "sendFailed": "Failed to send estimate",

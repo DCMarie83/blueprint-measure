@@ -9,6 +9,7 @@ import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import { useSheetSignal } from '../../hooks/useSheetSignal'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
+import { previewNextNumber } from '../../data/numbering'
 import { GC_CLIENT_TYPE, unitLabel, fmtMoney, invoiceDueDate, isOpenPunch, punchBacked } from '../../lib/lite'
 import { getEffectiveTimeZone, formatTimeOnly } from '../../lib/effectiveTime'
 import styles from './lite.module.css'
@@ -41,6 +42,7 @@ export default function LiteJobDetailPage() {
 
   // Invoice range sheet
   const [showInvoiceSheet, setShowInvoiceSheet] = useState(false)
+  const [numberPreview, setNumberPreview] = useState(null)
   const [invFrom, setInvFrom] = useState('')
   const [invTo, setInvTo] = useState('')
   const [creating, setCreating] = useState(false)
@@ -79,6 +81,11 @@ export default function LiteJobDetailPage() {
     setInvTo(todayStr())
     setInvError(null)
     setShowInvoiceSheet(true)
+    // G80: preview only — the number is drawn at save, never reserved here.
+    setNumberPreview(null)
+    previewNextNumber(companyId, 'invoice')
+      .then(n => setNumberPreview(n))
+      .catch(() => {})
   }
 
   async function createInvoice() {
@@ -327,6 +334,10 @@ export default function LiteJobDetailPage() {
               <span className={styles.entryMeta}>{t('lite:jobDetail.unbilledEntries', { count: invPreview.rows.length })}</span>
               <span className={`${styles.entryAmount} ${styles.moneyDue}`}>{fmtMoney(invPreview.total)}</span>
             </div>
+
+            {numberPreview && (
+              <p className={styles.entryMeta} style={{ margin: '0 0 8px' }}>{t('lite:jobDetail.invoiceNumberPreview', { number: numberPreview })}</p>
+            )}
 
             {invError && <div className={styles.error}>{invError}</div>}
 

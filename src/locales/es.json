@@ -852,6 +852,18 @@
       "importRule": "Las facturas importadas solo reciben recordatorios después de que envíes un recordatorio manual o las marques verificadas.",
       "on": "Activados",
       "off": "Apagados"
+    },
+    "numbering": {
+      "title": "Numeración de documentos",
+      "shared": "Serie compartida",
+      "sharedHint": "Las cotizaciones y facturas comparten una sola serie de números. Una factura creada desde una cotización conserva el número de la cotización. Siguiente número: {{number}}",
+      "prefixed": "Con prefijo",
+      "prefixedHint": "Series separadas con prefijos: EST-2026-0001 para cotizaciones, INV-2026-0001 para facturas.",
+      "nextNumberLabel": "Siguiente número",
+      "invalidNumber": "Escribe un número entero mayor que cero.",
+      "refusedBelowMax": "Debe ser mayor que {{max}}, el número más alto que ya está en tus cotizaciones y facturas.",
+      "saved": "Numeración guardada.",
+      "modeNote": "Cambiar el modo nunca cambia los números que ya están en tus documentos."
     }
   },
   "clients": {
@@ -1214,7 +1226,12 @@
       "lockedVoid": "Una factura anulada no se puede editar. Usa una orden de cambio para trabajo adicional.",
       "confirmPartialEdit": "Esta factura tiene pagos registrados. Al guardar, el estado se recalculará según el nuevo total. ¿Continuar?",
       "billedToDate": "Facturado a la fecha: {{amount}} en {{count}} facturas",
-      "estimateAlreadyInvoiced": "La cotización aceptada {{number}} ya aparece en una factura de este trabajo."
+      "estimateAlreadyInvoiced": "La cotización aceptada {{number}} ya aparece en una factura de este trabajo.",
+      "numberLabel": "Número de factura",
+      "numberAutoHint": "El siguiente número disponible, asignado al guardar.",
+      "numberEditedHint": "Se usará este número exacto. Si ya está ocupado, el guardado te avisará.",
+      "numberInheritedHint": "Conserva el número de la cotización {{number}}.",
+      "numberNextTakenHint": "La cotización {{number}} ya está en una factura, así que esta factura toma el siguiente número."
     },
     "lineItems": {
       "sectionLabel": "Líneas",
@@ -1306,7 +1323,8 @@
         "other": "Otro"
       },
       "completionNoticePending": "Aviso de finalización pendiente; se envía con esta factura.",
-      "bankDetailsViewed": "Datos bancarios vistos {{count}} veces"
+      "bankDetailsViewed": "Datos bancarios vistos {{count}} veces",
+      "fromQuote": "De la cotización {{number}}"
     },
     "payment": {
       "methodsHeading": "Métodos de pago",
@@ -1641,7 +1659,8 @@
       "billsRange": "Factura los registros sin facturar de {{gcName}} en este rango.",
       "unbilledEntries_one": "{{count}} registro sin facturar",
       "unbilledEntries_other": "{{count}} registros sin facturar",
-      "creating": "Creando…"
+      "creating": "Creando…",
+      "invoiceNumberPreview": "El número de factura será {{number}}."
     },
     "invoiceDetail": {
       "methodCash": "Efectivo",
@@ -2549,7 +2568,8 @@
       "lostJobNoSend": "Este trabajo está marcado como perdido. Reábrelo antes de enviar una cotización.",
       "noLongerExists": "Esta cotización ya no existe.",
       "goToJobs": "Ir a trabajos",
-      "deleteAcceptedConfirm": "Esta es la cotización aceptada de este trabajo. Al eliminarla se quita el valor de contrato del trabajo y se desvinculan {{count}} factura(s). Esto no se puede deshacer."
+      "deleteAcceptedConfirm": "Esta es la cotización aceptada de este trabajo. Al eliminarla se quita el valor de contrato del trabajo y se desvinculan {{count}} factura(s). Esto no se puede deshacer.",
+      "invoicedAs": "Facturada como {{number}}"
     },
     "send": {
       "sendFailed": "No se pudo enviar la cotización",

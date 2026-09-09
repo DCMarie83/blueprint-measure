@@ -515,6 +515,14 @@ export default function InvoiceDetailPage() {
                   <span style={{ padding: '4px 12px', borderRadius: 9999, background: p.bg, color: p.color, fontWeight: 700, fontSize: 'var(--text-xs)', whiteSpace: 'nowrap', textDecoration: p.strike ? 'line-through' : undefined }}>{t(p.label)}</span>
                 )
               })()}
+              {invoice.estimate_id && invoice.estimates?.estimate_number && (
+                <Link
+                  to={`/estimates/${invoice.estimates.id}`}
+                  style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-primary)', whiteSpace: 'nowrap' }}
+                >
+                  {t('invoices:detail.fromQuote', { number: invoice.estimates.estimate_number })}
+                </Link>
+              )}
               {bankViews > 0 && (
                 <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
                   {t('invoices:detail.bankDetailsViewed', { count: bankViews })}

@@ -1047,6 +1047,49 @@ a38 AS (
          CASE WHEN (SELECT count(*) FROM a38_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
          coalesce('PROBLEMS: ' || (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a38_bad),
                   'assignments table and clock-link gating as designed')::text
+),
+-- A39 (G80): shared-sequence integrity. For every company in shared mode the
+-- counter must sit ABOVE the highest numeric quote or invoice number on that
+-- company, and generate_document_number must be SECURITY DEFINER, pinned, and
+-- not executable by anon.
+a39_bad AS (
+  SELECT 'company ' || c.name || ' (' || c.id::text || ') next_document_number '
+         || c.next_document_number || ' <= max used ' || m.max_used AS problem
+  FROM public.companies c
+  JOIN LATERAL (
+    SELECT max(v) AS max_used FROM (
+      SELECT i.invoice_number::bigint AS v FROM public.invoices i
+      WHERE i.company_id = c.id AND i.invoice_number ~ '^\d{1,9}$'
+      UNION ALL
+      SELECT e.estimate_number::bigint FROM public.estimates e
+      WHERE e.company_id = c.id AND e.estimate_number ~ '^\d{1,9}$'
+    ) s
+  ) m ON true
+  WHERE c.numbering_mode = 'shared'
+    AND m.max_used IS NOT NULL
+    AND c.next_document_number <= m.max_used
+  UNION ALL
+  SELECT 'generate_document_number missing, not SECURITY DEFINER, or search_path unpinned'
+  WHERE NOT EXISTS (
+    SELECT 1 FROM pg_proc p
+    WHERE p.pronamespace = 'public'::regnamespace
+      AND p.proname = 'generate_document_number'
+      AND p.prosecdef
+      AND EXISTS (SELECT 1 FROM unnest(coalesce(p.proconfig, '{}')) cfg WHERE cfg LIKE 'search_path=%'))
+  UNION ALL
+  SELECT 'generate_document_number executable by anon'
+  WHERE EXISTS (
+    SELECT 1 FROM pg_proc p
+    WHERE p.pronamespace = 'public'::regnamespace
+      AND p.proname = 'generate_document_number'
+      AND has_function_privilege('anon', p.oid, 'EXECUTE'))
+),
+a39 AS (
+  SELECT 'A39'::text,
+         'shared numbering: next_document_number above all used numbers; generate_document_number definer/pinned/no-anon'::text,
+         CASE WHEN (SELECT count(*) FROM a39_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
+         coalesce('PROBLEMS: ' || (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a39_bad),
+                  'shared sequence ahead of the books; generator locked down')::text
 )
 
 
@@ -1088,4 +1131,5 @@ UNION ALL SELECT * FROM a35
 UNION ALL SELECT * FROM a36
 UNION ALL SELECT * FROM a37
 UNION ALL SELECT * FROM a38
+UNION ALL SELECT * FROM a39
 ORDER BY id;

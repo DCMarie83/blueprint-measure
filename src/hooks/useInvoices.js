@@ -67,7 +67,7 @@ export function useInvoice(invoiceId) {
     try {
       const { data, error: err } = await supabase
         .from('invoices')
-        .select('*, invoice_line_items(*)')
+        .select('*, invoice_line_items(*), estimates(id, estimate_number)')
         .eq('id', invoiceId)
         .maybeSingle()
       if (err) throw err
@@ -101,13 +101,21 @@ export function useInvoiceMutations() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
 
-  async function createInvoice({ project_id, estimate_id, title, due_date, notes, terms, adjustment_amount, adjustment_label, lineItems }) {
+  async function createInvoice({ project_id, estimate_id, invoice_number, title, due_date, notes, terms, adjustment_amount, adjustment_label, lineItems }) {
     if (!companyId || !user?.id) throw new Error('No company or user')
     setSaving(true)
     setError(null)
     try {
-      const { data: invNum, error: rpcErr } = await supabase.rpc('generate_invoice_number', { p_company_id: companyId })
-      if (rpcErr) throw new Error(rpcErr.message)
+      // G80: an explicit number (edited in the form, or inherited from the
+      // source quote in shared mode) is used as-is; a collision surfaces as
+      // 23505 for the G60 inline error. Otherwise the number is drawn at save
+      // through the generator (never reserved at form open).
+      let invNum = String(invoice_number ?? '').trim()
+      if (!invNum) {
+        const { data, error: rpcErr } = await supabase.rpc('generate_invoice_number', { p_company_id: companyId })
+        if (rpcErr) throw new Error(rpcErr.message)
+        invNum = data
+      }
 
       const subtotal = lineItems.reduce((sum, li) => sum + (Number(li.quantity || 0) * Number(li.rate || 0)), 0)
       const total = subtotal + (Number(adjustment_amount) || 0)
@@ -137,7 +145,11 @@ export function useInvoiceMutations() {
         })
         .select()
         .single()
-      if (insErr) throw new Error(insErr.message)
+      if (insErr) {
+        const e = new Error(insErr.message)
+        e.code = insErr.code
+        throw e
+      }
 
       if (lineItems.length > 0) {
         const rows = lineItems.map((li, i) => ({

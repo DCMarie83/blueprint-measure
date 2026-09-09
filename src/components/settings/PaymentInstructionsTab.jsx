@@ -6,6 +6,7 @@ import { useSignedQrUrls } from '../../hooks/useSignedQrUrls'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import { supabase } from '../../lib/supabase'
 import PaymentInstructionsBlock from '../invoices/PaymentInstructionsBlock'
+import DocumentNumberingCard from './DocumentNumberingCard'
 import styles from './PaymentInstructionsTab.module.css'
 
 const METHODS = [
@@ -271,6 +272,9 @@ export default function PaymentInstructionsTab() {
 
   return (
     <div className={styles.container}>
+      {/* G80: document numbering lives here — Settings has no Invoices tab,
+          and this tab is the invoice-settings home. */}
+      <DocumentNumberingCard />
       {METHODS.map(m => (
         <div key={m.key} className={styles.methodSection}>
           <div className={styles.methodHeader}>

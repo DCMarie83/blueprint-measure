@@ -166,6 +166,17 @@ export default function EstimateDetailPage() {
       .then(() => {}, () => {})
   }, [estimate?.id, estimate?.status, estimate?.response_seen_at])
 
+  // G75: invoices created from this quote (invoices.estimate_id linkage),
+  // shown as "Invoiced as {number}" chips in the header.
+  const [linkedInvoices, setLinkedInvoices] = useState([])
+  useEffect(() => {
+    if (!estimate?.id) return
+    let cancelled = false
+    supabase.from('invoices').select('id, invoice_number').eq('estimate_id', estimate.id).order('created_at', { ascending: true })
+      .then(({ data }) => { if (!cancelled) setLinkedInvoices(data ?? []) })
+    return () => { cancelled = true }
+  }, [estimate?.id])
+
   async function handleAddMaterials() {
     try {
       const ord = await createOrder(estimate.project_id)
@@ -674,6 +685,16 @@ export default function EstimateDetailPage() {
               {estimate.sent_at && (
                 <span className={styles.sentIndicator}>{t('estimates:detail.sentAgo', { time: timeAgo(estimate.sent_at, t) })}</span>
               )}
+              {linkedInvoices.map(inv => (
+                <button
+                  key={inv.id}
+                  type="button"
+                  onClick={() => navigate(`/invoices/${inv.id}`)}
+                  style={{ background: 'rgba(38,70,76,0.10)', border: 'none', color: 'var(--color-primary)', fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 9999, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                >
+                  {t('estimates:detail.invoicedAs', { number: inv.invoice_number })}
+                </button>
+              ))}
               {smart && <SmartBadge />}
               {smart && hasBenchLines && (benchRegion || benchFallback) && (
                 <RegionChip
