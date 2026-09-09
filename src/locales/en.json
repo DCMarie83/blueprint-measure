@@ -1181,20 +1181,11 @@
         "paid": "Paid",
         "void": "Void"
       },
-      "sort": {
-        "recent": "Recent",
-        "dueDate": "Due date",
-        "total": "Total",
-        "number": "Invoice number",
-        "client": "Client A-Z",
-        "job": "Job A-Z",
-        "date": "Issue date",
-        "amount": "Amount",
-        "status": "Status"
-      },
       "emptyTitle": "No invoices yet",
       "emptyBody": "Create one from an accepted estimate, or click \"+ New Invoice\" to start fresh.",
-      "noMatch": "No invoices match your filters."
+      "noMatch": "No invoices match your filters.",
+      "exportCsv": "Export CSV",
+      "exportExcel": "Export Excel"
     },
     "form": {
       "newTitle": "New Invoice",
@@ -1490,6 +1481,18 @@
         "failed": "failed",
         "skipped": "skipped"
       }
+    },
+    "table": {
+      "number": "Number",
+      "client": "Client",
+      "job": "Job",
+      "date": "Invoice date",
+      "dueDate": "Due date",
+      "total": "Total",
+      "paid": "Paid",
+      "balance": "Balance",
+      "status": "Status",
+      "lastReminded": "Last reminded"
     }
   },
   "lite": {

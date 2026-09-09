@@ -1,80 +1,70 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { FileText, Search, Plus, Upload, FileScan } from 'lucide-react'
+import { FileText, Search, Plus, Upload, FileScan, Download } from 'lucide-react'
 import Modal from '../components/ui/Modal'
-import InvoiceStatusBadge from '../components/invoices/InvoiceStatusBadge'
 import InvoiceImportModal from '../components/invoices/InvoiceImportModal'
 import DocumentImportModal from '../components/import/DocumentImportModal'
-import { useInvoices, isOverdue } from '../hooks/useInvoices'
-import { timeAgo } from '../utils/timeAgo'
+import InvoiceTable from '../components/invoices/InvoiceTable'
+import { useInvoiceSort, useInvoicePaidMap, sortInvoiceRows } from '../components/invoices/invoiceListShared'
+import { exportInvoicesCSV, exportInvoicesXLSX } from '../utils/invoiceListXLSX'
+import { useInvoices } from '../hooks/useInvoices'
+import { useEffectiveCompany } from '../hooks/useEffectiveCompany'
 import styles from './InvoiceListPage.module.css'
 
-function fmtMoney(val) {
-  if (val == null) return '$0.00'
-  return `$${Number(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-}
-
-function fmtDate(d) {
-  if (!d) return '—'
-  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
 const STATUS_FILTERS = ['all', 'draft', 'sent', 'partial', 'paid', 'void']
-const SORT_OPTIONS = [
-  { value: 'recent', label: 'invoices:list.sort.recent' },
-  { value: 'number', label: 'invoices:list.sort.number' },
-  { value: 'client', label: 'invoices:list.sort.client' },
-  { value: 'job', label: 'invoices:list.sort.job' },
-  { value: 'date', label: 'invoices:list.sort.date' },
-  { value: 'due_date', label: 'invoices:list.sort.dueDate' },
-  { value: 'total', label: 'invoices:list.sort.amount' },
-  { value: 'status', label: 'invoices:list.sort.status' },
-]
-
-// Numeric invoice numbers order numerically; other text (INV-…) follows
-// alphabetically; IMPORT-* placeholder numbers group after everything.
-function invoiceNumberKey(num) {
-  const s = String(num ?? '').trim()
-  if (/^import-/i.test(s)) return { group: 2, num: 0, text: s.toLowerCase() }
-  if (/^\d+$/.test(s)) return { group: 0, num: Number(s), text: s }
-  return { group: 1, num: 0, text: s.toLowerCase() }
-}
-
-function compareNumbers(a, b) {
-  const ka = invoiceNumberKey(a.invoice_number)
-  const kb = invoiceNumberKey(b.invoice_number)
-  if (ka.group !== kb.group) return ka.group - kb.group
-  if (ka.group === 0) return ka.num - kb.num
-  return ka.text.localeCompare(kb.text)
-}
-
-const STATUS_RANK = { draft: 0, sent: 1, viewed: 2, partial: 3, paid: 4, void: 5 }
 const SORT_STORAGE_KEY = 'rivetdog_invoice_sort'
+
+// Date range on invoice date, persisted like the Jobs board window. Default
+// 'all': a money list never hides rows until the operator narrows it.
+const INVOICE_WINDOW_KEY = 'rivetdog_invoice_window'
+const WINDOW_CHOICES = ['30', '90', '180', 'all', 'custom']
+
+function loadWindowPref() {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(INVOICE_WINDOW_KEY) || 'null')
+    if (saved && WINDOW_CHOICES.includes(saved.choice)) return saved
+  } catch { /* ignore */ }
+  return { choice: 'all', from: '', to: '' }
+}
+
+function windowFromChoice({ choice, from, to }) {
+  if (choice === 'all') return { windowFrom: null, windowTo: null }
+  if (choice === 'custom') return { windowFrom: from || null, windowTo: to || null }
+  const days = Number(choice)
+  const d = new Date()
+  d.setDate(d.getDate() - days)
+  return { windowFrom: d.toISOString().slice(0, 10), windowTo: null }
+}
 
 export default function InvoiceListPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { companyId, company } = useEffectiveCompany()
   const { invoices, loading, error, refetch } = useInvoices()
+  const paidMap = useInvoicePaidMap(companyId)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [needsVerification, setNeedsVerification] = useState(false)
-  // Sort choice survives back-navigation within the session.
-  const [sortKey, setSortKeyState] = useState(() => {
-    try {
-      const saved = sessionStorage.getItem(SORT_STORAGE_KEY)
-      if (saved && SORT_OPTIONS.some(o => o.value === saved)) return saved
-    } catch { /* storage unavailable */ }
-    return 'recent'
-  })
-  function setSortKey(next) {
-    setSortKeyState(next)
-    try { sessionStorage.setItem(SORT_STORAGE_KEY, next) } catch { /* ignore */ }
-  }
+  const [windowPref, setWindowPref] = useState(loadWindowPref)
+  const { sortCol, sortAsc, handleSort } = useInvoiceSort(SORT_STORAGE_KEY)
   const [showImport, setShowImport] = useState(false)
   const [showDocImport, setShowDocImport] = useState(false)
 
-  let filtered = invoices
+  function updateWindowPref(next) {
+    setWindowPref(next)
+    try { sessionStorage.setItem(INVOICE_WINDOW_KEY, JSON.stringify(next)) } catch { /* ignore */ }
+  }
+
+  const clientNameOf = (inv) => inv.projects?.clients?.display_name || ''
+
+  // Range first: the status chips recount within the active range.
+  const { windowFrom, windowTo } = windowFromChoice(windowPref)
+  let ranged = invoices
+  if (windowFrom) ranged = ranged.filter(inv => (inv.created_at || '').slice(0, 10) >= windowFrom)
+  if (windowTo) ranged = ranged.filter(inv => (inv.created_at || '').slice(0, 10) <= windowTo)
+
+  let filtered = ranged
   if (statusFilter !== 'all') filtered = filtered.filter(inv => inv.status === statusFilter)
   if (needsVerification) filtered = filtered.filter(inv => inv.import_source && !inv.reminders_verified_at)
   if (search) {
@@ -86,31 +76,24 @@ export default function InvoiceListPage() {
     )
   }
 
-  const sorted = [...filtered].sort((a, b) => {
-    switch (sortKey) {
-      case 'number': return compareNumbers(a, b)
-      case 'client': return (a.projects?.clients?.display_name ?? '').localeCompare(b.projects?.clients?.display_name ?? '')
-      case 'job': return (a.projects?.name ?? '').localeCompare(b.projects?.name ?? '')
-      case 'date': return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-      case 'due_date': {
-        const ad = a.due_date ? new Date(a.due_date).getTime() : Infinity
-        const bd = b.due_date ? new Date(b.due_date).getTime() : Infinity
-        return ad - bd
-      }
-      case 'total': return (Number(b.total) || 0) - (Number(a.total) || 0)
-      case 'status': return (STATUS_RANK[a.status] ?? 9) - (STATUS_RANK[b.status] ?? 9)
-      default: return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    }
-  })
+  const sortCtx = { paidMap, clientNameOf }
+  const sorted = sortInvoiceRows(filtered, sortCol, sortAsc, sortCtx)
 
   const counts = {}
   for (const s of STATUS_FILTERS) {
-    counts[s] = s === 'all' ? invoices.length : invoices.filter(inv => inv.status === s).length
+    counts[s] = s === 'all' ? ranged.length : ranged.filter(inv => inv.status === s).length
+  }
+
+  // Exports take exactly the on-screen set: filtered and sorted.
+  function handleExport(kind) {
+    const args = { rows: sorted, ctx: sortCtx, company }
+    if (kind === 'csv') exportInvoicesCSV(args)
+    else exportInvoicesXLSX(args).catch(err => console.error('Invoice XLSX:', err))
   }
 
   return (
     <div className={styles.page}>
-      
+
       <main className={styles.main}>
         <div className={styles.header}>
           <div>
@@ -118,6 +101,8 @@ export default function InvoiceListPage() {
             <p className={styles.subtitle}>{t('invoices:list.subtitle')}</p>
           </div>
           <div className={styles.headerActions}>
+            <button className={`${styles.newBtn} ${styles.importBtn}`} onClick={() => handleExport('csv')}><Download size={16} /> {t('invoices:list.exportCsv')}</button>
+            <button className={`${styles.newBtn} ${styles.importBtn}`} onClick={() => handleExport('xlsx')}><Download size={16} /> {t('invoices:list.exportExcel')}</button>
             <button className={`${styles.newBtn} ${styles.importBtn}`} onClick={() => setShowImport(true)}><Upload size={16} /> {t('invoices:import.button')}</button>
             <button className={`${styles.newBtn} ${styles.importBtn}`} onClick={() => setShowDocImport(true)}><FileScan size={16} /> {t('import:docs.button')}</button>
             <button className={styles.newBtn} onClick={() => navigate('/invoices/new')}><Plus size={16} /> {t('invoices:list.newInvoice')}</button>
@@ -139,11 +124,36 @@ export default function InvoiceListPage() {
               <button
                 className={`${styles.chip} ${needsVerification ? styles.chipActive : ''}`}
                 onClick={() => setNeedsVerification(v => !v)}
-              >{t('invoices:reminders.needsVerificationFilter', { count: invoices.filter(inv => inv.import_source && !inv.reminders_verified_at).length })}</button>
+              >{t('invoices:reminders.needsVerificationFilter', { count: ranged.filter(inv => inv.import_source && !inv.reminders_verified_at).length })}</button>
             </div>
-            <select className={styles.sortSelect} value={sortKey} onChange={e => setSortKey(e.target.value)}>
-              {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{t(o.label)}</option>)}
+            <select
+              className={styles.sortSelect}
+              value={windowPref.choice}
+              onChange={e => updateWindowPref({ ...windowPref, choice: e.target.value })}
+              aria-label={t('jobs:window.label')}
+            >
+              <option value="30">{t('jobs:window.days30')}</option>
+              <option value="90">{t('jobs:window.days90')}</option>
+              <option value="180">{t('jobs:window.days180')}</option>
+              <option value="all">{t('jobs:window.all')}</option>
+              <option value="custom">{t('jobs:window.custom')}</option>
             </select>
+            {windowPref.choice === 'custom' && (
+              <>
+                <input
+                  type="date"
+                  className={styles.sortSelect}
+                  value={windowPref.from}
+                  onChange={e => updateWindowPref({ ...windowPref, from: e.target.value })}
+                />
+                <input
+                  type="date"
+                  className={styles.sortSelect}
+                  value={windowPref.to}
+                  onChange={e => updateWindowPref({ ...windowPref, to: e.target.value })}
+                />
+              </>
+            )}
           </div>
         </div>
 
@@ -161,27 +171,15 @@ export default function InvoiceListPage() {
         ) : sorted.length === 0 ? (
           <div className={styles.empty}>{t('invoices:list.noMatch')}</div>
         ) : (
-          <div className={styles.list}>
-            {sorted.map(inv => {
-              const clientName = inv.projects?.clients?.display_name || '—'
-              const projectName = inv.projects?.name || '—'
-              return (
-                <div key={inv.id} className={styles.row} onClick={() => navigate(`/invoices/${inv.id}`)}>
-                  <div className={styles.rowMain}>
-                    <span className={styles.rowNumber}>{inv.invoice_number}</span>
-                    <span className={styles.rowClient}>{clientName}</span>
-                    <span className={styles.rowProject}>{projectName}</span>
-                  </div>
-                  <div className={styles.rowRight}>
-                    <span className={styles.rowTotal}>{fmtMoney(inv.total)}</span>
-                    <span className={styles.rowDue}>{inv.due_date ? fmtDate(inv.due_date) : '—'}</span>
-                    <InvoiceStatusBadge status={inv.status} isOverdue={isOverdue(inv)} />
-                    <span className={styles.rowCreated}>{timeAgo(inv.created_at)}</span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          <InvoiceTable
+            rows={sorted}
+            paidMap={paidMap}
+            clientNameOf={clientNameOf}
+            sortCol={sortCol}
+            sortAsc={sortAsc}
+            onSort={handleSort}
+            onRowClick={inv => navigate(`/invoices/${inv.id}`)}
+          />
         )}
       </main>
 

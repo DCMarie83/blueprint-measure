@@ -1181,20 +1181,11 @@
         "paid": "Pagada por completo",
         "void": "Anulada"
       },
-      "sort": {
-        "recent": "Recientes",
-        "dueDate": "Fecha de vencimiento",
-        "total": "Total",
-        "number": "Número de factura",
-        "client": "Cliente A-Z",
-        "job": "Trabajo A-Z",
-        "date": "Fecha de emisión",
-        "amount": "Monto",
-        "status": "Estado"
-      },
       "emptyTitle": "Aún no hay facturas",
       "emptyBody": "Crea una desde una cotización aceptada, o haz clic en \"+ Nueva factura\" para empezar de cero.",
-      "noMatch": "Ninguna factura coincide con tus filtros."
+      "noMatch": "Ninguna factura coincide con tus filtros.",
+      "exportCsv": "Exportar CSV",
+      "exportExcel": "Exportar Excel"
     },
     "form": {
       "newTitle": "Nueva factura",
@@ -1490,6 +1481,18 @@
         "failed": "falló",
         "skipped": "omitido"
       }
+    },
+    "table": {
+      "number": "Número",
+      "client": "Cliente",
+      "job": "Trabajo",
+      "date": "Fecha de factura",
+      "dueDate": "Vence",
+      "total": "Total",
+      "paid": "Pagado",
+      "balance": "Saldo",
+      "status": "Estado",
+      "lastReminded": "Último recordatorio"
     }
   },
   "lite": {

@@ -1,0 +1,59 @@
+.tableWrap {
+  position: relative;
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.th {
+  padding: 10px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps, 0.04em);
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.td {
+  padding: 9px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+  white-space: nowrap;
+}
+
+.tr {
+  cursor: pointer;
+}
+
+.tr:hover {
+  background: var(--color-surface-2);
+}
+
+.number {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.money {
+  font-family: var(--font-mono);
+  text-align: right;
+}
+
+.balanceOverdue {
+  color: var(--color-danger, #dc2626);
+  font-weight: 600;
+}
+
+.muted {
+  color: var(--color-text-muted);
+}

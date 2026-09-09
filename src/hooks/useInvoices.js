@@ -23,7 +23,7 @@ export function useInvoices({ projectId, clientId, status: statusFilter, dateFro
     try {
       let query = supabase
         .from('invoices')
-        .select('*, projects(id, name, client_id, clients(id, display_name))')
+        .select('*, projects(id, name, address, client_id, clients(id, display_name, primary_email))')
         .eq('company_id', companyId)
         .order('created_at', { ascending: false })
       if (projectId) query = query.eq('project_id', projectId)
