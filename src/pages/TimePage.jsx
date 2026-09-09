@@ -381,6 +381,9 @@ export default function TimePage() {
     try {
       if (shareCm && trimmed !== (shareCm.email || '')) {
         await updateCrewMember(shareCm.id, { email: trimmed })
+        // Saving a crew email links the row to a matching company user (item 5)
+        // the same way the crew page's email save does.
+        await linkCrewToUserByEmail({ crewMemberId: shareCm.id, email: trimmed, companyId })
         setAllCrew(prev => prev.map(c => c.id === shareCm.id ? { ...c, email: trimmed } : c))
         setShareCm(prev => prev ? { ...prev, email: trimmed } : prev)
       }
