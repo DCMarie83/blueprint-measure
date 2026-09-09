@@ -1,7 +1,10 @@
 const HEADER_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1B2426' } }
 const HEADER_FONT = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 }
 const CURRENCY_FMT = '$#,##0.00'
-const PCT_FMT = '0.0"%"'
+// Real percent format: values are FRACTIONS (0.8497) and Excel's % format
+// multiplies by 100 for display (85.0%). Never a quoted literal "%" — that
+// renders the raw fraction with a % glued on (0.8%).
+const PCT_FMT = '0.0%'
 
 export async function exportJobCostingXLSX({ rows, totals, period, company }) {
   const ExcelJS = (await import('exceljs')).default
