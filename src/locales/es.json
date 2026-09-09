@@ -1402,7 +1402,49 @@
       "importBtn_other": "Importar {{count}} facturas",
       "importSuccess_one": "{{count}} factura importada correctamente.",
       "importSuccess_other": "{{count}} facturas importadas correctamente.",
-      "badgeNoTotal": "sin total — se importa como borrador"
+      "badgeNoTotal": "sin total — se importa como borrador",
+      "review": {
+        "loading": "Cargando facturas existentes...",
+        "heldTitle_one": "1 número de factura del archivo ya existe en tu cuenta",
+        "heldTitle_other": "{{count}} números de factura del archivo ya existen en tu cuenta",
+        "badge": "El número ya existe",
+        "existing": "Factura existente",
+        "incoming": "En el archivo",
+        "client": "Cliente",
+        "job": "Trabajo",
+        "date": "Fecha",
+        "total": "Total",
+        "status": "Estado",
+        "payments": "Pagos registrados",
+        "noPayments": "ninguno",
+        "lineItems": "Partidas",
+        "noLineItems": "ninguna",
+        "action": {
+          "skip": "Omitir",
+          "revise": "Actualizar como revisión",
+          "addon": "Agregar partidas",
+          "renumber": "Renumerar e importar"
+        },
+        "hint": {
+          "skip": "Esta fila se descartará. Si subiste un documento para este número, se adjuntará a la factura existente.",
+          "revise": "Las partidas y el total de la factura existente se reemplazarán con los del archivo.",
+          "addon": "Las partidas del archivo se agregarán a la factura existente y el total se recalculará.",
+          "renumber": "Se creará una factura nueva con el siguiente número libre, con una nota que indica el número impreso."
+        },
+        "chooseHint": "Elige una acción para esta fila. Si no eliges ninguna, no se importará.",
+        "refusePaid": "Esta factura está pagada, así que sus partidas y su total no se pueden cambiar aquí.",
+        "refuseVoid": "Esta factura está anulada, así que no se puede cambiar aquí.",
+        "refuseNoMoney": "La fila del archivo no tiene total ni partidas para aplicar.",
+        "refuseBelowPayments": "El nuevo total {{newTotal}} quedaría por debajo de los {{paid}} ya pagados en esta factura.",
+        "result": {
+          "skip": "omitida, se conservó la factura existente",
+          "revise": "actualizada como revisión",
+          "addon": "partidas agregadas",
+          "renumber": "importada como {{number}}"
+        },
+        "viewInvoice": "Ver factura"
+      },
+      "reasonNeedsReview": "el número ya existe, necesita revisión"
     },
     "rpcErrors": {
       "draft_invoice": "Marca esta factura como enviada antes de registrar un pago.",
@@ -4688,6 +4730,14 @@
       "attachSuccess_other": "{{count}} archivos adjuntados.",
       "reusedCount_one": "{{count}} ya almacenado (reutilizado):",
       "reusedCount_other": "{{count}} ya almacenados (reutilizados):"
-    }
+    },
+    "dispositionReview": "Necesita revisión",
+    "needsReviewCount_one": "necesita revisión",
+    "needsReviewCount_other": "necesitan revisión",
+    "heldUnresolvedHint_one": "1 fila no tiene acción elegida y no se importará.",
+    "heldUnresolvedHint_other": "{{count}} filas no tienen acción elegida y no se importarán.",
+    "reviewedCount_one": "{{count}} fila revisada procesada",
+    "reviewedCount_other": "{{count}} filas revisadas procesadas",
+    "notImportedNeedsReview": "No importadas, necesitan revisión"
   }
 }

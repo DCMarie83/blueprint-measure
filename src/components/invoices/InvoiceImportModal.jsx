@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import ImportWizardModal from '../import/ImportWizardModal'
+import InvoiceCollisionReview from './InvoiceCollisionReview'
 import { downloadInvoiceTemplate } from '../../utils/import/templates'
 import { writeInvoiceRows } from '../../utils/import/writeInvoices'
 import {
@@ -161,6 +163,22 @@ export default function InvoiceImportModal({ onClose, onImported, initialRows = 
       return { id: match.id, isPlaceholder: isPlaceholderSource(match.import_source), existing: match }
     },
     dedupeKey: (row) => (row.invoice_number || '').trim().toLowerCase() || null,
+    // G69: any real (non-placeholder) number match is held for review in every
+    // mode instead of skipping or silently updating. Placeholder skeletons
+    // keep the fill-blank update path.
+    holdMatch: (row, match) => !match.isPlaceholder,
+    HeldReview: InvoiceCollisionReview,
+    rowLabel: (row) => row.invoice_number || t('import:empty'),
+    resolutionLabel: (res) => t(`invoices:import.review.action.${res.action}`),
+    reviewedResult: (entry) => (
+      <>
+        {entry.name} · {t(`invoices:import.review.result.${entry.action}`, { number: entry.invoiceNumber })}
+        {' · '}
+        <Link to={`/invoices/${entry.invoiceId}`} onClick={onClose}>
+          {t('invoices:import.review.viewInvoice')}
+        </Link>
+      </>
+    ),
     buildRow,
     editableReview: !!initialRows,
     reviewColumns: [
@@ -190,6 +208,7 @@ export default function InvoiceImportModal({ onClose, onImported, initialRows = 
     },
     reasonLabels: {
       duplicate_number: 'invoices:import.reasonDuplicateNumber',
+      needs_review: 'invoices:import.reasonNeedsReview',
     },
     uploadPromptKey: 'uploadPrompt',
     mapHintKey: 'mapHint',

@@ -16,6 +16,15 @@ import styles from './ImportWizardModal.module.css'
 //   buildRow        (mappedValues, ctx) => normalized row with _flags/_warnings arrays
 //   matchExisting   optional (row) => { id, isPlaceholder, existing } | null — enables
 //                   upsert dispositions together with `modes: true`
+//   holdMatch       optional (row, match, mode) => boolean — a truthy result holds
+//                   the row in a "Needs review" group (disposition 'review') instead
+//                   of skipping or silently updating; the user resolves each row via
+//                   HeldReview before it can write (G69)
+//   HeldReview      component ({ rows, resolutions, setResolution, t }) rendered in
+//                   Review when held rows exist; setResolution(index, res|null)
+//   rowLabel        optional (row) => string naming a row in result lists
+//   resolutionLabel optional (resolution, t) => string for the disposition column
+//   reviewedResult  optional (entry, t) => JSX for a writer `reviewed` result row
 //   modes           true → show the Add / Update / Add-and-update selector
 //   reviewColumns   [{ key, labelKey, render(row, t), badges: [flag...], editKey }]
 //   editableReview  true → cells with an editKey render as inputs in Review
@@ -53,6 +62,9 @@ export default function ImportWizardModal({ config, onClose, onImported, initial
 
   // Step 3 state — manual cell edits, keyed by row index → target field
   const [edits, setEdits] = useState({})
+  // G69: per-row resolutions for held (needs-review) rows, keyed by row index.
+  // Nothing writes for a held row until a resolution is chosen on its card.
+  const [resolutions, setResolutions] = useState({})
 
   // Step 4 state
   const [importing, setImporting] = useState(false)
@@ -153,6 +165,10 @@ export default function ImportWizardModal({ config, onClose, onImported, initial
       if (match.isPlaceholder) {
         return { ...row, _disposition: 'update', _existingId: match.id, _existing: match.existing }
       }
+      // G69: a real match the config wants reviewed is held, in every mode.
+      if (config.holdMatch?.(row, match, mode)) {
+        return { ...row, _disposition: 'review', _existingId: match.id, _existing: match.existing }
+      }
       if (mode === 'add') {
         return { ...row, _disposition: 'skip', _existingId: match.id, _flags: [...row._flags, 'exists'] }
       }
@@ -165,15 +181,21 @@ export default function ImportWizardModal({ config, onClose, onImported, initial
 
   function getReviewData() {
     const deduped = applyDispositions(dedupeRows(buildMappedRows()))
-    const willImport = deduped.filter(r => !rowSkips(r))
+    // G69: held rows only enter the run once a resolution is chosen; unresolved
+    // held rows are left out and reported as "not imported, needs review".
+    const held = deduped.filter(r => r._disposition === 'review' && !rowSkips(r))
+    const heldUnresolved = held.filter(r => !resolutions[r._index])
+    const willImport = deduped
+      .filter(r => !rowSkips(r) && (r._disposition !== 'review' || !!resolutions[r._index]))
+      .map(r => (r._disposition === 'review' ? { ...r, _resolution: resolutions[r._index] } : r))
     const willSkip = deduped.filter(rowSkips)
-    return { all: deduped, willImport, willSkip }
+    return { all: deduped, willImport, willSkip, held, heldUnresolved }
   }
 
   // ── Step 4: Import ──────────────────────────────────────────
 
   async function handleImport() {
-    const { willImport } = getReviewData()
+    const { willImport, heldUnresolved } = getReviewData()
     const batchId = mintBatchId()
 
     setImporting(true)
@@ -192,6 +214,12 @@ export default function ImportWizardModal({ config, onClose, onImported, initial
       try { await config.afterImport(res, willImport) } catch { /* linkage is best-effort */ }
     }
 
+    // G69: held rows with no chosen action never reached the writer — name them
+    // in the results so the operator knows they still need review.
+    if (heldUnresolved.length > 0) {
+      res.needsReview = heldUnresolved.map(r => ({ name: config.rowLabel?.(r) ?? '' }))
+    }
+
     setResult(res)
     setImporting(false)
     onImported?.() // ONE refresh for the whole run — never per-row
@@ -208,6 +236,11 @@ export default function ImportWizardModal({ config, onClose, onImported, initial
   }
 
   function dispositionLabel(row) {
+    if (row._disposition === 'review') {
+      const res = resolutions[row._index]
+      if (res && config.resolutionLabel) return config.resolutionLabel(res, t)
+      return t('import:dispositionReview')
+    }
     if (row._disposition === 'update') return t('import:dispositionUpdate')
     if (rowSkips(row)) return t('import:dispositionSkip')
     return t('import:dispositionNew')
@@ -337,12 +370,14 @@ export default function ImportWizardModal({ config, onClose, onImported, initial
 
       {/* Step 3: Review */}
       {step === 2 && (() => {
-        const { all, willImport, willSkip } = getReviewData()
+        const { all, willImport, willSkip, held, heldUnresolved } = getReviewData()
+        const HeldReview = config.HeldReview
         return (
           <div>
             <p className={styles.info}>
               <strong>{willImport.length}</strong> {t('import:willImport')}, <strong>{willSkip.length}</strong> {t('import:skipped')}
               {willSkip.length > 0 && ` (${et(config.skipReasonKey)})`}
+              {held.length > 0 && <>, <strong>{held.length}</strong> {t('import:needsReviewCount', { count: held.length })}</>}
             </p>
 
             {docMode && showModes && (
@@ -405,6 +440,24 @@ export default function ImportWizardModal({ config, onClose, onImported, initial
               </table>
             </div>
 
+            {HeldReview && held.length > 0 && (
+              <HeldReview
+                rows={held}
+                resolutions={resolutions}
+                setResolution={(index, res) => setResolutions(prev => {
+                  const next = { ...prev }
+                  if (res == null) delete next[index]
+                  else next[index] = res
+                  return next
+                })}
+                t={t}
+              />
+            )}
+
+            {heldUnresolved.length > 0 && (
+              <p className={styles.info}>{t('import:heldUnresolvedHint', { count: heldUnresolved.length })}</p>
+            )}
+
             <div className={styles.actions}>
               {!docMode && (
                 <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => setStep(1)}>{t('common:action.back')}</button>
@@ -454,6 +507,24 @@ export default function ImportWizardModal({ config, onClose, onImported, initial
                     </div>
                   ))}
                   {result.created.length > 10 && <div className={styles.resultItem}>{t('import:andMore', { count: result.created.length - 10 })}</div>}
+                </div>
+              )}
+              {(result.reviewed?.length ?? 0) > 0 && (
+                <div className={styles.resultList}>
+                  <strong>{t('import:reviewedCount', { count: result.reviewed.length })}</strong>
+                  {result.reviewed.map((entry, i) => (
+                    <div key={i} className={styles.resultItem}>
+                      {config.reviewedResult ? config.reviewedResult(entry, t) : entry.name}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {(result.needsReview?.length ?? 0) > 0 && (
+                <div className={styles.resultList}>
+                  <strong>{t('import:notImportedNeedsReview', { count: result.needsReview.length })}</strong>
+                  {result.needsReview.map((entry, i) => (
+                    <div key={i} className={styles.resultItem}>{entry.name}</div>
+                  ))}
                 </div>
               )}
               {result.skipped.length > 0 && (

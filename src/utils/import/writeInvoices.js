@@ -19,9 +19,16 @@ import { logImportActivity } from './activity'
 // subtotal = Σ line totals, and any gap to the header total is written as
 // adjustment_amount so subtotal === total − adjustment always holds.
 //
-// Legacy invoice numbers are stored verbatim; generate_invoice_number is NEVER
-// called, and no send-* edge function is ever invoked. clients.lifetime_value
-// updates via the existing DB triggers on invoice_payments.
+// Legacy invoice numbers are stored verbatim; generate_invoice_number is
+// called ONLY for the explicit G69 "renumber" resolution (the operator chose
+// it on the collision card), and no send-* edge function is ever invoked.
+// clients.lifetime_value updates via the existing DB triggers on
+// invoice_payments.
+//
+// G69 collision review: rows arriving with _disposition 'review' carry a
+// _resolution chosen on the collision card ({ action: 'skip' | 'revise' |
+// 'addon' | 'renumber' }). One number = one record: nothing is ever suffixed
+// and the unique index is never widened.
 const VALID_ITEM_TYPES = new Set(['labor', 'material', 'supply', 'equipment', 'subcontractor', 'other'])
 
 // One normalization for both the create and update paths: item_type coerced to
@@ -78,6 +85,8 @@ export async function writeInvoiceRows({
   const skipped = []
   const failed = []
   const created = []
+  const reviewed = []
+  const r2 = (v) => Math.round(v * 100) / 100
 
   const seenNumbers = new Set(existingNumbers)
   const createClient = makeClientCreator({ companyId, batchId, created })
@@ -96,6 +105,150 @@ export async function writeInvoiceRows({
       const noteText = (row.notes || '').trim()
       const methodNote = row._methodOriginal ? `Original payment method: ${row._methodOriginal}` : ''
       const paymentNotes = [noteText, methodNote].filter(Boolean).join(' · ') || null
+
+      // ── G69: resolved collision rows ────────────────────────
+      // The number already exists on the company. The operator chose an action
+      // on the review card; unresolved rows never reach this writer.
+      let effectiveNumber = number
+      let renumberedFrom = null
+      if (row._disposition === 'review' && row._existingId) {
+        const action = row._resolution?.action
+        if (!action) {
+          skipped.push({ name: label, reason: 'needs_review' })
+          onProgress?.(i + 1, rows.length)
+          continue
+        }
+
+        if (action === 'skip') {
+          // Drop the incoming row. In document mode the batch's source document
+          // still attaches to the EXISTING invoice: afterImport links whatever
+          // _createdId points at, so it is aimed at the existing record here.
+          row._createdId = row._existingId
+          reviewed.push({ name: label, action, invoiceId: row._existingId, invoiceNumber: label })
+          onProgress?.(i + 1, rows.length)
+          continue
+        }
+
+        if (action === 'revise' || action === 'addon') {
+          const { data: ex, error: exErr } = await supabase
+            .from('invoices')
+            .select('id, status, total, subtotal, adjustment_amount, client_id, import_source, invoice_line_items(id, sort_order), invoice_payments(amount)')
+            .eq('id', row._existingId)
+            .single()
+          if (exErr) throw new Error(exErr.message)
+
+          // Same refusals the card shows, enforced again at write time.
+          if (ex.status === 'paid' || ex.status === 'void') {
+            throw new Error(`Refused: invoice ${label} is ${ex.status} and its totals cannot change`)
+          }
+          const ledger = r2((ex.invoice_payments ?? []).reduce((s, p) => s + (Number(p.amount) || 0), 0))
+
+          let lines = normalizeInvoiceLines(row._lines)
+          if (lines.length === 0 && row._total == null) {
+            throw new Error('Refused: the file row has no total and no line items to apply')
+          }
+          // A header-only file row still revises/adds as one lump-sum line so
+          // the subtotal === total − adjustment invariant holds.
+          if (lines.length === 0) {
+            lines = normalizeInvoiceLines([{ description: `Imported ${label}`, total: row._total }])
+          }
+          const lineSum = r2(lines.reduce((s, li) => s + li.total, 0))
+          const oldTotal = Number(ex.total) || 0
+
+          let patch
+          if (action === 'revise') {
+            // Replace the line items; the total comes from the incoming row.
+            const newTotal = row._total ?? lineSum
+            if (newTotal < ledger) {
+              throw new Error(`Refused: the new total $${newTotal.toFixed(2)} is below the $${ledger.toFixed(2)} already paid`)
+            }
+            if ((ex.invoice_line_items ?? []).length > 0) {
+              const { error: delErr } = await supabase.from('invoice_line_items').delete().eq('invoice_id', row._existingId)
+              if (delErr) throw new Error(delErr.message)
+            }
+            const { error: liErr } = await supabase.from('invoice_line_items').insert(
+              lines.map(li => ({ ...li, invoice_id: row._existingId }))
+            )
+            if (liErr) throw new Error(`Line items failed: ${liErr.message}`)
+            const adjustment = r2(newTotal - lineSum)
+            patch = {
+              subtotal: lineSum,
+              adjustment_amount: adjustment,
+              adjustment_label: adjustment !== 0 ? 'Import adjustment' : null,
+              total: newTotal,
+            }
+          } else {
+            // Add on: append the incoming lines and recompute the total.
+            const addAmount = row._total ?? lineSum
+            const newTotal = r2(oldTotal + addAmount)
+            if (newTotal < ledger) {
+              throw new Error(`Refused: the new total $${newTotal.toFixed(2)} is below the $${ledger.toFixed(2)} already paid`)
+            }
+            const maxSort = (ex.invoice_line_items ?? []).reduce((m, li) => Math.max(m, li.sort_order ?? 0), -1)
+            const { error: liErr } = await supabase.from('invoice_line_items').insert(
+              lines.map((li, idx) => ({ ...li, sort_order: maxSort + 1 + idx, invoice_id: row._existingId }))
+            )
+            if (liErr) throw new Error(`Line items failed: ${liErr.message}`)
+            const newSubtotal = r2((Number(ex.subtotal) || 0) + lineSum)
+            const adjustment = r2(newTotal - newSubtotal)
+            patch = {
+              subtotal: newSubtotal,
+              adjustment_amount: adjustment,
+              adjustment_label: adjustment !== 0 ? 'Import adjustment' : null,
+              total: newTotal,
+            }
+          }
+          patch.import_source = appendBatchId(ex.import_source, batchId)
+          patch.updated_at = new Date().toISOString()
+          const { error: updErr } = await supabase.from('invoices').update(patch).eq('id', row._existingId)
+          if (updErr) throw new Error(updErr.message)
+
+          // A non-draft re-derives its status against the new total through
+          // the one payment door.
+          if (ex.status !== 'draft') {
+            const { data: rd, error: rdErr } = await supabase.rpc('apply_invoice_payment', {
+              p_action: 'rederive', p_invoice_id: row._existingId,
+              p_payment_id: null, p_amount: null, p_method: null, p_date: null,
+              p_reference: null, p_notes: null, p_target_invoice_id: null,
+            })
+            if (rdErr) throw new Error(rdErr.message)
+            if (rd?.error) throw new Error(`Status rederive failed: ${rd.error}`)
+          }
+
+          await logImportActivity({
+            companyId,
+            userId,
+            clientId: ex.client_id,
+            activityType: 'invoice_edited_after_send',
+            title: `Invoice ${label} ${action === 'revise' ? 'revised' : 'added onto'} by import`,
+            metadata: {
+              import_source: batchId, invoice_id: row._existingId, invoice_number: label,
+              old_total: oldTotal, new_total: patch.total,
+            },
+          })
+
+          row._createdId = row._existingId
+          reviewed.push({ name: label, action, invoiceId: row._existingId, invoiceNumber: label })
+          onProgress?.(i + 1, rows.length)
+          continue
+        }
+
+        if (action === 'renumber') {
+          // Next free number from the company's sequence: the SAME generator
+          // the app uses. The sequence can trail hand-entered numbers, so keep
+          // drawing until a free one comes out. Never suffix, never widen.
+          let newNumber = null
+          for (let attempt = 0; attempt < 20 && !newNumber; attempt++) {
+            const { data: gen, error: genErr } = await supabase.rpc('generate_invoice_number', { p_company_id: companyId })
+            if (genErr) throw new Error(genErr.message)
+            if (gen && !seenNumbers.has(String(gen).trim().toLowerCase())) newNumber = String(gen).trim()
+          }
+          if (!newNumber) throw new Error('Could not find a free invoice number')
+          renumberedFrom = label
+          effectiveNumber = newNumber
+          // falls through to the normal insert path below
+        }
+      }
 
       // ── Update existing invoice ─────────────────────────────
       if (row._disposition === 'update' && row._existingId) {
@@ -219,7 +372,7 @@ export async function writeInvoiceRows({
       }
 
       // ── Insert new invoice ──────────────────────────────────
-      const numberKey = number.toLowerCase()
+      const numberKey = effectiveNumber.toLowerCase()
       if (seenNumbers.has(numberKey)) {
         skipped.push({ name: label, reason: 'duplicate_number' })
         onProgress?.(i + 1, rows.length)
@@ -259,7 +412,8 @@ export async function writeInvoiceRows({
           company_id: companyId,
           project_id: projectId,
           client_id: clientText ? clientId : projectClientId,
-          invoice_number: number,
+          invoice_number: effectiveNumber,
+          notes: renumberedFrom ? `Printed as ${renumberedFrom}` : null,
           status,
           subtotal,
           adjustment_amount: adjustment,
@@ -318,7 +472,7 @@ export async function writeInvoiceRows({
           activityType: 'invoice_paid',
           title: `Payment of $${amountPaid.toFixed(2)} received`,
           createdAt: paymentDate,
-          metadata: { import_source: batchId, invoice_id: invoice.id, invoice_number: number },
+          metadata: { import_source: batchId, invoice_id: invoice.id, invoice_number: effectiveNumber },
         })
       }
 
@@ -327,13 +481,17 @@ export async function writeInvoiceRows({
         userId,
         clientId: activityClientId,
         activityType: 'invoice_created',
-        title: `Invoice ${number} imported`,
+        title: `Invoice ${effectiveNumber} imported`,
         createdAt: row._invoiceDate,
-        metadata: { import_source: batchId, invoice_id: invoice.id, invoice_number: number },
+        metadata: { import_source: batchId, invoice_id: invoice.id, invoice_number: effectiveNumber },
       })
 
       seenNumbers.add(numberKey)
-      imported.push({ name: label })
+      if (renumberedFrom) {
+        reviewed.push({ name: renumberedFrom, action: 'renumber', invoiceId: invoice.id, invoiceNumber: effectiveNumber })
+      } else {
+        imported.push({ name: label })
+      }
     } catch (err) {
       failed.push({ name: label, error: err.message || String(err) })
     }
@@ -341,5 +499,5 @@ export async function writeInvoiceRows({
     onProgress?.(i + 1, rows.length)
   }
 
-  return { imported, updated, skipped, failed, created }
+  return { imported, updated, skipped, failed, created, reviewed }
 }

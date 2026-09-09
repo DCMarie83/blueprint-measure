@@ -1402,7 +1402,49 @@
       "importBtn_other": "Import {{count}} Invoices",
       "importSuccess_one": "{{count}} invoice imported successfully.",
       "importSuccess_other": "{{count}} invoices imported successfully.",
-      "badgeNoTotal": "no total — imports as draft"
+      "badgeNoTotal": "no total — imports as draft",
+      "review": {
+        "loading": "Loading existing invoices...",
+        "heldTitle_one": "1 invoice number in the file already exists on your account",
+        "heldTitle_other": "{{count}} invoice numbers in the file already exist on your account",
+        "badge": "Number exists",
+        "existing": "Existing invoice",
+        "incoming": "In the file",
+        "client": "Client",
+        "job": "Job",
+        "date": "Date",
+        "total": "Total",
+        "status": "Status",
+        "payments": "Payments on file",
+        "noPayments": "none",
+        "lineItems": "Line items",
+        "noLineItems": "none",
+        "action": {
+          "skip": "Skip",
+          "revise": "Update as revision",
+          "addon": "Add on",
+          "renumber": "Renumber and import"
+        },
+        "hint": {
+          "skip": "This row will be dropped. A document uploaded for this number will attach to the existing invoice.",
+          "revise": "The existing invoice's line items and total will be replaced with the ones from the file.",
+          "addon": "The file's line items will be added to the existing invoice and the total recomputed.",
+          "renumber": "A new invoice will be created under the next free number, with a note naming the printed number."
+        },
+        "chooseHint": "Choose an action for this row. If none is chosen, it will not be imported.",
+        "refusePaid": "This invoice is paid, so its line items and total cannot be changed here.",
+        "refuseVoid": "This invoice is void, so it cannot be changed here.",
+        "refuseNoMoney": "The file row has no total and no line items to apply.",
+        "refuseBelowPayments": "The new total {{newTotal}} would be below the {{paid}} already paid on this invoice.",
+        "result": {
+          "skip": "skipped, existing invoice kept",
+          "revise": "updated as a revision",
+          "addon": "line items added on",
+          "renumber": "imported as {{number}}"
+        },
+        "viewInvoice": "View invoice"
+      },
+      "reasonNeedsReview": "number already exists, needs review"
     },
     "rpcErrors": {
       "draft_invoice": "Mark this invoice sent before recording a payment.",
@@ -4688,6 +4730,14 @@
       "attachSuccess_other": "{{count}} files attached.",
       "reusedCount_one": "{{count}} already stored (reused):",
       "reusedCount_other": "{{count}} already stored (reused):"
-    }
+    },
+    "dispositionReview": "Needs review",
+    "needsReviewCount_one": "needs review",
+    "needsReviewCount_other": "need review",
+    "heldUnresolvedHint_one": "1 row has no chosen action and will not be imported.",
+    "heldUnresolvedHint_other": "{{count}} rows have no chosen action and will not be imported.",
+    "reviewedCount_one": "{{count}} reviewed row handled",
+    "reviewedCount_other": "{{count}} reviewed rows handled",
+    "notImportedNeedsReview": "Not imported, needs review"
   }
 }
