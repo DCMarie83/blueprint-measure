@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { hexToRgb, normalizedPrimary } from '../utils/colorUtils'
+import { hexToRgb, normalizedPrimary, brandBand } from '../utils/colorUtils'
 import { drawLogo } from './logoImage'
 
 const DARK = [27, 36, 38]
@@ -26,6 +26,7 @@ export function generateReceiptPDF({ invoice, payments = [], project, client, co
   const pageWidth = doc.internal.pageSize.getWidth()
   const margin = 18
   const primaryRgb = hexToRgb(normalizedPrimary(company?.primary_color)) || [242, 114, 67]
+  const band = brandBand(company?.primary_color)
   let y = margin
 
   if (company?.logo) {
@@ -74,7 +75,7 @@ export function generateReceiptPDF({ invoice, payments = [], project, client, co
     head: [['Date', 'Method', 'Reference', 'Amount']],
     body: rows,
     theme: 'grid',
-    headStyles: { fillColor: DARK, textColor: WHITE, fontStyle: 'bold', fontSize: 9 },
+    headStyles: { fillColor: band.fill, textColor: band.text, fontStyle: 'bold', fontSize: 9 },
     styles: { fontSize: 9, textColor: DARK, cellPadding: { top: 2.5, bottom: 2.5, left: 4, right: 4 } },
     columnStyles: { 3: { halign: 'right' } },
   })

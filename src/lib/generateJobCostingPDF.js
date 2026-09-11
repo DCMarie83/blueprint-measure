@@ -1,11 +1,10 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { hexToRgb, normalizedPrimary } from '../utils/colorUtils'
+import { hexToRgb, normalizedPrimary, brandBand } from '../utils/colorUtils'
 import { drawLogo } from './logoImage'
 
 const DARK = [27, 36, 38]
 const MUTED = [138, 144, 150]
-const WHITE = [255, 255, 255]
 const STRIPE = [245, 245, 245]
 const FALLBACK_PRIMARY = [242, 114, 67]
 
@@ -47,6 +46,7 @@ export function generateJobCostingPDF({ rows, totals, period, company, returnAs 
   const companyName = company?.name || 'Company'
   const primaryHex = normalizedPrimary(company?.primary_color)
   const primaryRgb = hexToRgb(primaryHex) ?? FALLBACK_PRIMARY
+  const band = brandBand(company?.primary_color)
 
   let y = margin
 
@@ -154,8 +154,8 @@ export function generateJobCostingPDF({ rows, totals, period, company, returnAs 
     body: tableBody,
     foot: tableFoot,
     theme: 'grid',
-    headStyles: { fillColor: DARK, textColor: WHITE, fontStyle: 'bold', fontSize: 8 },
-    footStyles: { fillColor: DARK, textColor: WHITE, fontStyle: 'bold', fontSize: 8 },
+    headStyles: { fillColor: band.fill, textColor: band.text, fontStyle: 'bold', fontSize: 8 },
+    footStyles: { fillColor: band.fill, textColor: band.text, fontStyle: 'bold', fontSize: 8 },
     styles: { fontSize: 8, textColor: DARK, cellPadding: { top: 2, bottom: 2, left: 3, right: 3 } },
     columnStyles: {
       0: { cellWidth: 'auto' },

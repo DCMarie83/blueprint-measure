@@ -1,10 +1,9 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { hexToRgb, normalizedPrimary } from '../utils/colorUtils'
+import { hexToRgb, normalizedPrimary, brandBand } from '../utils/colorUtils'
 
 const DARK = [27, 36, 38]       // #1b2426
 const MUTED = [138, 144, 150]   // #8a9096
-const WHITE = [255, 255, 255]
 const STRIPE = [245, 245, 245]
 const FALLBACK_PRIMARY = [242, 114, 67] // #f27243
 
@@ -99,6 +98,7 @@ export function generateEstimatePDF({ estimate, lineItems, project, client, comp
   const companyName = company?.name || 'Your Contractor'
   const companyPrimaryHex = normalizedPrimary(company?.primary_color)
   const companyPrimaryRgb = hexToRgb(companyPrimaryHex) ?? FALLBACK_PRIMARY
+  const band = brandBand(company?.primary_color)
   const estTitle = estimate.title || estimate.estimate_number
   const estNumber = estimate.estimate_number
 
@@ -118,10 +118,12 @@ export function generateEstimatePDF({ estimate, lineItems, project, client, comp
 
     // ── Header band ──────────────────────────────────────────
     let logoRendered = false
+    let logoDrawnH = 0
     if (company?.logo) {
       try {
-        const { w } = drawLogo(doc, company.logo, { x: margin, y: y - 2, maxW: 42, maxH: 14 })
+        const { w, h } = drawLogo(doc, company.logo, { x: margin, y: y - 2, maxW: 42, maxH: 20 })
         logoRendered = w > 0
+        logoDrawnH = h
       } catch { /* logo embed failed — fall through to text */ }
     }
 
@@ -145,7 +147,9 @@ export function generateEstimatePDF({ estimate, lineItems, project, client, comp
       doc.text(estNumber, pageWidth - margin, y + 10, { align: 'right' })
     }
 
-    y += 16
+    // Tall (square-ish) logos may draw past the old 14mm line; push the rest
+    // of the header down by the overflow so nothing overlaps.
+    y += 16 + Math.max(0, logoDrawnH - 14)
 
     // Date line
     doc.setFontSize(10)
@@ -252,8 +256,8 @@ export function generateEstimatePDF({ estimate, lineItems, project, client, comp
       body: tableBody,
       theme: 'grid',
       headStyles: {
-        fillColor: DARK,
-        textColor: WHITE,
+        fillColor: band.fill,
+        textColor: band.text,
         fontStyle: 'bold',
         fontSize: 9,
       },
@@ -300,12 +304,12 @@ export function generateEstimatePDF({ estimate, lineItems, project, client, comp
     doc.text(grandTotalStr, pageWidth - margin, y + 4, { align: 'right' })
     y += 10
 
-    // Dark pill with variant total
-    doc.setFillColor(...DARK)
+    // Brand pill with variant total
+    doc.setFillColor(...band.fill)
     doc.roundedRect(pageWidth - margin - 80, y, 80, 14, 2, 2, 'F')
     doc.setFontSize(11)
     doc.setFont('helvetica', 'bold')
-    doc.setTextColor(...WHITE)
+    doc.setTextColor(...band.text)
     const totalPillLabel = isSingleVariant ? 'TOTAL' : `${v.label} TOTAL`
     doc.text(totalPillLabel, pageWidth - margin - 76, y + 9)
     doc.text(grandTotalStr, pageWidth - margin - 4, y + 9, { align: 'right' })

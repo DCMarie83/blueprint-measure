@@ -1,11 +1,10 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { hexToRgb, normalizedPrimary } from '../utils/colorUtils'
+import { hexToRgb, normalizedPrimary, brandBand } from '../utils/colorUtils'
 import { drawLogo } from './logoImage'
 
 const DARK = [27, 36, 38]
 const MUTED = [138, 144, 150]
-const WHITE = [255, 255, 255]
 const STRIPE = [245, 245, 245]
 const FALLBACK_PRIMARY = [242, 114, 67]
 
@@ -45,15 +44,18 @@ export function generatePayStatementPDF({ worker, period, entries, byJob, totalH
   const companyName = company?.name || 'Company'
   const primaryHex = normalizedPrimary(company?.primary_color)
   const primaryRgb = hexToRgb(primaryHex) ?? FALLBACK_PRIMARY
+  const band = brandBand(company?.primary_color)
 
   let y = margin
 
   // ── Header band ──────────────────────────────────────────
   let logoRendered = false
+  let logoDrawnH = 0
   if (company?.logo) {
     try {
-      const { w } = drawLogo(doc, company.logo, { x: margin, y: y - 2, maxW: 42, maxH: 14 })
+      const { w, h } = drawLogo(doc, company.logo, { x: margin, y: y - 2, maxW: 42, maxH: 20 })
       logoRendered = w > 0
+      logoDrawnH = h
     } catch { /* fall through to text */ }
   }
 
@@ -70,7 +72,9 @@ export function generatePayStatementPDF({ worker, period, entries, byJob, totalH
   doc.setTextColor(...primaryRgb)
   doc.text('PAY STATEMENT', pageWidth - margin, y + 4, { align: 'right' })
 
-  y += 16
+  // Tall (square-ish) logos may draw past the old 14mm line; push the rest
+  // of the header down by the overflow so nothing overlaps.
+  y += 16 + Math.max(0, logoDrawnH - 14)
 
   // Company address block
   const addrParts = [
@@ -148,8 +152,8 @@ export function generatePayStatementPDF({ worker, period, entries, byJob, totalH
       body: byJob.map(j => [j.jobName, j.hours.toFixed(2), fmtMoney(j.pay)]),
       foot: [['Total', totalHours.toFixed(2), fmtMoney(totalPay)]],
       theme: 'grid',
-      headStyles: { fillColor: DARK, textColor: WHITE, fontStyle: 'bold', fontSize: 9 },
-      footStyles: { fillColor: DARK, textColor: WHITE, fontStyle: 'bold', fontSize: 9 },
+      headStyles: { fillColor: band.fill, textColor: band.text, fontStyle: 'bold', fontSize: 9 },
+      footStyles: { fillColor: band.fill, textColor: band.text, fontStyle: 'bold', fontSize: 9 },
       styles: { fontSize: 9, textColor: DARK, cellPadding: { top: 2.5, bottom: 2.5, left: 4, right: 4 } },
       columnStyles: {
         0: { cellWidth: 'auto' },
@@ -185,8 +189,8 @@ export function generatePayStatementPDF({ worker, period, entries, byJob, totalH
       ]),
       foot: [['', 'Total', totalHours.toFixed(2), '', fmtMoney(totalPay)]],
       theme: 'grid',
-      headStyles: { fillColor: DARK, textColor: WHITE, fontStyle: 'bold', fontSize: 9 },
-      footStyles: { fillColor: DARK, textColor: WHITE, fontStyle: 'bold', fontSize: 9 },
+      headStyles: { fillColor: band.fill, textColor: band.text, fontStyle: 'bold', fontSize: 9 },
+      footStyles: { fillColor: band.fill, textColor: band.text, fontStyle: 'bold', fontSize: 9 },
       styles: { fontSize: 9, textColor: DARK, cellPadding: { top: 2.5, bottom: 2.5, left: 4, right: 4 } },
       columnStyles: {
         0: { cellWidth: 28 },
@@ -204,11 +208,11 @@ export function generatePayStatementPDF({ worker, period, entries, byJob, totalH
   // ── Gross pay pill ───────────────────────────────────────
   y += 2
   if (y > pageHeight - 30) { doc.addPage(); y = margin }
-  doc.setFillColor(...primaryRgb)
+  doc.setFillColor(...band.fill)
   doc.roundedRect(pageWidth - margin - 80, y, 80, 14, 2, 2, 'F')
   doc.setFontSize(11)
   doc.setFont('helvetica', 'bold')
-  doc.setTextColor(...WHITE)
+  doc.setTextColor(...band.text)
   doc.text('GROSS PAY', pageWidth - margin - 76, y + 9)
   doc.text(fmtMoney(totalPay), pageWidth - margin - 4, y + 9, { align: 'right' })
 
