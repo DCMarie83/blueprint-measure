@@ -8,6 +8,7 @@ import { useLinkedDocuments } from '../hooks/useLinkedDocuments'
 import { useInvoice, useInvoiceMutations, isOverdue } from '../hooks/useInvoices'
 import { generateInvoicePDF } from '../lib/generateInvoicePDF'
 import { generateReceiptPDF } from '../lib/generateReceiptPDF'
+import { loadLogo } from '../lib/logoImage'
 import { useAuth } from '../context/AuthContext'
 import { useEffectiveCompany } from '../hooks/useEffectiveCompany'
 import { mergeInstructionDefaults } from '../hooks/usePaymentInstructions'
@@ -261,17 +262,7 @@ export default function InvoiceDetailPage() {
     ])
 
     let companyData = { name: company?.name, primary_color: company?.primary_color, payment_instructions: company?.payment_instructions }
-    if (company?.logo_url) {
-      try {
-        const res = await fetch(company.logo_url)
-        if (res.ok) {
-          const blob = await res.blob()
-          const reader = new FileReader()
-          const logoData = await new Promise(resolve => { reader.onloadend = () => resolve(reader.result); reader.readAsDataURL(blob) })
-          companyData.logo_data = logoData
-        }
-      } catch { /* skip logo */ }
-    }
+    companyData.logo = await loadLogo(company?.logo_url)
     const qrImages = await fetchQrDataUrls(companyData.payment_instructions)
     return { project: proj, client: cli, company: companyData, qrImages }
   }

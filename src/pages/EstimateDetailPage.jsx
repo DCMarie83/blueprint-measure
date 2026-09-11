@@ -16,6 +16,7 @@ import { usePricingItems } from '../hooks/usePricingItems'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { generateEstimatePDF } from '../lib/generateEstimatePDF'
+import { loadLogo } from '../lib/logoImage'
 import { calculateDepositPercent, getReferenceTotal } from '../lib/depositMath'
 import { getDisplayTotal } from '../lib/estimateDisplay'
 import { isSmartEstimate, fetchBenchmarksByItemIds } from '../lib/smartBid'
@@ -216,21 +217,8 @@ export default function EstimateDetailPage() {
         .eq('id', proj.company_id)
         .single()
       if (co) {
-        // Pre-fetch logo as data URL for synchronous PDF rendering
-        if (co.logo_url) {
-          try {
-            const res = await fetch(co.logo_url)
-            if (res.ok) {
-              const blob = await res.blob()
-              const reader = new FileReader()
-              const logoData = await new Promise(resolve => {
-                reader.onloadend = () => resolve(reader.result)
-                reader.readAsDataURL(blob)
-              })
-              co.logo_data = logoData
-            }
-          } catch { /* logo fetch failed — proceed without */ }
-        }
+        // Pre-load the logo for synchronous PDF rendering (null on failure)
+        co.logo = await loadLogo(co.logo_url)
         setCompanyData(co)
       }
     }

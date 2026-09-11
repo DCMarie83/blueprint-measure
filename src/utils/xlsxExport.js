@@ -1,34 +1,6 @@
 // Generates and triggers a branded .xlsx download for all zones in a session.
 import { buildExportData, buildExportFilename } from './exportData'
-
-// ── Logo helpers (same fetch-and-convert pattern as pdfExport.js) ────────────
-
-// Supported raster MIME types ExcelJS can embed.
-const SUPPORTED_MIME = { 'image/png': 'png', 'image/jpeg': 'jpeg', 'image/gif': 'gif' }
-
-async function fetchLogoBuffer(url) {
-  if (!url) return null
-  try {
-    const res = await fetch(url)
-    if (!res.ok) return null
-    const blob = await res.blob()
-    const ext = SUPPORTED_MIME[blob.type]
-    if (!ext) return null // SVGs or unsupported formats — skip gracefully
-    const arrayBuffer = await blob.arrayBuffer()
-    return { buffer: arrayBuffer, extension: ext, width: 0, height: 0 }
-  } catch {
-    return null // network error — proceed without logo
-  }
-}
-
-function loadImageDimensions(url) {
-  return new Promise(resolve => {
-    const img = new Image()
-    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight })
-    img.onerror = () => resolve(null)
-    img.src = url
-  })
-}
+import { loadLogoBuffer, loadImageDimensions } from '../lib/logoImage'
 
 // ── Column-width heuristics ─────────────────────────────────────────────────
 
@@ -66,7 +38,7 @@ export async function exportXLSX(session, zones, company) {
   // Attempt logo embed
   const logoTargetHeight = 40 // px
   let logoRowSpan = 3         // rows the logo occupies
-  const logo = company?.logo_url ? await fetchLogoBuffer(company.logo_url) : null
+  const logo = company?.logo_url ? await loadLogoBuffer(company.logo_url) : null
   if (logo) {
     const dims = await loadImageDimensions(company.logo_url)
     if (dims && dims.height > 0) {

@@ -4,7 +4,8 @@
 // reporting period across four tabs: Summary, Payments, Invoices, Work Log.
 // This is a money surface — every label stays plain and pun-free.
 
-const SUPPORTED_MIME = { 'image/png': 'png', 'image/jpeg': 'jpeg', 'image/gif': 'gif' }
+import { loadLogoBuffer, loadImageDimensions } from './logoImage'
+
 const HEADER_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1B2426' } }
 const HEADER_FONT = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 }
 const MONEY_FMT = '$#,##0.00'
@@ -14,30 +15,6 @@ const UNIT_LABELS = { sf: 'SF', lf: 'LF', each: 'Each', hour: 'Hour', lump_sum: 
 const STATUS_LABELS = {
   draft: 'Draft', sent: 'Sent', viewed: 'Viewed',
   partial: 'Partial', paid: 'Paid', void: 'Void',
-}
-
-async function fetchLogoBuffer(url) {
-  if (!url) return null
-  try {
-    const res = await fetch(url)
-    if (!res.ok) return null
-    const blob = await res.blob()
-    const ext = SUPPORTED_MIME[blob.type]
-    if (!ext) return null // SVG / unsupported — skip gracefully
-    const arrayBuffer = await blob.arrayBuffer()
-    return { buffer: arrayBuffer, extension: ext }
-  } catch {
-    return null
-  }
-}
-
-function loadImageDimensions(url) {
-  return new Promise(resolve => {
-    const img = new Image()
-    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight })
-    img.onerror = () => resolve(null)
-    img.src = url
-  })
 }
 
 function fmtDate(d) {
@@ -84,7 +61,7 @@ export async function generateLiteReportXLSX({ company, period, summary, payment
 
   let row = 1
   const logoTargetHeight = 40
-  const logo = company?.logo_url ? await fetchLogoBuffer(company.logo_url) : null
+  const logo = company?.logo_url ? await loadLogoBuffer(company.logo_url) : null
   if (logo) {
     const dims = await loadImageDimensions(company.logo_url)
     if (dims && dims.height > 0) {

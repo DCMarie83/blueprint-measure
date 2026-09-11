@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { hexToRgb, normalizedPrimary } from '../utils/colorUtils'
+import { drawLogo } from './logoImage'
 
 const DARK = [27, 36, 38]
 const MUTED = [138, 144, 150]
@@ -34,7 +35,7 @@ function sanitizeFilename(str) {
  * @param {Array}  opts.rows - getJobCostingRows output
  * @param {Object} opts.totals - { quoted, billed, collected, totalCost }
  * @param {Object} opts.period - { from, to }
- * @param {Object} opts.company - { name, primary_color, logo_data }
+ * @param {Object} opts.company - { name, primary_color, logo } (logo from loadLogo)
  * @param {'blob'|'base64'|'save'} opts.returnAs
  */
 export function generateJobCostingPDF({ rows, totals, period, company, returnAs = 'blob' }) {
@@ -51,16 +52,10 @@ export function generateJobCostingPDF({ rows, totals, period, company, returnAs 
 
   // ── Header ───────────────────────────────────────────────
   let logoRendered = false
-  if (company?.logo_data) {
+  if (company?.logo) {
     try {
-      const logoH = 12
-      const logoW = logoH * 3
-      const fmtMatch = company.logo_data.match(/^data:image\/(\w+);/)
-      const fmt = fmtMatch ? fmtMatch[1].toUpperCase() : 'PNG'
-      if (fmt !== 'SVG' && fmt !== 'SVG+XML') {
-        doc.addImage(company.logo_data, fmt, margin, y - 2, logoW, logoH)
-        logoRendered = true
-      }
+      const { w } = drawLogo(doc, company.logo, { x: margin, y: y - 2, maxW: 36, maxH: 12 })
+      logoRendered = w > 0
     } catch { /* fall through */ }
   }
 

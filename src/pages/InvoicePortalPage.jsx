@@ -5,6 +5,7 @@ import { Download } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { generateInvoicePDF } from '../lib/generateInvoicePDF'
 import { generateReceiptPDF } from '../lib/generateReceiptPDF'
+import { loadLogo } from '../lib/logoImage'
 import InvoiceStatusBadge from '../components/invoices/InvoiceStatusBadge'
 import { portalQrUrl } from '../lib/portalAsset'
 import { fetchPortalQrDataUrls } from '../lib/qrData'
@@ -67,17 +68,8 @@ export default function InvoicePortalPage() {
       const inv = data.invoice
       const lineItems = data.line_items || []
       const companyData = { name: data.company_name, primary_color: data.company_primary_color, payment_instructions: data.company_payment_instructions }
-      // Pre-fetch logo for PDF
-      if (data.company_logo_url) {
-        try {
-          const res = await fetch(data.company_logo_url)
-          if (res.ok) {
-            const blob = await res.blob()
-            const reader = new FileReader()
-            companyData.logo_data = await new Promise(resolve => { reader.onloadend = () => resolve(reader.result); reader.readAsDataURL(blob) })
-          }
-        } catch { /* skip logo */ }
-      }
+      // Pre-load logo for PDF (null on failure)
+      companyData.logo = await loadLogo(data.company_logo_url)
       const qrImages = await fetchPortalQrDataUrls(companyData.payment_instructions, token)
       const pdf = generateInvoicePDF({
         invoice: inv, lineItems,

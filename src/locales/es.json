@@ -844,7 +844,15 @@
       "removeConfirm": "¿Quitar el logo de la empresa?",
       "alt": "Logo de {{name}}",
       "upload": "Subir logo",
-      "remove": "Quitar logo"
+      "remove": "Quitar logo",
+      "guidance": "Recomendado: un PNG con fondo transparente, de al menos 1,500 px de ancho (también se acepta SVG). Ancho mínimo: 600 px.",
+      "measuredDims": "Tamaño medido: {{width}} x {{height}} px",
+      "pdfPreviewLabel": "Vista previa del encabezado en PDF de cotizaciones y facturas",
+      "typeError": "Sube un archivo PNG, JPEG o SVG. Las imágenes WebP y GIF no se pueden usar porque no se muestran en los documentos PDF.",
+      "maxSizeError": "El logo debe pesar menos de 5MB.",
+      "readError": "No se pudo leer esa imagen. Intenta con otro archivo.",
+      "tooSmallError": "Esta imagen mide {{width}} x {{height}} px. El logo necesita al menos {{min}} px de ancho; se recomienda {{recommended}} px o más.",
+      "smallWarning": "Esta imagen mide {{width}} px de ancho. Funciona, pero un logo de {{recommended}} px o más se imprime más nítido en los PDF."
     },
     "reminders": {
       "title": "Recordatorios de pago automáticos",

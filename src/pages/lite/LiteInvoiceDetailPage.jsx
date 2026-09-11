@@ -13,6 +13,7 @@ import PaymentInstructionsBlock from '../../components/invoices/PaymentInstructi
 import { fetchQrDataUrls } from '../../lib/qrData'
 import { generateInvoicePDF } from '../../lib/generateInvoicePDF'
 import { generateLiteInvoiceXLSX } from '../../lib/generateLiteInvoiceXLSX'
+import { loadLogo } from '../../lib/logoImage'
 import { supabase } from '../../lib/supabase'
 import { unitLabel, fmtMoney } from '../../lib/lite'
 import { getEffectiveTimeZone } from '../../lib/effectiveTime'
@@ -125,16 +126,7 @@ export default function LiteInvoiceDetailPage() {
       primary_color: company?.primary_color,
       payment_instructions: company?.payment_instructions,
     }
-    if (company?.logo_url) {
-      try {
-        const res = await fetch(company.logo_url)
-        if (res.ok) {
-          const blob = await res.blob()
-          const reader = new FileReader()
-          companyData.logo_data = await new Promise(resolve => { reader.onloadend = () => resolve(reader.result); reader.readAsDataURL(blob) })
-        }
-      } catch { /* skip logo */ }
-    }
+    companyData.logo = await loadLogo(company?.logo_url)
     companyData.qrImages = await fetchQrDataUrls(companyData.payment_instructions)
     return companyData
   }

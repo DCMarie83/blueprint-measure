@@ -10,14 +10,15 @@ export default function CompanyLogoUpload() {
   const { company } = useAuth()
   const { uploadLogo, deleteLogo, uploading } = useCompanyBranding()
   const [error, setError] = useState(null)
+  const [warning, setWarning] = useState(null)
+  const [dims, setDims] = useState(null)
   const [imgError, setImgError] = useState(false)
-  const [cacheBust, setCacheBust] = useState(Date.now())
   const fileRef = useRef(null)
 
   useEffect(() => {
     if (!error) return
-    const t = setTimeout(() => setError(null), 4000)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => setError(null), 6000)
+    return () => clearTimeout(timer)
   }, [error])
 
   useEffect(() => { setImgError(false) }, [company?.logo_url])
@@ -36,9 +37,11 @@ export default function CompanyLogoUpload() {
     if (!file) return
     e.target.value = ''
     setError(null)
+    setWarning(null)
     try {
-      await uploadLogo(file)
-      setCacheBust(Date.now())
+      const result = await uploadLogo(file)
+      setDims({ width: result.width, height: result.height })
+      setWarning(result.warning || null)
     } catch (err) {
       setError(err.message)
     }
@@ -47,6 +50,8 @@ export default function CompanyLogoUpload() {
   async function handleDelete() {
     if (!window.confirm(t('settings:logo.removeConfirm'))) return
     setError(null)
+    setWarning(null)
+    setDims(null)
     try {
       await deleteLogo()
     } catch (err) {
@@ -56,32 +61,52 @@ export default function CompanyLogoUpload() {
 
   return (
     <div className={styles.wrap}>
-      <div className={styles.avatar}>
-        {showImage ? (
-          <img src={`${logoUrl}?v=${cacheBust}`} alt={t('settings:logo.alt', { name: company.name })} className={styles.img} onError={() => setImgError(true)} />
-        ) : (
-          <span className={styles.initials}>{initials}</span>
-        )}
+      <p className={styles.guidance}>{t('settings:logo.guidance')}</p>
 
-        {uploading && (
-          <div className={styles.loadingOverlay}>
-            <Loader size={22} className={styles.spinner} />
-          </div>
-        )}
-
-        <div className={styles.hoverOverlay}>
-          <button className={styles.overlayBtn} onClick={() => fileRef.current?.click()} title={t('settings:logo.upload')}>
-            <Upload size={16} />
-          </button>
-          {showImage && (
-            <button className={styles.overlayBtn} onClick={handleDelete} title={t('settings:logo.remove')}>
-              <Trash2 size={16} />
-            </button>
+      <div className={styles.previewRow}>
+        <div className={styles.avatar}>
+          {showImage ? (
+            <img src={logoUrl} alt={t('settings:logo.alt', { name: company.name })} className={styles.img} onError={() => setImgError(true)} />
+          ) : (
+            <span className={styles.initials}>{initials}</span>
           )}
+
+          {uploading && (
+            <div className={styles.loadingOverlay}>
+              <Loader size={22} className={styles.spinner} />
+            </div>
+          )}
+
+          <div className={styles.hoverOverlay}>
+            <button type="button" className={styles.overlayBtn} onClick={() => fileRef.current?.click()} title={t('settings:logo.upload')}>
+              <Upload size={16} />
+            </button>
+            {showImage && (
+              <button type="button" className={styles.overlayBtn} onClick={handleDelete} title={t('settings:logo.remove')}>
+                <Trash2 size={16} />
+              </button>
+            )}
+          </div>
+
+          <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/svg+xml" onChange={handleFile} className={styles.hiddenInput} />
         </div>
 
-        <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} className={styles.hiddenInput} />
+        {/* Same 42:14 mm box the estimate/invoice PDF header uses, contain-fit:
+            distortion or pixelation is visible here before anything ships. */}
+        <div className={styles.pdfPreviewCol}>
+          <div className={styles.pdfPreviewBox}>
+            {showImage ? (
+              <img src={logoUrl} alt="" className={styles.pdfPreviewImg} onError={() => setImgError(true)} />
+            ) : (
+              <span className={styles.pdfPreviewEmpty}>{company?.name || ''}</span>
+            )}
+          </div>
+          <span className={styles.pdfPreviewLabel}>{t('settings:logo.pdfPreviewLabel')}</span>
+        </div>
       </div>
+
+      {dims && <div className={styles.dims}>{t('settings:logo.measuredDims', { width: dims.width, height: dims.height })}</div>}
+      {warning && <div className={styles.warning}>{warning}</div>}
       {error && <div className={styles.error}>{error}</div>}
     </div>
   )

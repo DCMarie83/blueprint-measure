@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { hexToRgb, normalizedPrimary } from '../utils/colorUtils'
+import { drawLogo } from './logoImage'
 
 const DARK = [27, 36, 38]
 const WHITE = [255, 255, 255]
@@ -19,7 +20,7 @@ function fmtDate(d) {
 
 // Branded receipt for a paid-in-full invoice: payments table, total paid,
 // PAID IN FULL with the paid date, balance zero. Same brand treatment as the
-// invoice PDF (logo when supplied as data URL, tenant primary color).
+// invoice PDF (logo when supplied via loadLogo, tenant primary color).
 export function generateReceiptPDF({ invoice, payments = [], project, client, company, returnAs = 'blob' }) {
   const doc = new jsPDF({ unit: 'mm', format: 'letter' })
   const pageWidth = doc.internal.pageSize.getWidth()
@@ -27,10 +28,10 @@ export function generateReceiptPDF({ invoice, payments = [], project, client, co
   const primaryRgb = hexToRgb(normalizedPrimary(company?.primary_color)) || [242, 114, 67]
   let y = margin
 
-  if (company?.logo_data) {
+  if (company?.logo) {
     try {
-      doc.addImage(company.logo_data, margin, y, 34, 14, undefined, 'FAST')
-      y += 18
+      const { h } = drawLogo(doc, company.logo, { x: margin, y, maxW: 34, maxH: 14 })
+      if (h > 0) y += 18
     } catch { /* logo optional */ }
   }
 

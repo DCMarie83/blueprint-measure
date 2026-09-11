@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext(null)
@@ -20,10 +20,22 @@ export function AuthProvider({ children }) {
   // wall was skipped.
   const [companyResolved, setCompanyResolved] = useState(false)
 
+  // Mirror of `company` so refreshCompany can tell a refresh from a first
+  // load without adding `company` to its dependency array (which would churn
+  // the callback identity on every refresh).
+  const companyRef = useRef(null)
+  useEffect(() => { companyRef.current = company }, [company])
+
   const refreshCompany = useCallback(async (companyId) => {
     const cid = companyId || userProfile?.company_id
     if (!cid) return
-    setCompanyLoading(true)
+    // A refresh of the already-loaded company must not flip companyLoading:
+    // ProtectedRoute (App.jsx) and SubscriptionGate swap their children for a
+    // spinner/null on that flag, which unmounts the current page mid-action
+    // (e.g. Settings > Branding bounced to its default tab after a logo
+    // upload). The previous company object is held until the new row lands.
+    const isRefresh = companyRef.current?.id === cid
+    if (!isRefresh) setCompanyLoading(true)
     try {
       const { data } = await supabase
         .from('companies')
@@ -34,7 +46,7 @@ export function AuthProvider({ children }) {
     } catch {
       // fail open
     } finally {
-      setCompanyLoading(false)
+      if (!isRefresh) setCompanyLoading(false)
       // Fetch attempt finished — success or failure, the company state is now
       // as known as it is going to get. Always resolves; never left hanging.
       setCompanyResolved(true)

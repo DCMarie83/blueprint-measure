@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable'
 import { hexToRgb, normalizedPrimary } from '../utils/colorUtils'
 import { formatTimeOnly } from './effectiveTime'
 import { buildPaymentMethods, EN_METHOD_LABELS, EN_LINE_LABELS } from './paymentMethods'
+import { drawLogo } from './logoImage'
 
 const DARK = [27, 36, 38]
 const MUTED = [138, 144, 150]
@@ -83,7 +84,7 @@ function renderPaymentInstructions(doc, pi, x, y, primaryRgb, pageWidth, pageHei
  * @param {Array}  opts.lineItems - invoice_line_items rows
  * @param {Object} opts.project - { name, address }
  * @param {Object} opts.client - { display_name, business_name } (nullable)
- * @param {Object} opts.company - { name, primary_color, logo_data } (nullable)
+ * @param {Object} opts.company - { name, primary_color, logo } (nullable; logo from loadLogo)
  * @param {Array}  [opts.timeDetail] - closed clock punches backing this invoice:
  *   { work_date, clock_in_at, clock_out_at, hours }. When non-empty a "Time
  *   detail" section renders after the totals. Never carries geo.
@@ -107,16 +108,10 @@ export function generateInvoicePDF({ invoice, lineItems, project, client, compan
 
   // ── Header band ──────────────────────────────────────────
   let logoRendered = false
-  if (company?.logo_data) {
+  if (company?.logo) {
     try {
-      const logoH = 14
-      const logoW = logoH * 3
-      const fmtMatch = company.logo_data.match(/^data:image\/(\w+);/)
-      const fmt = fmtMatch ? fmtMatch[1].toUpperCase() : 'PNG'
-      if (fmt !== 'SVG' && fmt !== 'SVG+XML') {
-        doc.addImage(company.logo_data, fmt, margin, y - 2, logoW, logoH)
-        logoRendered = true
-      }
+      const { w } = drawLogo(doc, company.logo, { x: margin, y: y - 2, maxW: 42, maxH: 14 })
+      logoRendered = w > 0
     } catch { /* fall through to text */ }
   }
 

@@ -8,6 +8,7 @@ import { getPayReport, getPayStatementData } from '../data/timeTracking'
 import { getJobCostingRows, getJobCostingDetail, getPeriodSummary } from '../data/jobCosting'
 import { generatePayStatementPDF } from '../lib/generatePayStatementPDF'
 import { generateJobCostingPDF } from '../lib/generateJobCostingPDF'
+import { loadLogo } from '../lib/logoImage'
 import { exportJobCostingXLSX } from '../utils/jobCostingXLSX'
 import { fmtMoney } from '../utils/formatMoney'
 import PayTable from '../components/PayTable'
@@ -86,16 +87,7 @@ async function fetchCompanyWithLogo(company) {
     zip: company?.zip,
     business_phone: company?.business_phone,
   }
-  if (company?.logo_url) {
-    try {
-      const res = await fetch(company.logo_url)
-      if (res.ok) {
-        const blob = await res.blob()
-        const reader = new FileReader()
-        data.logo_data = await new Promise(resolve => { reader.onloadend = () => resolve(reader.result); reader.readAsDataURL(blob) })
-      }
-    } catch { /* skip logo */ }
-  }
+  data.logo = await loadLogo(company?.logo_url)
   return data
 }
 

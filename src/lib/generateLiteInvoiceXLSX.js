@@ -3,35 +3,12 @@
 // numeric cells) but is scoped to one invoice's line items + totals so the
 // takeoff exporter stays untouched. Money surfaces stay pun-free.
 
-const SUPPORTED_MIME = { 'image/png': 'png', 'image/jpeg': 'jpeg', 'image/gif': 'gif' }
+import { loadLogoBuffer, loadImageDimensions } from './logoImage'
+
 const HEADER_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1B2426' } }
 const HEADER_FONT = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 }
 
 const UNIT_LABELS = { sf: 'SF', lf: 'LF', each: 'Each', hour: 'Hour', lump_sum: 'Lump Sum' }
-
-async function fetchLogoBuffer(url) {
-  if (!url) return null
-  try {
-    const res = await fetch(url)
-    if (!res.ok) return null
-    const blob = await res.blob()
-    const ext = SUPPORTED_MIME[blob.type]
-    if (!ext) return null // SVG / unsupported — skip gracefully
-    const arrayBuffer = await blob.arrayBuffer()
-    return { buffer: arrayBuffer, extension: ext }
-  } catch {
-    return null
-  }
-}
-
-function loadImageDimensions(url) {
-  return new Promise(resolve => {
-    const img = new Image()
-    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight })
-    img.onerror = () => resolve(null)
-    img.src = url
-  })
-}
 
 function sanitize(str) {
   return String(str || '').replace(/[^a-zA-Z0-9_\- ]/g, '').replace(/\s+/g, '_')
@@ -64,7 +41,7 @@ export async function generateLiteInvoiceXLSX({ invoice, lineItems, client, comp
 
   // ── Branding block ──────────────────────────────────────────────
   const logoTargetHeight = 40
-  const logo = company?.logo_url ? await fetchLogoBuffer(company.logo_url) : null
+  const logo = company?.logo_url ? await loadLogoBuffer(company.logo_url) : null
   if (logo) {
     const dims = await loadImageDimensions(company.logo_url)
     if (dims && dims.height > 0) {

@@ -844,7 +844,15 @@
       "removeConfirm": "Remove company logo?",
       "alt": "{{name}} logo",
       "upload": "Upload logo",
-      "remove": "Remove logo"
+      "remove": "Remove logo",
+      "guidance": "Recommended: a PNG with a transparent background, at least 1,500 px wide (SVG accepted). Minimum width 600 px.",
+      "measuredDims": "Measured size: {{width}} x {{height}} px",
+      "pdfPreviewLabel": "Estimate and invoice PDF header preview",
+      "typeError": "Please upload a PNG, JPEG, or SVG file. WebP and GIF images can't be used because they don't render in PDF documents.",
+      "maxSizeError": "Logo must be under 5MB.",
+      "readError": "That image couldn't be read. Please try a different file.",
+      "tooSmallError": "This image is {{width}} x {{height}} px. The logo needs to be at least {{min}} px wide; {{recommended}} px or wider is recommended.",
+      "smallWarning": "This image is {{width}} px wide. It will work, but a logo {{recommended}} px or wider prints sharper on PDFs."
     },
     "reminders": {
       "title": "Automatic payment reminders",
