@@ -31,6 +31,7 @@
 }
 
 .thDesc { min-width: 180px; }
+.thSection { width: 130px; }
 .thUnit { width: 90px; text-align: center; }
 .thQty { width: 80px; text-align: right; }
 .thRate { width: 90px; text-align: right; }
@@ -50,6 +51,39 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+/* Editable section name in the group header row: same weight and color as
+   the read-only header text, transparent until hover/focus like .cellInput. */
+.catInput {
+  width: 100%;
+  max-width: 320px;
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.12s, background 0.12s;
+}
+.catInput::placeholder {
+  color: var(--color-text-muted);
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.catInput:hover {
+  border-color: var(--color-border);
+  background: var(--color-bg);
+}
+.catInput:focus {
+  border-color: var(--color-primary);
+  background: var(--color-bg);
+}
+
 .itemRow {
   border-bottom: 1px solid color-mix(in srgb, var(--color-border) 40%, transparent);
 }
@@ -58,6 +92,7 @@
 }
 
 .tdDesc { padding: 6px 10px; }
+.tdSection { padding: 6px 10px; }
 .tdUnit { padding: 6px 10px; text-align: center; }
 .tdQty { padding: 6px 10px; text-align: right; }
 .tdRate { padding: 6px 10px; text-align: right; }

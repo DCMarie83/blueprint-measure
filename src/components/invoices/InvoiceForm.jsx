@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useId } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Plus, Trash2 } from 'lucide-react'
@@ -91,6 +91,7 @@ export default function InvoiceForm() {
 
 function InvoiceFormInner({ existingInvoice, existingLineItems }) {
   const { t } = useTranslation()
+  const sectionListId = useId()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const fromEstimateId = searchParams.get('from_estimate')
@@ -373,8 +374,14 @@ function InvoiceFormInner({ existingInvoice, existingLineItems }) {
           <div className={styles.section}>
             <h3 className={styles.sectionLabel}>{t('invoices:lineItems.sectionLabel')}</h3>
             <div className={styles.lineItemsTable}>
+              <datalist id={sectionListId}>
+                {[...new Set(lineItems.map(li => (li.category_name || '').trim()).filter(Boolean))].map(name => (
+                  <option key={name} value={name} />
+                ))}
+              </datalist>
               <div className={styles.lineHeader}>
                 <span className={styles.lineColDesc}>{t('invoices:lineItems.description')}</span>
+                <span className={styles.lineColSm}>{t('invoices:lineItems.section')}</span>
                 <span className={styles.lineColSm}>{t('invoices:lineItems.type')}</span>
                 <span className={styles.lineColSm}>{t('invoices:lineItems.unit')}</span>
                 <span className={styles.lineColNum}>{t('invoices:lineItems.qty')}</span>
@@ -385,6 +392,15 @@ function InvoiceFormInner({ existingInvoice, existingLineItems }) {
               {lineItems.map(li => (
                 <div key={li.id} className={styles.lineRow}>
                   <input className={styles.lineInput} value={li.description} onChange={e => updateLine(li.id, 'description', e.target.value)} placeholder={t('invoices:lineItems.descriptionPlaceholder')} />
+                  <input
+                    className={styles.lineSectionInput}
+                    value={li.category_name || ''}
+                    list={sectionListId}
+                    aria-label={t('invoices:lineItems.section')}
+                    placeholder={t('invoices:lineItems.sectionPlaceholder')}
+                    onChange={e => updateLine(li.id, 'category_name', e.target.value)}
+                    onBlur={e => updateLine(li.id, 'category_name', e.target.value.trim())}
+                  />
                   <select className={styles.lineSelect} value={li.item_type} onChange={e => updateLine(li.id, 'item_type', e.target.value)}>
                     {ITEM_TYPES.map(it => <option key={it.value} value={it.value}>{t(it.label)}</option>)}
                   </select>

@@ -558,7 +558,6 @@
         "declineFailed": "Failed to decline estimate",
         "requestFailed": "Failed to send request"
       },
-      "generalCategory": "General",
       "defaultTitle": "Estimate",
       "issued": "Issued {{date}}",
       "expires": "Expires {{date}}",
@@ -1264,12 +1263,14 @@
       "description": "Description",
       "descriptionPlaceholder": "Description",
       "type": "Type",
-      "category": "Category",
+      "category": "Section",
       "unit": "Unit",
       "qty": "Qty",
       "rate": "Rate",
       "total": "Total",
-      "add": "Add Line Item"
+      "add": "Add Line Item",
+      "section": "Section",
+      "sectionPlaceholder": "Section (optional)"
     },
     "totals": {
       "subtotal": "Subtotal",
@@ -2628,11 +2629,13 @@
         "unit": "Unit",
         "qty": "Qty",
         "rate": "Rate",
-        "total": "Total"
+        "total": "Total",
+        "section": "Section"
       },
       "descriptionPlaceholder": "Description",
       "fromZone": "From zone: {{name}}",
-      "amountPlaceholder": "Amount"
+      "amountPlaceholder": "Amount",
+      "sectionPlaceholder": "Section name (optional)"
     },
     "zones": {
       "typeCount": "Count",

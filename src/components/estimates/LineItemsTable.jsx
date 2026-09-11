@@ -1,3 +1,4 @@
+import { useState, useEffect, useId } from 'react'
 import { Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import MarketBand from '../smartbid/MarketBand'
@@ -20,8 +21,34 @@ const chipStyle = (kind) => ({
   color: kind === 'library' ? 'var(--color-primary, #26464c)' : kind === 'benchmark' ? 'var(--color-primary, #26464c)' : 'var(--color-text-muted)',
 })
 
+// Text input that holds its draft locally and commits the trimmed value on
+// blur (or Enter). Sections regroup rows on commit, so committing per
+// keystroke would remount the input mid-typing.
+function SectionNameField({ value, placeholder, ariaLabel, listId, className, onCommit }) {
+  const [draft, setDraft] = useState(value)
+  useEffect(() => { setDraft(value) }, [value])
+  function commit() {
+    const next = draft.trim()
+    if (next !== value) onCommit(next)
+    else setDraft(value)
+  }
+  return (
+    <input
+      className={className}
+      value={draft}
+      placeholder={placeholder}
+      aria-label={ariaLabel}
+      list={listId}
+      onChange={e => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
+    />
+  )
+}
+
 export default function LineItemsTable({ lineItems, onUpdate, onRemove, readOnly, smart = false, benchmarkMap, pulseIds }) {
   const { t } = useTranslation()
+  const sectionListId = useId()
   if (lineItems.length === 0) {
     return (
       <div className={styles.empty}>
@@ -32,27 +59,37 @@ export default function LineItemsTable({ lineItems, onUpdate, onRemove, readOnly
 
   const benchMap = benchmarkMap || new Map()
 
-  const groups = []
+  // A section is a non-empty trimmed category_name. Unnamed lines group
+  // first; named sections follow in first-appearance order.
   const catOrder = []
   const catMap = {}
   for (const li of lineItems) {
-    const cat = li.category_name || 'Uncategorized'
+    const cat = (li.category_name || '').trim()
     if (!catMap[cat]) {
       catMap[cat] = []
       catOrder.push(cat)
     }
     catMap[cat].push(li)
   }
-  for (const cat of catOrder) {
-    groups.push({ category: cat, items: catMap[cat] })
-  }
+  const groups = catOrder
+    .filter(c => c === '')
+    .concat(catOrder.filter(c => c !== ''))
+    .map(cat => ({ category: cat, items: catMap[cat] }))
+
+  const sectionNames = catOrder.filter(c => c !== '')
 
   return (
     <div className={styles.tableWrap}><ScrollbarInside />
+      {!readOnly && (
+        <datalist id={sectionListId}>
+          {sectionNames.map(name => <option key={name} value={name} />)}
+        </datalist>
+      )}
       <table className={styles.table}>
         <thead>
           <tr>
             <th className={styles.thDesc}>{t('estimates:lineItems.col.description')}</th>
+            {!readOnly && <th className={styles.thSection}>{t('estimates:lineItems.col.section')}</th>}
             <th className={styles.thUnit}>{t('estimates:lineItems.col.unit')}</th>
             <th className={styles.thQty}>{t('estimates:lineItems.col.qty')}</th>
             <th className={styles.thRate}>{t('estimates:lineItems.col.rate')}</th>
@@ -63,7 +100,7 @@ export default function LineItemsTable({ lineItems, onUpdate, onRemove, readOnly
         <tbody>
           {groups.map(({ category, items }) => (
             <GroupRows
-              key={category}
+              key={category || '__no-section'}
               category={category}
               items={items}
               onUpdate={onUpdate}
@@ -72,6 +109,7 @@ export default function LineItemsTable({ lineItems, onUpdate, onRemove, readOnly
               smart={smart}
               benchMap={benchMap}
               pulseIds={pulseIds}
+              sectionListId={sectionListId}
             />
           ))}
         </tbody>
@@ -80,15 +118,37 @@ export default function LineItemsTable({ lineItems, onUpdate, onRemove, readOnly
   )
 }
 
-function GroupRows({ category, items, onUpdate, onRemove, readOnly, smart, benchMap, pulseIds }) {
+function GroupRows({ category, items, onUpdate, onRemove, readOnly, smart, benchMap, pulseIds, sectionListId }) {
   const { t } = useTranslation()
   const pulses = pulseIds || new Set()
-  const colSpan = readOnly ? 5 : 6
+  const colSpan = readOnly ? 5 : 7
+
+  // Renaming the group writes the new name to every line in it.
+  function renameGroup(next) {
+    for (const li of items) onUpdate(li.id, { category_name: next })
+  }
+
   return (
     <>
-      <tr className={styles.catRow}>
-        <td colSpan={colSpan} className={styles.catCell}>{category}</td>
-      </tr>
+      {readOnly ? (
+        category !== '' && (
+          <tr className={styles.catRow}>
+            <td colSpan={colSpan} className={styles.catCell}>{category}</td>
+          </tr>
+        )
+      ) : (
+        <tr className={styles.catRow}>
+          <td colSpan={colSpan} className={styles.catCell}>
+            <SectionNameField
+              value={category}
+              placeholder={t('estimates:lineItems.sectionPlaceholder')}
+              ariaLabel={t('estimates:lineItems.col.section')}
+              className={styles.catInput}
+              onCommit={renameGroup}
+            />
+          </td>
+        </tr>
+      )}
       {items.map(li => {
         const isLump = li.unit === 'lump_sum'
         const kind = smart ? (li.priced_from || 'manual') : null
@@ -114,6 +174,18 @@ function GroupRows({ category, items, onUpdate, onRemove, readOnly, smart, bench
               )}
               {smart && <span style={chipStyle(kind)}>{PROVENANCE_KEYS[kind] ? t(PROVENANCE_KEYS[kind]) : t('estimates:lineItems.provenance.manual')}</span>}
             </td>
+            {!readOnly && (
+              <td className={styles.tdSection}>
+                <SectionNameField
+                  value={(li.category_name || '').trim()}
+                  placeholder={t('estimates:lineItems.sectionPlaceholder')}
+                  ariaLabel={t('estimates:lineItems.col.section')}
+                  listId={sectionListId}
+                  className={styles.cellInput}
+                  onCommit={next => onUpdate(li.id, { category_name: next })}
+                />
+              </td>
+            )}
             <td className={styles.tdUnit}>
               {readOnly ? (
                 <span className={styles.unitLabel}>{UNIT_KEYS[li.unit] ? t(UNIT_KEYS[li.unit]) : li.unit}</span>

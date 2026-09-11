@@ -26,6 +26,8 @@
 .lineColDel { width: 28px; flex-shrink: 0; }
 .lineInput { flex: 3; padding: 7px 8px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text); font-size: 13px; font-family: var(--font-body); }
 .lineInput:focus { outline: none; border-color: var(--color-primary); }
+.lineSectionInput { flex: 1; min-width: 70px; padding: 7px 8px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text); font-size: 13px; font-family: var(--font-body); }
+.lineSectionInput:focus { outline: none; border-color: var(--color-primary); }
 .lineSelect { flex: 1; min-width: 70px; padding: 7px 4px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text); font-size: 12px; font-family: var(--font-body); }
 .lineNum { width: 70px; padding: 7px 6px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text); font-size: 13px; font-family: var(--font-mono); text-align: right; }
 .lineNum:focus { outline: none; border-color: var(--color-primary); }

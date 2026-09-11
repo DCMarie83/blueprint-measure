@@ -34,18 +34,19 @@ function EstimateEntry({ estimate, lineItems, portalToken, companyName }) {
 
   const displayTotal = fmtMoney(getDisplayTotal(estimate))
 
-  // Group line items by category
-  const groups = []
+  // Group line items by section. A section is a non-empty trimmed
+  // category_name; unnamed lines render first with no header.
   const catMap = {}
   const catOrder = []
   for (const li of lineItems) {
-    const cat = li.category_name || t('portal:estimate.generalCategory')
+    const cat = (li.category_name || '').trim()
     if (!catMap[cat]) { catMap[cat] = []; catOrder.push(cat) }
     catMap[cat].push(li)
   }
-  for (const cat of catOrder) {
-    groups.push({ category: cat, items: catMap[cat] })
-  }
+  const groups = catOrder
+    .filter(c => c === '')
+    .concat(catOrder.filter(c => c !== ''))
+    .map(cat => ({ category: cat, items: catMap[cat] }))
 
   // The contractor notification is the only signal the response was heard:
   // retry the invoke once before giving up (in-app dashboard is the backstop).
@@ -181,8 +182,8 @@ function EstimateEntry({ estimate, lineItems, portalToken, companyName }) {
       {/* Line items */}
       <div className={styles.lineItems}>
         {groups.map(({ category, items }) => (
-          <div key={category}>
-            <div className={styles.catHeader}>{category}</div>
+          <div key={category || '__no-section'}>
+            {category !== '' && <div className={styles.catHeader}>{category}</div>}
             {items.map(li => (
               <div key={li.id} className={styles.lineRow}>
                 <div className={styles.lineDesc}>

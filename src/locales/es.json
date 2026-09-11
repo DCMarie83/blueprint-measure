@@ -558,7 +558,6 @@
         "declineFailed": "No se pudo rechazar la cotización",
         "requestFailed": "No se pudo enviar la solicitud"
       },
-      "generalCategory": "General",
       "defaultTitle": "Cotización",
       "issued": "Emitida el {{date}}",
       "expires": "Vence el {{date}}",
@@ -1264,12 +1263,14 @@
       "description": "Descripción",
       "descriptionPlaceholder": "Descripción",
       "type": "Tipo",
-      "category": "Categoría",
+      "category": "Sección",
       "unit": "Unidad",
       "qty": "Cant.",
       "rate": "Tarifa",
       "total": "Total",
-      "add": "Agregar línea"
+      "add": "Agregar línea",
+      "section": "Sección",
+      "sectionPlaceholder": "Sección (opcional)"
     },
     "totals": {
       "subtotal": "Subtotal",
@@ -2628,11 +2629,13 @@
         "unit": "Unidad",
         "qty": "Cant.",
         "rate": "Tarifa",
-        "total": "Total"
+        "total": "Total",
+        "section": "Sección"
       },
       "descriptionPlaceholder": "Descripción",
       "fromZone": "De la zona: {{name}}",
-      "amountPlaceholder": "Cantidad"
+      "amountPlaceholder": "Cantidad",
+      "sectionPlaceholder": "Nombre de sección (opcional)"
     },
     "zones": {
       "typeCount": "Conteo",

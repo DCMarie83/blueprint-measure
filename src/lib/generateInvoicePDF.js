@@ -192,11 +192,14 @@ export function generateInvoicePDF({ invoice, lineItems, project, client, compan
   }
 
   // ── Line items table ─────────────────────────────────────
+  // The Category column prints only when at least one line has a named
+  // section; an all-empty column is omitted entirely.
+  const hasSections = lineItems.some(li => (li.category_name || '').trim() !== '')
   const tableBody = []
   for (const li of lineItems) {
     tableBody.push([
       li.description || '',
-      li.category_name || '',
+      ...(hasSections ? [li.category_name || ''] : []),
       Number(li.quantity || 0).toLocaleString('en-US', { maximumFractionDigits: 2 }),
       UNIT_LABELS[li.unit] || li.unit || '',
       fmtMoney(li.unit_rate),
@@ -207,19 +210,29 @@ export function generateInvoicePDF({ invoice, lineItems, project, client, compan
   autoTable(doc, {
     startY: y,
     margin: { left: margin, right: margin },
-    head: [['Description', 'Category', 'Qty', 'Unit', 'Rate', 'Total']],
+    head: [hasSections
+      ? ['Description', 'Section', 'Qty', 'Unit', 'Rate', 'Total']
+      : ['Description', 'Qty', 'Unit', 'Rate', 'Total']],
     body: tableBody,
     theme: 'grid',
     headStyles: { fillColor: band.fill, textColor: band.text, fontStyle: 'bold', fontSize: 9 },
     styles: { fontSize: 9, textColor: DARK, cellPadding: { top: 2.5, bottom: 2.5, left: 4, right: 4 } },
-    columnStyles: {
-      0: { cellWidth: 'auto' },
-      1: { cellWidth: 30 },
-      2: { halign: 'right', cellWidth: 18 },
-      3: { halign: 'center', cellWidth: 16 },
-      4: { halign: 'right', cellWidth: 24 },
-      5: { halign: 'right', cellWidth: 26 },
-    },
+    columnStyles: hasSections
+      ? {
+          0: { cellWidth: 'auto' },
+          1: { cellWidth: 30 },
+          2: { halign: 'right', cellWidth: 18 },
+          3: { halign: 'center', cellWidth: 16 },
+          4: { halign: 'right', cellWidth: 24 },
+          5: { halign: 'right', cellWidth: 26 },
+        }
+      : {
+          0: { cellWidth: 'auto' },
+          1: { halign: 'right', cellWidth: 18 },
+          2: { halign: 'center', cellWidth: 16 },
+          3: { halign: 'right', cellWidth: 24 },
+          4: { halign: 'right', cellWidth: 26 },
+        },
     alternateRowStyles: { fillColor: STRIPE },
   })
 

@@ -472,6 +472,8 @@ export default function InvoiceDetailPage() {
   const canEdit = status === 'draft' || status === 'sent' || status === 'viewed' || status === 'partial'
   // I2: delete exists only for drafts with an empty ledger.
   const canDelete = status === 'draft' && payments.length === 0
+  // The category column shows only when at least one line has a named section.
+  const hasLineSections = lineItems.some(li => (li.category_name || '').trim() !== '')
 
   return (
     <div className={styles.page}>
@@ -644,7 +646,7 @@ export default function InvoiceDetailPage() {
             <thead>
               <tr>
                 <th className={styles.th}>{t('invoices:lineItems.description')}</th>
-                <th className={styles.th}>{t('invoices:lineItems.category')}</th>
+                {hasLineSections && <th className={styles.th}>{t('invoices:lineItems.category')}</th>}
                 <th className={styles.thR}>{t('invoices:lineItems.qty')}</th>
                 <th className={styles.thC}>{t('invoices:lineItems.unit')}</th>
                 <th className={styles.thR}>{t('invoices:lineItems.rate')}</th>
@@ -655,7 +657,7 @@ export default function InvoiceDetailPage() {
               {lineItems.map(li => (
                 <tr key={li.id}>
                   <td className={styles.td}>{li.description}</td>
-                  <td className={styles.td}>{li.category_name || '—'}</td>
+                  {hasLineSections && <td className={styles.td}>{li.category_name || '—'}</td>}
                   <td className={styles.tdR}>{Number(li.quantity || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}</td>
                   <td className={styles.tdC}>{UNIT_LABELS[li.unit] ? t(UNIT_LABELS[li.unit]) : li.unit}</td>
                   <td className={styles.tdR}>{fmtMoney(li.unit_rate)}</td>

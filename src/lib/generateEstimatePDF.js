@@ -217,17 +217,20 @@ export function generateEstimatePDF({ estimate, lineItems, project, client, comp
     y += 10
 
     // ── Line items table ─────────────────────────────────────
+    // A section is a non-empty trimmed category_name. A header row prints
+    // only for named sections; unnamed lines render first with no header.
     const groups = {}
     const catOrder = []
     for (const li of lineItems) {
-      const cat = li.category_name || 'General'
+      const cat = (li.category_name || '').trim()
       if (!groups[cat]) { groups[cat] = []; catOrder.push(cat) }
       groups[cat].push(li)
     }
+    const orderedCats = catOrder.filter(c => c === '').concat(catOrder.filter(c => c !== ''))
 
     const tableBody = []
-    for (const cat of catOrder) {
-      tableBody.push([{
+    for (const cat of orderedCats) {
+      if (cat) tableBody.push([{
         content: cat,
         colSpan: 5,
         styles: {
