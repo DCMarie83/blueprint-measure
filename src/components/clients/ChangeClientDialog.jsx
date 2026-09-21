@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import Modal from '../ui/Modal'
+import Modal, { ModalFooter } from '../ui/Modal'
 import ClientPicker from './ClientPicker'
 import { useClients } from '../../hooks/useClients'
 import { useAuth } from '../../context/AuthContext'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import { supabase } from '../../lib/supabase'
-import { moveJobToClient, moveRecordToClient } from '../../data/reassignClient'
+import { moveJobToClient, moveRecordToClient, REASSIGN_ERROR } from '../../data/reassignClient'
 
 // Lane V: "Change client" (contractor_admin only — pages gate the button).
 // kind 'job' offers only the whole-job move; 'invoice'/'estimate' also offer
@@ -67,7 +67,9 @@ export default function ChangeClientDialog({ kind, record, project, onClose, onM
       onMoved?.()
       onClose()
     } catch (err) {
-      setError(err.message)
+      if (err.code === REASSIGN_ERROR.WRONG_COMPANY) setError(t('clients:reassign.errorWrongCompany'))
+      else if (err.code === REASSIGN_ERROR.JOB_REQUIRED) setError(t('clients:reassign.errorJobRequired'))
+      else setError(err.message)
     } finally {
       setBusy(false)
     }
@@ -135,14 +137,14 @@ export default function ChangeClientDialog({ kind, record, project, onClose, onM
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+        <ModalFooter>
           <button type="button" onClick={onClose} style={{ padding: '8px 18px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md, 8px)', color: 'var(--color-text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
             {t('common:action.cancel')}
           </button>
           <button type="button" onClick={handleConfirm} disabled={!canConfirm} style={{ padding: '8px 18px', background: 'var(--color-primary)', border: 'none', borderRadius: 'var(--radius-md, 8px)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: canConfirm ? 'pointer' : 'not-allowed', opacity: canConfirm ? 1 : 0.5 }}>
             {busy ? t('clients:reassign.moving') : t('clients:reassign.confirm')}
           </button>
-        </div>
+        </ModalFooter>
       </div>
     </Modal>
   )

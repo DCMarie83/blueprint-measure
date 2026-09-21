@@ -1197,6 +1197,8 @@
       "jobNamePlaceholder": "Job name",
       "jobAddressPlaceholder": "Address (optional)",
       "sameClient": "The job already belongs to this client.",
+      "errorWrongCompany": "That record does not belong to this company, so nothing was moved.",
+      "errorJobRequired": "Pick a job or enter a name for the new one.",
       "moving": "Moving...",
       "confirm": "Move"
     }

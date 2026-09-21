@@ -7,12 +7,31 @@ import { supabase } from '../lib/supabase'
 //                        client (existing job, or one created here).
 // No DELETE anywhere. The payments ledger keys by invoice_id and is never
 // touched — paid and void invoices move safely, so there is no refusal.
-// Activity uses type 'note' (no fitting type exists yet; 'client_reassigned'
-// is the type to add by hand when the CHECK is widened).
+// Every select and update scopes by company_id as well as record id; a record,
+// job, or client that is not in the caller's company refuses the move with a
+// coded error (err.code) the dialog translates. RLS stays the enforcement
+// layer; the explicit scope is the platform rule.
+// Activity uses type 'client_reassigned'.
 
-async function getClient(clientId) {
+export const REASSIGN_ERROR = {
+  WRONG_COMPANY: 'wrong_company',
+  JOB_REQUIRED: 'job_required',
+}
+
+function reassignError(code, message) {
+  const err = new Error(message)
+  err.code = code
+  return err
+}
+
+function wrongCompany() {
+  return reassignError(REASSIGN_ERROR.WRONG_COMPANY, 'That record does not belong to this company, so nothing was moved.')
+}
+
+async function getClient(companyId, clientId) {
   if (!clientId) return null
-  const { data, error } = await supabase.from('clients').select('id, display_name').eq('id', clientId).maybeSingle()
+  const { data, error } = await supabase
+    .from('clients').select('id, display_name').eq('company_id', companyId).eq('id', clientId).maybeSingle()
   if (error) throw new Error(error.message)
   return data
 }
@@ -24,10 +43,10 @@ async function logMove({ companyId, userId, clientId, title, metadata }) {
       company_id: companyId,
       client_id: clientId,
       user_id: userId ?? null,
-      activity_type: 'note',
+      activity_type: 'client_reassigned',
       title,
       is_automated: true,
-      metadata: metadata ?? null,
+      metadata,
     })
   } catch { /* activity logging never fails a move */ }
 }
@@ -37,17 +56,20 @@ async function logMove({ companyId, userId, clientId, title, metadata }) {
 // own; client_activity rows that reference the job's records move to the new
 // client so the timelines stay truthful.
 export async function moveJobToClient({ companyId, userId, projectId, targetClientId }) {
+  if (!companyId) throw wrongCompany()
+
   const { data: proj, error: projErr } = await supabase
-    .from('projects').select('id, name, client_id').eq('id', projectId).single()
+    .from('projects').select('id, name, client_id').eq('company_id', companyId).eq('id', projectId).maybeSingle()
   if (projErr) throw new Error(projErr.message)
+  if (!proj) throw wrongCompany()
   if (proj.client_id === targetClientId) return { unchanged: true }
 
-  const [oldClient, newClient] = await Promise.all([getClient(proj.client_id), getClient(targetClientId)])
-  if (!newClient) throw new Error('Target client not found')
+  const [oldClient, newClient] = await Promise.all([getClient(companyId, proj.client_id), getClient(companyId, targetClientId)])
+  if (!newClient) throw wrongCompany()
 
   const [{ data: invs, error: invErr }, { data: ests, error: estErr }] = await Promise.all([
-    supabase.from('invoices').select('id, invoice_number').eq('project_id', projectId),
-    supabase.from('estimates').select('id').eq('project_id', projectId),
+    supabase.from('invoices').select('id, invoice_number').eq('company_id', companyId).eq('project_id', projectId),
+    supabase.from('estimates').select('id').eq('company_id', companyId).eq('project_id', projectId),
   ])
   if (invErr) throw new Error(invErr.message)
   if (estErr) throw new Error(estErr.message)
@@ -57,37 +79,38 @@ export async function moveJobToClient({ companyId, userId, projectId, targetClie
   // its old client through the job, so the job must still point at the old
   // client when the trigger runs or the old client's lifetime value goes stale.
   const { error: upInvErr } = await supabase.from('invoices')
-    .update({ client_id: targetClientId }).eq('project_id', projectId)
+    .update({ client_id: targetClientId }).eq('company_id', companyId).eq('project_id', projectId)
   if (upInvErr) throw new Error(upInvErr.message)
 
   const { error: upProjErr } = await supabase.from('projects')
     .update({ client_id: targetClientId, client_name: newClient.display_name, updated_at: new Date().toISOString() })
-    .eq('id', projectId)
+    .eq('company_id', companyId).eq('id', projectId)
   if (upProjErr) throw new Error(upProjErr.message)
 
   // Activity follows: rows on the OLD client that reference this job's records.
   if (proj.client_id) {
-    const moves = [
-      supabase.from('client_activity').update({ client_id: targetClientId })
-        .eq('client_id', proj.client_id).eq('metadata->>project_id', projectId),
-    ]
+    const followers = () => supabase.from('client_activity').update({ client_id: targetClientId })
+      .eq('company_id', companyId).eq('client_id', proj.client_id)
+    const moves = [followers().eq('metadata->>project_id', projectId)]
     const invIds = (invs ?? []).map(r => r.id)
-    if (invIds.length > 0) {
-      moves.push(supabase.from('client_activity').update({ client_id: targetClientId })
-        .eq('client_id', proj.client_id).in('metadata->>invoice_id', invIds))
-    }
+    if (invIds.length > 0) moves.push(followers().in('metadata->>invoice_id', invIds))
     const estIds = (ests ?? []).map(r => r.id)
-    if (estIds.length > 0) {
-      moves.push(supabase.from('client_activity').update({ client_id: targetClientId })
-        .eq('client_id', proj.client_id).in('metadata->>estimate_id', estIds))
-    }
+    if (estIds.length > 0) moves.push(followers().in('metadata->>estimate_id', estIds))
     for (const m of moves) {
       const { error } = await m
       if (error) throw new Error(error.message)
     }
   }
 
-  const meta = { project_id: projectId, from_client_id: proj.client_id, to_client_id: targetClientId }
+  // Jobs carry no number; record_number holds the job name.
+  const meta = {
+    record_type: 'job',
+    record_id: projectId,
+    record_number: proj.name,
+    from_client_id: proj.client_id,
+    to_client_id: targetClientId,
+    scope: 'job',
+  }
   await logMove({ companyId, userId, clientId: proj.client_id, title: `Job ${proj.name} moved to ${newClient.display_name}`, metadata: meta })
   await logMove({ companyId, userId, clientId: targetClientId, title: `Job ${proj.name} moved here${oldClient ? ` from ${oldClient.display_name}` : ''}`, metadata: meta })
 
@@ -100,22 +123,31 @@ export async function moveJobToClient({ companyId, userId, projectId, targetClie
 // linked record id and follow on their own; ledger rows key by invoice_id and
 // stay put.
 export async function moveRecordToClient({ kind, companyId, userId, recordId, targetClientId, targetProjectId = null, newJob = null }) {
+  if (!companyId) throw wrongCompany()
   const table = kind === 'estimate' ? 'estimates' : 'invoices'
   const numberCol = kind === 'estimate' ? 'estimate_number' : 'invoice_number'
 
   const { data: rec, error: recErr } = await supabase
-    .from(table).select(`id, ${numberCol}, project_id`).eq('id', recordId).single()
+    .from(table).select(`id, ${numberCol}, project_id`).eq('company_id', companyId).eq('id', recordId).maybeSingle()
   if (recErr) throw new Error(recErr.message)
+  if (!rec) throw wrongCompany()
 
-  const { data: oldProj } = rec.project_id
-    ? await supabase.from('projects').select('id, name, client_id').eq('id', rec.project_id).maybeSingle()
-    : { data: null }
-  const [oldClient, newClient] = await Promise.all([getClient(oldProj?.client_id ?? null), getClient(targetClientId)])
-  if (!newClient) throw new Error('Target client not found')
+  const { data: oldProj, error: oldProjErr } = rec.project_id
+    ? await supabase.from('projects').select('id, name, client_id').eq('company_id', companyId).eq('id', rec.project_id).maybeSingle()
+    : { data: null, error: null }
+  if (oldProjErr) throw new Error(oldProjErr.message)
+  const [oldClient, newClient] = await Promise.all([getClient(companyId, oldProj?.client_id ?? null), getClient(companyId, targetClientId)])
+  if (!newClient) throw wrongCompany()
 
   let projectId = targetProjectId
-  if (!projectId) {
-    if (!newJob?.name?.trim()) throw new Error('A target job is required')
+  if (projectId) {
+    // The chosen job must be this company's and already under the target client.
+    const { data: targetProj, error: targetErr } = await supabase
+      .from('projects').select('id').eq('company_id', companyId).eq('client_id', targetClientId).eq('id', projectId).maybeSingle()
+    if (targetErr) throw new Error(targetErr.message)
+    if (!targetProj) throw wrongCompany()
+  } else {
+    if (!newJob?.name?.trim()) throw reassignError(REASSIGN_ERROR.JOB_REQUIRED, 'A target job is required.')
     const { data: cols, error: colErr } = await supabase
       .from('kanban_columns').select('id, column_key, position').eq('company_id', companyId).order('position', { ascending: true })
     if (colErr) throw new Error(colErr.message)
@@ -142,15 +174,17 @@ export async function moveRecordToClient({ kind, companyId, userId, recordId, ta
   const patch = kind === 'estimate'
     ? { project_id: projectId, updated_at: new Date().toISOString() }
     : { project_id: projectId, client_id: targetClientId, updated_at: new Date().toISOString() }
-  const { error: upErr } = await supabase.from(table).update(patch).eq('id', recordId)
+  const { error: upErr } = await supabase.from(table).update(patch).eq('company_id', companyId).eq('id', recordId)
   if (upErr) throw new Error(upErr.message)
 
   const label = kind === 'estimate' ? `Estimate ${rec[numberCol]}` : `Invoice ${rec[numberCol]}`
   const meta = {
-    [`${kind}_id`]: recordId,
+    record_type: kind === 'estimate' ? 'estimate' : 'invoice',
+    record_id: recordId,
+    record_number: rec[numberCol] ?? null,
     from_client_id: oldProj?.client_id ?? null,
     to_client_id: targetClientId,
-    to_project_id: projectId,
+    scope: 'record',
   }
   await logMove({ companyId, userId, clientId: oldProj?.client_id ?? null, title: `${label} moved to ${newClient.display_name}`, metadata: meta })
   await logMove({ companyId, userId, clientId: targetClientId, title: `${label} moved here${oldClient ? ` from ${oldClient.display_name}` : ''}`, metadata: meta })

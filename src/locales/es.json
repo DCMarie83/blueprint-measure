@@ -1197,6 +1197,8 @@
       "jobNamePlaceholder": "Nombre del trabajo",
       "jobAddressPlaceholder": "Dirección (opcional)",
       "sameClient": "El trabajo ya pertenece a este cliente.",
+      "errorWrongCompany": "Ese registro no pertenece a esta empresa, así que no se movió nada.",
+      "errorJobRequired": "Elige un trabajo o escribe un nombre para el nuevo.",
       "moving": "Moviendo...",
       "confirm": "Mover"
     }
