@@ -1090,6 +1090,43 @@ a39 AS (
          CASE WHEN (SELECT count(*) FROM a39_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
          coalesce('PROBLEMS: ' || (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a39_bad),
                   'shared sequence ahead of the books; generator locked down')::text
+),
+-- A40: documents UPDATE and DELETE are admin-scoped. "Move to another record"
+-- and "Delete" on the Documents sections are hidden from non-admins in the UI;
+-- this asserts the database says the same. The documents_update and
+-- documents_delete policies must exist, and every expression they carry
+-- (USING on both, WITH CHECK on documents_update) must contain both
+-- role = 'contractor_admin' and is_super_admin(). strpos, not LIKE: the
+-- underscores are literal.
+a40_expected AS (
+  SELECT * FROM (VALUES
+    ('documents_update', 'UPDATE', 'USING'),
+    ('documents_update', 'UPDATE', 'WITH CHECK'),
+    ('documents_delete', 'DELETE', 'USING')
+  ) AS e(policy, cmd, clause)
+),
+a40_bad AS (
+  SELECT DISTINCT 'missing-policy:' || e.policy AS problem
+  FROM a40_expected e
+  WHERE NOT EXISTS (
+    SELECT 1 FROM pg_policies p
+    WHERE p.schemaname = 'public' AND p.tablename = 'documents'
+      AND p.policyname = e.policy AND p.cmd = e.cmd)
+  UNION ALL
+  SELECT e.policy || ':' || e.clause || ' lacks ' || n.needle
+  FROM a40_expected e
+  JOIN pg_policies p
+    ON p.schemaname = 'public' AND p.tablename = 'documents'
+   AND p.policyname = e.policy AND p.cmd = e.cmd
+  CROSS JOIN (VALUES ('role = ''contractor_admin'''), ('is_super_admin()')) AS n(needle)
+  WHERE strpos(coalesce(CASE e.clause WHEN 'USING' THEN p.qual ELSE p.with_check END, ''), n.needle) = 0
+),
+a40 AS (
+  SELECT 'A40'::text,
+         'documents: documents_update and documents_delete are scoped to contractor_admin or super admin'::text,
+         CASE WHEN (SELECT count(*) FROM a40_bad) = 0 THEN 'PASS' ELSE 'FAIL' END::text,
+         coalesce('PROBLEMS: ' || (SELECT string_agg(problem, ', ' ORDER BY problem) FROM a40_bad),
+                  'update and delete on documents are admin-scoped in USING and WITH CHECK')::text
 )
 
 
@@ -1132,4 +1169,5 @@ UNION ALL SELECT * FROM a36
 UNION ALL SELECT * FROM a37
 UNION ALL SELECT * FROM a38
 UNION ALL SELECT * FROM a39
+UNION ALL SELECT * FROM a40
 ORDER BY id;
