@@ -39,7 +39,7 @@ const FILTER_TYPES = {
     'invoice_reopened', 'invoice_status_changed', 'invoice_number_changed',
     'invoice_marked_sent', 'invoice_edited_after_send',
   ],
-  estimates: ['estimate_sent', 'estimate_viewed', 'estimate_accepted', 'estimate_declined', 'estimate_changes_requested'],
+  estimates: ['estimate_sent', 'estimate_viewed', 'estimate_accepted', 'estimate_declined', 'estimate_changes_requested', 'estimate_number_changed'],
   portal: ['portal_accessed', 'invoice_viewed', 'estimate_viewed', 'bank_details_viewed'],
 }
 const FILTER_ORDER = ['all', 'notes', 'money', 'estimates', 'portal']

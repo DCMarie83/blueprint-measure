@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useEffectiveCompany } from './useEffectiveCompany'
+import { advanceSharedCounterPast, appendPrintedAs } from '../data/numbering'
 
 export function isOverdue(invoice) {
   // viewed is treated like sent: a viewed invoice is still awaiting payment.
@@ -430,7 +431,46 @@ export function useInvoiceMutations() {
     if (before?.invoice_number && before.invoice_number !== trimmed) {
       logInvoiceActivity(id, 'invoice_number_changed', `Invoice number changed from ${before.invoice_number} to ${trimmed}`, { from: before.invoice_number, to: trimmed })
     }
+    // A39: a typed number at or above the shared counter pulls the counter to
+    // typed + 1. The number itself is already saved, so a failure here is
+    // reported on err.code without undoing it.
+    try {
+      await advanceSharedCounterPast(companyId, trimmed)
+    } catch (advErr) {
+      const err = new Error(advErr.message)
+      err.code = 'COUNTER_NOT_ADVANCED'
+      throw err
+    }
     return trimmed
+  }
+
+  // "Assign next number": draws from the G80 generator (so the counter stays
+  // ahead of the books), writes the number, and keeps the number that went out
+  // on paper as a "Printed as" line appended to the existing notes. Same
+  // activity type as the manual editor. A draw whose write then fails leaves a
+  // gap in the sequence, never a duplicate.
+  async function assignNextInvoiceNumber(id) {
+    if (!companyId) throw new Error('No company')
+    const { data: before, error: fetchErr } = await supabase
+      .from('invoices').select('invoice_number, notes').eq('company_id', companyId).eq('id', id).single()
+    if (fetchErr) throw new Error(fetchErr.message)
+
+    const { data: next, error: rpcErr } = await supabase.rpc('generate_invoice_number', { p_company_id: companyId })
+    if (rpcErr) throw new Error(rpcErr.message)
+
+    const { error: updErr } = await supabase
+      .from('invoices')
+      .update({ invoice_number: next, notes: appendPrintedAs(before.notes, before.invoice_number), updated_at: new Date().toISOString() })
+      .eq('company_id', companyId)
+      .eq('id', id)
+    if (updErr) {
+      const err = new Error(updErr.message)
+      err.code = updErr.code
+      throw err
+    }
+
+    logInvoiceActivity(id, 'invoice_number_changed', `Invoice number changed from ${before.invoice_number} to ${next}`, { from: before.invoice_number, to: next, printed_as: before.invoice_number, source: 'assign_next' })
+    return next
   }
 
   async function markVoid(id, reason) {
@@ -457,5 +497,5 @@ export function useInvoiceMutations() {
     logInvoiceActivity(id, 'invoice_reopened', 'Invoice reopened')
   }
 
-  return { createInvoice, updateInvoice, deleteInvoice, markSent, markPaidInFull, markVoid, reopenInvoice, recordPayment, updatePayment, deletePayment, transferPayment, updateInvoiceNumber, saving, error }
+  return { createInvoice, updateInvoice, deleteInvoice, markSent, markPaidInFull, markVoid, reopenInvoice, recordPayment, updatePayment, deletePayment, transferPayment, updateInvoiceNumber, assignNextInvoiceNumber, saving, error }
 }

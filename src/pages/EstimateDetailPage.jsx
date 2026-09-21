@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Save, Trash2, Plus, Package, Download, Send, FileText, Check } from 'lucide-react'
+import { Save, Trash2, Plus, Package, Download, Send, FileText, Check, Pencil } from 'lucide-react'
 import BackLink from '../components/BackLink'
 import DocumentsSection from '../components/documents/DocumentsSection'
 import { useLinkedDocuments } from '../hooks/useLinkedDocuments'
@@ -11,6 +11,9 @@ import LineItemsTable from '../components/estimates/LineItemsTable'
 import SendEstimateModal from '../components/estimates/SendEstimateModal'
 import { useEstimateBuilder } from '../hooks/useEstimateBuilder'
 import ChangeClientDialog from '../components/clients/ChangeClientDialog'
+import AssignNextNumberDialog from '../components/numbering/AssignNextNumberDialog'
+import PrintedAsChips from '../components/numbering/PrintedAsChips'
+import { advanceSharedCounterPast, appendPrintedAs } from '../data/numbering'
 import { usePricingCategories } from '../hooks/usePricingCategories'
 import { usePricingItems } from '../hooks/usePricingItems'
 import { useAuth } from '../context/AuthContext'
@@ -101,6 +104,11 @@ export default function EstimateDetailPage() {
   const [showPicker, setShowPicker] = useState(false)
   const [pickerZone, setPickerZone] = useState(null)
   const [notesValue, setNotesValue] = useState(null)
+  const [editingNumber, setEditingNumber] = useState(false)
+  const [numberValue, setNumberValue] = useState('')
+  const [numberError, setNumberError] = useState(null)
+  const [numberSaving, setNumberSaving] = useState(false)
+  const [showAssignNumber, setShowAssignNumber] = useState(false)
   const [saveMsg, setSaveMsg] = useState(null)
   const [titleValue, setTitleValue] = useState(null)
   const [showSendModal, setShowSendModal] = useState(false)
@@ -462,7 +470,7 @@ export default function EstimateDetailPage() {
     await supabase.from('projects').update(patch).eq('id', estimate.project_id)
   }
 
-  async function logEstimateActivity(activityType, title, body) {
+  async function logEstimateActivity(activityType, title, body, extraMeta = {}) {
     try {
       if (!projectData?.client_id) return
       await supabase.from('client_activity').insert({
@@ -472,9 +480,45 @@ export default function EstimateDetailPage() {
         title,
         body: body || null,
         is_automated: true,
-        metadata: { estimate_id: estimate.id, project_id: estimate.project_id },
+        metadata: { estimate_id: estimate.id, project_id: estimate.project_id, ...extraMeta },
       })
     } catch { /* activity trail is best-effort */ }
+  }
+
+  // Manual estimate number edit, same pattern as the invoice editor (G60):
+  // trimmed, non-empty, a 23505 collision surfaces inline, never renumbers or
+  // suffixes. A39: a typed number at or above the shared counter pulls the
+  // counter to typed + 1.
+  async function handleSaveNumber() {
+    const trimmed = numberValue.trim()
+    const before = estimate.estimate_number
+    if (!trimmed) { setNumberError(t('estimates:detail.errorNumberEmpty')); return }
+    if (trimmed === before) { setEditingNumber(false); setNumberError(null); return }
+    setNumberSaving(true); setNumberError(null)
+    try {
+      await builder.updateEstimate({ estimate_number: trimmed })
+      setEditingNumber(false)
+      logEstimateActivity('estimate_number_changed', `Estimate number changed from ${before} to ${trimmed}`, null, { from: before, to: trimmed })
+      try { await advanceSharedCounterPast(estimate.company_id, trimmed) }
+      catch { setNumberError(t('shared:numbering.counterNotAdvanced')) }
+    } catch (err) {
+      if (err.code === '23505') setNumberError(t('estimates:detail.numberConflict', { number: trimmed }))
+      else setNumberError(err.message)
+    } finally {
+      setNumberSaving(false)
+    }
+  }
+
+  // "Assign next number": draw from the G80 generator, write it, and keep the
+  // printed number as a "Printed as" line on the notes (unsaved note edits
+  // included, so the next notes blur cannot drop the line).
+  async function handleAssignNextNumber() {
+    const before = estimate.estimate_number
+    const { data: next, error: rpcErr } = await supabase.rpc('generate_estimate_number', { p_company_id: estimate.company_id })
+    if (rpcErr) throw new Error(rpcErr.message)
+    await builder.updateEstimate({ estimate_number: next, notes: appendPrintedAs(notesValue ?? estimate.notes, before) })
+    setNotesValue(null)
+    logEstimateActivity('estimate_number_changed', `Estimate number changed from ${before} to ${next}`, null, { from: before, to: next, printed_as: before, source: 'assign_next' })
   }
 
   // Manual response states require their data: accept asks who accepted,
@@ -656,7 +700,49 @@ export default function EstimateDetailPage() {
               <h1 className={styles.title}>{title || t('estimates:detail.untitledEstimate')}</h1>
             )}
             <div className={styles.subline}>
-              <span className={styles.estNumber}>{estimate.estimate_number}</span>
+              {isAdmin && editingNumber ? (
+                <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                  <input
+                    autoFocus
+                    value={numberValue}
+                    onChange={e => setNumberValue(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') handleSaveNumber()
+                      if (e.key === 'Escape') { setEditingNumber(false); setNumberError(null) }
+                    }}
+                    style={{ fontSize: 13, fontFamily: 'var(--font-mono)', padding: '4px 8px', border: '1px solid var(--color-primary)', borderRadius: 'var(--radius-md)', background: 'var(--color-bg)', color: 'var(--color-text)', minWidth: 120 }}
+                  />
+                  <button onClick={handleSaveNumber} disabled={numberSaving} style={{ fontSize: 12, fontWeight: 600, padding: '4px 10px', background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}>
+                    {numberSaving ? '…' : t('common:action.save')}
+                  </button>
+                  <button onClick={() => { setEditingNumber(false); setNumberError(null) }} style={{ fontSize: 12, padding: '4px 8px', background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}>
+                    {t('common:action.cancel')}
+                  </button>
+                </span>
+              ) : (
+                <>
+                  <span className={styles.estNumber}>{estimate.estimate_number}</span>
+                  {isAdmin && (
+                    <>
+                      <button
+                        onClick={() => { setNumberValue(estimate.estimate_number || ''); setNumberError(null); setEditingNumber(true) }}
+                        title={t('estimates:detail.editNumber')}
+                        aria-label={t('estimates:detail.editNumber')}
+                        style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: 2, opacity: 0.7 }}
+                      >
+                        <Pencil size={13} />
+                      </button>
+                      <button
+                        onClick={() => { setNumberError(null); setShowAssignNumber(true) }}
+                        style={{ fontSize: 'var(--text-xs)', fontWeight: 600, padding: '2px 10px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', color: 'var(--color-text-muted)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      >
+                        {t('shared:numbering.assignNext')}
+                      </button>
+                    </>
+                  )}
+                </>
+              )}
+              <PrintedAsChips notes={estimate.notes} />
               {isAdmin ? (
                 <select
                   className={`${styles.statusSelect} ${STATUS_CLASS[estimate.status] || styles.statusDraft}`}
@@ -694,6 +780,9 @@ export default function EstimateDetailPage() {
                 />
               )}
             </div>
+            {numberError && (
+              <div style={{ fontSize: 13, color: 'var(--color-danger, #dc2626)', margin: '4px 0' }}>{numberError}</div>
+            )}
             {smart && hasBenchLines && (
               <div style={{ marginTop: 10, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)', padding: 12, maxWidth: 560 }}>
                 {benchLoading && !bandAny ? (
@@ -1023,6 +1112,16 @@ export default function EstimateDetailPage() {
 
         {/* Documents: source files from Document Import + direct attach (G54) */}
         <DocumentsSection documents={documents} uploadTarget={{ type: 'estimate', id }} onUploaded={refetchDocuments} />
+        {showAssignNumber && (
+          <AssignNextNumberDialog
+            kind="estimate"
+            companyId={estimate.company_id}
+            oldNumber={estimate.estimate_number}
+            onConfirm={handleAssignNextNumber}
+            onClose={() => setShowAssignNumber(false)}
+          />
+        )}
+
         {showChangeClient && projectData && (
           <ChangeClientDialog
             kind="estimate"

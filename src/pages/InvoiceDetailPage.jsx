@@ -15,6 +15,8 @@ import { mergeInstructionDefaults } from '../hooks/usePaymentInstructions'
 import { useSignedQrUrls } from '../hooks/useSignedQrUrls'
 import PaymentInstructionsBlock from '../components/invoices/PaymentInstructionsBlock'
 import ChangeClientDialog from '../components/clients/ChangeClientDialog'
+import AssignNextNumberDialog from '../components/numbering/AssignNextNumberDialog'
+import PrintedAsChips from '../components/numbering/PrintedAsChips'
 import { fetchQrDataUrls } from '../lib/qrData'
 import { supabase } from '../lib/supabase'
 import styles from './InvoiceDetailPage.module.css'
@@ -74,11 +76,12 @@ export default function InvoiceDetailPage() {
   // Lane V: current job context + dialog state for "Change client".
   const [reassignProject, setReassignProject] = useState(null)
   const [showChangeClient, setShowChangeClient] = useState(false)
+  const [showAssignNumber, setShowAssignNumber] = useState(false)
   // On-screen payment options: the same block the client sees.
   const paymentInstructions = mergeInstructionDefaults(effectiveCompany?.payment_instructions)
   const qrUrls = useSignedQrUrls(paymentInstructions)
   const { documents, refetch: refetchDocuments } = useLinkedDocuments('invoice', id)
-  const { markSent, markPaidInFull, markVoid, reopenInvoice, recordPayment, updatePayment, deletePayment, transferPayment, deleteInvoice, updateInvoiceNumber } = useInvoiceMutations()
+  const { markSent, markPaidInFull, markVoid, reopenInvoice, recordPayment, updatePayment, deletePayment, transferPayment, deleteInvoice, updateInvoiceNumber, assignNextInvoiceNumber } = useInvoiceMutations()
 
   // apply_invoice_payment error codes → plain messages; anything unmapped
   // falls back to the raw message (the lifecycle trigger speaks plain English).
@@ -452,6 +455,12 @@ export default function InvoiceDetailPage() {
       await refetch()
     } catch (err) {
       if (err.code === '23505') setNumberError(t('invoices:detail.numberConflict', { number: trimmed }))
+      else if (err.code === 'COUNTER_NOT_ADVANCED') {
+        // The number itself saved; only the counter update failed.
+        setEditingNumber(false)
+        setNumberError(t('shared:numbering.counterNotAdvanced'))
+        await refetch()
+      }
       else setNumberError(err.message)
     } finally {
       setNumberSaving(false)
@@ -513,8 +522,15 @@ export default function InvoiceDetailPage() {
                   >
                     <Pencil size={15} />
                   </button>
+                  <button
+                    onClick={() => { setNumberError(null); setShowAssignNumber(true) }}
+                    style={{ fontSize: 'var(--text-xs)', fontWeight: 600, padding: '4px 10px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', color: 'var(--color-text-muted)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    {t('shared:numbering.assignNext')}
+                  </button>
                 </>
               )}
+              <PrintedAsChips notes={invoice.notes} />
               {(() => {
                 const p = statusPillProps(status, overdue)
                 return (
@@ -939,6 +955,16 @@ export default function InvoiceDetailPage() {
             </div>
           </div>
         )}
+        {showAssignNumber && (
+          <AssignNextNumberDialog
+            kind="invoice"
+            companyId={invoice.company_id}
+            oldNumber={invoice.invoice_number}
+            onConfirm={async () => { await assignNextInvoiceNumber(id); await refetch() }}
+            onClose={() => setShowAssignNumber(false)}
+          />
+        )}
+
         {showChangeClient && reassignProject && (
           <ChangeClientDialog
             kind="invoice"

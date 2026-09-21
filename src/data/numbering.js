@@ -84,3 +84,37 @@ export async function saveNumberingSettings(companyId, { mode, nextNumber }) {
   const { error } = await supabase.from('companies').update(patch).eq('id', companyId)
   if (error) throw new Error(error.message)
 }
+
+// A39: a hand-typed number can never leave the shared counter behind. ONE
+// conditional update: it only lands in shared mode and only when the typed
+// number is numeric and at or above the counter, so it can never move the
+// counter backwards and needs no read first. Prefixed mode and non-numeric
+// numbers are a no-op.
+export async function advanceSharedCounterPast(companyId, number) {
+  const s = String(number ?? '').trim()
+  if (!companyId || !/^\d{1,9}$/.test(s)) return
+  const typed = Number(s)
+  const { error } = await supabase
+    .from('companies')
+    .update({ next_document_number: typed + 1 })
+    .eq('id', companyId)
+    .eq('numbering_mode', 'shared')
+    .lte('next_document_number', typed)
+  if (error) throw new Error(error.message)
+}
+
+// "Assign next number" keeps the number that went out on paper in the record's
+// notes. The marker is stored data (one line, English, like activity titles);
+// the detail pages read it back for the "Printed as" chip and translate the
+// chip label, not the stored line.
+const PRINTED_AS = /^Printed as (.+)$/gm
+
+export function appendPrintedAs(notes, oldNumber) {
+  const line = `Printed as ${String(oldNumber ?? '').trim()}`
+  const existing = String(notes ?? '').trimEnd()
+  return existing ? `${existing}\n${line}` : line
+}
+
+export function parsePrintedAs(notes) {
+  return [...String(notes ?? '').matchAll(PRINTED_AS)].map(m => m[1].trim()).filter(Boolean)
+}

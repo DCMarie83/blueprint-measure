@@ -23,7 +23,7 @@
 .titleInput:hover { border-color: var(--color-border); }
 .titleInput:focus { border-color: var(--color-primary); background: var(--color-bg); }
 .titleInput::placeholder { color: var(--color-text-muted); font-weight: 400; }
-.subline { display: flex; align-items: center; gap: 10px; }
+.subline { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
 .estNumber { font-size: 13px; font-family: var(--font-mono); color: var(--color-text-muted); }
 .sentIndicator { font-size: 12px; color: #16a34a; font-weight: 500; }
 

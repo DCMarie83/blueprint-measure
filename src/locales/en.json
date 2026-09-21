@@ -2498,6 +2498,9 @@
   },
   "estimates": {
     "detail": {
+      "editNumber": "Edit estimate number",
+      "errorNumberEmpty": "Estimate number is required.",
+      "numberConflict": "Estimate number {{number}} already exists.",
       "justNow": "just now",
       "minutesAgo": "{{mins}}m ago",
       "hoursAgo": "{{hrs}}h ago",
@@ -4021,6 +4024,16 @@
     }
   },
   "shared": {
+    "numbering": {
+      "assignNext": "Assign next number",
+      "confirmInvoice": "This invoice becomes {{next}}. The printed number {{old}} stays in its notes.",
+      "confirmEstimate": "This estimate becomes {{next}}. The printed number {{old}} stays in its notes.",
+      "confirmBtn": "Assign number",
+      "assigning": "Assigning...",
+      "loadingNext": "Checking the next number...",
+      "printedAs": "Printed as {{number}}",
+      "counterNotAdvanced": "The number was saved, but the company counter could not be updated. Check Document numbering in Settings."
+    },
     "authErrors": {
       "deactivated": "Your account has been deactivated. Please contact {{email}} if you believe this is in error.",
       "breachedPassword": "That password has appeared in a known data breach. Please choose a different one."

@@ -2498,6 +2498,9 @@
   },
   "estimates": {
     "detail": {
+      "editNumber": "Editar número de cotización",
+      "errorNumberEmpty": "El número de cotización es obligatorio.",
+      "numberConflict": "El número de cotización {{number}} ya existe.",
       "justNow": "ahora mismo",
       "minutesAgo": "hace {{mins}}m",
       "hoursAgo": "hace {{hrs}}h",
@@ -4021,6 +4024,16 @@
     }
   },
   "shared": {
+    "numbering": {
+      "assignNext": "Asignar siguiente número",
+      "confirmInvoice": "Esta factura pasa a ser {{next}}. El número impreso {{old}} se queda en sus notas.",
+      "confirmEstimate": "Esta cotización pasa a ser {{next}}. El número impreso {{old}} se queda en sus notas.",
+      "confirmBtn": "Asignar número",
+      "assigning": "Asignando...",
+      "loadingNext": "Revisando el siguiente número...",
+      "printedAs": "Número impreso: {{number}}",
+      "counterNotAdvanced": "El número se guardó, pero no se pudo actualizar el contador de la empresa. Revisa Numeración de documentos en Configuración."
+    },
     "authErrors": {
       "deactivated": "Tu cuenta ha sido desactivada. Comunícate con {{email}} si crees que se trata de un error.",
       "breachedPassword": "Esa contraseña apareció en una filtración de datos conocida. Por favor elige una diferente."
