@@ -80,3 +80,28 @@ export async function uploadDocument({ companyId, userId, file, docType, linkedT
 
   return { doc, reused: !uploaded, uploaded }
 }
+
+// Extraction reads pdf/jpg/jpeg/png only (see extract-documents).
+export const EXTRACT_EXTS = ['pdf', 'jpg', 'jpeg', 'png']
+
+// An invoice-type document the extractor can read: what the invoice page
+// offers "Re-import" and "Replace lines" on.
+export function isExtractableInvoiceDoc(doc) {
+  const ext = String(doc?.bucket_path ?? '').split('.').pop()?.toLowerCase()
+  return doc?.doc_type === 'invoice' && EXTRACT_EXTS.includes(ext)
+}
+
+// Runs the extract-documents edge function on an ALREADY STORED document (no
+// re-upload; the function reads the private bucket server-side). Returns
+// { header, lines, confidence } or throws with code 'EXTRACT_FAILED'.
+export async function extractStoredDocument(doc, kind = 'invoice') {
+  const { data, error } = await supabase.functions.invoke('extract-documents', {
+    body: { path: doc.bucket_path, kind },
+  })
+  if (error || !data || data.ai_failed || !data.rows) {
+    const err = new Error(error?.message || 'Extraction failed')
+    err.code = 'EXTRACT_FAILED'
+    throw err
+  }
+  return data.rows
+}

@@ -36,7 +36,7 @@ const VALID_ITEM_TYPES = new Set(['labor', 'material', 'supply', 'equipment', 's
 // extracted printed total: qty×rate when both are present, else a printed-total
 // line becomes a lump_sum (qty 1, rate = total). Lines with no description AND
 // no money are dropped.
-function normalizeInvoiceLines(rawLines) {
+export function normalizeInvoiceLines(rawLines) {
   const lines = (rawLines ?? []).map(li => {
     let qty = Number(li.quantity) || 0
     let rate = Number(li.unit_rate) || 0
@@ -387,7 +387,7 @@ export async function writeInvoiceRows({
       let projectId = row._projectId ?? null
       let projectClientId = row._projectClientId ?? null
       if (!projectId) {
-        const proj = await createProject(row.job_name, { clientId, clientName: clientText })
+        const proj = await createProject(row.job_name, { clientId, clientName: clientText, address: row._jobAddress })
         projectId = proj.id
         projectClientId = proj.client_id
       }

@@ -874,6 +874,14 @@
     }
   },
   "clients": {
+    "changeJob": {
+      "title": "Cambiar trabajo",
+      "action": "Cambiar trabajo",
+      "hintInvoice": "La factura {{number}} está en el trabajo {{job}}. Elige otro trabajo del mismo cliente o crea uno.",
+      "hintEstimate": "La cotización {{number}} está en el trabajo {{job}}. Elige otro trabajo del mismo cliente o crea uno.",
+      "noOtherJobs": "Este cliente todavía no tiene otros trabajos, así que crea uno.",
+      "confirm": "Mover"
+    },
     "list": {
       "title": "Clientes",
       "subtitle": "Administra tus clientes residenciales y comerciales",
@@ -1204,6 +1212,27 @@
     }
   },
   "invoices": {
+    "docTools": {
+      "menu": "Acciones",
+      "reimport": "Reimportar como su propia factura",
+      "replace": "Reemplazar las líneas de esta factura con este documento",
+      "replaceTitle": "Reemplazar líneas con este documento",
+      "extracting": "Leyendo {{name}}...",
+      "extractFailed": "No se pudo leer este documento. Inténtalo de nuevo o impórtalo desde la lista de facturas.",
+      "retry": "Intentar de nuevo",
+      "multiNotice_one": "Esta factura tiene {{count}} documento de factura adjunto.",
+      "multiNotice_other": "Esta factura tiene {{count}} documentos de factura adjuntos. Si son facturas distintas, reimporta los demás como sus propias facturas.",
+      "showActions": "Mostrar las acciones",
+      "replaceIntro_one": "Las líneas de la factura {{number}} se reemplazan con la {{count}} línea leída de {{name}}.",
+      "replaceIntro_other": "Las líneas de la factura {{number}} se reemplazan con las {{count}} líneas leídas de {{name}}.",
+      "noLines": "No se encontraron líneas en este documento, así que no hay con qué reemplazar.",
+      "linesSum": "Las líneas suman {{sum}}",
+      "printedTotal": "total impreso {{total}}",
+      "mismatch": "Las líneas suman {{sum}} pero el total impreso es {{total}}. La diferencia se guarda como un ajuste.",
+      "totalChange": "El total de la factura cambia de {{old}} a {{new}}.",
+      "replaceConfirm": "Reemplazar líneas",
+      "replacing": "Reemplazando..."
+    },
     "nav": {
       "invoices": "Facturas"
     },
@@ -1427,6 +1456,7 @@
       "badgeBadDate": "fecha inválida",
       "badgeBadPaidDate": "fecha de pago ignorada",
       "badgeBadTotal": "total inválido — se importa como borrador",
+      "badgeLinesMismatch": "Las líneas no suman el total",
       "badgeBadPaid": "monto pagado ignorado",
       "badgeDupDb": "ya existe",
       "badgeDupFile": "duplicada en el archivo",

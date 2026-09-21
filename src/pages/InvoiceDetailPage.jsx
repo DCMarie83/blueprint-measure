@@ -3,7 +3,8 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Download, Send, CheckCircle, XCircle, Edit, Trash2, RotateCcw, Pencil } from 'lucide-react'
 import BackLink from '../components/BackLink'
-import DocumentsSection from '../components/documents/DocumentsSection'
+import InvoiceDocumentsSection from '../components/invoices/InvoiceDocumentsSection'
+import ChangeJobDialog from '../components/clients/ChangeJobDialog'
 import { useLinkedDocuments } from '../hooks/useLinkedDocuments'
 import { useInvoice, useInvoiceMutations, isOverdue } from '../hooks/useInvoices'
 import { generateInvoicePDF } from '../lib/generateInvoicePDF'
@@ -78,6 +79,7 @@ export default function InvoiceDetailPage() {
   const [reassignProject, setReassignProject] = useState(null)
   const [showChangeClient, setShowChangeClient] = useState(false)
   const [showAssignNumber, setShowAssignNumber] = useState(false)
+  const [showChangeJob, setShowChangeJob] = useState(false)
   // On-screen payment options: the same block the client sees.
   const paymentInstructions = mergeInstructionDefaults(effectiveCompany?.payment_instructions)
   const qrUrls = useSignedQrUrls(paymentInstructions)
@@ -575,6 +577,11 @@ export default function InvoiceDetailPage() {
                 {t('clients:reassign.action')}
               </button>
             )}
+            {isAdmin && reassignProject?.client_id && (
+              <button className={styles.toolBtn} onClick={() => setShowChangeJob(true)}>
+                {t('clients:changeJob.action')}
+              </button>
+            )}
             <button className={styles.toolBtn} onClick={handleDownloadPDF} disabled={pdfLoading}>
               <Download size={15} /> {pdfLoading ? '…' : t('invoices:detail.pdf')}
             </button>
@@ -848,7 +855,14 @@ export default function InvoiceDetailPage() {
         </div>
 
         {/* Documents: source files from Document Import + direct attach (G54) */}
-        <DocumentsSection documents={documents} uploadTarget={{ type: 'invoice', id }} onUploaded={refetchDocuments} />
+        <InvoiceDocumentsSection
+          invoice={invoice}
+          documents={documents}
+          fallbackClient={{ id: invoice.client_id ?? reassignProject?.client_id ?? null }}
+          isAdmin={isAdmin}
+          onUploaded={refetchDocuments}
+          onChanged={async () => { await refetch(); await refetchDocuments() }}
+        />
 
         {/* Void reason */}
         {invoice.void_reason && (
@@ -963,6 +977,16 @@ export default function InvoiceDetailPage() {
             oldNumber={invoice.invoice_number}
             onConfirm={async () => { await assignNextInvoiceNumber(id); await refetch() }}
             onClose={() => setShowAssignNumber(false)}
+          />
+        )}
+
+        {showChangeJob && reassignProject && (
+          <ChangeJobDialog
+            kind="invoice"
+            record={{ id: invoice.id, number: invoice.invoice_number }}
+            project={reassignProject}
+            onClose={() => setShowChangeJob(false)}
+            onMoved={refetch}
           />
         )}
 

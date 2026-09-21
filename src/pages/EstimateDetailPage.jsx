@@ -11,6 +11,7 @@ import LineItemsTable from '../components/estimates/LineItemsTable'
 import SendEstimateModal from '../components/estimates/SendEstimateModal'
 import { useEstimateBuilder } from '../hooks/useEstimateBuilder'
 import ChangeClientDialog from '../components/clients/ChangeClientDialog'
+import ChangeJobDialog from '../components/clients/ChangeJobDialog'
 import AssignNextNumberDialog from '../components/numbering/AssignNextNumberDialog'
 import PrintedAsChips from '../components/numbering/PrintedAsChips'
 import { advanceSharedCounterPast, appendPrintedAs } from '../data/numbering'
@@ -109,6 +110,7 @@ export default function EstimateDetailPage() {
   const [numberError, setNumberError] = useState(null)
   const [numberSaving, setNumberSaving] = useState(false)
   const [showAssignNumber, setShowAssignNumber] = useState(false)
+  const [showChangeJob, setShowChangeJob] = useState(false)
   const [saveMsg, setSaveMsg] = useState(null)
   const [titleValue, setTitleValue] = useState(null)
   const [showSendModal, setShowSendModal] = useState(false)
@@ -817,6 +819,11 @@ export default function EstimateDetailPage() {
                   {t('clients:reassign.action')}
                 </button>
               )}
+              {projectData?.client_id && (
+                <button className={styles.toolBtn} onClick={() => setShowChangeJob(true)}>
+                  {t('clients:changeJob.action')}
+                </button>
+              )}
               <button className={styles.toolBtn} onClick={() => handleDownloadPDF(null)} title={t('estimates:detail.downloadPdf')}>
                 <Download size={15} /> PDF
               </button>
@@ -1119,6 +1126,16 @@ export default function EstimateDetailPage() {
             oldNumber={estimate.estimate_number}
             onConfirm={handleAssignNextNumber}
             onClose={() => setShowAssignNumber(false)}
+          />
+        )}
+
+        {showChangeJob && projectData && (
+          <ChangeJobDialog
+            kind="estimate"
+            record={{ id: estimate.id, number: estimate.estimate_number }}
+            project={projectData}
+            onClose={() => setShowChangeJob(false)}
+            onMoved={() => { builder.refetch(); fetchProjectClientCompany() }}
           />
         )}
 

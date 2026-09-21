@@ -52,7 +52,7 @@ function lowConfidenceFields(confidence) {
     .map(([k]) => k)
 }
 
-function mapExtractionToRow(entity, extraction, docId) {
+export function mapExtractionToRow(entity, extraction, docId) {
   const h = extraction.header ?? {}
   const lines = (extraction.lines ?? []).map(li => ({
     description: li.description ?? '',
@@ -84,6 +84,9 @@ function mapExtractionToRow(entity, extraction, docId) {
       _lines: lines,
       _docId: docId,
       _lowConfidence: low,
+      // Printed job address: the invoice importer matches it against the
+      // company's jobs when the printed job name matches none.
+      _jobAddress: str(h.job_address),
     }]
   }
   if (entity === 'estimates') {

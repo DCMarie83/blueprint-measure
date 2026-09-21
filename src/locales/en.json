@@ -874,6 +874,14 @@
     }
   },
   "clients": {
+    "changeJob": {
+      "title": "Change job",
+      "action": "Change job",
+      "hintInvoice": "Invoice {{number}} is on the job {{job}}. Pick another job of the same client, or create one.",
+      "hintEstimate": "Estimate {{number}} is on the job {{job}}. Pick another job of the same client, or create one.",
+      "noOtherJobs": "This client has no other jobs yet, so create one.",
+      "confirm": "Move"
+    },
     "list": {
       "title": "Clients",
       "subtitle": "Manage your residential and commercial clients",
@@ -1204,6 +1212,27 @@
     }
   },
   "invoices": {
+    "docTools": {
+      "menu": "Actions",
+      "reimport": "Re-import as its own invoice",
+      "replace": "Replace this invoice's lines from this document",
+      "replaceTitle": "Replace lines from this document",
+      "extracting": "Reading {{name}}...",
+      "extractFailed": "This document could not be read. Try again, or import it from the invoice list.",
+      "retry": "Try again",
+      "multiNotice_one": "This invoice has {{count}} invoice document attached.",
+      "multiNotice_other": "This invoice has {{count}} invoice documents attached. If they are different invoices, re-import the others as their own.",
+      "showActions": "Show the actions",
+      "replaceIntro_one": "The lines on invoice {{number}} are replaced with the {{count}} line read from {{name}}.",
+      "replaceIntro_other": "The lines on invoice {{number}} are replaced with the {{count}} lines read from {{name}}.",
+      "noLines": "No line items were found on this document, so there is nothing to replace with.",
+      "linesSum": "Lines add up to {{sum}}",
+      "printedTotal": "printed total {{total}}",
+      "mismatch": "The lines add up to {{sum}} but the printed total is {{total}}. The difference is saved as an adjustment.",
+      "totalChange": "The invoice total changes from {{old}} to {{new}}.",
+      "replaceConfirm": "Replace lines",
+      "replacing": "Replacing..."
+    },
     "nav": {
       "invoices": "Invoices"
     },
@@ -1427,6 +1456,7 @@
       "badgeBadDate": "invalid date",
       "badgeBadPaidDate": "paid date ignored",
       "badgeBadTotal": "invalid total — imports as draft",
+      "badgeLinesMismatch": "Lines do not add up to total",
       "badgeBadPaid": "amount paid ignored",
       "badgeDupDb": "already exists",
       "badgeDupFile": "duplicate in file",

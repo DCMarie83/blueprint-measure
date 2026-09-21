@@ -8,11 +8,11 @@ import ImportWizardModal from '../import/ImportWizardModal'
 import InvoiceCollisionReview from './InvoiceCollisionReview'
 import { buildPrintedAsIndex } from '../../data/numbering'
 import { downloadInvoiceTemplate } from '../../utils/import/templates'
-import { writeInvoiceRows } from '../../utils/import/writeInvoices'
+import { writeInvoiceRows, normalizeInvoiceLines } from '../../utils/import/writeInvoices'
 import {
   buildClientIndex, matchClient, lowestPositionColumn,
   normalizeInvoiceStatus, deriveInvoiceStatus, normalizePaymentMethod,
-  parseMoney, parseDateFlexible, dueDateFromTerms, extraSheetRows, isPlaceholderSource,
+  parseMoney, parseDateFlexible, dueDateFromTerms, extraSheetRows, isPlaceholderSource, normalizeStreetLine,
 } from '../../utils/import/importHelpers'
 
 const TARGET_FIELDS = [
@@ -50,7 +50,7 @@ export default function InvoiceImportModal({ onClose, onImported, initialRows = 
     ;(async () => {
       const [{ data: invRows }, { data: projRows }, { data: clientRows }, { data: colRows }] = await Promise.all([
         supabase.from('invoices').select('id, invoice_number, notes, import_source, status').eq('company_id', companyId),
-        supabase.from('projects').select('id, name, client_id').eq('company_id', companyId).is('deleted_at', null),
+        supabase.from('projects').select('id, name, address, client_id').eq('company_id', companyId).is('deleted_at', null),
         supabase.from('clients').select('id, display_name, business_name, primary_email, billing_terms, client_type, import_source').eq('company_id', companyId),
         supabase.from('kanban_columns').select('*').eq('company_id', companyId).order('position', { ascending: true }),
       ])
@@ -59,6 +59,24 @@ export default function InvoiceImportModal({ onClose, onImported, initialRows = 
       for (const p of projRows ?? []) {
         const key = (p.name ?? '').trim().toLowerCase()
         if (key && !projectIndex.has(key)) projectIndex.set(key, p)
+      }
+      // Document mode: jobs by street line. The job's address must equal the
+      // printed street line; a job NAME may also start with it ("6896 Jersey Dr
+      // painting"). Address matches win over name matches; first job wins.
+      const byAddress = new Map()
+      const namedStreets = [] // [normalized name, project]
+      for (const p of projRows ?? []) {
+        const addr = normalizeStreetLine(p.address)
+        if (addr && !byAddress.has(addr)) byAddress.set(addr, p)
+        const named = normalizeStreetLine(p.name)
+        if (named) namedStreets.push([named, p])
+      }
+      const matchJobByStreet = (text) => {
+        const key = normalizeStreetLine(text)
+        if (!key) return null
+        return byAddress.get(key)
+          ?? namedStreets.find(([named]) => named === key || named.startsWith(`${key} `))?.[1]
+          ?? null
       }
       const invoiceIndex = new Map()
       for (const inv of invRows ?? []) {
@@ -72,6 +90,7 @@ export default function InvoiceImportModal({ onClose, onImported, initialRows = 
         printedIndex: buildPrintedAsIndex(invRows),
         existingNumbers: new Set(invoiceIndex.keys()),
         projectIndex,
+        matchJobByStreet,
         clientIndex: buildClientIndex(clientRows ?? []),
         clients: clientRows ?? [],
         placeholderColumnId: completeCol?.id ?? null,
@@ -89,11 +108,24 @@ export default function InvoiceImportModal({ onClose, onImported, initialRows = 
 
     const jobName = (mapped.job_name || '').trim()
     if (!jobName) flags.push('missing_job')
-    const projMatch = jobName && deps ? deps.projectIndex.get(jobName.toLowerCase()) ?? null : null
+    let projMatch = jobName && deps ? deps.projectIndex.get(jobName.toLowerCase()) ?? null : null
+    // Document mode: no job by that name, so try the printed job address (and
+    // a printed job name that is itself an address) against the jobs' addresses.
+    if (!projMatch && deps && initialRows) {
+      projMatch = deps.matchJobByStreet(mapped._jobAddress) ?? deps.matchJobByStreet(jobName)
+    }
     if (jobName && deps && !projMatch) warnings.push('new_job')
 
-    const clientText = (mapped.client || '').trim()
-    const clientMatch = deps ? matchClient(deps.clientIndex, clientText) : null
+    // Re-import from an attached document: when the printed bill-to matches no
+    // client, the row falls back to the source invoice's client (mapped
+    // _fallbackClient) instead of creating a new one. The review picker can
+    // still change it.
+    let clientText = (mapped.client || '').trim()
+    let clientMatch = deps ? matchClient(deps.clientIndex, clientText) : null
+    if (!clientMatch && deps && mapped._fallbackClient?.id) {
+      clientMatch = deps.clients.find(c => c.id === mapped._fallbackClient.id) ?? null
+      if (clientMatch) clientText = clientMatch.display_name
+    }
     if (clientText && deps && !clientMatch) warnings.push('new_client')
 
     const invoiceDate = parseDateFlexible(mapped.invoice_date)
@@ -111,6 +143,13 @@ export default function InvoiceImportModal({ onClose, onImported, initialRows = 
     let amountPaid = parseMoney(mapped.amount_paid)
     if ((mapped.amount_paid || '').trim() && amountPaid == null) warnings.push('invalid_paid')
     amountPaid = amountPaid != null && amountPaid > 0 ? amountPaid : 0
+
+    // Extracted lines are checked against the printed total; a gap is badged
+    // in Review (the writer stores it as an adjustment, never silently).
+    if (total != null && mapped._lines?.length > 0) {
+      const lineSum = Math.round(normalizeInvoiceLines(mapped._lines).reduce((s, li) => s + li.total, 0) * 100) / 100
+      if (Math.round(lineSum * 100) !== Math.round(total * 100)) warnings.push('lines_mismatch')
+    }
 
     const paidDate = parseDateFlexible(mapped.paid_date)
     if ((mapped.paid_date || '').trim() && !paidDate) warnings.push('invalid_paid_date')
@@ -195,7 +234,7 @@ export default function InvoiceImportModal({ onClose, onImported, initialRows = 
       { key: 'job', labelKey: 'invoices:import.colJob', render: (row) => row.job_name || t('import:empty'), badges: ['missing_job', 'new_job'], editKey: 'job_name' },
       { key: 'client', labelKey: 'invoices:import.colClient', render: (row) => row.client || '', badges: ['new_client'], editKey: 'client', clientPicker: true },
       { key: 'date', labelKey: 'invoices:import.colDate', render: (row) => row._invoiceDate || '', badges: ['invalid_date', 'invalid_paid_date'], editKey: 'invoice_date' },
-      { key: 'total', labelKey: 'invoices:import.colTotal', render: (row) => fmtMoney(row._total), badges: ['no_total', 'bad_total'], editKey: 'total' },
+      { key: 'total', labelKey: 'invoices:import.colTotal', render: (row) => fmtMoney(row._total), badges: ['no_total', 'bad_total', 'lines_mismatch'], editKey: 'total' },
       { key: 'paid', labelKey: 'invoices:import.colPaid', render: (row) => fmtMoney(row._amountPaid), badges: ['invalid_paid'], editKey: 'amount_paid' },
       { key: 'status', labelKey: 'invoices:import.colStatus', render: (row) => row._status, badges: ['unknown_status', 'other_method'] },
     ],
@@ -206,6 +245,7 @@ export default function InvoiceImportModal({ onClose, onImported, initialRows = 
       invalid_paid_date: 'invoices:import.badgeBadPaidDate',
       no_total: 'invoices:import.badgeNoTotal',
       bad_total: 'invoices:import.badgeBadTotal',
+      lines_mismatch: 'invoices:import.badgeLinesMismatch',
       invalid_paid: 'invoices:import.badgeBadPaid',
       duplicate_in_file: 'invoices:import.badgeDupFile',
       new_job: 'invoices:import.badgeNewJob',

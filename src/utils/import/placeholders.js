@@ -34,7 +34,7 @@ export function makeClientCreator({ companyId, batchId, created }) {
 
 export function makeProjectCreator({ companyId, userId, batchId, created, kanbanColumnId }) {
   const cache = new Map() // lower(name) → { id, client_id }
-  return async function createPlaceholderProject(rawName, { clientId, clientName }) {
+  return async function createPlaceholderProject(rawName, { clientId, clientName, address = null }) {
     const name = String(rawName ?? '').trim()
     const key = name.toLowerCase()
     if (cache.has(key)) return cache.get(key)
@@ -45,6 +45,7 @@ export function makeProjectCreator({ companyId, userId, batchId, created, kanban
         company_id: companyId,
         kanban_column_id: kanbanColumnId,
         name,
+        address: String(address ?? '').trim() || null,
         client_id: clientId ?? null,
         client_name: clientName || null,
         status: 'complete',

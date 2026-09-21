@@ -353,3 +353,19 @@ const COMMERCIAL_NAME_RE = /\b(llc|inc|co|company|builders|group|construction|ho
 export function guessClientType(name) {
   return COMMERCIAL_NAME_RE.test(String(name ?? '')) ? 'commercial' : 'residential'
 }
+
+// Street line of an address, normalized for matching a printed job address
+// against the company's jobs: the part before the first comma, lowercased,
+// punctuation dropped, common suffixes abbreviated ("6896 Jersey Drive" and
+// "6896 Jersey Dr." both become "6896 jersey dr"). Needs a leading house
+// number; anything else returns '' and never matches.
+const STREET_SUFFIXES = {
+  drive: 'dr', street: 'st', avenue: 'ave', road: 'rd', lane: 'ln', court: 'ct',
+  boulevard: 'blvd', place: 'pl', circle: 'cir', trail: 'trl', parkway: 'pkwy',
+  highway: 'hwy', terrace: 'ter', way: 'way',
+}
+export function normalizeStreetLine(address) {
+  const street = String(address ?? '').split(',')[0].toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim()
+  if (!/^\d+\s+\S/.test(street)) return ''
+  return street.split(/\s+/).map(w => STREET_SUFFIXES[w] ?? w).join(' ')
+}

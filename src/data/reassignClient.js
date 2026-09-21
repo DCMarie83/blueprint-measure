@@ -119,9 +119,10 @@ export async function moveJobToClient({ companyId, userId, projectId, targetClie
 
 // Move ONE invoice or estimate to a job under another client. targetProjectId
 // picks an existing job of that client; newJob {name, address} creates one
-// (complete column, like the importer's history jobs). Documents key by
-// linked record id and follow on their own; ledger rows key by invoice_id and
-// stay put.
+// (complete column, like the importer's history jobs). Passing the record's
+// CURRENT client as the target is "Change job": same writes, one activity row.
+// Documents key by linked record id and follow on their own; ledger rows key
+// by invoice_id and stay put.
 export async function moveRecordToClient({ kind, companyId, userId, recordId, targetClientId, targetProjectId = null, newJob = null }) {
   if (!companyId) throw wrongCompany()
   const table = kind === 'estimate' ? 'estimates' : 'invoices'
@@ -140,12 +141,14 @@ export async function moveRecordToClient({ kind, companyId, userId, recordId, ta
   if (!newClient) throw wrongCompany()
 
   let projectId = targetProjectId
+  let targetJobName = newJob?.name?.trim() ?? ''
   if (projectId) {
     // The chosen job must be this company's and already under the target client.
     const { data: targetProj, error: targetErr } = await supabase
-      .from('projects').select('id').eq('company_id', companyId).eq('client_id', targetClientId).eq('id', projectId).maybeSingle()
+      .from('projects').select('id, name').eq('company_id', companyId).eq('client_id', targetClientId).eq('id', projectId).maybeSingle()
     if (targetErr) throw new Error(targetErr.message)
     if (!targetProj) throw wrongCompany()
+    targetJobName = targetProj.name
   } else {
     if (!newJob?.name?.trim()) throw reassignError(REASSIGN_ERROR.JOB_REQUIRED, 'A target job is required.')
     const { data: cols, error: colErr } = await supabase
@@ -184,10 +187,17 @@ export async function moveRecordToClient({ kind, companyId, userId, recordId, ta
     record_number: rec[numberCol] ?? null,
     from_client_id: oldProj?.client_id ?? null,
     to_client_id: targetClientId,
+    from_project_id: rec.project_id ?? null,
+    to_project_id: projectId,
     scope: 'record',
   }
-  await logMove({ companyId, userId, clientId: oldProj?.client_id ?? null, title: `${label} moved to ${newClient.display_name}`, metadata: meta })
-  await logMove({ companyId, userId, clientId: targetClientId, title: `${label} moved here${oldClient ? ` from ${oldClient.display_name}` : ''}`, metadata: meta })
+  if ((oldProj?.client_id ?? null) === targetClientId) {
+    // "Change job": same client on both sides, so ONE row, titled by job.
+    await logMove({ companyId, userId, clientId: targetClientId, title: `${label} moved to job ${targetJobName}${oldProj?.name ? ` from ${oldProj.name}` : ''}`, metadata: meta })
+  } else {
+    await logMove({ companyId, userId, clientId: oldProj?.client_id ?? null, title: `${label} moved to ${newClient.display_name}`, metadata: meta })
+    await logMove({ companyId, userId, clientId: targetClientId, title: `${label} moved here${oldClient ? ` from ${oldClient.display_name}` : ''}`, metadata: meta })
+  }
 
   return { projectId }
 }

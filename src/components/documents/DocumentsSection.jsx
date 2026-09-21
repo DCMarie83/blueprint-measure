@@ -14,7 +14,10 @@ import { DOC_TYPES, ATTACH_ACCEPT, guessDocType, validateAttachFile, uploadDocum
 // `uploadTarget` ({ type, id }) adds a direct Upload control (G54): files
 // attach straight onto that record with a doc_type picker and the G52
 // filename+size dedupe. Attach-only — record fields are never touched.
-export default function DocumentsSection({ documents, collapsible = false, collapseKey = 'documents', uploadTarget = null, onUploaded = null }) {
+// `notice` renders a line above the list; `renderDocActions(doc)` adds
+// record-specific controls to a row (the invoice page's re-import menu). This
+// component stays a plain list: it never runs those actions itself.
+export default function DocumentsSection({ documents, collapsible = false, collapseKey = 'documents', uploadTarget = null, onUploaded = null, notice = null, renderDocActions = null }) {
   const { t } = useTranslation()
   const { user } = useAuth()
   const { companyId } = useEffectiveCompany()
@@ -128,6 +131,12 @@ export default function DocumentsSection({ documents, collapsible = false, colla
         <div style={{ fontSize: 13, color: 'var(--color-danger, #dc2626)', marginBottom: 10 }}>{uploadError}</div>
       )}
 
+      {notice && !(collapsible && collapsed) && (
+        <div style={{ fontSize: 13, color: 'var(--color-text)', background: 'var(--color-warning-bg)', border: '1px solid var(--color-warning-border)', borderRadius: 'var(--radius-md)', padding: '8px 12px', marginBottom: 10 }}>
+          {notice}
+        </div>
+      )}
+
       {collapsible && collapsed ? null : documents.length === 0 ? (
         <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>{t('shared:documents.empty')}</p>
       ) : (
@@ -150,6 +159,7 @@ export default function DocumentsSection({ documents, collapsible = false, colla
               >
                 {openingId === doc.id ? '…' : t('shared:documents.open')}
               </button>
+              {renderDocActions?.(doc)}
             </div>
           ))}
         </div>
