@@ -16,6 +16,14 @@
   width: 100%;
   max-width: 480px;
   box-shadow: var(--shadow);
+  /* Capped to the viewport (backdrop padding is 24px top and bottom): the
+     header and footer hold still and .body is the scroll region. Without the
+     cap a tall dialog overflows the fixed, centered backdrop in both
+     directions and its top and bottom become unreachable. */
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px);
 }
 
 .header {
@@ -23,6 +31,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 20px 24px 0;
+  flex-shrink: 0;
 }
 
 .title {
@@ -46,4 +55,43 @@
 
 .body {
   padding: 20px 24px 24px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* The footer carries the bottom spacing whenever it holds actions. */
+.body:has(+ .footer:not(:empty)) {
+  padding-bottom: 0;
+}
+
+/* Pinned action row, filled by <ModalFooter>. Spacing matches the old inline
+   action row (16px above, 24px below) so short dialogs do not shift. */
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 16px 24px 24px;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+.footer:empty {
+  display: none;
+}
+
+/* Divider only while the body scrolls; a shadow, so it takes no space. */
+.footerDivided {
+  box-shadow: 0 -1px 0 var(--color-border);
+}
+
+/* <ModalFooter> used outside a Modal: plain inline action row. */
+.footerInline {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
 }

@@ -8,6 +8,7 @@ import { DOC_TYPES, ATTACH_ACCEPT, ATTACH_MAX_BYTES, guessDocType, validateAttac
 import InvoiceImportModal from '../invoices/InvoiceImportModal'
 import EstimateImportModal from '../estimates/EstimateImportModal'
 import PricingImportModal from '../pricing/PricingImportModal'
+import { ModalFooter } from '../ui/Modal'
 import styles from './ImportWizardModal.module.css'
 
 // Document Import wizard, two modes:
@@ -375,7 +376,7 @@ export default function DocumentImportModal({ entity, onClose, onImported }) {
 
           {fileErrors.map((e, i) => <div key={i} className={styles.error}>{e}</div>)}
 
-          <div className={styles.actions}>
+          <ModalFooter>
             <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={onClose}>{t('common:action.cancel')}</button>
             {wizardMode === 'attach' ? (
               <button className={`${styles.btn} ${styles.btnPrimary}`} disabled={files.length === 0} onClick={startAssign}>
@@ -386,7 +387,7 @@ export default function DocumentImportModal({ entity, onClose, onImported }) {
                 {t('import:docs.extractBtn', { count: files.length })}
               </button>
             )}
-          </div>
+          </ModalFooter>
         </div>
       )}
 
@@ -466,12 +467,12 @@ export default function DocumentImportModal({ entity, onClose, onImported }) {
               </tbody>
             </table>
           </div>
-          <div className={styles.actions}>
+          <ModalFooter>
             <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => setPhase('pick')}>{t('common:action.back')}</button>
             <button className={`${styles.btn} ${styles.btnPrimary}`} disabled={!allAssigned} onClick={handleAttach}>
               {t('import:docs.attachBtn', { count: assignments.length })}
             </button>
-          </div>
+          </ModalFooter>
         </div>
       )}
 
@@ -499,9 +500,9 @@ export default function DocumentImportModal({ entity, onClose, onImported }) {
               {attachResult.failed.slice(0, 5).map((f, i) => <div key={i} className={styles.resultItem}>{f}</div>)}
             </div>
           )}
-          <div className={styles.actions}>
+          <ModalFooter>
             <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={onClose}>{t('import:done')}</button>
-          </div>
+          </ModalFooter>
         </div>
       )}
     </div>

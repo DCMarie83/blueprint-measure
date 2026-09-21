@@ -4,6 +4,7 @@ import { parseImportFile } from '../../utils/import/parseImportFile'
 import { mintBatchId } from '../../utils/import/importHelpers'
 import { useColumnMapping } from './useColumnMapping'
 import ImportClientCell from './ImportClientCell'
+import { ModalFooter } from '../ui/Modal'
 import styles from './ImportWizardModal.module.css'
 
 // Generic 4-step import wizard (Upload → Map → Review → Import), extracted from
@@ -324,10 +325,10 @@ export default function ImportWizardModal({ config, onClose, onImported, initial
           <button type="button" className={styles.templateLink} onClick={config.templateBuilder}>
             {t('import:downloadTemplate')}
           </button>
-          <div className={styles.actions}>
+          <ModalFooter>
             <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={onClose}>{t('common:action.cancel')}</button>
             <button className={`${styles.btn} ${styles.btnPrimary}`} disabled={!parsed} onClick={handleNextToMap}>{t('common:action.next')}</button>
-          </div>
+          </ModalFooter>
         </div>
       )}
 
@@ -379,10 +380,10 @@ export default function ImportWizardModal({ config, onClose, onImported, initial
             </div>
           )}
 
-          <div className={styles.actions}>
+          <ModalFooter>
             <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => setStep(0)}>{t('common:action.back')}</button>
             <button className={`${styles.btn} ${styles.btnPrimary}`} disabled={!requiredMapped} onClick={() => setStep(2)}>{t('common:action.next')}</button>
-          </div>
+          </ModalFooter>
         </div>
       )}
 
@@ -488,7 +489,7 @@ export default function ImportWizardModal({ config, onClose, onImported, initial
               <p className={styles.info}>{t('import:heldUnresolvedHint', { count: heldUnresolved.length })}</p>
             )}
 
-            <div className={styles.actions}>
+            <ModalFooter>
               {!docMode && (
                 <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => setStep(1)}>{t('common:action.back')}</button>
               )}
@@ -499,7 +500,7 @@ export default function ImportWizardModal({ config, onClose, onImported, initial
               >
                 {et(config.importBtnKey, { count: willImport.length })}
               </button>
-            </div>
+            </ModalFooter>
           </div>
         )
       })()}
@@ -576,9 +577,9 @@ export default function ImportWizardModal({ config, onClose, onImported, initial
                   ))}
                 </div>
               )}
-              <div className={styles.actions}>
+              <ModalFooter>
                 <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={onClose}>{t('import:done')}</button>
-              </div>
+              </ModalFooter>
             </>
           ) : null}
         </div>
