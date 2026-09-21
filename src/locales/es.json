@@ -1213,7 +1213,6 @@
   },
   "invoices": {
     "docTools": {
-      "menu": "Acciones",
       "reimport": "Reimportar como su propia factura",
       "replace": "Reemplazar las líneas de esta factura con este documento",
       "replaceTitle": "Reemplazar líneas con este documento",
@@ -4161,6 +4160,31 @@
       "tip28": "Los perros nos recuerdan tomar un descanso y disfrutar del momento, hasta en un día de trabajo largo."
     },
     "documents": {
+      "actions": {
+        "menu": "Acciones",
+        "move": "Mover a otro registro",
+        "delete": "Eliminar",
+        "moveIntro": "Elige el registro al que se debe adjuntar {{name}}.",
+        "moveConfirm": "Mover",
+        "moving": "Moviendo...",
+        "deleteTitle": "Eliminar documento",
+        "deleteConfirmText": "¿Eliminar {{name}} ({{record}})? Esto elimina el archivo. No se puede deshacer.",
+        "deleteConfirmTextNoRecord": "¿Eliminar {{name}}? Esto elimina el archivo. No se puede deshacer.",
+        "deleteShared_one": "¿Eliminar {{name}} ({{record}})? El mismo archivo también está adjunto a {{count}} registro más, así que el archivo se conserva y solo se quita este adjunto. No se puede deshacer.",
+        "deleteShared_other": "¿Eliminar {{name}} ({{record}})? El mismo archivo también está adjunto a {{count}} registros más, así que el archivo se conserva y solo se quita este adjunto. No se puede deshacer.",
+        "deleteBtn": "Eliminar",
+        "deleting": "Eliminando...",
+        "checking": "Revisando este documento...",
+        "refuseSoleProof": "Este es el único comprobante de pago de una factura pagada, así que no se puede eliminar. Adjunta primero otro comprobante de pago y luego elimina este.",
+        "storageDenied": "No se pudo quitar el archivo del almacenamiento, así que no se eliminó nada.",
+        "notFound": "Ese documento o registro no se encontró en esta empresa, así que no cambió nada.",
+        "recordPhrase": {
+          "invoice": "factura {{label}}",
+          "estimate": "cotización {{label}}",
+          "project": "trabajo {{label}}",
+          "client": "cliente {{label}}"
+        }
+      },
       "title": "Documentos ({{count}})",
       "empty": "Aún no hay documentos.",
       "open": "Abrir",

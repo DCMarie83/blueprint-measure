@@ -1213,7 +1213,6 @@
   },
   "invoices": {
     "docTools": {
-      "menu": "Actions",
       "reimport": "Re-import as its own invoice",
       "replace": "Replace this invoice's lines from this document",
       "replaceTitle": "Replace lines from this document",
@@ -4161,6 +4160,31 @@
       "tip28": "What do you call a dog who can measure a whole house? A rule-triever."
     },
     "documents": {
+      "actions": {
+        "menu": "Actions",
+        "move": "Move to another record",
+        "delete": "Delete",
+        "moveIntro": "Pick the record {{name}} should be attached to.",
+        "moveConfirm": "Move",
+        "moving": "Moving...",
+        "deleteTitle": "Delete document",
+        "deleteConfirmText": "Delete {{name}} from {{record}}? This removes the file. It cannot be undone.",
+        "deleteConfirmTextNoRecord": "Delete {{name}}? This removes the file. It cannot be undone.",
+        "deleteShared_one": "Delete {{name}} from {{record}}? The same file is also attached to {{count}} other record, so the file is kept and only this attachment is removed. It cannot be undone.",
+        "deleteShared_other": "Delete {{name}} from {{record}}? The same file is also attached to {{count}} other records, so the file is kept and only this attachment is removed. It cannot be undone.",
+        "deleteBtn": "Delete",
+        "deleting": "Deleting...",
+        "checking": "Checking this document...",
+        "refuseSoleProof": "This is the only payment proof on a paid invoice, so it cannot be deleted. Attach another payment proof first, then delete this one.",
+        "storageDenied": "The file could not be removed from storage, so nothing was deleted.",
+        "notFound": "That document or record was not found in this company, so nothing changed.",
+        "recordPhrase": {
+          "invoice": "invoice {{label}}",
+          "estimate": "estimate {{label}}",
+          "project": "job {{label}}",
+          "client": "client {{label}}"
+        }
+      },
       "title": "Documents ({{count}})",
       "empty": "No documents yet.",
       "open": "Open",

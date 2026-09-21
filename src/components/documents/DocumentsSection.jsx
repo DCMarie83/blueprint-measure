@@ -1,6 +1,7 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileText, ChevronDown, ChevronRight, Upload } from 'lucide-react'
+import { MoveDocumentDialog, DeleteDocumentDialog } from './DocumentActionDialogs'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
@@ -14,12 +15,29 @@ import { DOC_TYPES, ATTACH_ACCEPT, guessDocType, validateAttachFile, uploadDocum
 // `uploadTarget` ({ type, id }) adds a direct Upload control (G54): files
 // attach straight onto that record with a doc_type picker and the G52
 // filename+size dedupe. Attach-only — record fields are never touched.
-// `notice` renders a line above the list; `renderDocActions(doc)` adds
-// record-specific controls to a row (the invoice page's re-import menu). This
-// component stays a plain list: it never runs those actions itself.
-export default function DocumentsSection({ documents, collapsible = false, collapseKey = 'documents', uploadTarget = null, onUploaded = null, notice = null, renderDocActions = null }) {
+// Admins (contractor_admin, super admin) get an Actions menu on every row:
+// "Move to another record" and "Delete", on every mount. `extraDocActions(doc)`
+// returns record-specific items ([{ key, label, onClick }]) listed first (the
+// invoice page's re-import tools); `menuRequest` ({ docId, nonce }) opens one
+// row's menu from outside; `notice` renders a line above the list. `onChanged`
+// runs after a move or delete (defaults to onUploaded).
+export default function DocumentsSection({ documents, collapsible = false, collapseKey = 'documents', uploadTarget = null, onUploaded = null, onChanged = null, notice = null, extraDocActions = null, menuRequest = null }) {
   const { t } = useTranslation()
-  const { user } = useAuth()
+  const { user, userProfile, isSuperAdmin } = useAuth()
+  const isAdmin = userProfile?.role === 'contractor_admin' || isSuperAdmin
+  const [menuDocId, setMenuDocId] = useState(null)
+  const [dialog, setDialog] = useState(null) // { kind: 'move' | 'delete', doc }
+  const menuButtons = useRef(new Map())
+  const afterChange = onChanged ?? onUploaded
+
+  useEffect(() => {
+    if (!menuRequest?.docId) return
+    const btn = menuButtons.current.get(menuRequest.docId)
+    btn?.scrollIntoView({ block: 'center' })
+    btn?.focus()
+    setMenuDocId(menuRequest.docId)
+  }, [menuRequest])
+
   const { companyId } = useEffectiveCompany()
   const [openingId, setOpeningId] = useState(null)
   const [collapsed, setCollapsed] = useSessionCollapse(collapseKey, documents.length > 8)
@@ -159,10 +177,42 @@ export default function DocumentsSection({ documents, collapsible = false, colla
               >
                 {openingId === doc.id ? '…' : t('shared:documents.open')}
               </button>
-              {renderDocActions?.(doc)}
+              {isAdmin && (() => {
+                const open = menuDocId === doc.id
+                const pick = (fn) => () => { setMenuDocId(null); fn() }
+                const item = { display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: 'none', border: 'none', color: 'var(--color-text)', fontSize: 13, cursor: 'pointer' }
+                return (
+                  <span style={{ position: 'relative', flexShrink: 0 }}>
+                    <button
+                      ref={el => { if (el) menuButtons.current.set(doc.id, el); else menuButtons.current.delete(doc.id) }}
+                      onClick={() => setMenuDocId(open ? null : doc.id)}
+                      aria-expanded={open}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, padding: '4px 10px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', color: 'var(--color-text-muted)', cursor: 'pointer' }}
+                    >
+                      {t('shared:documents.actions.menu')} <ChevronDown size={12} />
+                    </button>
+                    {open && (
+                      <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 4px)', zIndex: 20, minWidth: 260, maxWidth: 'calc(100vw - 48px)', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow)', padding: '4px 0' }}>
+                        {(extraDocActions?.(doc) ?? []).map(a => (
+                          <button key={a.key} style={item} onClick={pick(a.onClick)}>{a.label}</button>
+                        ))}
+                        <button style={item} onClick={pick(() => setDialog({ kind: 'move', doc }))}>{t('shared:documents.actions.move')}</button>
+                        <button style={{ ...item, color: 'var(--color-danger, #dc2626)' }} onClick={pick(() => setDialog({ kind: 'delete', doc }))}>{t('shared:documents.actions.delete')}</button>
+                      </div>
+                    )}
+                  </span>
+                )
+              })()}
             </div>
           ))}
         </div>
+      )}
+
+      {dialog?.kind === 'move' && (
+        <MoveDocumentDialog doc={dialog.doc} companyId={companyId} userId={user?.id} onClose={() => setDialog(null)} onDone={afterChange} />
+      )}
+      {dialog?.kind === 'delete' && (
+        <DeleteDocumentDialog doc={dialog.doc} companyId={companyId} userId={user?.id} onClose={() => setDialog(null)} onDone={afterChange} />
       )}
     </section>
   )

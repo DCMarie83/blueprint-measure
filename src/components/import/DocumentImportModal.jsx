@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
@@ -9,6 +9,7 @@ import InvoiceImportModal from '../invoices/InvoiceImportModal'
 import EstimateImportModal from '../estimates/EstimateImportModal'
 import PricingImportModal from '../pricing/PricingImportModal'
 import { ModalFooter } from '../ui/Modal'
+import RecordPicker, { useRecordOptions } from '../documents/RecordPicker'
 import styles from './ImportWizardModal.module.css'
 
 // Document Import wizard, two modes:
@@ -33,7 +34,6 @@ const EXTRACT_ACCEPT = '.pdf,.jpg,.jpeg,.png'
 const CONCURRENCY = 3
 
 const ENTITY_DEFAULT_KIND = { invoices: 'invoice', estimates: 'quote', pricing: 'price_list' }
-const RECORD_TYPES = ['project', 'client', 'invoice', 'estimate']
 
 async function runPool(items, worker, concurrency) {
   const queue = [...items.entries()]
@@ -133,30 +133,10 @@ export default function DocumentImportModal({ entity, onClose, onImported }) {
 
   // Attach mode state
   const [assignments, setAssignments] = useState([]) // per file: { file, docType, recordType, recordId, search }
-  const [records, setRecords] = useState(null) // { project: [{id,label}], client, invoice, estimate }
   const [attachResult, setAttachResult] = useState(null)
 
   // Record options for the attach-mode picker, fetched once.
-  useEffect(() => {
-    if (wizardMode !== 'attach' || records || !companyId) return
-    let cancelled = false
-    ;(async () => {
-      const [{ data: projects }, { data: clients }, { data: invoices }, { data: estimates }] = await Promise.all([
-        supabase.from('projects').select('id, name').eq('company_id', companyId).is('deleted_at', null).order('name'),
-        supabase.from('clients').select('id, display_name').eq('company_id', companyId).order('display_name'),
-        supabase.from('invoices').select('id, invoice_number').eq('company_id', companyId).order('created_at', { ascending: false }),
-        supabase.from('estimates').select('id, estimate_number, title').eq('company_id', companyId).order('created_at', { ascending: false }),
-      ])
-      if (cancelled) return
-      setRecords({
-        project: (projects ?? []).map(p => ({ id: p.id, label: p.name })),
-        client: (clients ?? []).map(c => ({ id: c.id, label: c.display_name })),
-        invoice: (invoices ?? []).map(i => ({ id: i.id, label: i.invoice_number })),
-        estimate: (estimates ?? []).map(e => ({ id: e.id, label: e.title || e.estimate_number })),
-      })
-    })()
-    return () => { cancelled = true }
-  }, [wizardMode, records, companyId])
+  const records = useRecordOptions(companyId, wizardMode === 'attach')
 
   function handleFileSelect(e) {
     const picked = Array.from(e.target.files ?? [])
@@ -419,41 +399,11 @@ export default function DocumentImportModal({ entity, onClose, onImported }) {
               </thead>
               <tbody>
                 {assignments.map((a, idx) => {
-                  const options = records?.[a.recordType] ?? []
-                  const query = a.search.trim().toLowerCase()
-                  const filtered = query
-                    ? options.filter(o => (o.label ?? '').toLowerCase().includes(query))
-                    : options
                   return (
                     <tr key={idx}>
                       <td style={{ maxWidth: 180 }}>{a.file.name}</td>
                       <td>
-                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-                          <select
-                            className={styles.mappingSelect}
-                            style={{ minWidth: 90, flex: 'none' }}
-                            value={a.recordType}
-                            onChange={e => updateAssignment(idx, { recordType: e.target.value, recordId: '', search: '' })}
-                          >
-                            {RECORD_TYPES.map(rt => <option key={rt} value={rt}>{t(`import:docs.recordType.${rt}`)}</option>)}
-                          </select>
-                          <input
-                            className={styles.mappingSelect}
-                            style={{ minWidth: 90, flex: 'none' }}
-                            placeholder={t('import:docs.searchPlaceholder')}
-                            value={a.search}
-                            onChange={e => updateAssignment(idx, { search: e.target.value })}
-                          />
-                          <select
-                            className={styles.mappingSelect}
-                            style={{ minWidth: 140 }}
-                            value={a.recordId}
-                            onChange={e => updateAssignment(idx, { recordId: e.target.value })}
-                          >
-                            <option value="">{t('import:docs.pickRecord')}</option>
-                            {filtered.slice(0, 200).map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
-                          </select>
-                        </div>
+                        <RecordPicker records={records} value={a} onChange={patch => updateAssignment(idx, patch)} />
                       </td>
                       <td>
                         <select

@@ -5,7 +5,7 @@ import { mintBatchId } from './import/importHelpers'
 // design: these helpers write storage objects and documents rows and NEVER
 // touch any field on the record they link to (doc-mode money boundary).
 
-export const DOC_TYPES = ['blueprint', 'plan', 'receipt', 'payment_proof', 'photo', 'spreadsheet', 'contract', 'other']
+export const DOC_TYPES = ['invoice', 'blueprint', 'plan', 'receipt', 'payment_proof', 'photo', 'spreadsheet', 'contract', 'other']
 
 // Widened accepted set (G54). Extraction mode stays narrower — the
 // extract-documents function only reads pdf/jpg/jpeg/png, and its base64

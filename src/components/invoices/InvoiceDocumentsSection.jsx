@@ -1,6 +1,5 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronDown } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import Modal, { ModalFooter } from '../ui/Modal'
@@ -28,15 +27,13 @@ const r2 = (v) => Math.round(v * 100) / 100
 export default function InvoiceDocumentsSection({ invoice, documents, fallbackClient = null, isAdmin = false, onUploaded, onChanged }) {
   const { t } = useTranslation()
   const { user } = useAuth()
-  const [menuDocId, setMenuDocId] = useState(null)
+  const [menuRequest, setMenuRequest] = useState(null)
   // { mode: 'reimport' | 'replace', doc, phase: 'extracting' | 'ready' | 'failed', extraction }
   const [tool, setTool] = useState(null)
-  const firstMenuRef = useRef(null)
 
   const invoiceDocs = documents.filter(isExtractableInvoiceDoc)
 
   async function start(mode, doc) {
-    setMenuDocId(null)
     setTool({ mode, doc, phase: 'extracting', extraction: null })
     try {
       const extraction = await extractStoredDocument(doc, 'invoice')
@@ -65,29 +62,12 @@ export default function InvoiceDocumentsSection({ invoice, documents, fallbackCl
 
   const docName = (doc) => doc.original_filename || doc.bucket_path.split('/').pop()
 
-  function renderDocActions(doc) {
-    if (!isAdmin || !isExtractableInvoiceDoc(doc)) return null
-    const open = menuDocId === doc.id
-    const isFirst = invoiceDocs[0]?.id === doc.id
-    const item = { display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: 'none', border: 'none', color: 'var(--color-text)', fontSize: 13, cursor: 'pointer' }
-    return (
-      <span style={{ position: 'relative', flexShrink: 0 }}>
-        <button
-          ref={isFirst ? firstMenuRef : null}
-          onClick={() => setMenuDocId(open ? null : doc.id)}
-          aria-expanded={open}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, padding: '4px 10px', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', color: 'var(--color-text-muted)', cursor: 'pointer' }}
-        >
-          {t('invoices:docTools.menu')} <ChevronDown size={12} />
-        </button>
-        {open && (
-          <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 4px)', zIndex: 20, minWidth: 260, maxWidth: 'calc(100vw - 48px)', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow)', padding: '4px 0' }}>
-            <button style={item} onClick={() => start('reimport', doc)}>{t('invoices:docTools.reimport')}</button>
-            <button style={item} onClick={() => start('replace', doc)}>{t('invoices:docTools.replace')}</button>
-          </div>
-        )}
-      </span>
-    )
+  function extraDocActions(doc) {
+    if (!isExtractableInvoiceDoc(doc)) return []
+    return [
+      { key: 'reimport', label: t('invoices:docTools.reimport'), onClick: () => start('reimport', doc) },
+      { key: 'replace', label: t('invoices:docTools.replace'), onClick: () => start('replace', doc) },
+    ]
   }
 
   const notice = isAdmin && invoiceDocs.length > 1 ? (
@@ -95,7 +75,7 @@ export default function InvoiceDocumentsSection({ invoice, documents, fallbackCl
       {t('invoices:docTools.multiNotice', { count: invoiceDocs.length })}{' '}
       <button
         type="button"
-        onClick={() => { firstMenuRef.current?.scrollIntoView({ block: 'center' }); firstMenuRef.current?.focus(); setMenuDocId(invoiceDocs[0].id) }}
+        onClick={() => setMenuRequest({ docId: invoiceDocs[0].id, nonce: Date.now() })}
         style={{ background: 'none', border: 'none', padding: 0, color: 'var(--color-primary)', fontSize: 13, fontWeight: 600, textDecoration: 'underline', cursor: 'pointer' }}
       >
         {t('invoices:docTools.showActions')}
@@ -113,8 +93,10 @@ export default function InvoiceDocumentsSection({ invoice, documents, fallbackCl
         documents={documents}
         uploadTarget={{ type: 'invoice', id: invoice.id }}
         onUploaded={onUploaded}
+        onChanged={onChanged}
         notice={notice}
-        renderDocActions={renderDocActions}
+        extraDocActions={extraDocActions}
+        menuRequest={menuRequest}
       />
 
       {tool && tool.phase !== 'ready' && (
