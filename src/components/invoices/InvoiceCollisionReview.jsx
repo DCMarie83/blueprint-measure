@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import PrintedAsChips from '../numbering/PrintedAsChips'
 import styles from '../import/ImportWizardModal.module.css'
 
 // G69: collision review cards for the invoice import. Every incoming row whose
@@ -44,7 +45,7 @@ export default function InvoiceCollisionReview({ rows, resolutions, setResolutio
     ;(async () => {
       const { data, error } = await supabase
         .from('invoices')
-        .select('id, invoice_number, status, total, created_at, client_id, clients(display_name), projects(name), invoice_line_items(id, description, quantity, unit_rate, total, sort_order), invoice_payments(id, amount, payment_date, payment_method)')
+        .select('id, invoice_number, notes, status, total, created_at, client_id, clients(display_name), projects(name), invoice_line_items(id, description, quantity, unit_rate, total, sort_order), invoice_payments(id, amount, payment_date, payment_method)')
         .in('id', idsKey.split(','))
       if (cancelled) return
       if (error) { setLoadError(error.message); return }
@@ -115,6 +116,13 @@ export default function InvoiceCollisionReview({ rows, resolutions, setResolutio
               <strong style={{ fontSize: 13 }}>{row.invoice_number}</strong>
               <span className={styles.warnBadge}>{t('invoices:import.review.badge')}</span>
             </div>
+            {/* Matched through the printed number, not the current one: say so. */}
+            {norm(ex.invoice_number) !== norm(row.invoice_number) && (
+              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, fontSize: 12, marginBottom: 8 }}>
+                <span>{t('invoices:import.review.printedAsMatch', { current: ex.invoice_number, number: row.invoice_number })}</span>
+                <PrintedAsChips notes={ex.notes} />
+              </div>
+            )}
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
               {/* Existing invoice */}

@@ -4,6 +4,8 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import ImportWizardModal from '../import/ImportWizardModal'
+import EstimatePrintedAsReview from './EstimatePrintedAsReview'
+import { buildPrintedAsIndex } from '../../data/numbering'
 import { downloadEstimateTemplate } from '../../utils/import/templates'
 import { writeEstimateRows } from '../../utils/import/writeEstimates'
 import {
@@ -38,7 +40,7 @@ export default function EstimateImportModal({ onClose, onImported, initialRows =
     let cancelled = false
     ;(async () => {
       const [{ data: estRows }, { data: projRows }, { data: clientRows }, { data: colRows }] = await Promise.all([
-        supabase.from('estimates').select('id, estimate_number, import_source, status').eq('company_id', companyId),
+        supabase.from('estimates').select('id, estimate_number, notes, title, import_source, status').eq('company_id', companyId),
         supabase.from('projects').select('id, name, client_id').eq('company_id', companyId).is('deleted_at', null),
         supabase.from('clients').select('id, display_name, business_name, primary_email, client_type, import_source').eq('company_id', companyId),
         supabase.from('kanban_columns').select('*').eq('company_id', companyId).order('position', { ascending: true }),
@@ -58,6 +60,7 @@ export default function EstimateImportModal({ onClose, onImported, initialRows =
       const completeCol = columns.find(c => c.column_key === 'complete') ?? lowestPositionColumn(columns)
       setDeps({
         estimateIndex,
+        printedIndex: buildPrintedAsIndex(estRows),
         existingNumbers: new Set(estimateIndex.keys()),
         projectIndex,
         clientIndex: buildClientIndex(clientRows ?? []),
@@ -124,9 +127,20 @@ export default function EstimateImportModal({ onClose, onImported, initialRows =
       const key = (row.estimate_number || '').trim().toLowerCase()
       if (!key) return null
       const match = deps?.estimateIndex.get(key)
-      if (!match) return null
-      return { id: match.id, isPlaceholder: isPlaceholderSource(match.import_source), existing: match }
+      if (match) return { id: match.id, isPlaceholder: isPlaceholderSource(match.import_source), existing: match }
+      // No estimate carries this number now, but one may have been PRINTED
+      // under it before "Assign next number": hold it for review.
+      const printed = deps?.printedIndex.get(key)
+      if (printed) return { id: printed.id, isPlaceholder: false, existing: printed, printedAs: true }
+      return null
     },
+    // Only printed-number matches are held; current-number matches keep the
+    // Add / Update mode behavior.
+    holdMatch: (row, match) => !!match.printedAs,
+    HeldReview: EstimatePrintedAsReview,
+    rowLabel: (row) => row.estimate_number || t('import:empty'),
+    resolutionLabel: (res) => t(`estimates:import.printedReview.resolution.${res.action}`),
+    reviewedResult: (entry) => `${entry.name} · ${t('estimates:import.printedReview.result.skip', { current: entry.currentNumber })}`,
     dedupeKey: (row) => (row.estimate_number || '').trim().toLowerCase() || null,
     buildRow,
     editableReview: !!initialRows,
@@ -161,7 +175,7 @@ export default function EstimateImportModal({ onClose, onImported, initialRows =
     templateBuilder: downloadEstimateTemplate,
     ready: !!deps?.placeholderColumnId,
     afterImport,
-    writeRows: ({ rows, batchId, mode, extra, onProgress }) => {
+    writeRows: async ({ rows, batchId, mode, extra, onProgress }) => {
       const lineRows = extraSheetRows(extra, 'line items', 'lines', 'line_items')
       if (lineRows.length > 0) {
         const byNumber = new Map()
@@ -182,8 +196,27 @@ export default function EstimateImportModal({ onClose, onImported, initialRows =
           if (key && byNumber.has(key) && !row._lines) row._lines = byNumber.get(key)
         }
       }
-      return writeEstimateRows({
-        rows,
+      // Held printed-number rows arrive resolved. "skip" never reaches the
+      // writer (the existing estimate is that document); "import" goes through
+      // the normal new-record path, since the number itself is free.
+      const reviewed = []
+      const writable = []
+      const copies = [] // [copy, original]: the writer stamps _createdId on the copy
+      for (const row of rows) {
+        if (row._disposition !== 'review') { writable.push(row); continue }
+        if (row._resolution?.action === 'import') {
+          const copy = { ...row, _disposition: 'new', _existingId: undefined, _existing: undefined }
+          copies.push([copy, row])
+          writable.push(copy)
+        } else {
+          // Document mode: the source document attaches to the EXISTING
+          // estimate, the same way the invoice importer's skip does.
+          row._createdId = row._existingId
+          reviewed.push({ name: row.estimate_number, action: 'skip', currentNumber: row._existing?.estimate_number ?? '' })
+        }
+      }
+      const result = await writeEstimateRows({
+        rows: writable,
         batchId,
         mode,
         onProgress,
@@ -193,6 +226,8 @@ export default function EstimateImportModal({ onClose, onImported, initialRows =
         placeholderColumnId: deps.placeholderColumnId,
         docMode: !!initialRows,
       })
+      for (const [copy, original] of copies) original._createdId = copy._createdId
+      return reviewed.length > 0 ? { ...result, reviewed } : result
     },
   }
 

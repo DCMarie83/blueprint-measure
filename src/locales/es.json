@@ -1443,6 +1443,7 @@
       "badgeNoTotal": "sin total — se importa como borrador",
       "review": {
         "loading": "Cargando facturas existentes...",
+        "printedAsMatch": "Este número coincide con la factura {{current}}, que se imprimió como {{number}} antes de cambiar su número.",
         "heldTitle_one": "1 número de factura del archivo ya existe en tu cuenta",
         "heldTitle_other": "{{count}} números de factura del archivo ya existen en tu cuenta",
         "badge": "El número ya existe",
@@ -2654,6 +2655,28 @@
       "addLineItem": "Agregar partida"
     },
     "import": {
+      "printedReview": {
+        "heldTitle_one": "{{count}} fila coincide con un número impreso y necesita revisión",
+        "heldTitle_other": "{{count}} filas coinciden con un número impreso y necesitan revisión",
+        "badge": "Coincide con un número impreso",
+        "explain": "La cotización {{current}} se imprimió como {{number}} antes de cambiar su número.",
+        "action": {
+          "skip": "Omitir esta fila",
+          "import": "Importar como {{number}}"
+        },
+        "hint": {
+          "skip": "No se importa nada. La cotización {{current}} se queda como está.",
+          "import": "Se crea una cotización aparte con el número {{number}}. La cotización {{current}} se queda como está."
+        },
+        "chooseHint": "Elige qué hacer con esta fila. Queda fuera de la importación hasta que lo hagas.",
+        "resolution": {
+          "skip": "Omitir",
+          "import": "Importar como nueva"
+        },
+        "result": {
+          "skip": "omitida, ya está registrada como la cotización {{current}}"
+        }
+      },
       "title": "Importar cotizaciones",
       "uploadPrompt": "Sube un archivo CSV o Excel con tu historial de cotizaciones. Agrega una hoja de partidas para el detalle por línea. Las cotizaciones importadas nunca envían correos a tus clientes.",
       "mapHint": "Asigna columnas a Número de cotización, Nombre del trabajo y Fecha para continuar.",

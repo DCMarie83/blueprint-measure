@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useEffectiveCompany } from '../../hooks/useEffectiveCompany'
 import ImportWizardModal from '../import/ImportWizardModal'
 import InvoiceCollisionReview from './InvoiceCollisionReview'
+import { buildPrintedAsIndex } from '../../data/numbering'
 import { downloadInvoiceTemplate } from '../../utils/import/templates'
 import { writeInvoiceRows } from '../../utils/import/writeInvoices'
 import {
@@ -48,7 +49,7 @@ export default function InvoiceImportModal({ onClose, onImported, initialRows = 
     let cancelled = false
     ;(async () => {
       const [{ data: invRows }, { data: projRows }, { data: clientRows }, { data: colRows }] = await Promise.all([
-        supabase.from('invoices').select('id, invoice_number, import_source, status').eq('company_id', companyId),
+        supabase.from('invoices').select('id, invoice_number, notes, import_source, status').eq('company_id', companyId),
         supabase.from('projects').select('id, name, client_id').eq('company_id', companyId).is('deleted_at', null),
         supabase.from('clients').select('id, display_name, business_name, primary_email, billing_terms, client_type, import_source').eq('company_id', companyId),
         supabase.from('kanban_columns').select('*').eq('company_id', companyId).order('position', { ascending: true }),
@@ -68,6 +69,7 @@ export default function InvoiceImportModal({ onClose, onImported, initialRows = 
       const completeCol = columns.find(c => c.column_key === 'complete') ?? lowestPositionColumn(columns)
       setDeps({
         invoiceIndex,
+        printedIndex: buildPrintedAsIndex(invRows),
         existingNumbers: new Set(invoiceIndex.keys()),
         projectIndex,
         clientIndex: buildClientIndex(clientRows ?? []),
@@ -160,8 +162,13 @@ export default function InvoiceImportModal({ onClose, onImported, initialRows = 
       const key = (row.invoice_number || '').trim().toLowerCase()
       if (!key) return null
       const match = deps?.invoiceIndex.get(key)
-      if (!match) return null
-      return { id: match.id, isPlaceholder: isPlaceholderSource(match.import_source), existing: match }
+      if (match) return { id: match.id, isPlaceholder: isPlaceholderSource(match.import_source), existing: match }
+      // No invoice carries this number now, but one may have been PRINTED under
+      // it before "Assign next number". Never a placeholder, so holdMatch below
+      // always sends it to the review card with that invoice shown.
+      const printed = deps?.printedIndex.get(key)
+      if (printed) return { id: printed.id, isPlaceholder: false, existing: printed }
+      return null
     },
     dedupeKey: (row) => (row.invoice_number || '').trim().toLowerCase() || null,
     clientPicker: { clients: deps?.clients ?? [] },

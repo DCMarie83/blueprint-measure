@@ -13,6 +13,7 @@ import { useJobMoneyMap } from '../hooks/useJobMoneyMap'
 import { buildEmailLink, emailLinkTarget } from '../lib/emailLink'
 import ClientActivitySection from '../components/clients/ClientActivitySection'
 import DocumentsSection from '../components/documents/DocumentsSection'
+import PrintedAsChips from '../components/numbering/PrintedAsChips'
 import InvoiceStatusBadge from '../components/invoices/InvoiceStatusBadge'
 import { getDisplayTotal } from '../lib/estimateDisplay'
 import { isOverdue } from '../hooks/useInvoices'
@@ -385,6 +386,7 @@ export default function ClientDetailPage() {
                 <div key={inv.id} className={styles.jobRow} onClick={() => navigate(`/invoices/${inv.id}`)}>
                   <FileText size={14} />
                   <span className={styles.jobName}>{inv.invoice_number}</span>
+                  <PrintedAsChips notes={inv.notes} />
                   <span style={{ fontSize: 12, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
                     {inv.created_at ? new Date(inv.created_at).toLocaleDateString() : ''}
                   </span>
@@ -419,6 +421,7 @@ export default function ClientDetailPage() {
                 <div key={est.id} className={styles.jobRow} onClick={() => navigate(`/estimates/${est.id}`)}>
                   <FileText size={14} />
                   <span className={styles.jobName}>{est.title || est.estimate_number}</span>
+                  <PrintedAsChips notes={est.notes} />
                   <span style={{ fontSize: 12, color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
                     {est.created_at ? new Date(est.created_at).toLocaleDateString() : ''}
                   </span>

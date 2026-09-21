@@ -1443,6 +1443,7 @@
       "badgeNoTotal": "no total — imports as draft",
       "review": {
         "loading": "Loading existing invoices...",
+        "printedAsMatch": "This number matches invoice {{current}}, which was printed as {{number}} before it was renumbered.",
         "heldTitle_one": "1 invoice number in the file already exists on your account",
         "heldTitle_other": "{{count}} invoice numbers in the file already exist on your account",
         "badge": "Number exists",
@@ -2654,6 +2655,28 @@
       "addLineItem": "Add Line Item"
     },
     "import": {
+      "printedReview": {
+        "heldTitle_one": "{{count}} row matches a printed number and needs review",
+        "heldTitle_other": "{{count}} rows match a printed number and need review",
+        "badge": "Matches a printed number",
+        "explain": "Estimate {{current}} was printed as {{number}} before it was renumbered.",
+        "action": {
+          "skip": "Skip this row",
+          "import": "Import as {{number}}"
+        },
+        "hint": {
+          "skip": "Nothing is imported. Estimate {{current}} stays as it is.",
+          "import": "A separate estimate numbered {{number}} is created. Estimate {{current}} stays as it is."
+        },
+        "chooseHint": "Choose what to do with this row. It is left out of the import until you do.",
+        "resolution": {
+          "skip": "Skip",
+          "import": "Import as new"
+        },
+        "result": {
+          "skip": "skipped, already on file as estimate {{current}}"
+        }
+      },
       "title": "Import Estimates",
       "uploadPrompt": "Upload a CSV or Excel file with your estimate history. Add a Line Items sheet for per-line detail. Imported estimates never email your clients.",
       "mapHint": "Map columns to Estimate Number, Job Name, and Estimate Date to continue.",

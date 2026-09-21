@@ -118,3 +118,25 @@ export function appendPrintedAs(notes, oldNumber) {
 export function parsePrintedAs(notes) {
   return [...String(notes ?? '').matchAll(PRINTED_AS)].map(m => m[1].trim()).filter(Boolean)
 }
+
+// Search by printed number: the query must equal a "Printed as" number on the
+// notes (whole token, case-insensitive), so 768 never matches a record printed
+// as 7688. Returns the matched printed number, or null.
+export function printedAsMatch(notes, query) {
+  const q = String(query ?? '').trim().toLowerCase()
+  if (!q) return null
+  return parsePrintedAs(notes).find(n => n.toLowerCase() === q) ?? null
+}
+
+// Importer lookup: printed number (lowercased) → the record now carrying a
+// different number. First record wins, like the current-number indexes.
+export function buildPrintedAsIndex(records) {
+  const index = new Map()
+  for (const rec of records ?? []) {
+    for (const n of parsePrintedAs(rec.notes)) {
+      const key = n.toLowerCase()
+      if (!index.has(key)) index.set(key, rec)
+    }
+  }
+  return index
+}

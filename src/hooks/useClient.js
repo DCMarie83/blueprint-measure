@@ -49,7 +49,7 @@ export function useClient(clientId) {
       // Activity rows are a supplement, never the source of truth here.
       let invQuery = supabase
         .from('invoices')
-        .select('id, invoice_number, status, total, paid_amount, due_date, created_at, project_id, client_id')
+        .select('id, invoice_number, notes, status, total, paid_amount, due_date, created_at, project_id, client_id')
         .eq('company_id', companyId)
         .order('created_at', { ascending: false })
       invQuery = projectIds.length > 0
@@ -63,7 +63,7 @@ export function useClient(clientId) {
       if (projectIds.length > 0) {
         const { data } = await supabase
           .from('estimates')
-          .select('id, estimate_number, title, status, good_total, better_total, best_total, accepted_variant, selected_variant, smart_created, created_at, project_id')
+          .select('id, estimate_number, notes, title, status, good_total, better_total, best_total, accepted_variant, selected_variant, smart_created, created_at, project_id')
           .in('project_id', projectIds)
           .order('created_at', { ascending: false })
         estimateData = data ?? []

@@ -6,6 +6,7 @@ import Modal from '../components/ui/Modal'
 import InvoiceImportModal from '../components/invoices/InvoiceImportModal'
 import DocumentImportModal from '../components/import/DocumentImportModal'
 import InvoiceTable from '../components/invoices/InvoiceTable'
+import { printedAsMatch } from '../data/numbering'
 import { useInvoiceSort, useInvoicePaidMap, sortInvoiceRows } from '../components/invoices/invoiceListShared'
 import { exportInvoicesCSV, exportInvoicesXLSX } from '../utils/invoiceListXLSX'
 import { useInvoices } from '../hooks/useInvoices'
@@ -72,7 +73,9 @@ export default function InvoiceListPage() {
     filtered = filtered.filter(inv =>
       inv.invoice_number?.toLowerCase().includes(q) ||
       inv.projects?.name?.toLowerCase().includes(q) ||
-      inv.projects?.clients?.display_name?.toLowerCase().includes(q)
+      inv.projects?.clients?.display_name?.toLowerCase().includes(q) ||
+      // A renumbered invoice still answers to the number it was printed under.
+      printedAsMatch(inv.notes, q) != null
     )
   }
 
@@ -175,6 +178,7 @@ export default function InvoiceListPage() {
             rows={sorted}
             paidMap={paidMap}
             clientNameOf={clientNameOf}
+            search={search}
             sortCol={sortCol}
             sortAsc={sortAsc}
             onSort={handleSort}

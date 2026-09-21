@@ -1,3 +1,5 @@
+import PrintedAsChips from '../numbering/PrintedAsChips'
+import { printedAsMatch } from '../../data/numbering'
 import { useTranslation } from 'react-i18next'
 import InvoiceStatusBadge from './InvoiceStatusBadge'
 import { ScrollbarInside } from '../common/FloatingScrollbar'
@@ -21,7 +23,7 @@ function fmtDate(d) {
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-export default function InvoiceTable({ rows, paidMap, clientNameOf, sortCol, sortAsc, onSort, onRowClick, renderStatusExtra }) {
+export default function InvoiceTable({ rows, paidMap, clientNameOf, search = '', sortCol, sortAsc, onSort, onRowClick, renderStatusExtra }) {
   const { t } = useTranslation()
 
   return (
@@ -48,7 +50,13 @@ export default function InvoiceTable({ rows, paidMap, clientNameOf, sortCol, sor
             const overdue = isOverdue(inv)
             return (
               <tr key={inv.id} className={styles.tr} onClick={() => onRowClick(inv)}>
-                <td className={`${styles.td} ${styles.number}`}>{inv.invoice_number}</td>
+                <td className={`${styles.td} ${styles.number}`}>
+                  {inv.invoice_number}
+                  {/* Why a row matched a search for a number it no longer carries. */}
+                  {printedAsMatch(inv.notes, search) && (
+                    <span style={{ marginLeft: 8 }}><PrintedAsChips notes={inv.notes} only={printedAsMatch(inv.notes, search)} /></span>
+                  )}
+                </td>
                 <td className={styles.td}>{clientNameOf(inv) || ''}</td>
                 <td className={`${styles.td} ${styles.muted}`}>{inv.projects?.name || ''}</td>
                 <td className={styles.td}>{fmtDate(inv.created_at)}</td>

@@ -17,6 +17,7 @@ import PaymentInstructionsBlock from '../components/invoices/PaymentInstructions
 import ChangeClientDialog from '../components/clients/ChangeClientDialog'
 import AssignNextNumberDialog from '../components/numbering/AssignNextNumberDialog'
 import PrintedAsChips from '../components/numbering/PrintedAsChips'
+import { parsePrintedAs } from '../data/numbering'
 import { fetchQrDataUrls } from '../lib/qrData'
 import { supabase } from '../lib/supabase'
 import styles from './InvoiceDetailPage.module.css'
@@ -420,7 +421,7 @@ export default function InvoiceDetailPage() {
     }
     const { data } = await supabase
       .from('invoices')
-      .select('id, invoice_number, total, status, client_id, projects(client_id)')
+      .select('id, invoice_number, notes, total, status, client_id, projects(client_id)')
       .eq('company_id', invoice.company_id)
       .not('status', 'in', '(draft,void)')
       .neq('id', id)
@@ -812,7 +813,7 @@ export default function InvoiceDetailPage() {
                       <select className={styles.formSelect} value={transferTargetId} onChange={e => setTransferTargetId(e.target.value)} style={{ minWidth: 240 }}>
                         <option value="">{t('invoices:detail.transferSelect')}</option>
                         {transferTargets.map(tg => (
-                          <option key={tg.id} value={tg.id}>{tg.invoice_number} · {fmtMoney(tg.total)} ({t(`common:invoiceStatus.${tg.status}`, { defaultValue: tg.status })})</option>
+                          <option key={tg.id} value={tg.id}>{tg.invoice_number}{parsePrintedAs(tg.notes).map(n => ` · ${t('shared:numbering.printedAs', { number: n })}`).join('')} · {fmtMoney(tg.total)} ({t(`common:invoiceStatus.${tg.status}`, { defaultValue: tg.status })})</option>
                         ))}
                       </select>
                       <button className={styles.confirmBtn} onClick={handleTransfer} disabled={actionSaving || !transferTargetId}>
