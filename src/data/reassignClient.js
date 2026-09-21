@@ -52,15 +52,18 @@ export async function moveJobToClient({ companyId, userId, projectId, targetClie
   if (invErr) throw new Error(invErr.message)
   if (estErr) throw new Error(estErr.message)
 
+  // Invoices carry their own client_id (the LTV trigger fires on this column).
+  // They move BEFORE the job: a legacy invoice with a null client_id resolves
+  // its old client through the job, so the job must still point at the old
+  // client when the trigger runs or the old client's lifetime value goes stale.
+  const { error: upInvErr } = await supabase.from('invoices')
+    .update({ client_id: targetClientId }).eq('project_id', projectId)
+  if (upInvErr) throw new Error(upInvErr.message)
+
   const { error: upProjErr } = await supabase.from('projects')
     .update({ client_id: targetClientId, client_name: newClient.display_name, updated_at: new Date().toISOString() })
     .eq('id', projectId)
   if (upProjErr) throw new Error(upProjErr.message)
-
-  // Invoices carry their own client_id (the LTV trigger fires on this column).
-  const { error: upInvErr } = await supabase.from('invoices')
-    .update({ client_id: targetClientId }).eq('project_id', projectId)
-  if (upInvErr) throw new Error(upInvErr.message)
 
   // Activity follows: rows on the OLD client that reference this job's records.
   if (proj.client_id) {
