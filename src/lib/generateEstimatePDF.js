@@ -10,6 +10,7 @@ const FALLBACK_PRIMARY = [242, 114, 67] // #f27243
 import { getDisplayVariant } from './estimateDisplay'
 import { buildPaymentMethods, EN_METHOD_LABELS, EN_LINE_LABELS } from './paymentMethods'
 import { drawLogo } from './logoImage'
+import { drawPaginatedText, drawSectionHeading, stampFooters } from './pdfText'
 
 const UNIT_LABELS = { sf: 'SF', lf: 'LF', each: 'Each', hour: 'Hour', lump_sum: 'Lump Sum' }
 
@@ -113,10 +114,11 @@ export function generateEstimatePDF({ estimate, lineItems, project, client, comp
   }
   const isSingleVariant = true
 
-  {
-    let y = margin
-
-    // ── Header band ──────────────────────────────────────────
+  // ── Header band ──────────────────────────────────────────
+  // Logo (or company name) at left, title and number at right. Drawn on
+  // page 1 and again at the top of every page the notes and terms open, so
+  // those pages carry the same chrome as the first. Returns the y below it.
+  function drawHeaderBand(y) {
     let logoRendered = false
     let logoDrawnH = 0
     if (company?.logo) {
@@ -149,7 +151,27 @@ export function generateEstimatePDF({ estimate, lineItems, project, client, comp
 
     // Tall (square-ish) logos may draw past the old 14mm line; push the rest
     // of the header down by the overflow so nothing overlaps.
-    y += 16 + Math.max(0, logoDrawnH - 14)
+    return y + 16 + Math.max(0, logoDrawnH - 14)
+  }
+
+  // Open the next page with the header band and divider. Returns the y where
+  // content resumes. Used for the notes page and every page the notes or
+  // terms overflow onto.
+  function startNewPage() {
+    doc.addPage()
+    const y = drawHeaderBand(margin)
+    doc.setDrawColor(...MUTED)
+    doc.setLineWidth(0.3)
+    doc.line(margin, y, pageWidth - margin, y)
+    return y + 8
+  }
+
+  // Last baseline a body-text line may occupy. The footer sits at
+  // pageHeight - 12, so nothing is ever drawn past the bottom margin.
+  const contentBottom = pageHeight - 20
+
+  {
+    let y = drawHeaderBand(margin)
 
     // Date line
     doc.setFontSize(10)
@@ -323,23 +345,25 @@ export function generateEstimatePDF({ estimate, lineItems, project, client, comp
     const showDeposit = estimate.deposit_amount != null && Number(estimate.deposit_amount) > 0
     const showTerms = estimate.terms && estimate.terms.trim()
 
-    if (showNotes || showDeposit || showTerms) {
-      y += 4
-      if (y > pageHeight - 80) { doc.addPage(); y = margin }
+    // Notes always open on their own page, under the standard header band,
+    // with a section heading styled like the table's section rows. The text
+    // paginates line by line and never draws past contentBottom.
+    if (showNotes) {
+      y = startNewPage()
+      y = drawSectionHeading(doc, 'NOTES', { x: margin, y, width: pageWidth - margin * 2, textColor: companyPrimaryRgb })
+      y += 6
+      doc.setFontSize(9)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(80, 80, 80)
+      y = drawPaginatedText(doc, estimate.notes, {
+        x: margin, y, width: pageWidth - margin * 2, lineHeight: 4.2, bottom: contentBottom, onNewPage: startNewPage,
+      })
+      y += 6
+    }
 
-      if (showNotes) {
-        doc.setFontSize(10)
-        doc.setFont('helvetica', 'bold')
-        doc.setTextColor(...DARK)
-        doc.text('NOTES', margin, y)
-        y += 5
-        doc.setFontSize(9)
-        doc.setFont('helvetica', 'normal')
-        doc.setTextColor(80, 80, 80)
-        const noteLines = doc.splitTextToSize(estimate.notes, pageWidth - margin * 2)
-        doc.text(noteLines, margin, y)
-        y += noteLines.length * 4.2 + 6
-      }
+    if (showDeposit || showTerms) {
+      y += 4
+      if (y > pageHeight - 80) y = startNewPage()
 
       if (showDeposit) {
         const dep = Number(estimate.deposit_amount)
@@ -363,6 +387,8 @@ export function generateEstimatePDF({ estimate, lineItems, project, client, comp
       }
 
       if (showTerms) {
+        // Keep the heading with at least its first lines of text.
+        if (y > contentBottom - 12) y = startNewPage()
         doc.setFontSize(10)
         doc.setFont('helvetica', 'bold')
         doc.setTextColor(...DARK)
@@ -371,20 +397,19 @@ export function generateEstimatePDF({ estimate, lineItems, project, client, comp
         doc.setFontSize(8.5)
         doc.setFont('helvetica', 'normal')
         doc.setTextColor(80, 80, 80)
-        const termsLines = doc.splitTextToSize(estimate.terms, pageWidth - margin * 2)
-        doc.text(termsLines, margin, y)
-        y += termsLines.length * 4 + 4
+        y = drawPaginatedText(doc, estimate.terms, {
+          x: margin, y, width: pageWidth - margin * 2, lineHeight: 4, bottom: contentBottom, onNewPage: startNewPage,
+        })
+        y += 4
       }
     }
-
-    // ── Footer ───────────────────────────────────────────────
-    doc.setFontSize(8)
-    doc.setFont('helvetica', 'normal')
-    doc.setTextColor(...MUTED)
-    // TODO: Add company address when companies.address is available
-    doc.text(companyName, margin, pageHeight - 12)
-    doc.text(estNumber, pageWidth - margin, pageHeight - 12, { align: 'right' })
   }
+
+  // ── Footer ───────────────────────────────────────────────
+  // Stamped on every page once the content is complete so the page count
+  // includes the notes and terms pages.
+  // TODO: Add company address when companies.address is available
+  stampFooters(doc, { left: companyName, right: estNumber, pageWidth, pageHeight, margin, color: MUTED })
 
   // ── Output ─────────────────────────────────────────────────
   const filename = `${sanitizeFilename(estTitle)}_${sanitizeFilename(estNumber)}${client?.display_name ? '_' + sanitizeFilename(client.display_name) : ''}.pdf`

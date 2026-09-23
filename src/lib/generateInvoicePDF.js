@@ -4,6 +4,7 @@ import { hexToRgb, normalizedPrimary, brandBand } from '../utils/colorUtils'
 import { formatTimeOnly } from './effectiveTime'
 import { buildPaymentMethods, EN_METHOD_LABELS, EN_LINE_LABELS } from './paymentMethods'
 import { drawLogo } from './logoImage'
+import { drawPaginatedText, stampFooters } from './pdfText'
 
 const DARK = [27, 36, 38]
 const MUTED = [138, 144, 150]
@@ -104,39 +105,59 @@ export function generateInvoicePDF({ invoice, lineItems, project, client, compan
   const invTitle = invoice.title || 'Invoice'
   const invNumber = invoice.invoice_number
 
-  let y = margin
-
   // ── Header band ──────────────────────────────────────────
-  let logoRendered = false
-  let logoDrawnH = 0
-  if (company?.logo) {
-    try {
-      const { w, h } = drawLogo(doc, company.logo, { x: margin, y: y - 2, maxW: 42, maxH: 20 })
-      logoRendered = w > 0
-      logoDrawnH = h
-    } catch { /* fall through to text */ }
-  }
+  // Logo (or company name) at left, INVOICE label and number at right. Drawn
+  // on page 1 and again at the top of every page the notes and terms open, so
+  // those pages carry the same chrome as the first. Returns the y below it.
+  function drawHeaderBand(y) {
+    let logoRendered = false
+    let logoDrawnH = 0
+    if (company?.logo) {
+      try {
+        const { w, h } = drawLogo(doc, company.logo, { x: margin, y: y - 2, maxW: 42, maxH: 20 })
+        logoRendered = w > 0
+        logoDrawnH = h
+      } catch { /* fall through to text */ }
+    }
 
-  if (!logoRendered) {
-    doc.setFontSize(22)
+    if (!logoRendered) {
+      doc.setFontSize(22)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(...DARK)
+      doc.text(companyName, margin, y + 7)
+    }
+
+    // Right: INVOICE label + number
+    doc.setFontSize(16)
     doc.setFont('helvetica', 'bold')
-    doc.setTextColor(...DARK)
-    doc.text(companyName, margin, y + 7)
+    doc.setTextColor(...primaryRgb)
+    doc.text('INVOICE', pageWidth - margin, y + 4, { align: 'right' })
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(...MUTED)
+    doc.text(invNumber, pageWidth - margin, y + 10, { align: 'right' })
+
+    // Tall (square-ish) logos may draw past the old 14mm line; push the rest
+    // of the header down by the overflow so nothing overlaps.
+    return y + 16 + Math.max(0, logoDrawnH - 14)
   }
 
-  // Right: INVOICE label + number
-  doc.setFontSize(16)
-  doc.setFont('helvetica', 'bold')
-  doc.setTextColor(...primaryRgb)
-  doc.text('INVOICE', pageWidth - margin, y + 4, { align: 'right' })
-  doc.setFontSize(10)
-  doc.setFont('helvetica', 'normal')
-  doc.setTextColor(...MUTED)
-  doc.text(invNumber, pageWidth - margin, y + 10, { align: 'right' })
+  // Open the next page with the header band and divider. Returns the y where
+  // content resumes. Used by the notes and terms pagination.
+  function startNewPage() {
+    doc.addPage()
+    const y = drawHeaderBand(margin)
+    doc.setDrawColor(...MUTED)
+    doc.setLineWidth(0.3)
+    doc.line(margin, y, pageWidth - margin, y)
+    return y + 8
+  }
 
-  // Tall (square-ish) logos may draw past the old 14mm line; push the rest
-  // of the header down by the overflow so nothing overlaps.
-  y += 16 + Math.max(0, logoDrawnH - 14)
+  // Last baseline a body-text line may occupy. The footer sits at
+  // pageHeight - 12, so nothing is ever drawn past the bottom margin.
+  const contentBottom = pageHeight - 20
+
+  let y = drawHeaderBand(margin)
 
   // Date line
   doc.setFontSize(10)
@@ -373,7 +394,7 @@ export function generateInvoicePDF({ invoice, lineItems, project, client, compan
 
   if (showDue || showNotes || showTerms) {
     y += 4
-    if (y > pageHeight - 80) { doc.addPage(); y = margin }
+    if (y > pageHeight - 80) y = startNewPage()
 
     if (showDue) {
       doc.setFontSize(10)
@@ -389,6 +410,9 @@ export function generateInvoicePDF({ invoice, lineItems, project, client, compan
     }
 
     if (showNotes) {
+      // Keep the heading with at least its first lines of text; the text
+      // itself paginates line by line and never draws past contentBottom.
+      if (y > contentBottom - 12) y = startNewPage()
       doc.setFontSize(10)
       doc.setFont('helvetica', 'bold')
       doc.setTextColor(...DARK)
@@ -397,12 +421,14 @@ export function generateInvoicePDF({ invoice, lineItems, project, client, compan
       doc.setFontSize(9)
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(80, 80, 80)
-      const noteLines = doc.splitTextToSize(invoice.notes, pageWidth - margin * 2)
-      doc.text(noteLines, margin, y)
-      y += noteLines.length * 4.2 + 6
+      y = drawPaginatedText(doc, invoice.notes, {
+        x: margin, y, width: pageWidth - margin * 2, lineHeight: 4.2, bottom: contentBottom, onNewPage: startNewPage,
+      })
+      y += 6
     }
 
     if (showTerms) {
+      if (y > contentBottom - 12) y = startNewPage()
       doc.setFontSize(10)
       doc.setFont('helvetica', 'bold')
       doc.setTextColor(...DARK)
@@ -411,21 +437,22 @@ export function generateInvoicePDF({ invoice, lineItems, project, client, compan
       doc.setFontSize(8.5)
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(80, 80, 80)
-      const termsLines = doc.splitTextToSize(invoice.terms, pageWidth - margin * 2)
-      doc.text(termsLines, margin, y)
-      y += termsLines.length * 4 + 4
+      y = drawPaginatedText(doc, invoice.terms, {
+        x: margin, y, width: pageWidth - margin * 2, lineHeight: 4, bottom: contentBottom, onNewPage: startNewPage,
+      })
+      y += 4
     }
   }
 
   // ── Footer ───────────────────────────────────────────────
-  doc.setFontSize(8)
-  doc.setFont('helvetica', 'normal')
-  doc.setTextColor(...MUTED)
-  doc.text(companyName, margin, pageHeight - 12)
-  doc.text(invNumber, pageWidth - margin, pageHeight - 12, { align: 'right' })
-  // Platform attribution — every client-facing output carries it (white-label
-  // removal is Ultra-tier). Centered so it never collides with the edge labels.
-  doc.text('Powered by RivetDog', pageWidth / 2, pageHeight - 12, { align: 'center' })
+  // Stamped on every page once the content is complete so the page count
+  // includes the notes and terms pages. Platform attribution stays centered on
+  // every client-facing page (white-label removal is Ultra-tier) so it never
+  // collides with the edge labels.
+  stampFooters(doc, {
+    left: companyName, right: invNumber, center: 'Powered by RivetDog',
+    pageWidth, pageHeight, margin, color: MUTED,
+  })
 
   // ── Output ───────────────────────────────────────────────
   const filename = `${sanitizeFilename(invNumber)}${client?.display_name ? '_' + sanitizeFilename(client.display_name) : ''}.pdf`
